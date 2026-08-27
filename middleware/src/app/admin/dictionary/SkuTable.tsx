@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   Fragment,
@@ -7,7 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   flexRender,
   getCoreRowModel,
@@ -21,6 +21,7 @@ import {
   type PimDeltaRow,
 } from "./actions";
 import { buildDictionaryColumns, EXEC_PILL, showExpandForRow } from "./columns";
+import { getMissingCatalogFields } from "./pim-catalog-utils";
 import { getOperatorName, setOperatorName } from "./InlineCells";
 import type { DictionaryTableMeta, SkuMappingRow } from "./types";
 import { FinishedGoodDetailPanel } from "./FinishedGoodDetailPanel";
@@ -84,6 +85,8 @@ function downloadCsv(rows: SkuMappingRow[]): void {
 
 export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const quickFilter = searchParams.get("filter");
   const [rows, setRows] = useState(initialRows);
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState(ALL_TAB);
@@ -294,10 +297,33 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
   }, [rows]);
 
   const filtered = useMemo(() => {
-    const byTab =
+    let byTab =
       activeTab === ALL_TAB
         ? rows
         : rows.filter((row) => (row.category || "Uncategorized") === activeTab);
+
+    if (quickFilter === "catalog") {
+      byTab = byTab.filter((row) => row.catalog !== null);
+    } else if (quickFilter === "incomplete") {
+      byTab = byTab.filter(
+        (row) =>
+          row.category.trim().toLowerCase() === "finished good" &&
+          getMissingCatalogFields({
+            category: row.category,
+            itemType: row.itemType,
+            originalName: row.originalName,
+            globalSku: row.globalSku,
+            catalog: row.catalog,
+          }).length > 0,
+      );
+    } else if (quickFilter === "missing_katana") {
+      byTab = byTab.filter(
+        (row) => row.katanaVariantId === null && row.katanaMaterialId === null,
+      );
+    } else if (quickFilter === "discontinued") {
+      byTab = byTab.filter((row) => !row.isActive);
+    }
+
     const needle = query.trim().toLowerCase();
     if (!needle) return byTab;
     return byTab.filter(
@@ -307,7 +333,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
         row.originalName.toLowerCase().includes(needle) ||
         row.itemType.toLowerCase().includes(needle),
     );
-  }, [activeTab, query, rows]);
+  }, [activeTab, query, rows, quickFilter]);
 
   const tableMeta: DictionaryTableMeta = useMemo(
     () => ({

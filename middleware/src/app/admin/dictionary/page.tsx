@@ -133,26 +133,30 @@ export default async function DictionaryPage() {
             <div className="flex flex-col gap-3 sm:items-end">
               <LogoutButton />
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5 sm:gap-4">
-              <Stat label="Total SKUs" value={String(data.length)} />
+              <Stat label="Total SKUs" value={String(data.length)} href="?filter=all" />
               <Stat
                 label="PIM catalog"
                 value={String(catalogCount)}
                 tone={catalogCount > 0 ? "ok" : "warn"}
+                href="?filter=catalog"
               />
               <Stat
                 label="Incomplete FG"
                 value={String(incomplete)}
                 tone={incomplete > 0 ? "warn" : "ok"}
+                href="?filter=incomplete"
               />
               <Stat
                 label="Katana punchlist"
                 value={String(missingKatana)}
                 tone={missingKatana > 0 ? "danger" : "ok"}
+                href="?filter=missing_katana"
               />
               <Stat
                 label="Discontinued"
                 value={String(discontinued)}
                 tone={discontinued > 0 ? "warn" : "ok"}
+                href="?filter=discontinued"
               />
             </dl>
             </div>
@@ -177,10 +181,12 @@ function Stat({
   label,
   value,
   tone = "neutral",
+  href,
 }: {
   label: string;
   value: string;
   tone?: "neutral" | "danger" | "warn" | "ok";
+  href?: string;
 }) {
   const valueClass =
     tone === "danger"
@@ -191,8 +197,8 @@ function Stat({
           ? "text-emerald-300"
           : "text-slate-50";
 
-  return (
-    <div className="rounded-lg border border-slate-800/60 bg-slate-950/40 px-3 py-2">
+  const content = (
+    <>
       <dt className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
         {label}
       </dt>
@@ -201,6 +207,22 @@ function Stat({
       >
         {value}
       </dd>
+    </>
+  );
+
+  const containerClass = "rounded-lg border border-slate-800/60 bg-slate-950/40 px-3 py-2 transition hover:bg-slate-900/60 cursor-pointer";
+
+  if (href) {
+    return (
+      <Link href={href} className={containerClass}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className={containerClass}>
+      {content}
     </div>
   );
 }
