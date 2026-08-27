@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #020617;
+  background-image:
+    radial-gradient(ellipse 120% 80% at 10% -10%, rgba(30, 41, 59, 0.55), transparent 55%),
+    radial-gradient(ellipse 90% 70% at 90% 0%, rgba(24, 24, 27, 0.5), transparent 50%),
+    linear-gradient(180deg, #020617 0%, #09090b 45%, #020617 100%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(148, 163, 184, 0.015) 2px,
+      rgba(148, 163, 184, 0.015) 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(148, 163, 184, 0.015) 2px,
+      rgba(148, 163, 184, 0.015) 3px
+    );
+  background-attachment: fixed;
+}
+
+/* Institutional carbon / micro-mesh overlay for admin shells */
+.pim-carbon-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.pim-carbon-shell::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.02) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.02) 50%,
+      rgba(255, 255, 255, 0.02) 75%,
+      transparent 75%,
+      transparent
+    );
+  background-size: 6px 6px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 85%);
+}
+
+.pim-glass {
+  border: 1px solid rgba(30, 41, 59, 0.8);
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.pim-input {
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  background: rgba(2, 6, 23, 0.8);
+  padding: 0.35rem 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  color: #f1f5f9;
+  outline: none;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.pim-input:hover {
+  border-color: rgba(71, 85, 105, 0.9);
+}
+
+.pim-input:focus {
+  border-color: rgb(16 185 129);
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.4);
+}
+
+/* Borderless inline edit — for wide text fields (factory name, description) */
+.pim-input-plain {
+  width: 100%;
+  border-radius: 0.25rem;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0.1rem 0.2rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  color: #f1f5f9;
+  outline: none;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+.pim-input-plain:hover {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.pim-input-plain:focus {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(2, 6, 23, 0.55);
+  box-shadow: none;
+}
+
+.pim-input-plain:disabled {
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.pim-input-missing {
+  border-color: rgba(244, 63, 94, 0.55) !important;
+  background: rgba(244, 63, 94, 0.06) !important;
+}
+
+.pim-input-missing:focus {
+  border-color: rgba(244, 63, 94, 0.75) !important;
+  box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.35) !important;
+}
+
+.pim-input:disabled {
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.pim-input-na {
+  color: #64748b;
+  text-decoration: line-through;
+  font-style: italic;
+}
+
+.pim-row-flash {
+  animation: pim-row-flash 700ms ease-out;
+}
+
+@keyframes pim-row-flash {
+  0% {
+    background-color: rgba(16, 185, 129, 0.18);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes beam-glide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(420%);
+  }
+}
+
+.animate-beam-glide {
+  animation: beam-glide 4.5s ease-in-out infinite;
+}
+
+@keyframes pim-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pim-spinner {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border: 1.5px solid rgba(148, 163, 184, 0.35);
+  border-top-color: rgb(52 211 153);
+  border-radius: 9999px;
+  animation: pim-spin 0.6s linear infinite;
+}

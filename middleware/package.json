@@ -1,0 +1,52 @@
+{
+  "name": "ccpatio-middleware",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:check": "drizzle-kit check",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:seed": "tsx scripts/seed-sku-mappings.ts",
+    "db:scrape-katana": "tsx scripts/scrape-katana.ts",
+    "db:backfill-katana": "tsx scripts/backfill-katana-ids.ts",
+    "db:import-images": "tsx scripts/import-sheet-images.ts",
+    "db:migrate-finished-skus": "tsx scripts/migrate-finished-good-skus.ts",
+    "db:migrate-finished-skus:dry": "tsx scripts/migrate-finished-good-skus.ts --dry-run",
+    "sku:generate": "python ../generate_sku_dictionary.py",
+    "sku:export-review": "python ../export_sku_review.py"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.4",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@tanstack/react-table": "^8.21.3",
+    "cheerio": "^1.2.0",
+    "drizzle-orm": "^0.45.2",
+    "inngest": "^4.18.1",
+    "next": "16.3.2",
+    "postcss": "^8.5.26",
+    "postgres": "^3.4.9",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "tailwindcss": "^4.3.3",
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.2",
+    "tsx": "^4.23.12",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  }
+}

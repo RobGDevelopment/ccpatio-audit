@@ -1,0 +1,83 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1756212120000,
+      "tag": "0001_sku_quarantine_mo",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1756215720000,
+      "tag": "0002_sku_aliases_cascade",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1756219320000,
+      "tag": "0003_product_bom",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1756222920000,
+      "tag": "0004_raw_materials_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1756226520000,
+      "tag": "0005_incoming_webhooks",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787789238160,
+      "tag": "0005_grey_ben_urich",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787790000000,
+      "tag": "0006_finished_goods_na_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787791000000,
+      "tag": "0007_pim_enterprise_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787792000000,
+      "tag": "0008_sku_mappings_pim_universal",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787793000000,
+      "tag": "0009_multi_level_bom",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787866666260,
+      "tag": "0010_pim_operators_audit",
+      "breakpoints": true
+    }
+  ]
+}
