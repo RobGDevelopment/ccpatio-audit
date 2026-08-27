@@ -457,7 +457,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
 
       <div
         role="tablist"
-        className="flex gap-1 overflow-x-auto border-b border-slate-800/80 pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-1 overflow-x-auto border-b border-slate-800/80 pb-px scrollbar-none"
       >
         <CategoryTab
           label={ALL_TAB}

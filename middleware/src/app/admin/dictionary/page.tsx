@@ -165,7 +165,7 @@ export default async function DictionaryPage() {
             aria-hidden
             className="relative mt-6 h-px w-full overflow-hidden bg-slate-800/80"
           >
-            <div className="animate-beam-glide absolute top-0 left-0 h-full w-1/4 bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+            <div className="animate-beam-glide absolute top-0 left-0 h-full w-1/4 bg-linear-to-r from-transparent via-emerald-500/40 to-transparent" />
           </div>
         </header>
 

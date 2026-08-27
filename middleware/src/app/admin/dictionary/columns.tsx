@@ -365,7 +365,7 @@ function coreColumns(
             target="mapping"
             expectedVersion={row.original.version}
             variant="plain"
-            className="max-w-[14rem] truncate"
+            className="max-w-56 truncate"
             placeholder="Factory name"
             onSaved={({ value, updatedAt, updatedBy, version }) =>
               m.onPatchSaved(row.original.globalSku, {
@@ -566,7 +566,7 @@ function seatingCatalogColumns(
           field="description"
           value={row.original.catalog?.description ?? ""}
           target="catalog"
-          className="min-w-[8rem]"
+          className="min-w-32"
           placeholder="Memo / description"
           onSaved={({ value, updatedAt, updatedBy }) => {
             const base = row.original.catalog ?? {
@@ -853,7 +853,7 @@ function trailingColumns(
         );
         return (
           <span
-            className="max-w-[9rem] text-[10px] leading-snug text-slate-500"
+            className="max-w-36 text-[10px] leading-snug text-slate-500"
             title={stamp}
           >
             {stamp}
