@@ -309,6 +309,7 @@ export async function searchBomComponents(
       or(
         ilike(sku_mappings.global_sku, `%${q}%`),
         ilike(sku_mappings.original_name, `%${q}%`),
+        ilike(sku_mappings.category, `%${q}%`),
       )!,
     );
   }

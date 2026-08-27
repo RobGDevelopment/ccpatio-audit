@@ -215,7 +215,14 @@ function KatanaPunchlist({ row }: { row: SkuMappingRow }) {
   const needsCatalogHealth =
     row.category.trim().toLowerCase() === "finished good" ||
     row.itemType === "finished_good";
-  const catalogOk = isFinishedGoodCatalogComplete(row);
+  const missingFields = getMissingCatalogFields({
+    category: row.category,
+    itemType: row.itemType,
+    originalName: row.originalName,
+    globalSku: row.globalSku,
+    catalog: row.catalog,
+  });
+  const catalogOk = missingFields.length === 0;
   const variantId = row.katanaVariantId;
   const materialId = row.katanaMaterialId;
   const hasKatana = variantId !== null || materialId !== null;
@@ -223,11 +230,25 @@ function KatanaPunchlist({ row }: { row: SkuMappingRow }) {
   // FG: blank required dims (unless in na_fields) → rose Missing
   if (needsCatalogHealth && !catalogOk) {
     return (
+      <div className="flex flex-col gap-0.5 items-start">
+        <span
+          className={`${EXEC_PILL} border-rose-500/25 bg-rose-500/10 text-rose-300`}
+        >
+          Missing Dims
+        </span>
+        <span className="text-[9px] text-rose-400/80 leading-tight">
+          {missingFields.join(", ")}
+        </span>
+      </div>
+    );
+  }
+
+  if (needsCatalogHealth && !hasKatana) {
+    return (
       <span
         className={`${EXEC_PILL} border-rose-500/25 bg-rose-500/10 text-rose-300`}
-        title="Required catalog fields are blank (type N/A if not applicable; images optional)"
       >
-        Missing
+        Missing Katana ID
       </span>
     );
   }
@@ -293,8 +314,8 @@ function coreColumns(
             type="button"
             aria-expanded={isOpen}
             aria-label={fgTab ? "Toggle details" : "Toggle BOM panel"}
+            className="flex h-7 w-7 items-center justify-center rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] transition-all hover:bg-emerald-500/20 hover:shadow-[0_0_12px_rgba(16,185,129,0.4)]"
             onClick={() => m.onToggleExpand(row.original.globalSku)}
-            className="inline-flex h-9 w-9 items-center justify-center text-emerald-400 hover:text-emerald-300 rounded-full bg-emerald-500/10 shadow-[0_0_8px_rgba(16,185,129,0.3)] transition-all hover:shadow-[0_0_12px_rgba(16,185,129,0.5)]"
             title={fgTab ? "Description, integrations, BOM" : "Bill of materials"}
           >
             <span

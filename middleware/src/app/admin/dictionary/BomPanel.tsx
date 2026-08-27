@@ -180,7 +180,7 @@ function BomChildCombobox({
                 >
                   <span className="font-mono text-zinc-100">{hit.sku}</span>
                   <span className="text-zinc-500">
-                    {hit.name} · {hit.itemType}
+                    {hit.category ? `${hit.category} · ` : ""}{hit.name} · {hit.itemType}
                   </span>
                 </button>
               </li>
@@ -423,6 +423,9 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
         />
       </div>
 
+      {error ? (
+        <p className="text-sm text-rose-500 bg-rose-500/10 p-2 rounded">{error}</p>
+      ) : null}
       {loading ? (
         <p className="text-sm text-zinc-500">Loading BOM tree…</p>
       ) : !tree ? (
