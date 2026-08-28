@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Terminal, ShieldAlert, CheckCircle, DatabaseZap, Search, RotateCw } from 'lucide-react';
 
 type LogLevel = 'ALL' | 'CRITICAL' | 'WARNING' | 'SUCCESS';

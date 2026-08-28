@@ -828,13 +828,13 @@ export async function syncBOMToKatana(
         });
       } else if (bomLines.length > 0) {
         // Dry-run: count planned recipe rows
-        for (const _ of bomLines) {
-          recipeRows.push({
+        recipeRows.push(
+          ...bomLines.map(() => ({
             product_variant_id: 0,
             ingredient_variant_id: 0,
             quantity: 0,
-          });
-        }
+          })),
+        );
       }
 
       totalRecipeRows += recipeRows.length;

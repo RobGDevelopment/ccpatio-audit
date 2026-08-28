@@ -392,6 +392,8 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
     [activeTab, tableMeta],
   );
 
+  // TanStack Table returns non-memoizable helpers by design.
+  // eslint-disable-next-line react-hooks/incompatible-library -- controlled inline editors
   const table = useReactTable({
     data: filtered,
     columns,

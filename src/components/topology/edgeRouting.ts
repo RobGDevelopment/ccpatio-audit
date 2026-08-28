@@ -226,8 +226,7 @@ function exitChannelX(
 function dropChannelX(
   targetX: number,
   tgtCard: Rect | null,
-  tgtZone: Rect | null,
-  srcZone: Rect | null
+  tgtZone: Rect | null
 ): number {
   if (!tgtZone || !tgtCard) return targetX - STUB;
   if (isRailZone(tgtZone.id)) return Math.max(tgtZone.x + 16, tgtCard.x - 14);
@@ -608,7 +607,7 @@ export function getSmartBeamPath(
   const skipEnds = new Set([sourceId, targetId]);
 
   const exitX = exitChannelX(sourceX, srcCard, srcZone);
-  const dropX = dropChannelX(targetX, tgtCard, tgtZone, srcZone);
+  const dropX = dropChannelX(targetX, tgtCard, tgtZone);
   const sameZone = Boolean(srcZone && tgtZone && srcZone.id === tgtZone.id);
   const topToTop =
     srcPos === Position.Top &&

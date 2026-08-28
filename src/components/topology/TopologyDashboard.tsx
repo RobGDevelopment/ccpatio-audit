@@ -57,9 +57,6 @@ import {
 import { DashboardHeader } from "./DashboardHeader";
 import { buildCustomSequence } from "./journeyBuilder";
 import {
-  autoSeparateNodes,
-  clearSavedLayout,
-  formatLayoutExport,
   saveLayout,
 } from "./layoutStudio";
 import { buildBlueprintLayoutGraph, layoutOperationalTasks } from "./layoutEngine";
@@ -171,8 +168,7 @@ function TopologyCanvas() {
   const isHydrated = useRef(false);
   const [nodes, setNodes, onNodesChange] = useNodesState(granularNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(granularEdges);
-  const [layoutToast, setLayoutToast] = useState<string | null>(null);
-  const { pause, stepNext, play, playMovie, exitMovie, stopRun, resetPlayback } =
+  const { pause, stepNext, play, playMovie, exitMovie, resetPlayback } =
     useSequenceController();
 
   const playbackState = useTopologyStore((s) => s.playbackState);
@@ -503,33 +499,6 @@ function TopologyCanvas() {
     saveLayout(nodes);
   }, [nodes, layoutEditMode]);
 
-  const flashToast = useCallback((msg: string) => {
-    setLayoutToast(msg);
-    window.setTimeout(() => setLayoutToast(null), 2800);
-  }, []);
-
-  const handleAutoSeparate = useCallback(() => {
-    setNodes((prev) => autoSeparateNodes(prev, 56));
-    flashToast("Auto-separated overlapping boxes");
-  }, [setNodes, flashToast]);
-
-  const handleExportLayout = useCallback(async () => {
-    const json = formatLayoutExport(nodes);
-    try {
-      await navigator.clipboard.writeText(json);
-      flashToast("Layout JSON copied — paste to Cursor to bake in");
-    } catch {
-      console.info("[layout export]", json);
-      flashToast("Copy failed — JSON logged to console");
-    }
-  }, [nodes, flashToast]);
-
-  const handleResetLayout = useCallback(() => {
-    clearSavedLayout();
-    setNodes(compiledGraph.nodes);
-    flashToast("Layout reset to schema seed defaults");
-  }, [setNodes, flashToast, compiledGraph.nodes]);
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -719,11 +688,6 @@ function TopologyCanvas() {
             {false ? (
               <div className="pointer-events-none absolute left-1/2 top-3 z-50 -translate-x-1/2 rounded-lg border border-amber-500/40 bg-amber-950/95 px-3 py-1.5 text-[11px] text-amber-100 shadow-lg">
                 Layout Studio
-              </div>
-            ) : null}
-            {layoutToast ? (
-              <div className="pointer-events-none absolute bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-emerald-500/40 bg-emerald-950/95 px-3 py-1.5 text-[11px] text-emerald-100 shadow-lg">
-                {layoutToast}
               </div>
             ) : null}
             <div

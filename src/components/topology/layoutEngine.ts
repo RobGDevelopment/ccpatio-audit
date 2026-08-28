@@ -67,6 +67,7 @@ function makeOperationalEdge(
   spine: boolean,
   direction: LayoutDirection = "LR"
 ): Edge {
+  void direction;
   const sourceHandle = "right";
   const targetHandle = "left";
   return {

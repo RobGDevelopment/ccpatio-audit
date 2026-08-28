@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Server, AlertTriangle, ShieldCheck, XCircle } from 'lucide-react';
 
 type AuditCategory = 'ALL' | 'GOVERNANCE' | 'INFRASTRUCTURE' | 'DATABASE' | 'API';

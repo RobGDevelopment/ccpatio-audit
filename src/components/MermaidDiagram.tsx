@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useId } from 'react';
 import mermaid from 'mermaid';
 import { TransformWrapper, TransformComponent, useControls } from 'react-zoom-pan-pinch';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
@@ -42,19 +42,19 @@ const Controls = () => {
 
 export default function MermaidDiagram({ chart }: { chart: string }) {
   const [svgContent, setSvgContent] = useState<string | null>(null);
-  const chartId = useRef(`mermaid-${Math.random().toString(36).substring(2, 9)}`);
+  const chartId = useId().replace(/:/g, "");
 
   useEffect(() => {
     const renderChart = async () => {
       try {
-        const { svg } = await mermaid.render(chartId.current, chart);
+        const { svg } = await mermaid.render(chartId, chart);
         setSvgContent(svg);
       } catch (err) {
         console.error("Mermaid rendering failed", err);
       }
     };
     renderChart();
-  }, [chart]);
+  }, [chart, chartId]);
 
   if (!svgContent) return <div className="text-sky-400 font-mono text-sm animate-pulse flex h-[72vh] items-center justify-center">Rendering Architecture...</div>;
 

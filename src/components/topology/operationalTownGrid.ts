@@ -152,20 +152,8 @@ export function isIntraZoneTieShort(source: string, target: string): boolean {
   return from != null && from === to;
 }
 
-type PanelSlot = "breaker" | "socket" | "in" | "out";
-
-function slotOf(id: string, slots: Map<string, "breaker" | "socket">): PanelSlot {
-  if (isGridTieIn(id)) return "in";
-  if (isGridTieOut(id)) return "out";
-  return slots.get(id) ?? "breaker";
-}
-
 /** Strict RF handles: breakers L/T in, R/B out; sockets L in, R/B out. */
-function circuitHandles(
-  _source: string,
-  _target: string,
-  _slots: Map<string, "breaker" | "socket">
-): { sourceHandle: string; targetHandle: string } {
+function circuitHandles(): { sourceHandle: string; targetHandle: string } {
   // Universal Left-In / Right-Out — cards only expose left/right handles.
   return { sourceHandle: "right", targetHandle: "left" };
 }
@@ -469,7 +457,7 @@ export function layoutOperationalTownGrid(tasks: OperationalTask[]): {
     if (isIntraZoneTieShort(source, target)) return;
     if (seen.has(id)) return;
     seen.add(id);
-    const handles = circuitHandles(source, target, slotById);
+    const handles = circuitHandles();
     if (type === "trunkBus") {
       edges.push({
         id,

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { GraduationCap, CheckCircle2, Circle, Lock, Unlock } from 'lucide-react';
 
 type DeptCategory = 'ALL' | 'SALES' | 'CAD' | 'FACTORY' | 'LOGISTICS' | 'FINANCE';

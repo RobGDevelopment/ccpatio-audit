@@ -35,7 +35,6 @@ export function RawMaterialCombobox({
   const [highlightIndex, setHighlightIndex] = useState(0);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQuery(value);
   }, [value]);
 

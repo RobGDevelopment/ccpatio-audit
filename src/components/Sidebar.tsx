@@ -1,5 +1,4 @@
 'use client';
-import React from 'react';
 import { AlertTriangle, GitMerge, Server, GraduationCap, FileText, DollarSign, Terminal } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 

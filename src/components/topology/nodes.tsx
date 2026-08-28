@@ -152,7 +152,6 @@ function openNodeEditor(
   _type: string,
   _data: Record<string, unknown>,
   layoutEditMode: boolean,
-  _e?: { stopPropagation?: () => void }
 ) {
   if (layoutEditMode) return;
   /* Mapping inspector is owned by React Flow onNodeClick. */
@@ -202,7 +201,6 @@ function RailCardNodeComponent({ id, data }: NodeProps<RailCardNodeType>) {
     isCompleting,
     isDone,
     color,
-    districtAccent,
     focusOpacity,
   } = useNodeVisual(id, data.linkedTaskId);
 
@@ -349,13 +347,13 @@ function SystemNodeComponent({ id, data }: NodeProps<SystemNodeType>) {
         role="button"
         tabIndex={0}
         title={data.label}
-        onClick={(e) => {
-          openNodeEditor(id, "system", data as Record<string, unknown>, layoutEditMode, e);
+        onClick={() => {
+          openNodeEditor(id, "system", data as Record<string, unknown>, layoutEditMode);
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            openNodeEditor(id, "system", data as Record<string, unknown>, layoutEditMode, e);
+            openNodeEditor(id, "system", data as Record<string, unknown>, layoutEditMode);
           }
         }}
         animate={{
@@ -419,13 +417,13 @@ function SystemNodeComponent({ id, data }: NodeProps<SystemNodeType>) {
           ? "Layout mode — drag to reposition"
           : "Click to open Integration Editor"
       }
-      onClick={(e) => {
-        openNodeEditor(id, "system", data as Record<string, unknown>, layoutEditMode, e);
+      onClick={() => {
+        openNodeEditor(id, "system", data as Record<string, unknown>, layoutEditMode);
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          openNodeEditor(id, "system", data as Record<string, unknown>, layoutEditMode, e);
+          openNodeEditor(id, "system", data as Record<string, unknown>, layoutEditMode);
         }
       }}
       animate={{
@@ -615,13 +613,13 @@ function SocketNodeComponent({ id, data }: NodeProps<SocketNodeType>) {
       role="button"
       tabIndex={0}
       title={data.label}
-      onClick={(e) => {
-        openNodeEditor(id, "socket", data as Record<string, unknown>, layoutEditMode, e);
-      }}
+        onClick={() => {
+          openNodeEditor(id, "socket", data as Record<string, unknown>, layoutEditMode);
+        }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          openNodeEditor(id, "socket", data as Record<string, unknown>, layoutEditMode, e);
+          openNodeEditor(id, "socket", data as Record<string, unknown>, layoutEditMode);
         }
       }}
       className={`${dragClass} relative box-border flex h-full w-full cursor-pointer items-center justify-center`}
@@ -690,13 +688,13 @@ function GatewayNodeComponent({ id, data }: NodeProps<GatewayNodeType>) {
       role="button"
       tabIndex={0}
       title="Click to inspect process mapping"
-      onClick={(e) => {
-        openNodeEditor(id, "gateway", data as Record<string, unknown>, layoutEditMode, e);
-      }}
+        onClick={() => {
+          openNodeEditor(id, "gateway", data as Record<string, unknown>, layoutEditMode);
+        }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          openNodeEditor(id, "gateway", data as Record<string, unknown>, layoutEditMode, e);
+          openNodeEditor(id, "gateway", data as Record<string, unknown>, layoutEditMode);
         }
       }}
       className={`${dragClass} relative cursor-pointer`}
@@ -765,13 +763,13 @@ function MilestoneNodeComponent({ id, data }: NodeProps<MilestoneNodeType>) {
       role="button"
       tabIndex={0}
       title="Click to inspect process mapping"
-      onClick={(e) => {
-        openNodeEditor(id, "milestone", data as Record<string, unknown>, layoutEditMode, e);
-      }}
+        onClick={() => {
+          openNodeEditor(id, "milestone", data as Record<string, unknown>, layoutEditMode);
+        }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          openNodeEditor(id, "milestone", data as Record<string, unknown>, layoutEditMode, e);
+          openNodeEditor(id, "milestone", data as Record<string, unknown>, layoutEditMode);
         }
       }}
       className={`${dragClass} relative box-border h-full cursor-pointer overflow-visible rounded-xl border-2 bg-slate-950 px-3 py-2`}
@@ -1081,13 +1079,13 @@ function PipelineNodeComponent({ id, data }: NodeProps<PipelineNodeType>) {
           ? "Layout mode — drag this parent box"
           : "Click to open Integration Editor"
       }
-      onClick={(e) => {
-        openNodeEditor(id, "pipeline", data as Record<string, unknown>, layoutEditMode, e);
-      }}
+        onClick={() => {
+          openNodeEditor(id, "pipeline", data as Record<string, unknown>, layoutEditMode);
+        }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          openNodeEditor(id, "pipeline", data as Record<string, unknown>, layoutEditMode, e);
+          openNodeEditor(id, "pipeline", data as Record<string, unknown>, layoutEditMode);
         }
       }}
       animate={{
@@ -1301,13 +1299,13 @@ function StageNodeComponent({ id, data }: NodeProps<StageNodeType>) {
       role="button"
       tabIndex={0}
       title="Click to inspect process mapping"
-      onClick={(e) => {
-        openNodeEditor(id, "stage", data as Record<string, unknown>, false, e);
-      }}
+        onClick={() => {
+          openNodeEditor(id, "stage", data as Record<string, unknown>, false);
+        }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          openNodeEditor(id, "stage", data as Record<string, unknown>, false, e);
+          openNodeEditor(id, "stage", data as Record<string, unknown>, false);
         }
       }}
       animate={{

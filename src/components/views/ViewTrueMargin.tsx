@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useMemo } from 'react';
-import { DollarSign, TrendingUp, Activity, CheckCircle2, ChevronDown, ChevronRight, Package, Box, Users, Scissors } from 'lucide-react';
+import { Fragment, useState, useMemo } from 'react';
+import { DollarSign, CheckCircle2, ChevronDown, ChevronRight, Box, Users, Scissors } from 'lucide-react';
 
 type PipelineFilter = 'ALL' | 'PATH_A' | 'PATH_B';
 
@@ -122,7 +122,7 @@ export function ViewTrueMargin() {
               const isExpanded = expandedRow === item.id;
 
               return (
-                <React.Fragment key={item.id}>
+                <Fragment key={item.id}>
                   <tr 
                     onClick={() => toggleRow(item.id)}
                     className="hover:bg-slate-800/50 transition-colors text-slate-300 cursor-pointer group"
@@ -187,7 +187,7 @@ export function ViewTrueMargin() {
                       </td>
                     </tr>
                   )}
-                </React.Fragment>
+                </Fragment>
               );
             })}
             {filteredOrders.length === 0 && (

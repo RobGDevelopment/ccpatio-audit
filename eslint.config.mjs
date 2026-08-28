@@ -26,6 +26,7 @@ const eslintConfig = defineConfig([
     "Website Audit/**",
     "Mia's needds/**",
     "20250107/**",
+    "_ARCHIVE_TO_REMOVE_/**",
   ]),
 ]);
 
