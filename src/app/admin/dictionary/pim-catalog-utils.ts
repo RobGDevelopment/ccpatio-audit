@@ -1,5 +1,6 @@
 import {
   calculateRowHealth as calculateRowHealthCore,
+  CATEGORY_REQUIRED_ATTRIBUTES,
   getMissingAttributeFields,
   getMissingFinishedGoodFields,
   isAttributeValueComplete,
@@ -213,5 +214,312 @@ export function calculateRowHealth(input: {
     hasMissingData:
       core.missingAttributeFields.length > 0 ||
       missingCatalogFields.length > 0,
+  };
+}
+
+export type MissingFieldDescriptor = {
+  key: string;
+  label: string;
+  target: "catalog" | "attribute" | "mapping";
+  patchField: string;
+  allowNa: boolean;
+};
+
+export type ProductFieldDescriptor = MissingFieldDescriptor & {
+  section: "core" | "catalog" | "attribute";
+  initialValue: string;
+  isMissing: boolean;
+};
+
+const CATALOG_FIELD_LABELS: Record<CatalogHealthField, string> = {
+  length: "Length",
+  width: "Width",
+  height: "Height",
+  seat_height: "Seat height",
+  arm_height: "Arm height",
+  weight: "Weight",
+  msrp: "MSRP",
+};
+
+const ATTRIBUTE_FIELD_LABELS: Record<string, string> = {
+  slab_length: "Slab L",
+  slab_width: "Slab W",
+  thickness_mm: "Thick mm",
+  finish: "Finish",
+  yield_sqft: "Yield sqft",
+  grade: "Grade",
+  roll_width: "Roll W",
+  pattern_repeat: "Pattern repeat",
+  rub_count: "Rub count",
+  colorway: "Colorway",
+  profile_type: "Profile",
+  dimensions: "Dimensions",
+  wall_thickness: "Wall thick",
+  alloy: "Alloy",
+  stock_length: "Stock L",
+  finish_type: "Finish type",
+  cure_temp: "Cure °F",
+  cure_time: "Cure min",
+  ral_code: "RAL",
+};
+
+/** Resolve missing fields into modal-ready patch descriptors. */
+export function buildMissingFieldDescriptors(input: {
+  category: string;
+  itemType: string;
+  originalName: string;
+  globalSku?: string;
+  attributes: Record<string, unknown>;
+  catalog: {
+    msrp: string | null;
+    length: string | null;
+    depth: string | null;
+    height: string | null;
+    armHeight: string | null;
+    sitHeight: string | null;
+    weight: string | null;
+    description: string | null;
+    imageUrl: string | null;
+    qboItemCode: string | null;
+    naFields: string[];
+  } | null;
+}): MissingFieldDescriptor[] {
+  const health = calculateRowHealth(input);
+  const descriptors: MissingFieldDescriptor[] = [];
+
+  for (const key of health.missingCatalogFields) {
+    descriptors.push({
+      key,
+      label: CATALOG_FIELD_LABELS[key],
+      target: "catalog",
+      patchField: catalogFieldToken(key),
+      allowNa: true,
+    });
+  }
+
+  const cat = normalizeCategoryForHealth(input.category);
+  const reqs = CATEGORY_REQUIRED_ATTRIBUTES[cat] ?? [];
+  for (const attrKey of health.missingAttributeFields) {
+    const req = reqs.find((row) => row.key === attrKey);
+    descriptors.push({
+      key: attrKey,
+      label: ATTRIBUTE_FIELD_LABELS[attrKey] ?? attrKey,
+      target: "attribute",
+      patchField: req?.paths[0] ?? attrKey,
+      allowNa: true,
+    });
+  }
+
+  return descriptors;
+}
+
+type ProductFieldInput = {
+  category: string;
+  itemType: string;
+  originalName: string;
+  globalSku?: string;
+  uomPurchase?: string | null;
+  uomConsume?: string | null;
+  baseCost?: string | null;
+  attributes: Record<string, unknown>;
+  catalog: {
+    msrp: string | null;
+    length: string | null;
+    depth: string | null;
+    height: string | null;
+    armHeight: string | null;
+    sitHeight: string | null;
+    weight: string | null;
+    description: string | null;
+    imageUrl: string | null;
+    qboItemCode: string | null;
+    naFields: string[];
+  } | null;
+};
+
+function isFgRow(input: ProductFieldInput): boolean {
+  const cat = normalizeCategoryForHealth(input.category);
+  return cat === "finished good" || input.itemType === "finished_good";
+}
+
+/** Full fieldset for product detail modal (core + catalog + attributes). */
+export function buildAllProductFieldDescriptors(
+  input: ProductFieldInput,
+): ProductFieldDescriptor[] {
+  const health = calculateRowHealth(input);
+  const missingCatalog = new Set(health.missingCatalogFields);
+  const missingAttrs = new Set(health.missingAttributeFields);
+  const descriptors: ProductFieldDescriptor[] = [];
+  const fg = isFgRow(input);
+  const na = new Set(input.catalog?.naFields ?? []);
+
+  descriptors.push({
+    key: "original_name",
+    label: "Factory name",
+    target: "mapping",
+    patchField: "original_name",
+    allowNa: false,
+    section: "core",
+    initialValue: input.originalName ?? "",
+    isMissing: !input.originalName?.trim(),
+  });
+
+  descriptors.push({
+    key: "uom_purchase",
+    label: "UOM (buy)",
+    target: "mapping",
+    patchField: "uom_purchase",
+    allowNa: false,
+    section: "core",
+    initialValue: input.uomPurchase ?? "",
+    isMissing: !input.uomPurchase?.trim(),
+  });
+
+  descriptors.push({
+    key: "uom_consume",
+    label: "UOM (use)",
+    target: "mapping",
+    patchField: "uom_consume",
+    allowNa: false,
+    section: "core",
+    initialValue: input.uomConsume ?? "",
+    isMissing: !input.uomConsume?.trim(),
+  });
+
+  if (fg) {
+    descriptors.push({
+      key: "msrp",
+      label: "MSRP",
+      target: "catalog",
+      patchField: "msrp",
+      allowNa: true,
+      section: "core",
+      initialValue: na.has("msrp")
+        ? "N/A"
+        : (input.catalog?.msrp?.trim() ?? ""),
+      isMissing: missingCatalog.has("msrp"),
+    });
+  } else {
+    descriptors.push({
+      key: "base_cost",
+      label: "Base cost",
+      target: "mapping",
+      patchField: "base_cost",
+      allowNa: false,
+      section: "core",
+      initialValue: input.baseCost?.trim() ?? "",
+      isMissing: !input.baseCost?.trim(),
+    });
+  }
+
+  if (fg) {
+    const catalogFields: { key: CatalogHealthField; patch: string; label: string }[] =
+      [
+        { key: "length", patch: "length", label: "Length" },
+        { key: "width", patch: "depth", label: "Width" },
+        { key: "height", patch: "height", label: "Height" },
+        { key: "seat_height", patch: "sit_height", label: "Seat height" },
+        { key: "arm_height", patch: "arm_height", label: "Arm height" },
+        { key: "weight", patch: "weight", label: "Weight" },
+      ];
+    for (const { key, patch, label } of catalogFields) {
+      const naKey = catalogFieldToken(key);
+      const raw =
+        key === "length"
+          ? input.catalog?.length
+          : key === "width"
+            ? input.catalog?.depth
+            : key === "height"
+              ? input.catalog?.height
+              : key === "seat_height"
+                ? input.catalog?.sitHeight
+                : key === "arm_height"
+                  ? input.catalog?.armHeight
+                  : input.catalog?.weight;
+      descriptors.push({
+        key,
+        label,
+        target: "catalog",
+        patchField: patch,
+        allowNa: true,
+        section: "catalog",
+        initialValue: na.has(naKey) ? "N/A" : (raw?.trim() ?? ""),
+        isMissing: missingCatalog.has(key),
+      });
+    }
+  }
+
+  const cat = normalizeCategoryForHealth(input.category);
+  const reqs = CATEGORY_REQUIRED_ATTRIBUTES[cat] ?? [];
+  for (const req of reqs) {
+    const value = resolveAttributeValue(input.attributes, req.paths);
+    descriptors.push({
+      key: req.key,
+      label: ATTRIBUTE_FIELD_LABELS[req.key] ?? req.key,
+      target: "attribute",
+      patchField: req.paths[0]!,
+      allowNa: true,
+      section: "attribute",
+      initialValue: value,
+      isMissing: missingAttrs.has(req.key),
+    });
+  }
+
+  return descriptors;
+}
+
+export type BatchCompletionStats = {
+  label: string;
+  total: number;
+  complete: number;
+  percent: number;
+};
+
+type HealthRowInput = {
+  category: string;
+  itemType: string;
+  originalName: string;
+  globalSku?: string;
+  attributes: Record<string, unknown>;
+  catalog: {
+    msrp: string | null;
+    length: string | null;
+    depth: string | null;
+    height: string | null;
+    armHeight: string | null;
+    sitHeight: string | null;
+    weight: string | null;
+    description: string | null;
+    imageUrl: string | null;
+    qboItemCode: string | null;
+    naFields: string[];
+  } | null;
+};
+
+/** Completion % for visible rows (category progress bar). */
+export function computeBatchCompletion(
+  rows: HealthRowInput[],
+  label: string,
+): BatchCompletionStats {
+  const total = rows.length;
+  if (total === 0) {
+    return { label, total: 0, complete: 0, percent: 100 };
+  }
+  const complete = rows.filter(
+    (row) =>
+      !calculateRowHealth({
+        category: row.category,
+        itemType: row.itemType,
+        originalName: row.originalName,
+        globalSku: row.globalSku,
+        attributes: row.attributes,
+        catalog: row.catalog,
+      }).hasMissingData,
+  ).length;
+  return {
+    label,
+    total,
+    complete,
+    percent: Math.round((complete / total) * 100),
   };
 }

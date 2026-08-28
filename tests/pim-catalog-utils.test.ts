@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateRowHealth,
+  computeBatchCompletion,
   getMissingAttributeFields,
   getMissingCatalogFields,
   inferSuggestedNaFields,
@@ -162,6 +163,38 @@ describe("pim-catalog-utils", () => {
     });
     expect(health.hasMissingData).toBe(true);
     expect(health.missingAttributeFields).toContain("roll_width");
+  });
+
+  it("computeBatchCompletion derives percent from row health", () => {
+    const complete = {
+      category: "Powder",
+      itemType: "raw_material" as const,
+      originalName: "Complete powder",
+      globalSku: "POW-1",
+      attributes: {
+        finish_type: "Matte",
+        cure_temp: "400",
+        cure_time: "20",
+        ral_code: "9005",
+      },
+      catalog: null,
+    };
+    const incomplete = {
+      category: "Powder",
+      itemType: "raw_material" as const,
+      originalName: "Incomplete powder",
+      globalSku: "POW-2",
+      attributes: { finish_type: "Matte" },
+      catalog: null,
+    };
+    expect(calculateRowHealth(complete).hasMissingData).toBe(false);
+    expect(calculateRowHealth(incomplete).hasMissingData).toBe(true);
+
+    const stats = computeBatchCompletion([complete, incomplete], "Powder");
+    expect(stats.total).toBe(2);
+    expect(stats.complete).toBe(1);
+    expect(stats.percent).toBe(50);
+    expect(stats.label).toBe("Powder");
   });
 });
 

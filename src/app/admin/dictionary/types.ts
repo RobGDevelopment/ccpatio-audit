@@ -46,6 +46,10 @@ export type DictionaryTableMeta = {
   columnTab: string;
   flashSkus: Record<string, boolean>;
   onPatchSaved: (sku: string, patch: Partial<SkuMappingRow>) => void;
+  onOpenProductDetail: (
+    row: SkuMappingRow,
+    options?: { focusMissing?: boolean },
+  ) => void;
   onToggleActive: (sku: string) => void;
   onToggleExpand: (sku: string) => void;
   expanded: Record<string, boolean>;

@@ -13,10 +13,15 @@ import {
   deleteRawMaterial,
   fetchRawMaterialBySku,
   fetchRawMaterialDeltas,
-  patchRawMaterialInline,
   proposeRawMaterialSku,
   type RawMaterialRow,
 } from "./actions";
+import { computeBatchCompletion } from "@/app/admin/dictionary/pim-catalog-utils";
+import { CategoryProgressBar } from "@/app/admin/shared/CategoryProgressBar";
+import {
+  RawMaterialDetailModal,
+  RawMaterialHealthBadge,
+} from "./RawMaterialDetailModal";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
 const EXEC_PILL =
@@ -111,15 +116,14 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
   );
   const [localRows, setLocalRows] = useState(initialRows);
   const [createDraft, setCreateDraft] = useState<MaterialDraft>(emptyDraft);
-  const [editing, setEditing] = useState<
-    Record<string, { name: string; costPerUnit: string }>
-  >({});
   const [flashSkus, setFlashSkus] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [syncLabel, setSyncLabel] = useState<"connecting" | "live" | "poll">(
     "connecting",
   );
   const [sinceIso, setSinceIso] = useState(() => new Date().toISOString());
+  const [detailRow, setDetailRow] = useState<RawMaterialRow | null>(null);
+  const [detailFocusMissing, setDetailFocusMissing] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -271,6 +275,26 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
     );
   }, [localRows, query, selectedCategories]);
 
+  const progressStats = useMemo(() => {
+    const label =
+      selectedCategories.size === 1
+        ? ([...selectedCategories][0] ?? ALL_TAB)
+        : selectedCategories.size > 1
+          ? `${selectedCategories.size} categories`
+          : ALL_TAB;
+    return computeBatchCompletion(
+      filtered.map((row) => ({
+        category: row.category,
+        itemType: row.itemType,
+        originalName: row.name,
+        globalSku: row.sku,
+        attributes: row.attributes,
+        catalog: null,
+      })),
+      label,
+    );
+  }, [filtered, selectedCategories]);
+
   const filteredStats = useMemo((): FilteredStats => {
     const categories = new Set(
       filtered.map((row) => row.category || "Uncategorized"),
@@ -311,6 +335,22 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
     };
   }, [createDraft.category, createDraft.name]);
 
+  useEffect(() => {
+    if (selectedCategories.size !== 1) return;
+    const [category] = [...selectedCategories];
+    if (!category) return;
+    const match =
+      CATEGORY_OPTIONS.find(
+        (opt) => opt.toLowerCase() === category.toLowerCase(),
+      ) ??
+      (category === "Powder" ? "Powder Coat" : undefined);
+    if (match) {
+      setCreateDraft((prev) =>
+        prev.category === match ? prev : { ...prev, category: match },
+      );
+    }
+  }, [selectedCategories]);
+
   function toggleCategory(category: string): void {
     setSelectedCategories((prev) => {
       const next = new Set(prev);
@@ -321,6 +361,11 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
       }
       return next;
     });
+  }
+
+  function openDetail(row: RawMaterialRow, focusMissing = false): void {
+    setDetailFocusMissing(focusMissing);
+    setDetailRow(row);
   }
 
   function onCreate(event: FormEvent<HTMLFormElement>): void {
@@ -335,72 +380,6 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
       setLocalRows((prev) => mergeRemoteRow(prev, result.material!));
       flashRow(result.material.sku);
       setCreateDraft(emptyDraft());
-    });
-  }
-
-  function startInlineEdit(row: RawMaterialRow): void {
-    setEditing((prev) => ({
-      ...prev,
-      [row.sku]: {
-        name: row.name,
-        costPerUnit: row.costPerUnit ?? "",
-      },
-    }));
-  }
-
-  function cancelInlineEdit(sku: string): void {
-    setEditing((prev) => {
-      const next = { ...prev };
-      delete next[sku];
-      return next;
-    });
-  }
-
-  function saveInlineEdit(sku: string): void {
-    const draft = editing[sku];
-    if (!draft) return;
-
-    const row = localRows.find((r) => r.sku === sku);
-    if (!row) return;
-
-    const nameChanged = draft.name.trim() !== row.name;
-    const costChanged = draft.costPerUnit !== (row.costPerUnit ?? "");
-    if (!nameChanged && !costChanged) {
-      cancelInlineEdit(sku);
-      return;
-    }
-
-    setError(null);
-    setLocalRows((prev) =>
-      prev.map((r) =>
-        r.sku === sku
-          ? {
-              ...r,
-              name: draft.name.trim(),
-              costPerUnit: draft.costPerUnit.trim() || null,
-            }
-          : r,
-      ),
-    );
-    flashRow(sku);
-
-    startTransition(async () => {
-      const result = await patchRawMaterialInline({
-        sku,
-        name: draft.name,
-        costPerUnit: draft.costPerUnit,
-      });
-      if (!result.ok) {
-        setError(result.error);
-        setLocalRows((prev) =>
-          prev.map((r) => (r.sku === sku ? row : r)),
-        );
-        return;
-      }
-      if (result.material) {
-        setLocalRows((prev) => mergeRemoteRow(prev, result.material!));
-      }
-      cancelInlineEdit(sku);
     });
   }
 
@@ -478,229 +457,200 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
         ))}
       </div>
 
-      <form
-        onSubmit={onCreate}
-        className="rounded-lg border border-slate-800/60 bg-slate-950/40 p-4"
-      >
-        <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
-          Add raw material
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-          <input
-            value={createDraft.sku}
-            readOnly
-            disabled={isPending}
-            placeholder="Auto-generated SKU"
-            aria-label="Auto-generated SKU"
-            title="Auto-generated from category + name"
-            className={`${INPUT} font-mono uppercase text-slate-400 opacity-90`}
-          />
-          <input
-            value={createDraft.name}
-            onChange={(e) =>
-              setCreateDraft((prev) => ({ ...prev, name: e.target.value }))
-            }
-            placeholder="Name"
-            className={INPUT}
-            disabled={isPending}
-          />
-          <select
-            value={createDraft.category}
-            onChange={(e) =>
-              setCreateDraft((prev) => ({ ...prev, category: e.target.value }))
-            }
-            className={`${INPUT} appearance-none`}
-            disabled={isPending}
-          >
-            {CATEGORY_OPTIONS.map((category) => (
-              <option key={category} value={category} className="bg-slate-950">
-                {category}
-              </option>
-            ))}
-          </select>
-          <select
-            value={createDraft.unitOfMeasure}
-            onChange={(e) =>
-              setCreateDraft((prev) => ({
-                ...prev,
-                unitOfMeasure: e.target.value,
-              }))
-            }
-            className={`${INPUT} appearance-none`}
-            disabled={isPending}
-          >
-            {UNIT_OPTIONS.map((unit) => (
-              <option key={unit} value={unit} className="bg-slate-950">
-                {unit}
-              </option>
-            ))}
-          </select>
-          <input
-            value={createDraft.costPerUnit}
-            onChange={(e) =>
-              setCreateDraft((prev) => ({
-                ...prev,
-                costPerUnit: e.target.value,
-              }))
-            }
-            placeholder="Cost / unit"
-            inputMode="decimal"
-            className={`${INPUT} font-mono`}
-            disabled={isPending}
-          />
-          <button
-            type="submit"
-            disabled={isPending}
-            className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-60"
-          >
-            Add
-          </button>
+      <CategoryProgressBar stats={progressStats} />
+
+      <form onSubmit={onCreate} className="overflow-hidden rounded-lg border border-slate-800/50">
+        <div className="max-h-[min(75vh,62rem)] overflow-auto">
+          <table className="w-full table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col className="w-[14%]" />
+              <col className="w-[22%]" />
+              <col className="w-[14%]" />
+              <col className="w-[8%]" />
+              <col className="w-[12%]" />
+              <col className="w-[14%]" />
+              <col className="w-[16%]" />
+            </colgroup>
+            <thead className="sticky top-0 z-10 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-md">
+              <tr className="text-[10px] uppercase tracking-wider text-slate-500">
+                <th className="px-3 py-3 font-medium">SKU (Auto)</th>
+                <th className="px-3 py-3 font-medium">Name</th>
+                <th className="px-3 py-3 font-medium">Category</th>
+                <th className="px-3 py-3 font-medium">UOM</th>
+                <th className="px-3 py-3 font-medium">Cost / Unit</th>
+                <th className="px-3 py-3 font-medium">Data Health</th>
+                <th className="px-3 py-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-900/70">
+              <tr className="bg-slate-950/40">
+                <td className="px-3 py-2.5">
+                  <input
+                    value={createDraft.sku}
+                    readOnly
+                    disabled={isPending}
+                    placeholder="Auto-generated"
+                    aria-label="Auto-generated SKU"
+                    className={`${INPUT} w-full font-mono text-xs uppercase text-slate-400`}
+                  />
+                </td>
+                <td className="px-3 py-2.5">
+                  <input
+                    value={createDraft.name}
+                    onChange={(e) =>
+                      setCreateDraft((prev) => ({ ...prev, name: e.target.value }))
+                    }
+                    placeholder="Name"
+                    className={`${INPUT} w-full`}
+                    disabled={isPending}
+                  />
+                </td>
+                <td className="px-3 py-2.5">
+                  <select
+                    value={createDraft.category}
+                    onChange={(e) =>
+                      setCreateDraft((prev) => ({
+                        ...prev,
+                        category: e.target.value,
+                      }))
+                    }
+                    className={`${INPUT} w-full appearance-none`}
+                    disabled={isPending}
+                  >
+                    {CATEGORY_OPTIONS.map((category) => (
+                      <option key={category} value={category} className="bg-slate-950">
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-3 py-2.5">
+                  <select
+                    value={createDraft.unitOfMeasure}
+                    onChange={(e) =>
+                      setCreateDraft((prev) => ({
+                        ...prev,
+                        unitOfMeasure: e.target.value,
+                      }))
+                    }
+                    className={`${INPUT} w-full appearance-none font-mono`}
+                    disabled={isPending}
+                  >
+                    {UNIT_OPTIONS.map((unit) => (
+                      <option key={unit} value={unit} className="bg-slate-950">
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-3 py-2.5">
+                  <input
+                    value={createDraft.costPerUnit}
+                    onChange={(e) =>
+                      setCreateDraft((prev) => ({
+                        ...prev,
+                        costPerUnit: e.target.value,
+                      }))
+                    }
+                    placeholder="0.00"
+                    inputMode="decimal"
+                    className={`${INPUT} w-full font-mono`}
+                    disabled={isPending}
+                  />
+                </td>
+                <td className="px-3 py-2.5 text-[10px] text-slate-600">—</td>
+                <td className="px-3 py-2.5">
+                  <button
+                    type="submit"
+                    disabled={isPending}
+                    className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-60"
+                  >
+                    Add
+                  </button>
+                </td>
+              </tr>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                    No raw materials match this filter.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((row) => (
+                    <tr
+                      key={row.sku}
+                      className={`cursor-pointer transition-colors hover:bg-slate-900/35 ${
+                        flashSkus[row.sku] ? "pim-row-flash" : ""
+                      } ${!row.isActive ? "opacity-55" : ""}`}
+                      onClick={() => openDetail(row)}
+                    >
+                      <td className="px-3 py-2.5 font-mono text-[13px] text-slate-100">
+                        {row.sku}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className="block truncate text-slate-300">
+                          {row.name}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-slate-400">{row.category}</td>
+                      <td className="px-3 py-2.5 font-mono text-slate-400">
+                        {row.unitOfMeasure}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-slate-400">
+                        {row.costPerUnit ?? "—"}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <RawMaterialHealthBadge
+                          row={row}
+                          onResolve={() => openDetail(row, true)}
+                        />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div
+                          className="flex flex-wrap items-center gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => openDetail(row)}
+                            aria-label={`Inspect ${row.sku}`}
+                            title="Inspect / edit"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 text-slate-400 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
+                          >
+                            <InspectIcon />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDelete(row.sku)}
+                            disabled={isPending}
+                            aria-label={`Delete ${row.sku}`}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-rose-500/10 hover:text-rose-400 disabled:opacity-50"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+              )}
+            </tbody>
+          </table>
         </div>
       </form>
 
-      <div className="max-h-[min(75vh,62rem)] overflow-auto rounded-lg border border-slate-800/50">
-        <table className="w-full border-collapse text-left text-sm">
-          <thead className="sticky top-0 z-10 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-md">
-            <tr className="text-[10px] uppercase tracking-wider text-slate-500">
-              <th className="px-3 py-3 font-medium">SKU</th>
-              <th className="px-3 py-3 font-medium">Name</th>
-              <th className="px-3 py-3 font-medium">Category</th>
-              <th className="px-3 py-3 font-medium">UOM</th>
-              <th className="px-3 py-3 font-medium">Cost / unit</th>
-              <th className="px-3 py-3 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-900/70">
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
-                  No raw materials match this filter.
-                </td>
-              </tr>
-            ) : (
-              filtered.map((row) => {
-                const isEditing = Boolean(editing[row.sku]);
-                const draft = editing[row.sku];
-                return (
-                  <tr
-                    key={row.sku}
-                    className={`transition-colors hover:bg-slate-900/35 ${
-                      flashSkus[row.sku] ? "pim-row-flash" : ""
-                    } ${!row.isActive ? "opacity-55" : ""}`}
-                  >
-                    <td className="px-3 py-2.5 font-mono text-[13px] text-slate-100">
-                      {row.sku}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {isEditing && draft ? (
-                        <input
-                          value={draft.name}
-                          onChange={(e) =>
-                            setEditing((prev) => ({
-                              ...prev,
-                              [row.sku]: { ...draft, name: e.target.value },
-                            }))
-                          }
-                          className={`${INPUT} w-full`}
-                          disabled={isPending}
-                          autoFocus
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => startInlineEdit(row)}
-                          className="text-left text-slate-300 transition hover:text-emerald-300"
-                          title="Click to edit name"
-                        >
-                          {row.name}
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-slate-400">{row.category}</td>
-                    <td className="px-3 py-2.5 font-mono text-slate-400">
-                      {row.unitOfMeasure}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {isEditing && draft ? (
-                        <input
-                          value={draft.costPerUnit}
-                          onChange={(e) =>
-                            setEditing((prev) => ({
-                              ...prev,
-                              [row.sku]: {
-                                ...draft,
-                                costPerUnit: e.target.value,
-                              },
-                            }))
-                          }
-                          inputMode="decimal"
-                          placeholder="—"
-                          className={`${INPUT} w-full font-mono`}
-                          disabled={isPending}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              saveInlineEdit(row.sku);
-                            }
-                            if (e.key === "Escape") {
-                              cancelInlineEdit(row.sku);
-                            }
-                          }}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => startInlineEdit(row)}
-                          className="font-mono text-slate-400 transition hover:text-emerald-300"
-                          title="Click to edit cost"
-                        >
-                          {row.costPerUnit ?? "—"}
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {isEditing ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => saveInlineEdit(row.sku)}
-                              disabled={isPending}
-                              className="text-xs text-emerald-400 transition hover:text-emerald-300 disabled:opacity-50"
-                            >
-                              Save
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => cancelInlineEdit(row.sku)}
-                              disabled={isPending}
-                              className="text-xs text-slate-500 transition hover:text-slate-300 disabled:opacity-50"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => onDelete(row.sku)}
-                              disabled={isPending}
-                              aria-label={`Delete ${row.sku}`}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-rose-500/10 hover:text-rose-400 disabled:opacity-50"
-                            >
-                              <TrashIcon />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+      <RawMaterialDetailModal
+        row={detailRow}
+        open={detailRow !== null}
+        focusMissing={detailFocusMissing}
+        onClose={() => {
+          setDetailRow(null);
+          setDetailFocusMissing(false);
+        }}
+        onSaved={(material) => {
+          setLocalRows((prev) => mergeRemoteRow(prev, material));
+          flashRow(material.sku);
+        }}
+      />
 
       {error ? <p className="text-xs text-rose-400">{error}</p> : null}
 
@@ -748,6 +698,25 @@ function CategoryTab({
         {count}
       </span>
     </button>
+  );
+}
+
+function InspectIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+      <path
+        fillRule="evenodd"
+        d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+        clipRule="evenodd"
+      />
+    </svg>
   );
 }
 

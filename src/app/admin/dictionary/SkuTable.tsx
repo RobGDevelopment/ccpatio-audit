@@ -21,11 +21,13 @@ import {
   type PimDeltaRow,
 } from "./actions";
 import { buildDictionaryColumns, EXEC_PILL, showExpandForRow } from "./columns";
-import { calculateRowHealth } from "./pim-catalog-utils";
+import { calculateRowHealth, computeBatchCompletion } from "./pim-catalog-utils";
+import { CategoryProgressBar } from "@/app/admin/shared/CategoryProgressBar";
 import { getOperatorName, setOperatorName } from "./InlineCells";
 import type { DictionaryTableMeta, SkuMappingRow } from "./types";
 import { FinishedGoodDetailPanel } from "./FinishedGoodDetailPanel";
 import { BomPanel } from "./BomPanel";
+import { ProductDetailModal } from "./ProductDetailModal";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
 export type { SkuMappingRow, CatalogFields } from "./types";
@@ -99,6 +101,8 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
     "connecting",
   );
   const [sinceIso, setSinceIso] = useState(() => new Date().toISOString());
+  const [detailRow, setDetailRow] = useState<SkuMappingRow | null>(null);
+  const [detailFocusMissing, setDetailFocusMissing] = useState(false);
 
   useEffect(() => {
     setRows(initialRows);
@@ -359,6 +363,41 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
     );
   }, [selectedCategories, query, rows, quickFilter]);
 
+  const progressStats = useMemo(() => {
+    const label =
+      selectedCategories.size === 1
+        ? ([...selectedCategories][0] ?? ALL_TAB)
+        : selectedCategories.size > 1
+          ? `${selectedCategories.size} categories`
+          : ALL_TAB;
+    return computeBatchCompletion(
+      filtered.map((row) => ({
+        category: row.category,
+        itemType: row.itemType,
+        originalName: row.originalName,
+        globalSku: row.globalSku,
+        attributes: row.attributes,
+        catalog: row.catalog,
+      })),
+      label,
+    );
+  }, [filtered, selectedCategories]);
+
+  useEffect(() => {
+    setDetailRow((current) => {
+      if (!current) return current;
+      return rows.find((r) => r.globalSku === current.globalSku) ?? current;
+    });
+  }, [rows]);
+
+  const openProductDetail = useCallback(
+    (row: SkuMappingRow, options?: { focusMissing?: boolean }) => {
+      setDetailFocusMissing(options?.focusMissing ?? false);
+      setDetailRow(row);
+    },
+    [],
+  );
+
   const tableMeta: DictionaryTableMeta = useMemo(
     () => ({
       categoryOptions,
@@ -366,6 +405,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
       flashSkus,
       expanded,
       onPatchSaved: (sku, patch) => applyLocalPatch(sku, patch),
+      onOpenProductDetail: openProductDetail,
       onToggleActive: (sku) => {
         const row = rows.find((r) => r.globalSku === sku);
         if (!row) return;
@@ -408,7 +448,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
         });
       },
     }),
-    [applyLocalPatch, columnTab, categoryOptions, expanded, flashSkus, rows],
+    [applyLocalPatch, columnTab, categoryOptions, expanded, flashSkus, openProductDetail, rows],
   );
 
   const columns = useMemo(
@@ -502,6 +542,8 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
         ))}
       </div>
 
+      <CategoryProgressBar stats={progressStats} />
+
       <div className="max-h-[min(75vh,62rem)] overflow-auto rounded-lg border border-slate-800/50">
         <table className="w-full border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-md">
@@ -546,9 +588,10 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
                 return (
                   <Fragment key={row.id}>
                     <tr
-                      className={`transition-colors hover:bg-slate-900/35 ${
+                      className={`cursor-pointer transition-colors hover:bg-slate-900/35 ${
                         row.original.isActive ? "" : "opacity-55"
                       } ${flashSkus[row.original.globalSku] ? "pim-row-flash" : ""}`}
+                      onClick={() => openProductDetail(row.original)}
                     >
                       {row.getVisibleCells().map((cell) => (
                         <td key={cell.id} className="px-2 py-2 align-top">
@@ -592,6 +635,17 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
         Finished Good rows show image and dims inline. Use the expand control for
         description, QBO, Woo/GHL, audit stamp, and BOM.
       </p>
+
+      <ProductDetailModal
+        row={detailRow}
+        open={detailRow !== null}
+        focusMissing={detailFocusMissing}
+        onClose={() => {
+          setDetailRow(null);
+          setDetailFocusMissing(false);
+        }}
+        onPatchSaved={applyLocalPatch}
+      />
     </section>
   );
 }

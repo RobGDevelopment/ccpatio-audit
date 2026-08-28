@@ -16,6 +16,7 @@ import {
   buildRawMaterialSkuBase,
   nextAvailableSku,
 } from "@/lib/raw-material-sku";
+import { validateRawMaterialCost } from "@/server/pim/patch-validation";
 import { getDb } from "@/server/db/client";
 import {
   product_bom,
@@ -33,6 +34,8 @@ export type RawMaterialRow = {
   costPerUnit: string | null;
   isActive: boolean;
   version: number;
+  itemType: string;
+  attributes: Record<string, unknown>;
   mappingUpdatedAt: string | null;
   catalogUpdatedAt: string | null;
 };
@@ -90,6 +93,10 @@ function validateInput(input: RawMaterialInput, skuRequired = false): string | n
   if (input.costPerUnit !== undefined && parseCost(input.costPerUnit) === null) {
     return "Cost must be a valid number";
   }
+  const costCheck = validateRawMaterialCost(input.costPerUnit ?? "");
+  if (costCheck) {
+    return costCheck.message;
+  }
   return null;
 }
 
@@ -116,6 +123,13 @@ function mapJoinedRow(
     costPerUnit: catalog?.cost_per_unit ?? mapping?.base_cost ?? null,
     isActive: mapping?.is_active ?? true,
     version: mapping?.version ?? 1,
+    itemType: mapping?.item_type ?? "raw_material",
+    attributes:
+      typeof mapping?.attributes === "object" &&
+      mapping.attributes &&
+      !Array.isArray(mapping.attributes)
+        ? (mapping.attributes as Record<string, unknown>)
+        : {},
     mappingUpdatedAt: mapping?.updated_at?.toISOString?.() ?? null,
     catalogUpdatedAt: catalog?.updated_at?.toISOString?.() ?? null,
   };
@@ -145,6 +159,7 @@ function mergeRows(rows: RawMaterialRow[]): RawMaterialRow[] {
       category: row.category || existing.category,
       unitOfMeasure: row.unitOfMeasure || existing.unitOfMeasure,
       costPerUnit: row.costPerUnit ?? existing.costPerUnit,
+      attributes: { ...existing.attributes, ...row.attributes },
       version: Math.max(row.version, existing.version),
     });
   }

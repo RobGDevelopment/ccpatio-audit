@@ -9,18 +9,14 @@ import {
   FABRIC_GRADE_OPTIONS,
   FIREPIT_FUEL_OPTIONS,
   FIREPIT_IGNITION_OPTIONS,
-  formatAuditStamp,
   getOperatorName,
   InlineCatalogDimCell,
-  InlineCategoryCell,
   InlineImageThumbCell,
   InlineTextCell,
-  ITEM_TYPE_OPTIONS,
   METAL_ALLOY_OPTIONS,
   METAL_PROFILE_OPTIONS,
   SHADE_MOUNT_OPTIONS,
   SHADE_MOTOR_OPTIONS,
-  UOM_OPTIONS,
 } from "./InlineCells";
 import {
   calculateRowHealth,
@@ -60,11 +56,6 @@ export function showExpandForRow(
     );
   }
   return showBomForRow(row);
-}
-
-function isCompactTab(activeTab: string): boolean {
-  const tab = normalizeTab(activeTab);
-  return tab === "finished good" || tab === "furniture";
 }
 
 /** Finished-good catalog completeness (blank + na_fields = pass). */
@@ -197,34 +188,13 @@ function rowMissingAttributeKeys(row: SkuMappingRow): Set<string> {
   );
 }
 
-function StatusToggle({
-  checked,
-  onChange,
-  label,
+function DataHealthPunchlist({
+  row,
+  onResolve,
 }: {
-  checked: boolean;
-  onChange: () => void;
-  label: string;
+  row: SkuMappingRow;
+  onResolve?: () => void;
 }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={`${label}: ${checked ? "Active" : "Discontinued"}`}
-      onClick={onChange}
-      className={`${EXEC_PILL} ${
-        checked
-          ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
-          : "border-slate-600/50 bg-slate-800/50 text-slate-400"
-      }`}
-    >
-      {checked ? "Active" : "Killed"}
-    </button>
-  );
-}
-
-function DataHealthPunchlist({ row }: { row: SkuMappingRow }) {
   const health = rowHealth(row);
 
   if (health.hasMissingData) {
@@ -234,11 +204,14 @@ function DataHealthPunchlist({ row }: { row: SkuMappingRow }) {
     ];
     return (
       <div className="flex flex-col gap-0.5 items-start">
-        <span
-          className={`${EXEC_PILL} border-rose-500/25 bg-rose-500/10 text-rose-300`}
+        <button
+          type="button"
+          onClick={onResolve}
+          title="Quick-fix missing fields"
+          className={`${EXEC_PILL} border-rose-500/25 bg-rose-500/10 text-rose-300 transition hover:border-rose-400/40 hover:bg-rose-500/20 hover:text-rose-200 cursor-pointer`}
         >
           Missing Data
-        </span>
+        </button>
         <span className="text-[9px] text-rose-400/80 leading-tight">
           {labels.join(", ")}
         </span>
@@ -255,55 +228,12 @@ function DataHealthPunchlist({ row }: { row: SkuMappingRow }) {
   );
 }
 
-function coreColumns(
+function leanCoreColumns(
   meta: DictionaryTableMeta,
 ): ColumnDef<SkuMappingRow, unknown>[] {
   return [
-    col.display({
-      id: "expand",
-      header: "",
-      cell: ({ row, table }) => {
-        const m = table.options.meta as DictionaryTableMeta;
-        if (!showExpandForRow(row.original, row.original.category)) {
-          return <span className="inline-block w-7" />;
-        }
-        const isOpen = Boolean(m.expanded[row.original.globalSku]);
-        const fgTab = isCompactTab(row.original.category);
-        return (
-          <button
-            type="button"
-            aria-expanded={isOpen}
-            aria-label={fgTab ? "Toggle details" : "Toggle BOM panel"}
-            className="flex h-7 w-7 items-center justify-center rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] transition-all hover:bg-emerald-500/20 hover:shadow-[0_0_12px_rgba(16,185,129,0.4)]"
-            onClick={() => m.onToggleExpand(row.original.globalSku)}
-            title={fgTab ? "Description, integrations, BOM" : "Bill of materials"}
-          >
-            <span
-              className={`text-sm transition-transform ${isOpen ? "rotate-180" : ""}`}
-            >
-              ▾
-            </span>
-          </button>
-        );
-      },
-      size: 36,
-    }),
-    col.display({
-      id: "status",
-      header: "Status",
-      cell: ({ row, table }) => {
-        const m = table.options.meta as DictionaryTableMeta;
-        return (
-          <StatusToggle
-            checked={row.original.isActive}
-            label={row.original.globalSku}
-            onChange={() => m.onToggleActive(row.original.globalSku)}
-          />
-        );
-      },
-    }),
     col.accessor("globalSku", {
-      header: "Global SKU",
+      header: "SKU",
       cell: ({ row }) => (
         <span
           className="whitespace-nowrap font-mono text-[11px] text-slate-100"
@@ -314,159 +244,107 @@ function coreColumns(
       ),
     }),
     col.accessor("originalName", {
-      header: "Factory Name",
-      cell: ({ row, table }) => {
-        const m = table.options.meta as DictionaryTableMeta;
-        return (
-          <InlineTextCell
-            globalSku={row.original.globalSku}
-            field="original_name"
-            value={row.original.originalName ?? ""}
-            target="mapping"
-            expectedVersion={row.original.version}
-            variant="plain"
-            className="max-w-56 truncate"
-            placeholder="Factory name"
-            onSaved={({ value, updatedAt, updatedBy, version }) =>
-              m.onPatchSaved(row.original.globalSku, {
-                originalName: value,
-                version,
-                mappingUpdatedAt: updatedAt,
-                mappingUpdatedBy: updatedBy,
-              })
-            }
-          />
-        );
-      },
+      header: "Name",
+      cell: ({ row }) => (
+        <span
+          className="block max-w-48 truncate text-sm text-slate-300"
+          title={row.original.originalName}
+        >
+          {row.original.originalName || "—"}
+        </span>
+      ),
     }),
     col.accessor("category", {
       header: "Category",
-      cell: ({ row, table }) => {
-        const m = table.options.meta as DictionaryTableMeta;
-        return (
-          <InlineCategoryCell
-            globalSku={row.original.globalSku}
-            value={row.original.category}
-            options={m.categoryOptions}
-            expectedVersion={row.original.version}
-            onSaved={({ value, updatedAt, updatedBy, version }) =>
-              m.onPatchSaved(row.original.globalSku, {
-                category: value,
-                version,
-                mappingUpdatedAt: updatedAt,
-                mappingUpdatedBy: updatedBy,
-              })
-            }
-          />
-        );
-      },
-    }),
-    col.accessor("itemType", {
-      header: "Type",
-      cell: ({ row, table }) => {
-        const m = table.options.meta as DictionaryTableMeta;
-        return (
-          <EditableSelectCell
-            globalSku={row.original.globalSku}
-            field="item_type"
-            value={row.original.itemType}
-            options={ITEM_TYPE_OPTIONS}
-            target="mapping"
-            expectedVersion={row.original.version}
-            allowEmpty={false}
-            onSaved={({ value, updatedAt, updatedBy, version }) =>
-              m.onPatchSaved(row.original.globalSku, {
-                itemType: value as SkuMappingRow["itemType"],
-                version,
-                mappingUpdatedAt: updatedAt,
-                mappingUpdatedBy: updatedBy,
-              })
-            }
-          />
-        );
-      },
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-400">{row.original.category}</span>
+      ),
     }),
     col.display({
-      id: "uom_purchase",
-      header: "UOM buy",
-      cell: ({ row, table }) => {
-        const m = table.options.meta as DictionaryTableMeta;
-        const compact = isCompactTab(row.original.category);
-        return (
-          <EditableSelectCell
-            globalSku={row.original.globalSku}
-            field="uom_purchase"
-            value={row.original.uomPurchase ?? ""}
-            options={UOM_OPTIONS}
-            target="mapping"
-            expectedVersion={row.original.version}
-            compact={compact}
-            onSaved={({ value, updatedAt, updatedBy, version }) =>
-              m.onPatchSaved(row.original.globalSku, {
-                uomPurchase: value || null,
-                version,
-                mappingUpdatedAt: updatedAt,
-                mappingUpdatedBy: updatedBy,
-              })
-            }
-          />
-        );
-      },
+      id: "uom",
+      header: "UOM",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs text-slate-400">
+          {row.original.uomConsume ?? row.original.uomPurchase ?? "—"}
+        </span>
+      ),
     }),
     col.display({
-      id: "uom_consume",
-      header: "UOM use",
-      cell: ({ row, table }) => {
-        const m = table.options.meta as DictionaryTableMeta;
-        const compact = isCompactTab(row.original.category);
+      id: "price",
+      header: "Cost / MSRP",
+      cell: ({ row }) => {
+        const fg =
+          row.original.itemType === "finished_good" ||
+          row.original.category.trim().toLowerCase() === "finished good";
+        const value = fg
+          ? row.original.catalog?.msrp
+          : (row.original.baseCost ?? row.original.catalog?.cost);
         return (
-          <EditableSelectCell
-            globalSku={row.original.globalSku}
-            field="uom_consume"
-            value={row.original.uomConsume ?? ""}
-            options={UOM_OPTIONS}
-            target="mapping"
-            expectedVersion={row.original.version}
-            compact={compact}
-            onSaved={({ value, updatedAt, updatedBy, version }) =>
-              m.onPatchSaved(row.original.globalSku, {
-                uomConsume: value || null,
-                version,
-                mappingUpdatedAt: updatedAt,
-                mappingUpdatedBy: updatedBy,
-              })
-            }
-          />
+          <span className="font-mono text-xs text-slate-400">
+            {value?.trim() ? value : "—"}
+          </span>
         );
       },
     }),
-    col.display({
-      id: "base_cost",
-      header: "Cost",
-      cell: ({ row, table }) => {
-        const m = table.options.meta as DictionaryTableMeta;
-        return (
-          <InlineTextCell
-            globalSku={row.original.globalSku}
-            field="base_cost"
-            value={row.original.baseCost ?? row.original.catalog?.cost ?? ""}
-            target="mapping"
-            expectedVersion={row.original.version}
-            onSaved={({ value, updatedAt, updatedBy, version }) =>
-              m.onPatchSaved(row.original.globalSku, {
-                baseCost: value || null,
-                version,
-                mappingUpdatedAt: updatedAt,
-                mappingUpdatedBy: updatedBy,
-              })
-            }
-          />
-        );
-      },
-    }),
-    // silence unused meta param in factory signature when only building core
     ...(meta ? [] : []),
   ] as ColumnDef<SkuMappingRow, unknown>[];
+}
+
+function healthColumn(): ColumnDef<SkuMappingRow, unknown> {
+  return col.display({
+    id: "data_health",
+    header: "Data health",
+    cell: ({ row, table }) => {
+      const m = table.options.meta as DictionaryTableMeta;
+      return (
+        <DataHealthPunchlist
+          row={row.original}
+          onResolve={() => m.onOpenProductDetail(row.original, { focusMissing: true })}
+        />
+      );
+    },
+  });
+}
+
+function actionsColumn(): ColumnDef<SkuMappingRow, unknown> {
+  return col.display({
+    id: "actions",
+    header: "Actions",
+    cell: ({ row, table }) => {
+      const m = table.options.meta as DictionaryTableMeta;
+      const canExpand = showExpandForRow(row.original, m.columnTab);
+      return (
+        <div className="flex items-center gap-1">
+          {canExpand ? (
+            <button
+              type="button"
+              aria-label="Toggle BOM / details"
+              title="BOM / details"
+              onClick={(e) => {
+                e.stopPropagation();
+                m.onToggleExpand(row.original.globalSku);
+              }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-emerald-500/20 text-emerald-400/80 transition hover:bg-emerald-500/10"
+            >
+              ▾
+            </button>
+          ) : null}
+          <button
+            type="button"
+            aria-label={`Inspect ${row.original.globalSku}`}
+            title="Inspect / edit"
+            onClick={(e) => {
+              e.stopPropagation();
+              m.onOpenProductDetail(row.original);
+            }}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 text-slate-400 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
+          >
+            <InspectIcon />
+          </button>
+        </div>
+      );
+    },
+  });
 }
 
 function seatingCatalogColumns(
@@ -737,98 +615,6 @@ function attributeColumns(
   ) as ColumnDef<SkuMappingRow, unknown>[];
 }
 
-function trailingColumns(
-  compact = false,
-): ColumnDef<SkuMappingRow, unknown>[] {
-  const healthCol = col.display({
-    id: "data_health",
-    header: "Data health",
-    cell: ({ row }) => <DataHealthPunchlist row={row.original} />,
-  });
-
-  if (compact) {
-    return [healthCol] as ColumnDef<SkuMappingRow, unknown>[];
-  }
-
-  return [
-    col.display({
-      id: "woo",
-      header: "Woo Slug",
-      cell: ({ row, table }) => {
-        const m = table.options.meta as DictionaryTableMeta;
-        return (
-          <InlineTextCell
-            globalSku={row.original.globalSku}
-            field="woo_attribute_slug"
-            value={row.original.wooAttributeSlug ?? ""}
-            target="mapping"
-            expectedVersion={row.original.version}
-            onSaved={({ value, updatedAt, updatedBy, version }) =>
-              m.onPatchSaved(row.original.globalSku, {
-                wooAttributeSlug: value || null,
-                version,
-                mappingUpdatedAt: updatedAt,
-                mappingUpdatedBy: updatedBy,
-              })
-            }
-          />
-        );
-      },
-    }),
-    healthCol,
-    col.display({
-      id: "ghl",
-      header: "GHL",
-      cell: ({ row, table }) => {
-        const m = table.options.meta as DictionaryTableMeta;
-        return (
-          <InlineTextCell
-            globalSku={row.original.globalSku}
-            field="ghl_dropdown_value"
-            value={row.original.ghlDropdownValue ?? ""}
-            target="mapping"
-            expectedVersion={row.original.version}
-            onSaved={({ value, updatedAt, updatedBy, version }) =>
-              m.onPatchSaved(row.original.globalSku, {
-                ghlDropdownValue: value || null,
-                version,
-                mappingUpdatedAt: updatedAt,
-                mappingUpdatedBy: updatedBy,
-              })
-            }
-          />
-        );
-      },
-    }),
-    col.accessor("bomComponentCount", {
-      header: "BOM",
-      cell: ({ getValue }) => (
-        <span className="font-mono text-xs tabular-nums text-slate-400">
-          {getValue()}
-        </span>
-      ),
-    }),
-    col.display({
-      id: "audit",
-      header: "Last Updated",
-      cell: ({ row }) => {
-        const stamp = formatAuditStamp(
-          row.original.catalog?.updatedBy ?? row.original.mappingUpdatedBy,
-          row.original.catalog?.updatedAt ?? row.original.mappingUpdatedAt,
-        );
-        return (
-          <span
-            className="max-w-36 text-[10px] leading-snug text-slate-500"
-            title={stamp}
-          >
-            {stamp}
-          </span>
-        );
-      },
-    }),
-  ] as ColumnDef<SkuMappingRow, unknown>[];
-}
-
 /**
  * Dynamic column factory — projects category-specific attribute columns
  * based on the active dictionary tab.
@@ -838,19 +624,40 @@ export function buildDictionaryColumns(
   meta: DictionaryTableMeta,
 ): ColumnDef<SkuMappingRow, unknown>[] {
   const tabKey = normalizeTab(activeTab);
-  const core = coreColumns(meta);
+  const lean = leanCoreColumns(meta);
+  const health = healthColumn();
+  const actions = actionsColumn();
 
   if (tabKey === "all" || !tabKey) {
-    return [...core, ...trailingColumns(false)];
+    return [...lean, health, actions];
   }
 
   if (tabKey === "finished good" || tabKey === "furniture") {
-    return [...core, ...seatingCatalogColumns(true), ...trailingColumns(true)];
+    return [...lean, ...seatingCatalogColumns(true), health, actions];
   }
 
   const healthTab = resolveAttributeTabKey(activeTab);
 
-  return [...core, ...attributeColumns(healthTab), ...trailingColumns(false)];
+  return [...lean, ...attributeColumns(healthTab), health, actions];
+}
+
+function InspectIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+      <path
+        fillRule="evenodd"
+        d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
 }
 
 export { showBomForRow, EXEC_PILL };

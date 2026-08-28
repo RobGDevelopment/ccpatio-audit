@@ -6,6 +6,11 @@ import { revalidatePath } from "next/cache";
 import { generateFinishedGoodSku } from "@/lib/sku-engine";
 import { isNaToken } from "./pim-catalog-utils";
 import {
+  validateAttributeFieldPatch,
+  validateCatalogFieldPatch,
+  validateMappingFieldPatch,
+} from "@/server/pim/patch-validation";
+import {
   syncBOMToKatana,
   syncFinishedGoodToKatana,
 } from "@/lib/katana";
@@ -1149,7 +1154,20 @@ export type InlinePatchResult =
       version: number;
       naFields?: string[];
     }
-  | { ok: false; error: string; code?: "VERSION_CONFLICT" };
+  | {
+      ok: false;
+      error: string;
+      field?: string;
+      message?: string;
+      code?: "VERSION_CONFLICT";
+    };
+
+function patchValidationError(
+  field: string,
+  message: string,
+): InlinePatchResult {
+  return { ok: false, error: message, field, message };
+}
 
 /**
  * Sheet-velocity field patch — does NOT regenerate Global SKU.
@@ -1173,15 +1191,32 @@ export async function patchCatalogField(input: {
     return { ok: false, error: `Field ${field} is not inline-editable` };
   }
 
+  const raw = input.value.trim();
+  const catalogValidation = validateCatalogFieldPatch(
+    field,
+    raw,
+    ALLOWED_NA_FIELDS.has(field),
+  );
+  if (catalogValidation) {
+    return patchValidationError(
+      catalogValidation.field,
+      catalogValidation.message,
+    );
+  }
+
   try {
     const db = getDb();
-    const raw = input.value.trim();
     const markNa = isNaToken(raw) && ALLOWED_NA_FIELDS.has(field);
     const value = markNa
       ? null
       : field === "msrp"
         ? sanitizeMsrp(raw)
         : nullable(raw);
+
+    if (field === "msrp" && raw && !markNa && value === null) {
+      return patchValidationError(field, "MSRP must be a valid number.");
+    }
+
     const now = new Date();
 
     const [existing] = await db
@@ -1286,6 +1321,16 @@ export async function patchMappingField(input: {
   }
   if (!MAPPING_PATCH_FIELDS.has(field)) {
     return { ok: false, error: `Field ${field} is not inline-editable` };
+  }
+
+  if (typeof input.value !== "boolean") {
+    const mappingValidation = validateMappingFieldPatch(field, input.value);
+    if (mappingValidation) {
+      return patchValidationError(
+        mappingValidation.field,
+        mappingValidation.message,
+      );
+    }
   }
 
   try {
@@ -1413,7 +1458,6 @@ export async function patchAttributeField(input: {
       "@/server/pim/attributes"
     );
     const db = getDb();
-    const now = new Date();
 
     const [existing] = await db
       .select({
@@ -1444,6 +1488,21 @@ export async function patchAttributeField(input: {
       existing.category,
       existing.attributes ?? {},
     );
+
+    const attributeValidation = validateAttributeFieldPatch({
+      category: existing.category,
+      path,
+      value: input.value,
+      currentAttributes: current,
+    });
+    if (attributeValidation) {
+      return patchValidationError(
+        attributeValidation.field,
+        attributeValidation.message,
+      );
+    }
+
+    const now = new Date();
     const nextAttrs = setAttributePath(
       current,
       path,
