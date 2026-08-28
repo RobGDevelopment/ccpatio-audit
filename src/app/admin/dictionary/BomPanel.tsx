@@ -17,14 +17,12 @@ import {
   getBomTree,
   getItemOperations,
   searchBomComponents,
-  syncBOMToKatanaAction,
   upsertBOMLine,
   upsertItemOperation,
   type BomComponentCandidate,
   type BomTreeNode,
   type ItemOperationRow,
 } from "@/app/admin/dictionary/actions";
-import { KatanaSyncButton } from "@/components/KatanaSyncButton";
 
 type BomPanelProps = {
   productSku: string;
@@ -416,11 +414,6 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
             to add children or work-center operations.
           </p>
         </div>
-        <KatanaSyncButton
-          label="Sync BOM to Katana"
-          secondaryLabel="Syncing…"
-          onSync={() => syncBOMToKatanaAction(productSku)}
-        />
       </div>
 
       {error ? (

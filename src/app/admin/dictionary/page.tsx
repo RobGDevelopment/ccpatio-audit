@@ -5,7 +5,7 @@ import {
   sku_mappings,
 } from "@/server/db/schema";
 import { SkuTable, type SkuMappingRow } from "./SkuTable";
-import { getMissingCatalogFields } from "./pim-catalog-utils";
+import { calculateRowHealth } from "./pim-catalog-utils";
 import { getPimSession } from "@/lib/pim-audit";
 import Link from "next/link";
 import { LogoutButton } from "../LogoutButton";
@@ -74,21 +74,19 @@ export default async function DictionaryPage() {
       : null,
   }));
 
-  const missingKatana = data.filter(
-    (row) => row.katanaVariantId === null && row.katanaMaterialId === null,
-  ).length;
-  const discontinued = data.filter((row) => !row.isActive).length;
-  const catalogCount = data.filter((row) => row.catalog !== null).length;
-  const incomplete = data.filter((row) => {
-    if (row.category.trim().toLowerCase() !== "finished good") return false;
-    return getMissingCatalogFields({
+  const missingData = data.filter((row) =>
+    calculateRowHealth({
       category: row.category,
       itemType: row.itemType,
       originalName: row.originalName,
       globalSku: row.globalSku,
+      attributes: row.attributes,
       catalog: row.catalog,
-    }).length > 0;
-  }).length;
+    }).hasMissingData,
+  ).length;
+  const discontinued = data.filter((row) => !row.isActive).length;
+  const catalogCount = data.filter((row) => row.catalog !== null).length;
+  const incomplete = missingData;
 
   return (
     <main className="pim-carbon-shell min-h-screen text-slate-50">
@@ -104,7 +102,7 @@ export default async function DictionaryPage() {
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
                 Collaborative data terminal for catalog, BOM, and cross-platform
-                targets (GHL · Katana · QBO · Woo). Inline edits autosave to
+                targets (GHL · QBO · Woo). Inline edits autosave to
                 Postgres; live sync across open browsers.
               </p>
               <p className="mt-3 flex flex-wrap items-center gap-4 text-xs">
@@ -138,7 +136,7 @@ export default async function DictionaryPage() {
             </div>
             <div className="flex flex-col gap-3 sm:items-end">
               <LogoutButton />
-            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5 sm:gap-4">
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
               <Stat label="Total SKUs" value={String(data.length)} href="?filter=all" />
               <Stat
                 label="PIM catalog"
@@ -147,16 +145,10 @@ export default async function DictionaryPage() {
                 href="?filter=catalog"
               />
               <Stat
-                label="Incomplete FG"
+                label="Missing data"
                 value={String(incomplete)}
                 tone={incomplete > 0 ? "warn" : "ok"}
                 href="?filter=incomplete"
-              />
-              <Stat
-                label="Katana punchlist"
-                value={String(missingKatana)}
-                tone={missingKatana > 0 ? "danger" : "ok"}
-                href="?filter=missing_katana"
               />
               <Stat
                 label="Discontinued"

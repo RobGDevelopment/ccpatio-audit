@@ -107,6 +107,7 @@ export function normalizeCategoryForHealth(category: string): string {
   const key = normalizePimCategory(category);
   if (key === "powder coat" || key === "powdercoat") return "powder";
   if (key === "finished good" || key === "finished goods") return "finished good";
+  if (key === "aluminum") return "metal";
   return key;
 }
 

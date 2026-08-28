@@ -14,10 +14,9 @@ import {
   fetchRawMaterialBySku,
   fetchRawMaterialDeltas,
   patchRawMaterialInline,
-  syncRawMaterialToKatanaAction,
+  proposeRawMaterialSku,
   type RawMaterialRow,
 } from "./actions";
-import { KatanaSyncButton } from "@/components/KatanaSyncButton";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
 const EXEC_PILL =
@@ -287,6 +286,31 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
     onFilteredStatsChange?.(filteredStats);
   }, [filteredStats, onFilteredStatsChange]);
 
+  useEffect(() => {
+    const name = createDraft.name.trim();
+    if (!name) {
+      setCreateDraft((prev) => (prev.sku ? { ...prev, sku: "" } : prev));
+      return;
+    }
+
+    let cancelled = false;
+    const handle = window.setTimeout(() => {
+      void proposeRawMaterialSku({
+        category: createDraft.category,
+        name,
+      }).then(({ sku }) => {
+        if (!cancelled && sku) {
+          setCreateDraft((prev) => ({ ...prev, sku }));
+        }
+      });
+    }, 280);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [createDraft.category, createDraft.name]);
+
   function toggleCategory(category: string): void {
     setSelectedCategories((prev) => {
       const next = new Set(prev);
@@ -464,12 +488,12 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <input
             value={createDraft.sku}
-            onChange={(e) =>
-              setCreateDraft((prev) => ({ ...prev, sku: e.target.value }))
-            }
-            placeholder="SKU"
-            className={`${INPUT} font-mono uppercase`}
+            readOnly
             disabled={isPending}
+            placeholder="Auto-generated SKU"
+            aria-label="Auto-generated SKU"
+            title="Auto-generated from category + name"
+            className={`${INPUT} font-mono uppercase text-slate-400 opacity-90`}
           />
           <input
             value={createDraft.name}
@@ -657,10 +681,6 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
                           </>
                         ) : (
                           <>
-                            <KatanaSyncButton
-                              label="Katana"
-                              onSync={() => syncRawMaterialToKatanaAction(row.sku)}
-                            />
                             <button
                               type="button"
                               onClick={() => onDelete(row.sku)}

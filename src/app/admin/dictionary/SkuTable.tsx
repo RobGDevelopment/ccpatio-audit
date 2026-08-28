@@ -21,7 +21,7 @@ import {
   type PimDeltaRow,
 } from "./actions";
 import { buildDictionaryColumns, EXEC_PILL, showExpandForRow } from "./columns";
-import { getMissingCatalogFields } from "./pim-catalog-utils";
+import { calculateRowHealth } from "./pim-catalog-utils";
 import { getOperatorName, setOperatorName } from "./InlineCells";
 import type { DictionaryTableMeta, SkuMappingRow } from "./types";
 import { FinishedGoodDetailPanel } from "./FinishedGoodDetailPanel";
@@ -335,18 +335,14 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
     } else if (quickFilter === "incomplete") {
       byTab = byTab.filter(
         (row) =>
-          row.category.trim().toLowerCase() === "finished good" &&
-          getMissingCatalogFields({
+          calculateRowHealth({
             category: row.category,
             itemType: row.itemType,
             originalName: row.originalName,
             globalSku: row.globalSku,
+            attributes: row.attributes,
             catalog: row.catalog,
-          }).length > 0,
-      );
-    } else if (quickFilter === "missing_katana") {
-      byTab = byTab.filter(
-        (row) => row.katanaVariantId === null && row.katanaMaterialId === null,
+          }).hasMissingData,
       );
     } else if (quickFilter === "discontinued") {
       byTab = byTab.filter((row) => !row.isActive);

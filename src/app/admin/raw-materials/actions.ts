@@ -12,7 +12,10 @@ import {
   sql,
 } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { syncRawMaterialToKatana } from "@/lib/katana";
+import {
+  buildRawMaterialSkuBase,
+  nextAvailableSku,
+} from "@/lib/raw-material-sku";
 import { getDb } from "@/server/db/client";
 import {
   product_bom,
@@ -70,8 +73,8 @@ function parseCost(raw: string | undefined): string | null {
   return cleaned;
 }
 
-function validateInput(input: RawMaterialInput): string | null {
-  if (!input.sku.trim()) {
+function validateInput(input: RawMaterialInput, skuRequired = false): string | null {
+  if (skuRequired && !input.sku.trim()) {
     return "SKU is required";
   }
   if (!input.name.trim()) {
@@ -338,6 +341,63 @@ function revalidatePimPaths(): void {
   revalidatePath("/admin/dictionary");
 }
 
+async function loadTakenSkus(): Promise<Set<string>> {
+  const db = getDb();
+  const rows = await db
+    .select({ global_sku: sku_mappings.global_sku })
+    .from(sku_mappings);
+  return new Set(rows.map((row) => row.global_sku.trim().toUpperCase()));
+}
+
+/** Preview/auto SKU for the add form (client-side). */
+export async function proposeRawMaterialSku(input: {
+  category: string;
+  name: string;
+  preferredSku?: string;
+}): Promise<{ sku: string }> {
+  const name = input.name.trim();
+  const category = input.category.trim();
+  if (!name || !category) {
+    return { sku: "" };
+  }
+  const taken = await loadTakenSkus();
+  const base = input.preferredSku?.trim()
+    ? input.preferredSku.trim().toUpperCase()
+    : buildRawMaterialSkuBase(category, name);
+  return { sku: nextAvailableSku(base, taken) };
+}
+
+async function allocateRawMaterialSku(input: RawMaterialInput): Promise<string> {
+  const taken = await loadTakenSkus();
+  const manual = input.sku.trim().toUpperCase();
+  const base = manual || buildRawMaterialSkuBase(input.category, input.name);
+  return nextAvailableSku(base, taken);
+}
+
+async function assertCanCreateRawMaterial(sku: string): Promise<string | null> {
+  const needle = sku.trim().toUpperCase();
+  const db = getDb();
+  const [existing] = await db
+    .select({
+      global_sku: sku_mappings.global_sku,
+      item_type: sku_mappings.item_type,
+    })
+    .from(sku_mappings)
+    .where(eq(sku_mappings.global_sku, needle))
+    .limit(1);
+
+  if (!existing) return null;
+
+  if (
+    existing.item_type === "raw_material" ||
+    existing.item_type === "sub_assembly"
+  ) {
+    return null;
+  }
+
+  return `SKU ${needle} already exists in the global catalog (${existing.item_type}). Choose a different name to auto-generate a new SKU.`;
+}
+
 async function upsertMappingAndCatalog(
   input: RawMaterialInput,
   existingVersion?: number,
@@ -417,20 +477,26 @@ async function upsertMappingAndCatalog(
 export async function createRawMaterial(
   input: RawMaterialInput,
 ): Promise<RawMaterialMutationResult> {
-  const validationError = validateInput(input);
+  const validationError = validateInput(input, false);
   if (validationError) {
     return { ok: false, error: validationError };
   }
 
   try {
-    const material = await upsertMappingAndCatalog(input);
+    const sku = await allocateRawMaterialSku(input);
+    const conflict = await assertCanCreateRawMaterial(sku);
+    if (conflict) {
+      return { ok: false, error: conflict };
+    }
+
+    const material = await upsertMappingAndCatalog({ ...input, sku });
     revalidatePimPaths();
     return { ok: true, material };
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Failed to create raw material";
     if (message.includes("unique") || message.includes("duplicate")) {
-      return { ok: false, error: "SKU already exists" };
+      return { ok: false, error: "SKU already exists in the global catalog" };
     }
     return { ok: false, error: message };
   }
@@ -445,7 +511,7 @@ export async function updateRawMaterial(
     return { ok: false, error: "SKU is required" };
   }
 
-  const validationError = validateInput(input);
+  const validationError = validateInput(input, true);
   if (validationError) {
     return { ok: false, error: validationError };
   }
@@ -547,19 +613,4 @@ export async function deleteRawMaterial(
       error instanceof Error ? error.message : "Failed to delete raw material";
     return { ok: false, error: message };
   }
-}
-
-export type KatanaSyncActionResult =
-  | { ok: true; message: string }
-  | { ok: false; error: string };
-
-export async function syncRawMaterialToKatanaAction(
-  sku: string,
-): Promise<KatanaSyncActionResult> {
-  const result = await syncRawMaterialToKatana(sku);
-  if (result.ok) {
-    revalidatePimPaths();
-    return { ok: true, message: result.message };
-  }
-  return { ok: false, error: result.error };
 }

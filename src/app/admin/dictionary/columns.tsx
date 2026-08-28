@@ -1,6 +1,7 @@
 "use client";
 
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
+import { resolveAttributeTabKey } from "@/lib/raw-material-sku";
 import { setAttributePath } from "@/server/pim/attributes/schemas";
 import { CATEGORY_REQUIRED_ATTRIBUTES } from "@/server/pim/attributes/health";
 import {
@@ -24,6 +25,7 @@ import {
 import {
   calculateRowHealth,
   catalogFieldToken,
+  getMissingAttributeFields,
   inferSuggestedNaFields,
   getMissingCatalogFields,
   resolveAttributeValue,
@@ -93,10 +95,6 @@ function rowMissingCatalogTokens(row: SkuMappingRow): Set<string> {
   );
 }
 
-function rowMissingAttributeKeys(row: SkuMappingRow): Set<string> {
-  return new Set(rowHealth(row).missingAttributeFields);
-}
-
 type AttrCol = {
   key: string;
   paths: string[];
@@ -121,11 +119,11 @@ const ATTR_COLUMN_META: Record<
     { header: "Yield sqft" },
   ],
   fabric: [
-    { header: "Roll W" },
     {
       header: "Grade",
       selectOptions: [...FABRIC_GRADE_OPTIONS, "N/A"],
     },
+    { header: "Roll W" },
     { header: "Pattern repeat" },
     { header: "Rub count" },
     { header: "Colorway" },
@@ -144,10 +142,10 @@ const ATTR_COLUMN_META: Record<
     { header: "Stock L" },
   ],
   powder: [
-    { header: "RAL" },
     { header: "Finish type" },
     { header: "Cure °F" },
     { header: "Cure min" },
+    { header: "RAL" },
   ],
   shade: [
     { header: "Span W" },
@@ -177,8 +175,9 @@ const ATTR_COLUMN_META: Record<
 };
 
 function buildAttrCols(tabKey: string): AttrCol[] {
-  const reqs = CATEGORY_REQUIRED_ATTRIBUTES[tabKey];
-  const meta = ATTR_COLUMN_META[tabKey];
+  const resolved = resolveAttributeTabKey(tabKey);
+  const reqs = CATEGORY_REQUIRED_ATTRIBUTES[resolved];
+  const meta = ATTR_COLUMN_META[resolved];
   if (!reqs || !meta) return [];
   return reqs.map((req, index) => ({
     key: req.key,
@@ -187,6 +186,15 @@ function buildAttrCols(tabKey: string): AttrCol[] {
     header: meta[index]?.header ?? req.key,
     selectOptions: meta[index]?.selectOptions,
   }));
+}
+
+function rowMissingAttributeKeys(row: SkuMappingRow): Set<string> {
+  return new Set(
+    getMissingAttributeFields({
+      category: row.category,
+      attributes: row.attributes,
+    }),
+  );
 }
 
 function StatusToggle({
@@ -216,14 +224,8 @@ function StatusToggle({
   );
 }
 
-function KatanaPunchlist({ row }: { row: SkuMappingRow }) {
+function DataHealthPunchlist({ row }: { row: SkuMappingRow }) {
   const health = rowHealth(row);
-  const needsCatalogHealth =
-    row.category.trim().toLowerCase() === "finished good" ||
-    row.itemType === "finished_good";
-  const variantId = row.katanaVariantId;
-  const materialId = row.katanaMaterialId;
-  const hasKatana = variantId !== null || materialId !== null;
 
   if (health.hasMissingData) {
     const labels = [
@@ -244,54 +246,11 @@ function KatanaPunchlist({ row }: { row: SkuMappingRow }) {
     );
   }
 
-  if (needsCatalogHealth && !hasKatana) {
-    return (
-      <span
-        className={`${EXEC_PILL} border-rose-500/25 bg-rose-500/10 text-rose-300`}
-      >
-        Missing Katana ID
-      </span>
-    );
-  }
-
-  if (hasKatana) {
-    return (
-      <div className="flex flex-col gap-0.5">
-        <span
-          className={`${EXEC_PILL} border-emerald-500/25 bg-emerald-500/10 text-emerald-300`}
-        >
-          Active
-        </span>
-        <div className="font-mono text-[11px] text-slate-400">
-          {variantId !== null ? <span>v:{variantId}</span> : null}
-          {materialId !== null ? (
-            <span className={variantId !== null ? "ml-1" : undefined}>
-              m:{materialId}
-            </span>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-
-  // FG catalog complete but not yet synced — green Active (not a false Missing)
-  if (needsCatalogHealth) {
-    return (
-      <span
-        className={`${EXEC_PILL} border-emerald-500/25 bg-emerald-500/10 text-emerald-300`}
-        title="Catalog complete — ready to sync to Katana"
-      >
-        Active
-      </span>
-    );
-  }
-
   return (
     <span
-      className={`${EXEC_PILL} border-rose-500/25 bg-rose-500/10 text-rose-300`}
-      title="No Katana variant / material ID mapped"
+      className={`${EXEC_PILL} border-emerald-500/25 bg-emerald-500/10 text-emerald-300`}
     >
-      Missing
+      Complete
     </span>
   );
 }
@@ -781,14 +740,14 @@ function attributeColumns(
 function trailingColumns(
   compact = false,
 ): ColumnDef<SkuMappingRow, unknown>[] {
-  const katanaCol = col.display({
-    id: "katana",
-    header: "Katana",
-    cell: ({ row }) => <KatanaPunchlist row={row.original} />,
+  const healthCol = col.display({
+    id: "data_health",
+    header: "Data health",
+    cell: ({ row }) => <DataHealthPunchlist row={row.original} />,
   });
 
   if (compact) {
-    return [katanaCol] as ColumnDef<SkuMappingRow, unknown>[];
+    return [healthCol] as ColumnDef<SkuMappingRow, unknown>[];
   }
 
   return [
@@ -816,7 +775,7 @@ function trailingColumns(
         );
       },
     }),
-    katanaCol,
+    healthCol,
     col.display({
       id: "ghl",
       header: "GHL",
@@ -889,8 +848,7 @@ export function buildDictionaryColumns(
     return [...core, ...seatingCatalogColumns(true), ...trailingColumns(true)];
   }
 
-  const healthTab =
-    tabKey === "powder coat" || tabKey === "powdercoat" ? "powder" : tabKey;
+  const healthTab = resolveAttributeTabKey(activeTab);
 
   return [...core, ...attributeColumns(healthTab), ...trailingColumns(false)];
 }
