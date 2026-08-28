@@ -64,6 +64,11 @@ function TrunkBusEdgeComponent({
   const isActive = travelEdgeIds.includes(id);
   const isReturn = returnActive && isActive;
 
+  const canvasEdgesMuted = useTopologyStore((s) => s.canvasEdgesMuted);
+  if (canvasEdgesMuted && !isActive && !isCompleted) {
+    return null;
+  }
+
   const [fwdPath, labelX, labelY] = getTrunkBusPath(
     sourceX,
     sourceY,

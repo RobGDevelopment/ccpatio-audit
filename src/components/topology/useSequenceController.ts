@@ -18,6 +18,13 @@ import { zoneOfNode } from "./utilityTypes";
 import { resolvePingTarget, SATELLITE_TARGETS } from "./ghlPipelines";
 import { buildPlaybackStepsFromProcessMap } from "./processMap";
 import type { Edge } from "@xyflow/react";
+import {
+  buildScenarioSequenceSteps,
+  scenarioSatelliteTargets,
+  scenarioStepDelayMs,
+  scenarioTravelMs,
+  type LeadScenarioId,
+} from "./topology-scenarios";
 
 const PING_OUT_MS = 900;
 const PING_LIT_MS = 1000;
@@ -185,6 +192,61 @@ async function runSatellitePings(
   });
 }
 
+async function runScenarioSatelliteBursts(
+  humanId: string,
+  signal: { aborted: boolean },
+  alive: () => boolean,
+) {
+  const store = () => useTopologyStore.getState();
+  const mounted = new Set(store().graphNodes.map((n) => n.id));
+  const { ghl, software } = scenarioSatelliteTargets(humanId, mounted);
+  const targets = [...ghl, ...software];
+  if (targets.length === 0 || !alive() || !isMounted(humanId)) return;
+
+  const pingEdges = targets.map((target) => makePingEdge(humanId, target));
+  useTopologyStore.setState({ pendingFeederEdges: [...pingEdges] });
+  await sleep(40, signal);
+  if (!alive()) return;
+
+  store().beginCircuitGrow(
+    pingEdges.map((e) => e.id),
+    PING_OUT_MS,
+  );
+  await sleep(PING_OUT_MS, signal);
+  if (!alive()) return;
+
+  store().latchCascade({
+    nodeIds: [humanId, ...targets],
+    zoneIds: [],
+    originNodeId: humanId,
+    originStageId: null,
+  });
+  useTopologyStore.setState({
+    activeNodeId: humanId,
+    travelEdgeIds: [],
+    feederEdgeIds: pingEdges.map((e) => e.id),
+  });
+
+  await sleep(PING_LIT_MS, signal);
+  if (!alive()) return;
+
+  store().beginCircuitRetract(
+    pingEdges.map((e) => e.id),
+    PING_IN_MS,
+  );
+  await sleep(PING_IN_MS, signal);
+  if (!alive()) return;
+
+  useTopologyStore.setState({
+    pendingFeederEdges: [],
+    feederEdgeIds: [],
+    travelEdgeIds: [],
+    retractingEdgeIds: [],
+    returnActive: false,
+    activeNodeId: humanId,
+  });
+}
+
 async function runStep(
   step: SequenceStep,
   previousNodeId: string | null,
@@ -225,7 +287,10 @@ async function runStep(
       await sleep(40, signal);
       if (!alive()) return;
 
-      const travelMs = 1500;
+      const travelMs =
+        useTopologyStore.getState().leadScenarioId != null
+          ? scenarioTravelMs()
+          : 1500;
       store().beginTravel([cyanEdge.id], travelMs);
       await sleep(travelMs, signal);
       if (!alive()) return;
@@ -254,11 +319,18 @@ async function runStep(
     step.tone
   );
 
-  await sleep(800, signal);
-  if (!alive()) return;
+  const inScenario = useTopologyStore.getState().leadScenarioId != null;
+  if (!inScenario) {
+    await sleep(800, signal);
+    if (!alive()) return;
+  }
 
   if (step.pings && step.pings.length > 0) {
-    await runSatellitePings(step.nodeId, step.pings, signal, alive);
+    if (useTopologyStore.getState().leadScenarioId != null) {
+      await runScenarioSatelliteBursts(step.nodeId, signal, alive);
+    } else {
+      await runSatellitePings(step.nodeId, step.pings, signal, alive);
+    }
     if (!alive()) return;
   }
 
@@ -373,10 +445,54 @@ export function useSequenceController() {
       const st = useTopologyStore.getState();
       st.clearCinematicVisuals();
       st.resetJourneyProgress();
+      st.setLeadScenario(null);
+      st.setCanvasEdgesMuted(true);
       useTopologyStore.setState({
         stepIndex: 0,
         playbackState: "idle",
+        circuitComplete: false,
       });
+    },
+    [stopRun]
+  );
+
+  const playLeadScenario = useCallback(
+    (scenarioId: LeadScenarioId) => {
+      stopRun();
+      const runId = ++runIdRef.current;
+      abortRef.current = { aborted: false };
+      const signal = abortRef.current;
+
+      const st = useTopologyStore.getState();
+      st.setLeadScenario(scenarioId);
+      st.clearCinematicVisuals();
+      st.resetJourneyProgress();
+      st.setCanvasEdgesMuted(true);
+
+      const mounted = new Set(st.graphNodes.map((n) => n.id));
+      const steps = buildScenarioSequenceSteps(scenarioId, mounted);
+      if (steps.length === 0) {
+        st.setPlaybackState("idle");
+        return;
+      }
+
+      void (async () => {
+        st.setCanvasEdgesMuted(false);
+        st.setPlaybackState("playing");
+        let previousNodeId: string | null = null;
+        for (let i = 0; i < steps.length; i++) {
+          if (signal.aborted || runId !== runIdRef.current) return;
+          st.setStepIndex(i);
+          await runStep(steps[i]!, previousNodeId, signal, runId, runIdRef);
+          previousNodeId = steps[i]!.nodeId;
+          if (signal.aborted || runId !== runIdRef.current) return;
+          await sleep(scenarioStepDelayMs(i), signal);
+        }
+        if (!signal.aborted && runId === runIdRef.current) {
+          useTopologyStore.getState().setPlaybackState("idle");
+          useTopologyStore.setState({ circuitComplete: true });
+        }
+      })();
     },
     [stopRun]
   );
@@ -396,5 +512,6 @@ export function useSequenceController() {
     stopRun,
     resetPlayback,
     playFrom,
+    playLeadScenario,
   };
 }

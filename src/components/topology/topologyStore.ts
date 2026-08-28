@@ -53,6 +53,7 @@ import {
   type ProcessLink,
   type ProcessLinkKind,
 } from "./processMap";
+import type { LeadScenarioId } from "./topology-scenarios";
 
 export type CanvasMode = "present" | "plan" | "engineer";
 export type BlankSlotConfig = {
@@ -86,6 +87,10 @@ export type TopologyStore = {
   canvasMode: CanvasMode;
   focusPresetId: FocusPresetId;
   walkthroughId: WalkthroughId | null;
+  /** Active lead-source scenario (conditional path engine). */
+  leadScenarioId: LeadScenarioId | null;
+  /** Hide dormant canvas edges until scenario playback illuminates paths. */
+  canvasEdgesMuted: boolean;
   heldTaskIds: string[];
   blankSlotConfigs: Record<string, BlankSlotConfig>;
   rightSidebarOpen: boolean;
@@ -198,6 +203,8 @@ export type TopologyStore = {
   setCanvasMode: (mode: CanvasMode) => void;
   setFocusPresetId: (id: FocusPresetId) => void;
   setWalkthrough: (id: WalkthroughId | null) => void;
+  setLeadScenario: (id: LeadScenarioId | null) => void;
+  setCanvasEdgesMuted: (muted: boolean) => void;
   processLinksForActive: () => ProcessLink[];
   addProcessLink: (
     source: string,
@@ -341,6 +348,8 @@ export const useTopologyStore = create<TopologyStore>()(
   canvasMode: "present",
   focusPresetId: "all",
   walkthroughId: null,
+  leadScenarioId: null,
+  canvasEdgesMuted: true,
   heldTaskIds: [],
   blankSlotConfigs: {},
   rightSidebarOpen: false,
@@ -687,6 +696,14 @@ export const useTopologyStore = create<TopologyStore>()(
           },
     }));
   },
+  setLeadScenario: (id) =>
+    set({
+      leadScenarioId: id,
+      stepIndex: 0,
+      playbackState: "idle",
+      canvasEdgesMuted: true,
+    }),
+  setCanvasEdgesMuted: (muted) => set({ canvasEdgesMuted: muted }),
   processLinksForActive: () => {
     const { walkthroughId, processLinksByWalkthrough } = get();
     if (!walkthroughId) return [];

@@ -10,6 +10,8 @@ import { WALKTHROUGH_OPTIONS } from "./ghlPipelines";
 type Props = {
   progress: number;
   onPlay: () => void;
+  onResetScenario?: () => void;
+  scenarioActive?: boolean;
   onPause: () => void;
   onStepNext: () => void;
   onResetPlayback: () => void;
@@ -18,6 +20,8 @@ type Props = {
 export function DashboardHeader({
   progress,
   onPlay,
+  onResetScenario,
+  scenarioActive = false,
   onPause,
   onStepNext,
   onResetPlayback,
@@ -131,11 +135,22 @@ export function DashboardHeader({
           <button
             type="button"
             onClick={onPlay}
-            disabled={!walkthroughId}
+            disabled={playbackState === "playing"}
             className="rounded-lg border border-cyan-500/45 bg-cyan-500/12 px-3 py-1.5 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-500/22 disabled:opacity-40"
+            title="Run buyer journey scenario"
           >
             Play
           </button>
+          {scenarioActive && onResetScenario ? (
+            <button
+              type="button"
+              onClick={onResetScenario}
+              className="rounded-lg border border-red-500/45 bg-red-500/12 px-3 py-1.5 text-[11px] font-semibold text-red-200 hover:bg-red-500/22"
+              title="Stop scenario and clear active lines"
+            >
+              Reset
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onPause}

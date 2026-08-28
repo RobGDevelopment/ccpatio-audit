@@ -78,6 +78,7 @@ function BeamEdgeComponent({
   const returnActive = useTopologyStore((s) => s.returnActive);
   const retractingIds = useTopologyStore((s) => s.retractingEdgeIds);
   const feederEdgeIds = useTopologyStore((s) => s.feederEdgeIds);
+  const pendingFeederEdges = useTopologyStore((s) => s.pendingFeederEdges);
   const selectedMapNodeId = useTopologyStore((s) => s.selectedMapNodeId);
 
   const satellite = Boolean(data?.satellite);
@@ -153,6 +154,20 @@ function BeamEdgeComponent({
     } else {
       baseOpacity = Math.min(baseOpacity, 0.08);
     }
+  }
+
+  const canvasEdgesMuted = useTopologyStore((s) => s.canvasEdgesMuted);
+  const isFeeder = feederEdgeIds.includes(id);
+  const isPendingFeeder = pendingFeederEdges.some((e) => e.id === id);
+  const scenarioVisible =
+    isActive ||
+    isRetracting ||
+    isCompleted ||
+    isFeeder ||
+    isPendingFeeder ||
+    satellite;
+  if (canvasEdgesMuted && !scenarioVisible) {
+    return null;
   }
 
   const headW = externalActive ? SNAKE_HEAD_WIDTH - 0.5 : SNAKE_HEAD_WIDTH;

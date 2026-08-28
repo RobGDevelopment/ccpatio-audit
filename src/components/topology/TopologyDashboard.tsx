@@ -55,6 +55,11 @@ import {
   buildPlaybackStepsFromProcessMap,
 } from "./processMap";
 import { DashboardHeader } from "./DashboardHeader";
+import { ScenarioSelectorModal } from "./ScenarioSelectorModal";
+import {
+  buildScenarioSequenceSteps,
+  type LeadScenarioId,
+} from "./topology-scenarios";
 import { buildCustomSequence } from "./journeyBuilder";
 import {
   saveLayout,
@@ -165,10 +170,12 @@ function MovieModeBar({
 
 function TopologyCanvas() {
   const [mounted, setMounted] = useState(false);
+  const [scenarioModalOpen, setScenarioModalOpen] = useState(false);
+  const playButtonRef = useRef<HTMLButtonElement>(null);
   const isHydrated = useRef(false);
   const [nodes, setNodes, onNodesChange] = useNodesState(lifecycleNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(lifecycleEdges);
-  const { pause, stepNext, play, playMovie, exitMovie, resetPlayback } =
+  const { pause, stepNext, playMovie, exitMovie, resetPlayback, playLeadScenario } =
     useSequenceController();
 
   const playbackState = useTopologyStore((s) => s.playbackState);
@@ -192,6 +199,8 @@ function TopologyCanvas() {
   const operationalTasks = useTopologyStore((s) => s.operationalTasks);
   const focusPresetId = useTopologyStore((s) => s.focusPresetId);
   const walkthroughId = useTopologyStore((s) => s.walkthroughId);
+  const leadScenarioId = useTopologyStore((s) => s.leadScenarioId);
+  const graphNodes = useTopologyStore((s) => s.graphNodes);
   const processLinksByWalkthrough = useTopologyStore(
     (s) => s.processLinksByWalkthrough
   );
@@ -252,7 +261,13 @@ function TopologyCanvas() {
     viewMode,
     focusPresetId,
   ]);
-  const seqLen = steps.length;
+  const seqLen = useMemo(() => {
+    if (leadScenarioId) {
+      const mounted = new Set(graphNodes.map((n) => n.id));
+      return buildScenarioSequenceSteps(leadScenarioId, mounted).length;
+    }
+    return steps.length;
+  }, [leadScenarioId, graphNodes, steps]);
   const operationalLayoutEngine = useTopologyStore((s) => s.operationalLayoutEngine);
   const operationalLayoutDirection = useTopologyStore(
     (s) => s.operationalLayoutDirection
@@ -646,6 +661,19 @@ function TopologyCanvas() {
     playMovie();
   }, [journeyBuilder, playMovie]);
 
+  const handleScenarioSelect = useCallback(
+    (scenarioId: LeadScenarioId) => {
+      setScenarioModalOpen(false);
+      playLeadScenario(scenarioId);
+    },
+    [playLeadScenario],
+  );
+
+  const handleResetScenario = useCallback(() => {
+    resetPlayback();
+    setScenarioModalOpen(false);
+  }, [resetPlayback]);
+
   const progress =
     playbackState === "idle" && stepIndex === 0
       ? 0
@@ -673,7 +701,13 @@ function TopologyCanvas() {
       ) : (
         <DashboardHeader
           progress={progress}
-          onPlay={() => play()}
+          onPlay={() => setScenarioModalOpen(true)}
+          onResetScenario={handleResetScenario}
+          scenarioActive={
+            leadScenarioId != null ||
+            playbackState === "playing" ||
+            playbackState === "paused"
+          }
           onPause={pause}
           onStepNext={() => void stepNext()}
           onResetPlayback={resetPlayback}
@@ -783,6 +817,12 @@ function TopologyCanvas() {
             </AnimatePresence>
 
             <StoryCardPanel />
+            <ScenarioSelectorModal
+              open={scenarioModalOpen}
+              onClose={() => setScenarioModalOpen(false)}
+              onSelect={handleScenarioSelect}
+              returnFocusRef={playButtonRef}
+            />
           </>
         )}
         <RightSidebar />
