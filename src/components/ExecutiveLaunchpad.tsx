@@ -28,8 +28,8 @@ function ModuleCard({ module }: { module: LaunchpadModule }) {
       className={cn(
         "group pim-glass flex h-full flex-col rounded-xl p-5 transition",
         isHighlighted
-          ? "border-cyan-500/60 shadow-[0_0_20px_rgba(6,182,212,0.3)] animate-[pulse_3s_ease-in-out_infinite]"
-          : "hover:border-emerald-500/30 hover:bg-slate-950/60",
+          ? "border-red-500/70 shadow-[0_0_25px_rgba(239,68,68,0.4)] animate-[pulse_2s_ease-in-out_infinite]"
+          : "opacity-40 grayscale blur-[1px] hover:opacity-80 hover:grayscale-0 hover:blur-none hover:border-emerald-500/30 hover:bg-slate-950/60",
       )}
     >
       <div className="mb-3 flex items-start justify-between gap-3">

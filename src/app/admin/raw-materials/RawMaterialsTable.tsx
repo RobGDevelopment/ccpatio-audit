@@ -388,25 +388,34 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
         </div>
       </div>
 
-      <div
-        role="tablist"
-        className="flex gap-1 overflow-x-auto border-b border-slate-800/80 pb-px scrollbar-none"
-      >
-        <CategoryTab
-          label={ALL_TAB}
-          count={localRows.length}
-          selected={selectedCategories.size === 0}
-          onSelect={() => setSelectedCategories(new Set())}
-        />
-        {categoryTabs.map(([category, count]) => (
+      <div className="space-y-1">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+          Categories{" "}
+          <span className="font-normal normal-case tracking-normal text-slate-600">
+            (Click to toggle multiple)
+          </span>
+        </p>
+        <div
+          role="tablist"
+          className="flex gap-1 overflow-x-auto border-b border-slate-800/80 pb-px scrollbar-none"
+        >
           <CategoryTab
-            key={category}
-            label={category}
-            count={count}
-            selected={selectedCategories.has(category)}
-            onSelect={() => toggleCategory(category)}
+            label={ALL_TAB}
+            count={localRows.length}
+            selected={selectedCategories.size === 0}
+            onSelect={() => setSelectedCategories(new Set())}
+            isAllTab
           />
-        ))}
+          {categoryTabs.map(([category, count]) => (
+            <CategoryTab
+              key={category}
+              label={category}
+              count={count}
+              selected={selectedCategories.has(category)}
+              onSelect={() => toggleCategory(category)}
+            />
+          ))}
+        </div>
       </div>
 
       <CategoryProgressBar stats={progressStats} />
@@ -558,12 +567,16 @@ function CategoryTab({
   count,
   selected,
   onSelect,
+  isAllTab = false,
 }: {
   label: string;
   count: number;
   selected: boolean;
   onSelect: () => void;
+  isAllTab?: boolean;
 }) {
+  const showRemoveIndicator = selected && !isAllTab;
+
   return (
     <button
       type="button"
@@ -576,7 +589,18 @@ function CategoryTab({
           : "border-transparent text-slate-500 hover:text-slate-300"
       }`}
     >
-      <span>{label}</span>
+      {showRemoveIndicator ? (
+        <span
+          className={`${EXEC_PILL} inline-flex items-center gap-1 border-emerald-500/20 bg-emerald-500/10 text-emerald-300`}
+        >
+          <span>{label}</span>
+          <span className="text-xs leading-none opacity-80" aria-hidden>
+            ×
+          </span>
+        </span>
+      ) : (
+        <span>{label}</span>
+      )}
       <span
         className={`${EXEC_PILL} ${
           selected
