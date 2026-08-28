@@ -8,7 +8,8 @@ import { SkuTable, type SkuMappingRow } from "./SkuTable";
 import { calculateRowHealth } from "./pim-catalog-utils";
 import { getPimSession } from "@/lib/pim-audit";
 import Link from "next/link";
-import { LogoutButton } from "../LogoutButton";
+import { DictionaryHeaderActions } from "./DictionaryHeaderActions";
+import { DictionaryTour } from "./DictionaryTour";
 
 export const dynamic = "force-dynamic";
 
@@ -91,21 +92,27 @@ export default async function DictionaryPage() {
 
   return (
     <main className="pim-carbon-shell min-h-screen text-slate-50">
+      <DictionaryTour />
       <div className="w-full px-2 py-4 sm:px-3">
         <header className="pim-glass mb-4 rounded-lg px-4 py-5 sm:px-5">
           <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-slate-500">
             CC Patio · Enterprise PIM Terminal
           </p>
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
+            <div id="dictionary-tour-mission">
               <h1 className="text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">
                 Global E2E SKU Dictionary
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
-                Collaborative data terminal for catalog, BOM, and cross-platform
-                targets (GHL · QBO · Woo). Inline edits autosave to
-                Postgres; live sync across open browsers.
-              </p>
+              <ol className="mt-2 max-w-2xl list-decimal space-y-1 pl-4 text-sm leading-relaxed text-slate-400">
+                <li>Fill in missing data highlighted in red (or enter N/A).</li>
+                <li>
+                  Check the &apos;Web&apos; box for any items that should sync to
+                  the public E-Commerce store.
+                </li>
+                <li>
+                  All changes auto-save instantly when you click outside the box.
+                </li>
+              </ol>
               <p className="mt-3 flex flex-wrap items-center gap-4 text-xs">
                 <Link
                   href="/"
@@ -136,7 +143,7 @@ export default async function DictionaryPage() {
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:items-end">
-              <LogoutButton />
+              <DictionaryHeaderActions />
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
               <Stat label="Total SKUs" value={String(data.length)} href="?filter=all" />
               <Stat

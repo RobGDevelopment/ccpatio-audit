@@ -45,6 +45,11 @@ type SkuTableProps = {
 
 const ALL_TAB = "All";
 
+const TOUR_HEADER_TARGETS: Record<string, string> = {
+  data_health: "dictionary-data-health",
+  sync_to_woo: "dictionary-web-column",
+};
+
 function mergeRemoteRow(
   prev: SkuMappingRow[],
   incoming: SkuMappingRow,
@@ -625,7 +630,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
         </div>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-1" data-tour="dictionary-category-tabs">
         <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
           Categories{" "}
           <span className="font-normal normal-case tracking-normal text-slate-600">
@@ -666,7 +671,11 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
                 className="text-[10px] uppercase tracking-wider text-slate-500"
               >
                 {headerGroup.headers.map((header) => (
-                  <th key={header.id} className="px-2 py-3 font-medium">
+                  <th
+                    key={header.id}
+                    data-tour={TOUR_HEADER_TARGETS[header.column.id]}
+                    className="px-2 py-3 font-medium"
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
