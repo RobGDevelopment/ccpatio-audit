@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -15,6 +16,8 @@ import {
 } from "./actions";
 import { computeBatchCompletion } from "@/app/admin/dictionary/pim-catalog-utils";
 import { CategoryProgressBar } from "@/app/admin/shared/CategoryProgressBar";
+import { handleInteractiveRowKeyDown } from "@/app/admin/shared/table-a11y";
+import { useToast } from "@/app/admin/shared/ToastProvider";
 import { CreateRawMaterialModal } from "./CreateRawMaterialModal";
 import {
   RawMaterialDetailModal,
@@ -85,6 +88,9 @@ function mergeRemoteRow(
 }
 
 export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: Props) {
+  const toast = useToast();
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const modalReturnFocusRef = useRef<HTMLElement | null>(null);
   const [query, setQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
     () => new Set(),
@@ -131,7 +137,7 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
         new Date().toISOString();
       setSinceIso((prev) => (stamp > prev ? stamp : prev));
     },
-    [flashRow],
+    [flashRow, setLocalRows, setSinceIso],
   );
 
   useEffect(() => {
@@ -307,7 +313,13 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
     });
   }
 
-  function openDetail(row: RawMaterialRow, focusMissing = false): void {
+  function openDetail(
+    row: RawMaterialRow,
+    focusMissing = false,
+    trigger?: HTMLElement | null,
+  ): void {
+    modalReturnFocusRef.current =
+      trigger ?? (document.activeElement as HTMLElement | null);
     setDetailFocusMissing(focusMissing);
     setDetailRow(row);
   }
@@ -324,8 +336,11 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
       const result = await deleteRawMaterial(sku);
       if (!result.ok) {
         setError(result.error);
+        toast.error(result.error);
         setLocalRows(snapshot);
+        return;
       }
+      toast.success(`Deleted ${sku}`);
     });
   }
 
@@ -344,6 +359,7 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
         </label>
         <div className="flex flex-wrap items-center gap-3">
           <button
+            ref={addButtonRef}
             type="button"
             onClick={() => setCreateOpen(true)}
             className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/25"
@@ -432,7 +448,15 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
                     className={`cursor-pointer transition-colors hover:bg-slate-900/35 ${
                       flashSkus[row.sku] ? "pim-row-flash" : ""
                     } ${!row.isActive ? "opacity-55" : ""}`}
-                    onClick={() => openDetail(row)}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Inspect ${row.sku}`}
+                    onKeyDown={(event) =>
+                      handleInteractiveRowKeyDown(event, () =>
+                        openDetail(row, false, event.currentTarget),
+                      )
+                    }
+                    onClick={(event) => openDetail(row, false, event.currentTarget)}
                   >
                     <td className="px-3 py-2.5 font-mono text-[13px] text-slate-100">
                       {row.sku}
@@ -450,10 +474,10 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
                       {row.costPerUnit ?? "—"}
                     </td>
                     <td className="px-3 py-2.5">
-                      <RawMaterialHealthBadge
-                        row={row}
-                        onResolve={() => openDetail(row, true)}
-                      />
+                        <RawMaterialHealthBadge
+                          row={row}
+                          onResolve={(trigger) => openDetail(row, true, trigger)}
+                        />
                     </td>
                     <td className="px-3 py-2.5">
                       <div
@@ -462,7 +486,10 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
                       >
                         <button
                           type="button"
-                          onClick={() => openDetail(row)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openDetail(row, false, event.currentTarget);
+                          }}
                           aria-label={`Inspect ${row.sku}`}
                           title="Inspect / edit"
                           className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 text-slate-400 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
@@ -491,6 +518,7 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
       <CreateRawMaterialModal
         open={createOpen}
         defaultCategory={defaultCreateCategory}
+        returnFocusRef={addButtonRef}
         onClose={() => setCreateOpen(false)}
         onCreated={(material) => {
           setLocalRows((prev) => mergeRemoteRow(prev, material));
@@ -502,6 +530,7 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
         row={detailRow}
         open={detailRow !== null}
         focusMissing={detailFocusMissing}
+        returnFocusRef={modalReturnFocusRef}
         onClose={() => {
           setDetailRow(null);
           setDetailFocusMissing(false);

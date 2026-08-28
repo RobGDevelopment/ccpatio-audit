@@ -193,7 +193,7 @@ function DataHealthPunchlist({
   onResolve,
 }: {
   row: SkuMappingRow;
-  onResolve?: () => void;
+  onResolve?: (trigger: HTMLElement) => void;
 }) {
   const health = rowHealth(row);
 
@@ -206,7 +206,10 @@ function DataHealthPunchlist({
       <div className="flex flex-col gap-0.5 items-start">
         <button
           type="button"
-          onClick={onResolve}
+          onClick={(event) => {
+            event.stopPropagation();
+            onResolve?.(event.currentTarget);
+          }}
           title="Quick-fix missing fields"
           className={`${EXEC_PILL} border-rose-500/25 bg-rose-500/10 text-rose-300 transition hover:border-rose-400/40 hover:bg-rose-500/20 hover:text-rose-200 cursor-pointer`}
         >
@@ -299,7 +302,9 @@ function healthColumn(): ColumnDef<SkuMappingRow, unknown> {
       return (
         <DataHealthPunchlist
           row={row.original}
-          onResolve={() => m.onOpenProductDetail(row.original, { focusMissing: true })}
+          onResolve={(trigger) =>
+            m.onOpenProductDetail(row.original, { focusMissing: true }, trigger)
+          }
         />
       );
     },
@@ -335,7 +340,7 @@ function actionsColumn(): ColumnDef<SkuMappingRow, unknown> {
             title="Inspect / edit"
             onClick={(e) => {
               e.stopPropagation();
-              m.onOpenProductDetail(row.original);
+              m.onOpenProductDetail(row.original, undefined, e.currentTarget);
             }}
             className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 text-slate-400 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
           >

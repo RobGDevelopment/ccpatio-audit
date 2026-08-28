@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -16,6 +17,8 @@ import { getOperatorName } from "@/app/admin/dictionary/InlineCells";
 import {
   SmartFieldInput,
 } from "@/app/admin/shared/SmartFieldInput";
+import { useToast } from "@/app/admin/shared/ToastProvider";
+import { useModalA11y } from "@/app/admin/shared/useModalA11y";
 import { validateRawMaterialCost, patchFieldToModalKey } from "@/server/pim/patch-validation";
 import { setAttributePath } from "@/server/pim/attributes/schemas";
 import { updateRawMaterial, type RawMaterialRow } from "./actions";
@@ -26,6 +29,7 @@ type Props = {
   focusMissing?: boolean;
   onClose: () => void;
   onSaved: (material: RawMaterialRow) => void;
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
 };
 
 export function RawMaterialDetailModal({
@@ -34,7 +38,10 @@ export function RawMaterialDetailModal({
   focusMissing = false,
   onClose,
   onSaved,
+  returnFocusRef,
 }: Props) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const toast = useToast();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [coreDraft, setCoreDraft] = useState({
     name: "",
@@ -100,14 +107,12 @@ export function RawMaterialDetailModal({
     setError(null);
   }, [open, row, focusMissing]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  useModalA11y({
+    open: open && row !== null,
+    onClose,
+    containerRef: panelRef,
+    returnFocusRef,
+  });
 
   const handleSave = useCallback(() => {
     if (!row) return;
@@ -135,6 +140,7 @@ export function RawMaterialDetailModal({
           base_cost: costValidation.message,
         });
         setError(costValidation.message);
+        toast.error(costValidation.message);
         return;
       }
 
@@ -153,7 +159,9 @@ export function RawMaterialDetailModal({
           costPerUnit: coreDraft.costPerUnit,
         });
         if (!result.ok || !result.material) {
-          setError(result.ok ? "Update failed" : result.error);
+          const message = result.ok ? "Update failed" : result.error;
+          setError(message);
+          toast.error(message);
           return;
         }
         version = result.material.version;
@@ -175,8 +183,10 @@ export function RawMaterialDetailModal({
         });
         if (!result.ok) {
           const key = patchFieldToModalKey(result.field ?? field.patchField);
-          setFieldErrors({ [key]: result.message ?? result.error });
-          setError(result.message ?? result.error);
+          const message = result.message ?? result.error;
+          setFieldErrors({ [key]: message });
+          setError(message);
+          toast.error(message);
           return;
         }
         version = result.version;
@@ -196,9 +206,10 @@ export function RawMaterialDetailModal({
         attributes: nextAttributes,
         version,
       });
+      toast.success(`Saved ${row.sku}`);
       onClose();
     });
-  }, [coreDraft, drafts, fields, focusMissing, onClose, onSaved, row]);
+  }, [coreDraft, drafts, fields, focusMissing, onClose, onSaved, row, toast]);
 
   if (!open || !row) return null;
 
@@ -214,15 +225,23 @@ export function RawMaterialDetailModal({
         onClick={onClose}
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
-        className="pim-glass relative z-10 flex max-h-[min(90vh,42rem)] w-full max-w-2xl flex-col rounded-lg border border-slate-700/60 shadow-2xl shadow-black/50"
+        aria-labelledby="raw-material-detail-title"
+        tabIndex={-1}
+        className="pim-glass relative z-10 flex max-h-[min(90vh,42rem)] w-full max-w-2xl flex-col rounded-lg border border-slate-700/60 shadow-2xl shadow-black/50 outline-none"
       >
         <header className="shrink-0 border-b border-slate-800/80 px-5 py-4">
           <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">
             Raw material detail
           </p>
-          <h2 className="mt-1 font-mono text-lg text-slate-50">{row.sku}</h2>
+          <h2
+            id="raw-material-detail-title"
+            className="mt-1 font-mono text-lg text-slate-50"
+          >
+            {row.sku}
+          </h2>
           <p className="mt-1 text-sm text-slate-400">{row.name}</p>
         </header>
 
@@ -373,7 +392,7 @@ export function RawMaterialHealthBadge({
   onResolve,
 }: {
   row: RawMaterialRow;
-  onResolve?: () => void;
+  onResolve?: (trigger: HTMLElement) => void;
 }) {
   const health = calculateRowHealth({
     category: row.category,
@@ -398,7 +417,7 @@ export function RawMaterialHealthBadge({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onResolve?.();
+            onResolve?.(e.currentTarget);
           }}
           className={`${EXEC_PILL} cursor-pointer border-rose-500/25 bg-rose-500/10 text-rose-300 transition hover:border-rose-400/40 hover:bg-rose-500/20`}
         >

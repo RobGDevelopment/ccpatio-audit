@@ -17,6 +17,8 @@ import {
   SmartFieldInput,
   isSmartFieldComplete,
 } from "@/app/admin/shared/SmartFieldInput";
+import { useToast } from "@/app/admin/shared/ToastProvider";
+import { useModalA11y } from "@/app/admin/shared/useModalA11y";
 import { validateRawMaterialCost } from "@/server/pim/patch-validation";
 import { createRawMaterial, proposeRawMaterialSku, type RawMaterialRow } from "./actions";
 
@@ -39,6 +41,7 @@ type Props = {
   defaultCategory?: string;
   onClose: () => void;
   onCreated: (material: RawMaterialRow) => void;
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
 };
 
 export function CreateRawMaterialModal({
@@ -46,8 +49,10 @@ export function CreateRawMaterialModal({
   defaultCategory = "",
   onClose,
   onCreated,
+  returnFocusRef,
 }: Props) {
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const toast = useToast();
   const [category, setCategory] = useState("");
   const [name, setName] = useState("");
   const [unitOfMeasure, setUnitOfMeasure] = useState("ea");
@@ -106,19 +111,7 @@ export function CreateRawMaterialModal({
     };
   }, [category, name, open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
-
-  useEffect(() => {
-    if (!open) return;
-    dialogRef.current?.focus();
-  }, [open, category]);
+  useModalA11y({ open, onClose, containerRef: panelRef, returnFocusRef });
 
   const coreFieldClass = useCallback(
     (complete: boolean, key?: string) => {
@@ -177,9 +170,12 @@ export function CreateRawMaterialModal({
         attributes,
       });
       if (!result.ok || !result.material) {
-        setError(result.ok ? "Create failed" : result.error);
+        const message = result.ok ? "Create failed" : result.error;
+        setError(message);
+        toast.error(message);
         return;
       }
+      toast.success(`Created ${result.material.sku}`);
       onCreated(result.material);
       onClose();
     });
@@ -192,6 +188,7 @@ export function CreateRawMaterialModal({
     onClose,
     onCreated,
     skuPreview,
+    toast,
     unitOfMeasure,
   ]);
 
@@ -213,7 +210,7 @@ export function CreateRawMaterialModal({
         onClick={onClose}
       />
       <div
-        ref={dialogRef}
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-rm-title"

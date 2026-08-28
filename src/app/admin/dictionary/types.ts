@@ -49,6 +49,7 @@ export type DictionaryTableMeta = {
   onOpenProductDetail: (
     row: SkuMappingRow,
     options?: { focusMissing?: boolean },
+    trigger?: HTMLElement | null,
   ) => void;
   onToggleActive: (sku: string) => void;
   onToggleExpand: (sku: string) => void;

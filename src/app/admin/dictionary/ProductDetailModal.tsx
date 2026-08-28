@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -20,6 +21,8 @@ import {
   type ProductFieldDescriptor,
 } from "./pim-catalog-utils";
 import { SmartFieldInput } from "@/app/admin/shared/SmartFieldInput";
+import { useToast } from "@/app/admin/shared/ToastProvider";
+import { useModalA11y } from "@/app/admin/shared/useModalA11y";
 import { patchFieldToModalKey } from "@/server/pim/patch-validation";
 import { setAttributePath } from "@/server/pim/attributes/schemas";
 import type { CatalogFields, SkuMappingRow } from "./types";
@@ -40,6 +43,7 @@ type Props = {
   focusMissing?: boolean;
   onClose: () => void;
   onPatchSaved: (sku: string, patch: Partial<SkuMappingRow>) => void;
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
 };
 
 export function ProductDetailModal({
@@ -48,7 +52,10 @@ export function ProductDetailModal({
   focusMissing = false,
   onClose,
   onPatchSaved,
+  returnFocusRef,
 }: Props) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const toast = useToast();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -98,14 +105,12 @@ export function ProductDetailModal({
     setError(null);
   }, [open, row, focusMissing]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  useModalA11y({
+    open: open && row !== null,
+    onClose,
+    containerRef: panelRef,
+    returnFocusRef,
+  });
 
   const markNa = useCallback((key: string) => {
     setDrafts((prev) => ({ ...prev, [key]: "N/A" }));
@@ -116,19 +121,24 @@ export function ProductDetailModal({
     });
   }, []);
 
-  function applyPatchError(
-    result: { field?: string; message?: string; error: string },
-    visibleFields: ProductFieldDescriptor[],
-  ): void {
-    if (result.field) {
-      const key =
-        visibleFields.find(
-          (f) => f.patchField === result.field || f.key === result.field,
-        )?.key ?? patchFieldToModalKey(result.field);
-      setFieldErrors({ [key]: result.message ?? result.error });
-    }
-    setError(result.message ?? result.error);
-  }
+  const applyPatchError = useCallback(
+    (
+      result: { field?: string; message?: string; error: string },
+      visibleFields: ProductFieldDescriptor[],
+    ): void => {
+      if (result.field) {
+        const key =
+          visibleFields.find(
+            (f) => f.patchField === result.field || f.key === result.field,
+          )?.key ?? patchFieldToModalKey(result.field);
+        setFieldErrors({ [key]: result.message ?? result.error });
+      }
+      const message = result.message ?? result.error;
+      setError(message);
+      toast.error(message);
+    },
+    [toast],
+  );
 
   const handleSave = useCallback(() => {
     if (!row || fields.length === 0) return;
@@ -263,9 +273,10 @@ export function ProductDetailModal({
         mappingUpdatedAt,
         mappingUpdatedBy,
       });
+      toast.success(`Saved ${row.globalSku}`);
       onClose();
     });
-  }, [drafts, fields, focusMissing, onClose, onPatchSaved, row]);
+  }, [drafts, fields, focusMissing, onClose, onPatchSaved, row, toast, applyPatchError]);
 
   if (!open || !row) return null;
 
@@ -285,10 +296,12 @@ export function ProductDetailModal({
         onClick={onClose}
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="product-detail-title"
-        className="pim-glass relative z-10 flex max-h-[min(90vh,42rem)] w-full max-w-2xl flex-col rounded-lg border border-slate-700/60 shadow-2xl shadow-black/50"
+        tabIndex={-1}
+        className="pim-glass relative z-10 flex max-h-[min(90vh,42rem)] w-full max-w-2xl flex-col rounded-lg border border-slate-700/60 shadow-2xl shadow-black/50 outline-none"
       >
         <header className="shrink-0 border-b border-slate-800/80 px-5 py-4">
           <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">

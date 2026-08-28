@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -23,6 +24,7 @@ import {
 import { buildDictionaryColumns, EXEC_PILL, showExpandForRow } from "./columns";
 import { calculateRowHealth, computeBatchCompletion } from "./pim-catalog-utils";
 import { CategoryProgressBar } from "@/app/admin/shared/CategoryProgressBar";
+import { handleInteractiveRowKeyDown } from "@/app/admin/shared/table-a11y";
 import { getOperatorName, setOperatorName } from "./InlineCells";
 import type { DictionaryTableMeta, SkuMappingRow } from "./types";
 import { FinishedGoodDetailPanel } from "./FinishedGoodDetailPanel";
@@ -103,6 +105,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
   const [sinceIso, setSinceIso] = useState(() => new Date().toISOString());
   const [detailRow, setDetailRow] = useState<SkuMappingRow | null>(null);
   const [detailFocusMissing, setDetailFocusMissing] = useState(false);
+  const modalReturnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setRows(initialRows);
@@ -391,7 +394,13 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
   }, [rows]);
 
   const openProductDetail = useCallback(
-    (row: SkuMappingRow, options?: { focusMissing?: boolean }) => {
+    (
+      row: SkuMappingRow,
+      options?: { focusMissing?: boolean },
+      trigger?: HTMLElement | null,
+    ) => {
+      modalReturnFocusRef.current =
+        trigger ?? (document.activeElement as HTMLElement | null);
       setDetailFocusMissing(options?.focusMissing ?? false);
       setDetailRow(row);
     },
@@ -591,7 +600,17 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
                       className={`cursor-pointer transition-colors hover:bg-slate-900/35 ${
                         row.original.isActive ? "" : "opacity-55"
                       } ${flashSkus[row.original.globalSku] ? "pim-row-flash" : ""}`}
-                      onClick={() => openProductDetail(row.original)}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Inspect ${row.original.globalSku}`}
+                      onKeyDown={(event) =>
+                        handleInteractiveRowKeyDown(event, () =>
+                          openProductDetail(row.original, undefined, event.currentTarget),
+                        )
+                      }
+                      onClick={(event) =>
+                        openProductDetail(row.original, undefined, event.currentTarget)
+                      }
                     >
                       {row.getVisibleCells().map((cell) => (
                         <td key={cell.id} className="px-2 py-2 align-top">
@@ -640,6 +659,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
         row={detailRow}
         open={detailRow !== null}
         focusMissing={detailFocusMissing}
+        returnFocusRef={modalReturnFocusRef}
         onClose={() => {
           setDetailRow(null);
           setDetailFocusMissing(false);

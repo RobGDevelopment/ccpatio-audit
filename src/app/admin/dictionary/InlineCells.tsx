@@ -15,6 +15,7 @@ import {
   setCatalogFieldNotApplicable,
 } from "./actions";
 import { isNaToken } from "./pim-catalog-utils";
+import { useToast } from "@/app/admin/shared/ToastProvider";
 
 const OPERATOR_KEY = "ccpatio_pim_operator";
 
@@ -74,6 +75,7 @@ export function InlineTextCell({
   onSaved,
   onConflict,
 }: InlineTextCellProps) {
+  const toast = useToast();
   const [draft, setDraft] = useState(value);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +132,7 @@ export function InlineTextCell({
       if (!result.ok) {
         setSaveState("error");
         setError(result.error);
+        toast.error(result.message ?? result.error);
         if (result.code === "VERSION_CONFLICT") {
           onConflict?.();
         }
@@ -141,6 +144,7 @@ export function InlineTextCell({
       lastSaved.current = savedDisplay;
       setDraft(savedDisplay);
       setSaveState("saved");
+      toast.success(`Saved ${field.replace(/_/g, " ")}`);
       onSaved?.({
         value: savedDisplay,
         updatedAt: result.updatedAt,
@@ -160,6 +164,7 @@ export function InlineTextCell({
     onConflict,
     onSaved,
     target,
+    toast,
   ]);
 
   return (
@@ -258,6 +263,7 @@ export function EditableSelectCell({
   onSaved,
   onConflict,
 }: EditableSelectCellProps) {
+  const toast = useToast();
   const [draft, setDraft] = useState(value);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -317,12 +323,14 @@ export function EditableSelectCell({
         setDraft(value);
         setSaveState("error");
         setError(result.error);
+        toast.error(result.message ?? result.error);
         if (result.code === "VERSION_CONFLICT") onConflict?.();
         return;
       }
 
       setSaveState("saved");
       setDraft(normalized);
+      toast.success(`Saved ${field.replace(/_/g, " ")}`);
       onSaved?.({
         value: normalized,
         updatedAt: result.updatedAt,
