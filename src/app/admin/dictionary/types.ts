@@ -24,6 +24,7 @@ export type SkuMappingRow = {
   originalName: string;
   sourceFile: string;
   isActive: boolean;
+  syncToWoo: boolean;
   uomPurchase: string | null;
   uomConsume: string | null;
   baseCost: string | null;
@@ -52,6 +53,8 @@ export type DictionaryTableMeta = {
     trigger?: HTMLElement | null,
   ) => void;
   onToggleActive: (sku: string) => void;
+  onToggleSyncToWoo: (sku: string, next: boolean) => void;
+  onDelete: (sku: string) => void;
   onToggleExpand: (sku: string) => void;
   expanded: Record<string, boolean>;
   onNaChange: (sku: string, naFields: string[]) => void;

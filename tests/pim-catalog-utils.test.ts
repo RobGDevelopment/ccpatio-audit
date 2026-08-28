@@ -36,6 +36,7 @@ function fgRow(overrides: Partial<SkuMappingRow> = {}): SkuMappingRow {
     originalName: "BROOKLYN BAR TABLE 120 X 28",
     sourceFile: "",
     isActive: true,
+    syncToWoo: false,
     uomPurchase: "ea",
     uomConsume: "ea",
     baseCost: null,

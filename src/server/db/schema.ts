@@ -46,6 +46,8 @@ export const sku_mappings = pgTable("sku_mappings", {
   original_name: text("original_name").notNull().default(""),
   source_file: text("source_file").notNull().default(""),
   is_active: boolean("is_active").notNull().default(true),
+  /** When true, SKU is eligible for WooCommerce catalog export. */
+  sync_to_woo: boolean("sync_to_woo").notNull().default(false),
   uom_purchase: text("uom_purchase"),
   uom_consume: text("uom_consume"),
   base_cost: numeric("base_cost", { precision: 12, scale: 4 }),

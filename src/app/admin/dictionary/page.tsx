@@ -38,6 +38,7 @@ export default async function DictionaryPage() {
     originalName: mapping.original_name,
     sourceFile: mapping.source_file,
     isActive: mapping.is_active,
+    syncToWoo: mapping.sync_to_woo,
     uomPurchase: mapping.uom_purchase,
     uomConsume: mapping.uom_consume,
     baseCost: mapping.base_cost,

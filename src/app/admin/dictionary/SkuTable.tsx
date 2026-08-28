@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useTransition,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -15,6 +16,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import {
+  deleteSkuMapping,
   fetchPimDeltas,
   fetchPimRow,
   patchMappingField,
@@ -25,6 +27,8 @@ import { buildDictionaryColumns, EXEC_PILL, showExpandForRow } from "./columns";
 import { calculateRowHealth, computeBatchCompletion } from "./pim-catalog-utils";
 import { CategoryProgressBar } from "@/app/admin/shared/CategoryProgressBar";
 import { handleInteractiveRowKeyDown } from "@/app/admin/shared/table-a11y";
+import { useToast } from "@/app/admin/shared/ToastProvider";
+import { CreateSkuModal } from "./CreateSkuModal";
 import { getOperatorName, setOperatorName } from "./InlineCells";
 import type { DictionaryTableMeta, SkuMappingRow } from "./types";
 import { FinishedGoodDetailPanel } from "./FinishedGoodDetailPanel";
@@ -40,6 +44,27 @@ type SkuTableProps = {
 };
 
 const ALL_TAB = "All";
+
+function mergeRemoteRow(
+  prev: SkuMappingRow[],
+  incoming: SkuMappingRow,
+  deletedSku?: string,
+): SkuMappingRow[] {
+  if (deletedSku) {
+    return prev.filter((row) => row.globalSku !== deletedSku);
+  }
+  const idx = prev.findIndex((row) => row.globalSku === incoming.globalSku);
+  if (idx < 0) {
+    return [...prev, incoming].sort((a, b) => {
+      const cat = a.category.localeCompare(b.category);
+      if (cat !== 0) return cat;
+      return a.globalSku.localeCompare(b.globalSku);
+    });
+  }
+  const next = [...prev];
+  next[idx] = { ...next[idx]!, ...incoming };
+  return next;
+}
 
 function escapeCsvCell(value: string): string {
   if (/[",\n\r]/.test(value)) {
@@ -90,6 +115,8 @@ function downloadCsv(rows: SkuMappingRow[]): void {
 export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const toast = useToast();
+  const addButtonRef = useRef<HTMLButtonElement>(null);
   const quickFilter = searchParams.get("filter");
   const [rows, setRows] = useState(initialRows);
   const [query, setQuery] = useState("");
@@ -105,6 +132,9 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
   const [sinceIso, setSinceIso] = useState(() => new Date().toISOString());
   const [detailRow, setDetailRow] = useState<SkuMappingRow | null>(null);
   const [detailFocusMissing, setDetailFocusMissing] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
   const modalReturnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -171,6 +201,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
           category: delta.category || cur.category,
           originalName: delta.originalName || cur.originalName,
           isActive: delta.isActive,
+          syncToWoo: delta.syncToWoo ?? cur.syncToWoo,
           itemType: delta.itemType ?? cur.itemType,
           uomPurchase: delta.uomPurchase ?? cur.uomPurchase,
           uomConsume: delta.uomConsume ?? cur.uomConsume,
@@ -226,6 +257,14 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
           "postgres_changes",
           { event: "*", schema: "public", table: "sku_mappings" },
           (payload) => {
+            if (payload.eventType === "DELETE") {
+              const record = payload.old as Record<string, unknown> | null;
+              const sku = record?.global_sku ? String(record.global_sku) : "";
+              if (sku && !cancelled) {
+                setRows((prev) => prev.filter((row) => row.globalSku !== sku));
+              }
+              return;
+            }
             const record = payload.new as Record<string, unknown> | null;
             if (!record?.global_sku) return;
             void syncSkuFromDb(String(record.global_sku));
@@ -328,6 +367,36 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
   const clearCategoryFilters = useCallback(() => {
     setSelectedCategories(new Set());
   }, []);
+
+  const defaultCreateCategory = useMemo(() => {
+    if (selectedCategories.size !== 1) return "";
+    const [cat] = [...selectedCategories];
+    return cat ?? "";
+  }, [selectedCategories]);
+
+  function onDelete(sku: string): void {
+    if (
+      !window.confirm(
+        `Delete SKU ${sku} from the global dictionary? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    const snapshot = rows;
+    setRows((prev) => prev.filter((row) => row.globalSku !== sku));
+
+    startTransition(async () => {
+      const result = await deleteSkuMapping(sku);
+      if (!result.ok) {
+        setError(result.error);
+        toast.error(result.error);
+        setRows(snapshot);
+        return;
+      }
+      toast.success(`Deleted ${sku}`);
+    });
+  }
 
   const filtered = useMemo(() => {
     let byTab =
@@ -433,6 +502,24 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
           expectedVersion: row.version,
         });
       },
+      onToggleSyncToWoo: (sku, next) => {
+        const row = rows.find((r) => r.globalSku === sku);
+        if (!row) return;
+        applyLocalPatch(sku, {
+          syncToWoo: next,
+          mappingUpdatedBy: getOperatorName(),
+          mappingUpdatedAt: new Date().toISOString(),
+          version: row.version + 1,
+        });
+        void patchMappingField({
+          globalSku: sku,
+          field: "sync_to_woo",
+          value: next,
+          updatedBy: getOperatorName(),
+          expectedVersion: row.version,
+        });
+      },
+      onDelete,
       onToggleExpand: (sku) =>
         setExpanded((prev) => ({ ...prev, [sku]: !prev[sku] })),
       onNaChange: (sku, naFields) => {
@@ -457,7 +544,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
         });
       },
     }),
-    [applyLocalPatch, columnTab, categoryOptions, expanded, flashSkus, openProductDetail, rows],
+    [applyLocalPatch, columnTab, categoryOptions, expanded, flashSkus, onDelete, openProductDetail, rows],
   );
 
   const columns = useMemo(
@@ -497,6 +584,14 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
           />
         </label>
         <div className="flex flex-wrap items-center gap-3">
+          <button
+            ref={addButtonRef}
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/25"
+          >
+            Add SKU
+          </button>
           <label className="flex items-center gap-2 text-[11px] text-slate-400">
             <span className="uppercase tracking-wider">Signed in</span>
             <span className="font-mono text-emerald-300/90">{operator}</span>
@@ -675,6 +770,19 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
         }}
         onPatchSaved={applyLocalPatch}
       />
+
+      <CreateSkuModal
+        open={createOpen}
+        defaultCategory={defaultCreateCategory}
+        returnFocusRef={addButtonRef}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(row) => {
+          setRows((prev) => mergeRemoteRow(prev, row));
+          flashRow(row.globalSku);
+        }}
+      />
+
+      {error ? <p className="text-xs text-rose-400">{error}</p> : null}
     </section>
   );
 }

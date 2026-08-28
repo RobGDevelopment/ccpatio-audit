@@ -85,6 +85,13 @@
       "when": 1787950000000,
       "tag": "0011_raw_materials_realtime",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788036000000,
+      "tag": "0012_sync_to_woo",
+      "breakpoints": true
     }
   ]
 }

@@ -1,8 +1,26 @@
+import { z } from "zod";
 import {
   getAttributeSchema,
   setAttributePath,
 } from "@/server/pim/attributes/schemas";
 import { isAttributeValueComplete } from "@/server/pim/attributes/health";
+
+export const itemTypeSchema = z.enum([
+  "raw_material",
+  "sub_assembly",
+  "finished_good",
+  "service",
+]);
+
+export const skuMappingCreateSchema = z.object({
+  sku: z.string().optional(),
+  name: z.string().trim().min(1, "Name is required"),
+  category: z.string().trim().min(1, "Category is required"),
+  itemType: itemTypeSchema,
+  unitOfMeasure: z.string().optional(),
+  baseCost: z.string().optional(),
+  syncToWoo: z.boolean().optional(),
+});
 
 export type PatchValidationError = {
   field: string;

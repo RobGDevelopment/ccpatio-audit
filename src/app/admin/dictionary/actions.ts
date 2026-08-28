@@ -1,14 +1,20 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { and, asc, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, asc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { generateFinishedGoodSku } from "@/lib/sku-engine";
+import {
+  buildRawMaterialSkuBase,
+  nextAvailableSku,
+} from "@/lib/raw-material-sku";
 import { isNaToken } from "./pim-catalog-utils";
 import {
+  skuMappingCreateSchema,
   validateAttributeFieldPatch,
   validateCatalogFieldPatch,
   validateMappingFieldPatch,
+  validateRawMaterialCost,
 } from "@/server/pim/patch-validation";
 import {
   syncBOMToKatana,
@@ -20,6 +26,7 @@ import {
   finished_goods_catalog,
   item_operations,
   product_bom,
+  raw_materials_catalog,
   sku_aliases,
   sku_mappings,
   type ItemType,
@@ -1140,6 +1147,7 @@ const MAPPING_PATCH_FIELDS = new Set([
   "woo_attribute_slug",
   "ghl_dropdown_value",
   "is_active",
+  "sync_to_woo",
   "original_name",
   "uom_purchase",
   "uom_consume",
@@ -1372,6 +1380,11 @@ export async function patchMappingField(input: {
         typeof input.value === "boolean"
           ? input.value
           : String(input.value).toLowerCase() === "true";
+    } else if (field === "sync_to_woo") {
+      patch.sync_to_woo =
+        typeof input.value === "boolean"
+          ? input.value
+          : String(input.value).toLowerCase() === "true";
     } else if (field === "category") {
       const category = String(input.value).trim();
       if (!category) {
@@ -1542,11 +1555,347 @@ export async function patchAttributeField(input: {
   }
 }
 
+export type SkuMappingInput = {
+  sku?: string;
+  name: string;
+  category: string;
+  itemType: ItemType;
+  unitOfMeasure?: string;
+  baseCost?: string;
+  syncToWoo?: boolean;
+};
+
+export type SkuMutationResult =
+  | { ok: true; row: import("./types").SkuMappingRow }
+  | { ok: false; error: string };
+
+function slugifySkuToken(name: string): string {
+  const slug = name
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 28);
+  return slug || "ITEM";
+}
+
+function parseOptionalCost(raw?: string): string | null {
+  const trimmed = raw?.trim() ?? "";
+  if (!trimmed) return null;
+  const cleaned = trimmed.replace(/[$,\s]/g, "");
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+async function loadTakenSkus(): Promise<Set<string>> {
+  const db = getDb();
+  const rows = await db
+    .select({ global_sku: sku_mappings.global_sku })
+    .from(sku_mappings);
+  return new Set(rows.map((row) => row.global_sku.trim().toUpperCase()));
+}
+
+/** Preview/auto SKU for the dictionary add form (client-side). */
+export async function proposeSku(input: {
+  category: string;
+  name: string;
+  itemType: ItemType;
+  preferredSku?: string;
+}): Promise<{ sku: string }> {
+  const name = input.name.trim();
+  const category = input.category.trim();
+  if (!name || !category) {
+    return { sku: "" };
+  }
+
+  const taken = await loadTakenSkus();
+  let base: string;
+  if (input.preferredSku?.trim()) {
+    base = input.preferredSku.trim().toUpperCase();
+  } else if (
+    input.itemType === "finished_good" ||
+    isFinishedGoodCategory(category)
+  ) {
+    base = generateFinishedGoodSku(name, "", "", "");
+  } else if (input.itemType === "raw_material") {
+    base = buildRawMaterialSkuBase(category, name);
+  } else if (input.itemType === "sub_assembly") {
+    base = `SA-${slugifySkuToken(name)}`;
+  } else {
+    base = `SVC-${slugifySkuToken(name)}`;
+  }
+  return { sku: nextAvailableSku(base, taken) };
+}
+
+async function allocateSku(input: SkuMappingInput): Promise<string> {
+  const taken = await loadTakenSkus();
+  const manual = input.sku?.trim().toUpperCase() ?? "";
+  if (manual) {
+    return nextAvailableSku(manual, taken);
+  }
+  const { sku } = await proposeSku({
+    category: input.category,
+    name: input.name,
+    itemType: input.itemType,
+  });
+  return sku;
+}
+
+async function fetchSkuMappingRowForTable(
+  globalSku: string,
+): Promise<import("./types").SkuMappingRow | null> {
+  const needle = globalSku.trim();
+  if (!needle) return null;
+
+  const db = getDb();
+  const [row] = await db
+    .select({
+      mapping: sku_mappings,
+      catalog: finished_goods_catalog,
+      bomCount: sql<number>`coalesce((
+        select count(*)::int from product_bom pb
+        where pb.parent_sku = ${sku_mappings.global_sku}
+      ), 0)`.mapWith(Number),
+    })
+    .from(sku_mappings)
+    .leftJoin(
+      finished_goods_catalog,
+      eq(sku_mappings.global_sku, finished_goods_catalog.global_sku),
+    )
+    .where(eq(sku_mappings.global_sku, needle))
+    .limit(1);
+
+  if (!row) return null;
+
+  const { mapping, catalog, bomCount } = row;
+  return {
+    globalSku: mapping.global_sku,
+    category: mapping.category,
+    itemType: mapping.item_type,
+    originalName: mapping.original_name,
+    sourceFile: mapping.source_file,
+    isActive: mapping.is_active,
+    syncToWoo: mapping.sync_to_woo,
+    uomPurchase: mapping.uom_purchase,
+    uomConsume: mapping.uom_consume,
+    baseCost: mapping.base_cost,
+    katanaVariantId: mapping.katana_variant_id,
+    katanaMaterialId: mapping.katana_material_id,
+    wooAttributeSlug: mapping.woo_attribute_slug,
+    ghlDropdownValue: mapping.ghl_dropdown_value,
+    qboAccounts: mapping.qbo_accounts ?? {},
+    attributes:
+      mapping.attributes && typeof mapping.attributes === "object"
+        ? (mapping.attributes as Record<string, unknown>)
+        : {},
+    version: mapping.version ?? 1,
+    mappingUpdatedAt: mapping.updated_at?.toISOString?.() ?? null,
+    mappingUpdatedBy: mapping.updated_by,
+    bomComponentCount: Number(bomCount) || 0,
+    catalog: catalog
+      ? {
+          msrp: catalog.msrp,
+          cost: catalog.cost,
+          length: catalog.length,
+          depth: catalog.depth,
+          height: catalog.height,
+          armHeight: catalog.arm_height,
+          sitHeight: catalog.sit_height,
+          weight: catalog.weight,
+          description: catalog.description,
+          imageUrl: catalog.image_url,
+          qboItemCode: catalog.qbo_item_code,
+          naFields: Array.isArray(catalog.na_fields) ? catalog.na_fields : [],
+          updatedAt: catalog.updated_at.toISOString(),
+          updatedBy: catalog.updated_by,
+        }
+      : null,
+  };
+}
+
+export async function createSkuMapping(
+  input: SkuMappingInput,
+): Promise<SkuMutationResult> {
+  const parsed = skuMappingCreateSchema.safeParse(input);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { ok: false, error: issue?.message ?? "Invalid SKU input" };
+  }
+
+  const data = parsed.data;
+  if (data.baseCost?.trim()) {
+    const costError = validateRawMaterialCost(data.baseCost);
+    if (costError) {
+      return { ok: false, error: costError.message };
+    }
+  }
+
+  try {
+    const sku = await allocateSku({
+      sku: data.sku,
+      name: data.name,
+      category: data.category,
+      itemType: data.itemType,
+      unitOfMeasure: data.unitOfMeasure,
+      baseCost: data.baseCost,
+      syncToWoo: data.syncToWoo,
+    });
+    const name = data.name.trim();
+    const category = data.category.trim();
+    const uom = (data.unitOfMeasure?.trim() || "ea").toLowerCase();
+    const cost = parseOptionalCost(data.baseCost);
+    const syncToWoo = data.syncToWoo ?? false;
+    const now = new Date();
+    const operator = await resolvePimOperator();
+
+    const db = getDb();
+    const [existing] = await db
+      .select({ global_sku: sku_mappings.global_sku })
+      .from(sku_mappings)
+      .where(eq(sku_mappings.global_sku, sku))
+      .limit(1);
+
+    if (existing) {
+      return { ok: false, error: `SKU ${sku} already exists in the global catalog` };
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.insert(sku_mappings).values({
+        global_sku: sku,
+        category,
+        item_type: data.itemType,
+        original_name: name,
+        source_file: "sku-dictionary",
+        is_active: true,
+        sync_to_woo: syncToWoo,
+        uom_purchase: uom,
+        uom_consume: uom,
+        base_cost: cost,
+        attributes: {},
+        version: 1,
+        updated_by: operator.label,
+        updated_at: now,
+      });
+
+      if (
+        data.itemType === "finished_good" ||
+        isFinishedGoodCategory(category)
+      ) {
+        await tx.insert(finished_goods_catalog).values({
+          global_sku: sku,
+          updated_by: operator.label,
+        });
+      }
+
+      if (data.itemType === "raw_material") {
+        await tx.insert(raw_materials_catalog).values({
+          sku,
+          name,
+          category,
+          unit_of_measure: uom,
+          cost_per_unit: cost,
+          updated_at: now,
+        });
+      }
+    });
+
+    await logPimAudit({
+      operatorEmail: operator.email,
+      globalSku: sku,
+      action: "create_sku",
+      field: "global_sku",
+      newValue: sku,
+    });
+
+    revalidateDictionary();
+    revalidatePath("/admin/raw-materials");
+
+    const row = await fetchSkuMappingRowForTable(sku);
+    if (!row) {
+      return { ok: false, error: "SKU created but failed to load row" };
+    }
+    return { ok: true, row };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to create SKU";
+    if (message.includes("unique") || message.includes("duplicate")) {
+      return { ok: false, error: "SKU already exists in the global catalog" };
+    }
+    return { ok: false, error: message };
+  }
+}
+
+export async function deleteSkuMapping(
+  sku: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const needle = sku.trim().toUpperCase();
+  if (!needle) {
+    return { ok: false, error: "SKU is required" };
+  }
+
+  try {
+    const db = getDb();
+    const [bomRef] = await db
+      .select({ id: product_bom.id })
+      .from(product_bom)
+      .where(
+        or(
+          eq(product_bom.child_sku, needle),
+          eq(product_bom.parent_sku, needle),
+        ),
+      )
+      .limit(1);
+
+    if (bomRef) {
+      return {
+        ok: false,
+        error: "Cannot delete: this SKU is referenced in a Bill of Materials.",
+      };
+    }
+
+    const operator = await resolvePimOperator();
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(sku_aliases)
+        .where(
+          or(
+            eq(sku_aliases.alias_sku, needle),
+            eq(sku_aliases.canonical_sku, needle),
+          ),
+        );
+      await tx
+        .delete(finished_goods_catalog)
+        .where(eq(finished_goods_catalog.global_sku, needle));
+      await tx
+        .delete(raw_materials_catalog)
+        .where(eq(raw_materials_catalog.sku, needle));
+      await tx.delete(sku_mappings).where(eq(sku_mappings.global_sku, needle));
+    });
+
+    await logPimAudit({
+      operatorEmail: operator.email,
+      globalSku: needle,
+      action: "delete_sku",
+      field: "global_sku",
+      newValue: null,
+    });
+
+    revalidateDictionary();
+    revalidatePath("/admin/raw-materials");
+    return { ok: true };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to delete SKU";
+    return { ok: false, error: message };
+  }
+}
+
 export type PimDeltaRow = {
   globalSku: string;
   category: string;
   originalName: string;
   isActive: boolean;
+  syncToWoo?: boolean;
   itemType?: import("@/server/db/schema").ItemType;
   uomPurchase?: string | null;
   uomConsume?: string | null;
@@ -1610,6 +1959,7 @@ export async function fetchPimDeltas(sinceIso: string): Promise<PimDeltaRow[]> {
     category: mapping.category,
     originalName: mapping.original_name,
     isActive: mapping.is_active,
+    syncToWoo: mapping.sync_to_woo,
     itemType: mapping.item_type,
     uomPurchase: mapping.uom_purchase,
     uomConsume: mapping.uom_consume,
@@ -1674,6 +2024,7 @@ export async function fetchPimRow(
     category: mapping.category,
     originalName: mapping.original_name,
     isActive: mapping.is_active,
+    syncToWoo: mapping.sync_to_woo,
     itemType: mapping.item_type,
     uomPurchase: mapping.uom_purchase,
     uomConsume: mapping.uom_consume,

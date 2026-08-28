@@ -293,6 +293,32 @@ function leanCoreColumns(
   ] as ColumnDef<SkuMappingRow, unknown>[];
 }
 
+function ecommColumn(): ColumnDef<SkuMappingRow, unknown> {
+  return col.display({
+    id: "sync_to_woo",
+    header: "Web",
+    cell: ({ row, table }) => {
+      const m = table.options.meta as DictionaryTableMeta;
+      return (
+        <div
+          className="flex justify-center"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={row.original.syncToWoo}
+            onChange={(event) =>
+              m.onToggleSyncToWoo(row.original.globalSku, event.target.checked)
+            }
+            aria-label={`WooCommerce export for ${row.original.globalSku}`}
+            className="h-4 w-4 rounded border-slate-600 bg-slate-950 text-emerald-500 focus:ring-emerald-500/40"
+          />
+        </div>
+      );
+    },
+  });
+}
+
 function healthColumn(): ColumnDef<SkuMappingRow, unknown> {
   return col.display({
     id: "data_health",
@@ -319,7 +345,10 @@ function actionsColumn(): ColumnDef<SkuMappingRow, unknown> {
       const m = table.options.meta as DictionaryTableMeta;
       const canExpand = showExpandForRow(row.original, m.columnTab);
       return (
-        <div className="flex items-center gap-1">
+        <div
+          className="flex items-center gap-1"
+          onClick={(event) => event.stopPropagation()}
+        >
           {canExpand ? (
             <button
               type="button"
@@ -345,6 +374,18 @@ function actionsColumn(): ColumnDef<SkuMappingRow, unknown> {
             className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 text-slate-400 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
           >
             <InspectIcon />
+          </button>
+          <button
+            type="button"
+            aria-label={`Delete ${row.original.globalSku}`}
+            title="Delete SKU"
+            onClick={(e) => {
+              e.stopPropagation();
+              m.onDelete(row.original.globalSku);
+            }}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-rose-500/10 hover:text-rose-400"
+          >
+            <TrashIcon />
           </button>
         </div>
       );
@@ -630,20 +671,21 @@ export function buildDictionaryColumns(
 ): ColumnDef<SkuMappingRow, unknown>[] {
   const tabKey = normalizeTab(activeTab);
   const lean = leanCoreColumns(meta);
+  const ecomm = ecommColumn();
   const health = healthColumn();
   const actions = actionsColumn();
 
   if (tabKey === "all" || !tabKey) {
-    return [...lean, health, actions];
+    return [...lean, ecomm, health, actions];
   }
 
   if (tabKey === "finished good" || tabKey === "furniture") {
-    return [...lean, ...seatingCatalogColumns(true), health, actions];
+    return [...lean, ecomm, ...seatingCatalogColumns(true), health, actions];
   }
 
   const healthTab = resolveAttributeTabKey(activeTab);
 
-  return [...lean, ...attributeColumns(healthTab), health, actions];
+  return [...lean, ecomm, ...attributeColumns(healthTab), health, actions];
 }
 
 function InspectIcon() {
@@ -659,6 +701,24 @@ function InspectIcon() {
       <path
         fillRule="evenodd"
         d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <path
+        fillRule="evenodd"
+        d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 9.24A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-9.24.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.06 1.06L8.94 10 7.53 11.41a.75.75 0 101.06 1.06L10 11.06l1.41 1.41a.75.75 0 101.06-1.06L11.06 10l1.41-1.41a.75.75 0 00-1.06-1.06L10 8.94 8.58 7.72z"
         clipRule="evenodd"
       />
     </svg>
