@@ -1,142 +1,152 @@
 /**
  * POST /api/webhooks/ghl
  *
- * 1. HMAC (x-ghl-signature) — 401 on failure
- * 2. Normalize opportunity payload
- * 3. Emit Inngest `ghl/opportunity.sync` + 200 immediately
+ * 1. Verify HMAC / Authorization (GHL_WEBHOOK_SECRET) — 401 on failure
+ * 2. Parse Opportunity Won payload + audit log to incoming_webhooks (received)
+ * 3. Emit Inngest `ghl/opportunity.won` + 200 immediately
  *
- * Node runtime: HMAC + Inngest. Do not run on Edge.
+ * Node runtime: HMAC + Postgres + Inngest. Do not run on Edge.
  */
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { inngest } from "@/inngest/client";
+import {
+  captureGhlWebhookHeaders,
+  GHL_OPPORTUNITY_WON_EVENT,
+  ghlOpportunityIdempotencyKey,
+  normalizeGhlOpportunityPayload,
+  peekGhlOpportunityId,
+  verifyGhlWebhookRequest,
+} from "@/server/ghl/ingress";
+import { parseGhlOpportunityWon } from "@/server/ghl/ingress.schema";
+import { logIncomingWebhook } from "@/server/webhooks/incoming-log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function verifyGhlHmac(
-  rawBody: string,
-  header: string | null,
-  secret: string | undefined,
-): boolean {
-  if (!secret || !header) return false;
-
-  const given = header.replace(/^sha256=/i, "").trim();
-  if (!given) return false;
-
-  const hexExpected = createHmac("sha256", secret)
-    .update(rawBody, "utf8")
-    .digest("hex");
-  const b64Expected = createHmac("sha256", secret)
-    .update(rawBody, "utf8")
-    .digest("base64");
-
-  return signaturesMatch(given, hexExpected) || signaturesMatch(given, b64Expected);
-}
-
-function signaturesMatch(a: string, b: string): boolean {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
-
-function peekOpportunityId(payload: unknown): string {
-  if (!payload || typeof payload !== "object") return "unknown";
-  const root = payload as Record<string, unknown>;
-  const candidates = [
-    root.id,
-    root.opportunityId,
-    root.opportunity_id,
-    asRecord(root.opportunity)?.id,
-    asRecord(root.data)?.id,
-    asRecord(asRecord(root.data)?.opportunity)?.id,
-  ];
-  for (const value of candidates) {
-    if (value !== null && value !== undefined && String(value).length > 0) {
-      return String(value);
-    }
-  }
-  return "unknown";
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-  return value as Record<string, unknown>;
-}
-
-/**
- * GHL custom webhooks vary — unwrap common envelopes into a flat opportunity object
- * that `ghlOpportunitySyncSchema` / Katana mappers already understand.
- */
-function normalizeGhlOpportunityPayload(parsedJson: unknown): Record<string, unknown> {
-  const root = asRecord(parsedJson) ?? {};
-  const nested =
-    asRecord(root.opportunity) ??
-    asRecord(asRecord(root.data)?.opportunity) ??
-    asRecord(root.data) ??
-    root;
-
-  const contact =
-    asRecord(nested.contact) ??
-    asRecord(root.contact) ??
-    asRecord(asRecord(root.data)?.contact) ??
-    undefined;
-
-  const lineItems =
-    nested.line_items ??
-    nested.lineItems ??
-    root.line_items ??
-    root.lineItems;
-
-  return {
-    ...nested,
-    id: nested.id ?? peekOpportunityId(parsedJson),
-    contact: contact ?? nested.contact,
-    line_items: Array.isArray(lineItems) ? lineItems : nested.line_items,
-    status: nested.status ?? nested.opportunity_status ?? root.status,
-    pipeline_id: nested.pipeline_id ?? nested.pipelineId,
-    pipeline_stage_id: nested.pipeline_stage_id ?? nested.pipelineStageId,
-  };
-}
-
 export async function POST(req: Request) {
   const secret = process.env.GHL_WEBHOOK_SECRET;
   const rawBody = await req.text();
-  const signature =
-    req.headers.get("x-ghl-signature") ??
-    req.headers.get("X-GHL-Signature") ??
-    req.headers.get("x-webhook-signature");
 
-  if (!verifyGhlHmac(rawBody, signature, secret)) {
-    return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
+  if (!verifyGhlWebhookRequest(rawBody, req.headers, secret)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  let parsedJson: unknown = null;
+  const headers = captureGhlWebhookHeaders(req.headers);
+
+  let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(rawBody);
   } catch {
+    const idempotencyKey = `ghl-opportunity-won-malformed-${Date.now()}`;
+    try {
+      await logIncomingWebhook({
+        source: "ghl",
+        eventName: GHL_OPPORTUNITY_WON_EVENT,
+        idempotencyKey,
+        payload: {
+          rawBody: rawBody.slice(0, 4000),
+          headers,
+        },
+        status: "failed",
+        errorMessage: "invalid_json",
+      });
+    } catch (error) {
+      console.error("[ghl-webhook] failed to log malformed json", error);
+      return NextResponse.json({ error: "audit_unavailable" }, { status: 503 });
+    }
+
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  const opportunity = normalizeGhlOpportunityPayload(parsedJson);
-  const opportunityId = peekOpportunityId(opportunity);
+  const normalized = normalizeGhlOpportunityPayload(parsedJson);
+  const parsed = parseGhlOpportunityWon(normalized);
+  const opportunityId = parsed.ok ? parsed.data.id : peekGhlOpportunityId(normalized);
+  const idempotencyKey = ghlOpportunityIdempotencyKey(opportunityId);
+
+  if (!parsed.ok) {
+    try {
+      await logIncomingWebhook({
+        source: "ghl",
+        eventName: GHL_OPPORTUNITY_WON_EVENT,
+        idempotencyKey,
+        payload: {
+          raw: parsedJson,
+          headers,
+          normalized,
+        },
+        status: "failed",
+        errorMessage: parsed.error,
+      });
+    } catch (error) {
+      console.error("[ghl-webhook] failed to log invalid payload", error);
+      return NextResponse.json({ error: "audit_unavailable" }, { status: 503 });
+    }
+
+    return NextResponse.json(
+      { error: "invalid_payload", message: parsed.error },
+      { status: 400 },
+    );
+  }
+
+  const eventPayload = {
+    opportunityId: parsed.data.id,
+    contactName: parsed.contactName,
+    opportunityValue: parsed.opportunityValue,
+    lineItems: parsed.data.line_items ?? [],
+    pipelineId: parsed.data.pipeline_id ?? null,
+    pipelineStageId: parsed.data.pipeline_stage_id ?? null,
+    status: parsed.data.status ?? null,
+    contact: parsed.data.contact ?? null,
+    source: parsed.data.source ?? null,
+    opportunity: parsed.data,
+    ingress: {
+      raw: parsedJson,
+      headers,
+    },
+  };
+
+  try {
+    await logIncomingWebhook({
+      source: "ghl",
+      eventName: GHL_OPPORTUNITY_WON_EVENT,
+      idempotencyKey,
+      payload: eventPayload,
+      status: "received",
+    });
+  } catch (error) {
+    console.error("[ghl-webhook] incoming_webhooks insert failed", error);
+    return NextResponse.json({ error: "audit_unavailable" }, { status: 503 });
+  }
 
   try {
     await inngest.send({
-      name: "ghl/opportunity.sync",
-      data: opportunity,
-      id: `ghl-opportunity-${opportunityId}`,
+      name: GHL_OPPORTUNITY_WON_EVENT,
+      data: eventPayload,
+      id: idempotencyKey,
     });
   } catch (error) {
     console.error("[ghl-webhook] inngest send failed", error);
+    try {
+      await logIncomingWebhook({
+        source: "ghl",
+        eventName: GHL_OPPORTUNITY_WON_EVENT,
+        idempotencyKey: `${idempotencyKey}-enqueue-failed`,
+        payload: eventPayload,
+        status: "failed",
+        errorMessage: "inngest_enqueue_failed",
+      });
+    } catch (logError) {
+      console.error("[ghl-webhook] failed to log enqueue error", logError);
+    }
     return NextResponse.json({ error: "enqueue_unavailable" }, { status: 503 });
   }
 
   return NextResponse.json(
-    { accepted: true, opportunityId },
+    {
+      accepted: true,
+      opportunityId: parsed.data.id,
+      event: GHL_OPPORTUNITY_WON_EVENT,
+    },
     { status: 200 },
   );
 }

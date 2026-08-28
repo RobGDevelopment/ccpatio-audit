@@ -1,5 +1,3 @@
-import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { inngest } from "@/inngest/client";
 import {
   createKatanaSalesOrder,
@@ -9,8 +7,11 @@ import {
   mapWooOrderToKatanaSalesOrder,
 } from "@/lib/katana";
 import { sendOhCrapAlert } from "@/server/alerts/oh-crap";
-import { getDb } from "@/server/db/client";
-import { incoming_webhooks } from "@/server/db/schema";
+import { GHL_OPPORTUNITY_WON_EVENT, ghlOpportunityIdempotencyKey } from "@/server/ghl/ingress";
+import {
+  ghlOpportunitySyncSchema,
+  type GhlOpportunitySync,
+} from "@/server/ghl/ingress.schema";
 import {
   canMutateKatanaOrders,
   getOrderPipelineMode,
@@ -18,103 +19,21 @@ import {
   type OrderPipelineMode,
 } from "@/server/pipeline/mode";
 import {
+  logIncomingWebhook,
+  updateIncomingWebhookStatus,
+} from "@/server/webhooks/incoming-log";
+import {
   parseWooOrderWebhook,
   type SkuIngressIssue,
 } from "@/server/woocommerce/ingress.schema";
 
-const ghlContactSchema = z.looseObject({
-  email: z.string().optional(),
-  first_name: z.string().optional(),
-  last_name: z.string().optional(),
-  phone: z.string().optional(),
-  company: z.string().optional(),
-  address_1: z.string().optional(),
-  address_2: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  postal_code: z.string().optional(),
-  country: z.string().optional(),
-});
+export type { GhlOpportunitySync };
+export { ghlOpportunitySyncSchema } from "@/server/ghl/ingress.schema";
 
-const ghlLineItemSchema = z.looseObject({
-  sku: z.string().trim().min(1),
-  quantity: z.number().positive(),
-  price_per_unit: z.union([z.string(), z.number()]).optional(),
-  name: z.string().optional(),
-});
-
-export const ghlOpportunitySyncSchema = z.looseObject({
-  id: z.union([z.string(), z.number()]).transform(String),
-  name: z.string().optional(),
-  pipeline_id: z.string().optional(),
-  pipeline_stage_id: z.string().optional(),
-  status: z.string().optional(),
-  contact_id: z.string().optional(),
-  monetary_value: z.union([z.string(), z.number()]).optional(),
-  source: z.string().optional(),
-  contact: ghlContactSchema.optional(),
-  line_items: z.array(ghlLineItemSchema).optional(),
-});
-
-export type GhlOpportunitySync = z.infer<typeof ghlOpportunitySyncSchema>;
-
-type WebhookLogInput = {
-  source: "woocommerce" | "ghl";
-  eventName: string;
-  idempotencyKey: string;
-  payload: unknown;
-  status: "received" | "processed" | "failed" | "duplicate";
-  errorMessage?: string;
-};
-
-async function logIncomingWebhook(input: WebhookLogInput): Promise<"inserted" | "duplicate"> {
-  const db = getDb();
-
-  const [existing] = await db
-    .select({ id: incoming_webhooks.id })
-    .from(incoming_webhooks)
-    .where(eq(incoming_webhooks.idempotency_key, input.idempotencyKey))
-    .limit(1);
-
-  if (existing) {
-    await db
-      .update(incoming_webhooks)
-      .set({
-        status: "duplicate",
-        error_message: "Duplicate idempotency key",
-        updated_at: new Date(),
-      })
-      .where(eq(incoming_webhooks.id, existing.id));
-    return "duplicate";
-  }
-
-  await db.insert(incoming_webhooks).values({
-    source: input.source,
-    event_name: input.eventName,
-    idempotency_key: input.idempotencyKey,
-    payload: input.payload as object,
-    status: input.status,
-    error_message: input.errorMessage ?? null,
-    updated_at: new Date(),
-  });
-
-  return "inserted";
-}
-
-async function updateIncomingWebhookStatus(
-  idempotencyKey: string,
-  status: "processed" | "failed",
-  errorMessage?: string,
-): Promise<void> {
-  const db = getDb();
-  await db
-    .update(incoming_webhooks)
-    .set({
-      status,
-      error_message: errorMessage ?? null,
-      updated_at: new Date(),
-    })
-    .where(eq(incoming_webhooks.idempotency_key, idempotencyKey));
+function ghlEventOpportunityPayload(data: unknown): unknown {
+  if (!data || typeof data !== "object") return data;
+  const record = data as Record<string, unknown>;
+  return record.opportunity ?? data;
 }
 
 function formatIssues(issues: SkuIngressIssue[]): string {
@@ -287,17 +206,18 @@ export const processWooCommerceOrder = inngest.createFunction(
 export const syncGhlOpportunity = inngest.createFunction(
   {
     id: "sync-ghl-opportunity",
-    name: "Sync GHL Opportunity",
-    triggers: [{ event: "ghl/opportunity.sync" }],
+    name: "Process GHL Opportunity Won",
+    triggers: [{ event: GHL_OPPORTUNITY_WON_EVENT }],
     onFailure: async ({ error, event }) => {
-      const data = event.data.event?.data as {
+      const data = ghlEventOpportunityPayload(event.data.event?.data) as {
         id?: unknown;
         line_items?: unknown;
+        opportunity?: { id?: unknown; line_items?: unknown };
       } | undefined;
       await alertPipelineFailure({
         reason: "unknown",
         source: "ghl",
-        externalId: String(data?.id ?? "unknown"),
+        externalId: String(data?.id ?? data?.opportunity?.id ?? "unknown"),
         sku: firstSkuFromPayload(data),
         message: error.message,
         rawPayload: event.data,
@@ -306,18 +226,23 @@ export const syncGhlOpportunity = inngest.createFunction(
   },
   async ({ event, step }) => {
     const mode: OrderPipelineMode = getOrderPipelineMode();
-    const parsed = ghlOpportunitySyncSchema.safeParse(event.data);
+    const opportunityPayload = ghlEventOpportunityPayload(event.data);
+    const parsed = ghlOpportunitySyncSchema.safeParse(opportunityPayload);
     const opportunityId = parsed.success
       ? parsed.data.id
-      : String((event.data as { id?: unknown })?.id ?? "unknown");
-    const idempotencyKey = `ghl-opportunity-${opportunityId}`;
+      : String(
+          (opportunityPayload as { id?: unknown })?.id ??
+            (event.data as { opportunityId?: unknown })?.opportunityId ??
+            "unknown",
+        );
+    const idempotencyKey = ghlOpportunityIdempotencyKey(opportunityId);
 
     if (!parsed.success) {
       await step.run("log-invalid-ghl-opportunity", async () => {
         await logIncomingWebhook({
           source: "ghl",
           eventName: event.name,
-          idempotencyKey,
+          idempotencyKey: `${idempotencyKey}-worker-invalid`,
           payload: event.data,
           status: "failed",
           errorMessage: parsed.error.message,
@@ -331,25 +256,6 @@ export const syncGhlOpportunity = inngest.createFunction(
         });
       });
       return { ok: false, reason: "validation_failed", pipelineMode: mode };
-    }
-
-    const logResult = await step.run("log-ghl-opportunity", async () =>
-      logIncomingWebhook({
-        source: "ghl",
-        eventName: event.name,
-        idempotencyKey,
-        payload: parsed.data,
-        status: "received",
-      }),
-    );
-
-    if (logResult === "duplicate") {
-      return {
-        ok: true,
-        duplicate: true,
-        opportunityId: parsed.data.id,
-        pipelineMode: mode,
-      };
     }
 
     const salesOrderPayload = mapGhlOpportunityToKatanaSalesOrder(parsed.data);

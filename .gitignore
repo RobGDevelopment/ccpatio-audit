@@ -36,3 +36,5 @@ next-env.d.ts
 
 # quarantined legacy bloat (local only — not tracked)
 _ARCHIVE_TO_REMOVE_/
+
+.vercel
