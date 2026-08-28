@@ -447,6 +447,7 @@ export function useSequenceController() {
       st.resetJourneyProgress();
       st.setLeadScenario(null);
       st.setCanvasEdgesMuted(true);
+      st.setScenarioModalOpen(false);
       useTopologyStore.setState({
         stepIndex: 0,
         playbackState: "idle",
@@ -468,6 +469,7 @@ export function useSequenceController() {
       st.clearCinematicVisuals();
       st.resetJourneyProgress();
       st.setCanvasEdgesMuted(true);
+      st.setScenarioModalOpen(false);
 
       const mounted = new Set(st.graphNodes.map((n) => n.id));
       const steps = buildScenarioSequenceSteps(scenarioId, mounted);
@@ -477,7 +479,6 @@ export function useSequenceController() {
       }
 
       void (async () => {
-        st.setCanvasEdgesMuted(false);
         st.setPlaybackState("playing");
         let previousNodeId: string | null = null;
         for (let i = 0; i < steps.length; i++) {

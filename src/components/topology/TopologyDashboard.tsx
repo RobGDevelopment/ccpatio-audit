@@ -60,6 +60,10 @@ import {
   buildScenarioSequenceSteps,
   type LeadScenarioId,
 } from "./topology-scenarios";
+import {
+  collectScenarioVisibleEdgeIds,
+  muteEdgesForCanvas,
+} from "./scenarioEdgePolicy";
 import { buildCustomSequence } from "./journeyBuilder";
 import {
   saveLayout,
@@ -170,8 +174,6 @@ function MovieModeBar({
 
 function TopologyCanvas() {
   const [mounted, setMounted] = useState(false);
-  const [scenarioModalOpen, setScenarioModalOpen] = useState(false);
-  const playButtonRef = useRef<HTMLButtonElement>(null);
   const isHydrated = useRef(false);
   const [nodes, setNodes, onNodesChange] = useNodesState(lifecycleNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(lifecycleEdges);
@@ -200,6 +202,14 @@ function TopologyCanvas() {
   const focusPresetId = useTopologyStore((s) => s.focusPresetId);
   const walkthroughId = useTopologyStore((s) => s.walkthroughId);
   const leadScenarioId = useTopologyStore((s) => s.leadScenarioId);
+  const scenarioModalOpen = useTopologyStore((s) => s.scenarioModalOpen);
+  const setScenarioModalOpen = useTopologyStore((s) => s.setScenarioModalOpen);
+  const canvasEdgesMuted = useTopologyStore((s) => s.canvasEdgesMuted);
+  const setCanvasEdgesMuted = useTopologyStore((s) => s.setCanvasEdgesMuted);
+  const travelEdgeIds = useTopologyStore((s) => s.travelEdgeIds);
+  const trailEdgeIds = useTopologyStore((s) => s.trailEdgeIds);
+  const feederEdgeIds = useTopologyStore((s) => s.feederEdgeIds);
+  const retractingEdgeIds = useTopologyStore((s) => s.retractingEdgeIds);
   const graphNodes = useTopologyStore((s) => s.graphNodes);
   const processLinksByWalkthrough = useTopologyStore(
     (s) => s.processLinksByWalkthrough
@@ -661,6 +671,30 @@ function TopologyCanvas() {
     playMovie();
   }, [journeyBuilder, playMovie]);
 
+  useEffect(() => {
+    setCanvasEdgesMuted(true);
+  }, [setCanvasEdgesMuted]);
+
+  const flowEdges = useMemo(() => {
+    if (!canvasEdgesMuted) return edges;
+    const visible = collectScenarioVisibleEdgeIds({
+      travelEdgeIds,
+      trailEdgeIds,
+      feederEdgeIds,
+      retractingEdgeIds,
+      pendingFeederEdges,
+    });
+    return muteEdgesForCanvas(edges, visible);
+  }, [
+    edges,
+    canvasEdgesMuted,
+    travelEdgeIds,
+    trailEdgeIds,
+    feederEdgeIds,
+    retractingEdgeIds,
+    pendingFeederEdges,
+  ]);
+
   const handleScenarioSelect = useCallback(
     (scenarioId: LeadScenarioId) => {
       setScenarioModalOpen(false);
@@ -701,7 +735,6 @@ function TopologyCanvas() {
       ) : (
         <DashboardHeader
           progress={progress}
-          onPlay={() => setScenarioModalOpen(true)}
           onResetScenario={handleResetScenario}
           scenarioActive={
             leadScenarioId != null ||
@@ -713,6 +746,14 @@ function TopologyCanvas() {
           onResetPlayback={resetPlayback}
         />
       )}
+
+      {!movieMode ? (
+        <ScenarioSelectorModal
+          open={scenarioModalOpen}
+          onClose={() => setScenarioModalOpen(false)}
+          onSelect={handleScenarioSelect}
+        />
+      ) : null}
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {controlPlaneView === "gantt" && !movieMode ? (
@@ -736,7 +777,7 @@ function TopologyCanvas() {
             <ConnectionMapPanel />
             <ReactFlow
               nodes={nodes}
-              edges={edges}
+              edges={flowEdges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               nodeTypes={nodeTypes}
@@ -773,15 +814,8 @@ function TopologyCanvas() {
               className="topology-flow !h-full !w-full"
               defaultEdgeOptions={
                 (operationalTasks.length > 0
-                  ? operationalLayoutEngine === "elk" ||
-                    operationalLayoutEngine === "dagre"
-                    ? {
-                        type: "smoothstep",
-                        pathOptions: { borderRadius: 12 },
-                        zIndex: 0,
-                      }
-                    : { type: "beam", zIndex: 0 }
-                  : { type: "trunkBus", zIndex: 0 }) as DefaultEdgeOptions
+                  ? { type: "beam", zIndex: 0, animated: false }
+                  : { type: "trunkBus", zIndex: 0, animated: false }) as DefaultEdgeOptions
               }
               elevateNodesOnSelect
             >
@@ -817,12 +851,6 @@ function TopologyCanvas() {
             </AnimatePresence>
 
             <StoryCardPanel />
-            <ScenarioSelectorModal
-              open={scenarioModalOpen}
-              onClose={() => setScenarioModalOpen(false)}
-              onSelect={handleScenarioSelect}
-              returnFocusRef={playButtonRef}
-            />
           </>
         )}
         <RightSidebar />

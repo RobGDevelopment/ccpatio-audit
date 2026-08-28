@@ -23,6 +23,12 @@ import { DORMANT_STROKE, DORMANT_WIDTH, ignitionForTarget } from "./zoneTheme";
 import { isDataCable, zoneOfNode } from "./utilityTypes";
 import type { BeamEdgeData } from "./BeamEdge";
 import {
+  SCENARIO_CYAN,
+  SCENARIO_RED,
+  isScenarioEdgeLit,
+  scenarioEdgeStroke,
+} from "./scenarioEdgePolicy";
+import {
   CIRCUIT_PULSE_CLASS,
   SNAKE_HEAD_DASH,
   SNAKE_HEAD_PARTICLE_R,
@@ -53,21 +59,29 @@ function TrunkBusEdgeComponent({
   const activeTravelMs = useTopologyStore((s) => s.activeTravelMs);
   const externalActive = useTopologyStore((s) => s.externalActive);
   const returnActive = useTopologyStore((s) => s.returnActive);
+  const retractingEdgeIds = useTopologyStore((s) => s.retractingEdgeIds);
+  const feederEdgeIds = useTopologyStore((s) => s.feederEdgeIds);
+  const pendingFeederEdges = useTopologyStore((s) => s.pendingFeederEdges);
+  const canvasEdgesMuted = useTopologyStore((s) => s.canvasEdgesMuted);
+
+  const isCompleted = trailEdgeIds.includes(id);
+  const isActive = travelEdgeIds.includes(id);
+  const isReturn = returnActive && isActive;
+
+  const scenarioLit = isScenarioEdgeLit(id, {
+    travelEdgeIds,
+    trailEdgeIds,
+    feederEdgeIds,
+    retractingEdgeIds,
+    pendingFeederEdges,
+  });
+  const isHidden = canvasEdgesMuted && !scenarioLit;
 
   const cable = isDataCable(id, data?.cable);
   const ignite = ignitionForTarget(target);
   const sz = zoneOfNode(source);
   const tz = zoneOfNode(target);
   void (data?.interZone ?? !(sz && tz && sz === tz));
-
-  const isCompleted = trailEdgeIds.includes(id);
-  const isActive = travelEdgeIds.includes(id);
-  const isReturn = returnActive && isActive;
-
-  const canvasEdgesMuted = useTopologyStore((s) => s.canvasEdgesMuted);
-  if (canvasEdgesMuted && !isActive && !isCompleted) {
-    return null;
-  }
 
   const [fwdPath, labelX, labelY] = getTrunkBusPath(
     sourceX,
@@ -108,13 +122,28 @@ function TrunkBusEdgeComponent({
   const dashFrom = rtl ? -48 : 0;
   const dashTo = rtl ? 48 : -48;
 
-  let stroke = "#22d3ee";
+  let stroke = SCENARIO_CYAN;
   let width = DORMANT_WIDTH;
-  let opacity = data?.mutedBus ? 0.2 : 0.38;
-  let glow: string | undefined = "rgba(34,211,238,0.25)";
+  let opacity = 0;
+  let glow: string | undefined = undefined;
   let dash: string | undefined = cable ? "10 7" : undefined;
 
-  if (isCompleted) {
+  if (isHidden) {
+    opacity = 0;
+    glow = undefined;
+  } else if (scenarioLit) {
+    opacity = isCompleted ? 0.88 : 0.95;
+    width = isActive || isCompleted ? 2.4 : 2;
+    stroke = scenarioEdgeStroke(id, source, target, graphNodes, {
+      satellite: data?.satellite,
+      mapKind: data?.mapKind,
+    });
+    glow =
+      stroke === SCENARIO_RED
+        ? "rgba(239,68,68,0.55)"
+        : "rgba(6,182,212,0.55)";
+    dash = undefined;
+  } else if (isCompleted) {
     const paint = circuitTrailPaint(JOURNEY_COLORS[journeyId], circuitComplete);
     stroke = paint.stroke;
     width = paint.strokeWidth;
@@ -135,7 +164,14 @@ function TrunkBusEdgeComponent({
     : SNAKE_HEAD_PARTICLE_R + 0.5;
 
   return (
-    <>
+    <g
+      aria-hidden={isHidden}
+      style={
+        isHidden
+          ? { opacity: 0, visibility: "hidden", pointerEvents: "none" }
+          : undefined
+      }
+    >
       <path
         ref={pathRef}
         d={edgePath}
@@ -162,7 +198,7 @@ function TrunkBusEdgeComponent({
         />
       </g>
 
-      {isActive ? (
+      { !isHidden && isActive ? (
         <g key={`snake-head-${travelKey}-${id}`}>
           <motion.path
             d={edgePath}
@@ -210,7 +246,7 @@ function TrunkBusEdgeComponent({
         </g>
       ) : null}
 
-      {data?.label && (isActive || isCompleted) ? (
+      {!isHidden && data?.label && (isActive || isCompleted) ? (
         <EdgeLabelRenderer>
           <div
             className="nodrag nopan pointer-events-none absolute rounded border border-slate-800 bg-slate-950/95 px-1.5 py-0.5 font-[family-name:var(--font-plex-mono)] text-[9px] uppercase tracking-[0.14em]"
@@ -224,7 +260,7 @@ function TrunkBusEdgeComponent({
           </div>
         </EdgeLabelRenderer>
       ) : null}
-    </>
+    </g>
   );
 }
 

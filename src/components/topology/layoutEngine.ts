@@ -76,10 +76,10 @@ function makeOperationalEdge(
     target,
     sourceHandle,
     targetHandle,
-    type: "smoothstep",
-    data: { operational: true, crossZone, spine },
-    style: operationalEdgeStyle(crossZone, spine),
-    pathOptions: { borderRadius: OPERATIONAL_EDGE_RADIUS },
+    type: "beam",
+    data: { operational: true, crossZone, spine, mutedBus: true },
+    animated: false,
+    style: { opacity: 0, strokeOpacity: 0 },
   } as Edge;
 }
 

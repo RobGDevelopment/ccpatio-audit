@@ -39,7 +39,7 @@ export function ScenarioSelectorModal({
 
   return (
     <div
-      className="pointer-events-auto fixed inset-0 z-[60] flex items-center justify-center p-4"
+      className="pointer-events-auto fixed inset-0 z-[250] flex items-center justify-center p-4"
       role="presentation"
     >
       <button

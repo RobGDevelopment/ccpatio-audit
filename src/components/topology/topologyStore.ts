@@ -91,6 +91,8 @@ export type TopologyStore = {
   leadScenarioId: LeadScenarioId | null;
   /** Hide dormant canvas edges until scenario playback illuminates paths. */
   canvasEdgesMuted: boolean;
+  /** Lead-source scenario selector modal */
+  scenarioModalOpen: boolean;
   heldTaskIds: string[];
   blankSlotConfigs: Record<string, BlankSlotConfig>;
   rightSidebarOpen: boolean;
@@ -205,6 +207,7 @@ export type TopologyStore = {
   setWalkthrough: (id: WalkthroughId | null) => void;
   setLeadScenario: (id: LeadScenarioId | null) => void;
   setCanvasEdgesMuted: (muted: boolean) => void;
+  setScenarioModalOpen: (open: boolean) => void;
   processLinksForActive: () => ProcessLink[];
   addProcessLink: (
     source: string,
@@ -350,6 +353,7 @@ export const useTopologyStore = create<TopologyStore>()(
   walkthroughId: null,
   leadScenarioId: null,
   canvasEdgesMuted: true,
+  scenarioModalOpen: false,
   heldTaskIds: [],
   blankSlotConfigs: {},
   rightSidebarOpen: false,
@@ -704,6 +708,7 @@ export const useTopologyStore = create<TopologyStore>()(
       canvasEdgesMuted: true,
     }),
   setCanvasEdgesMuted: (muted) => set({ canvasEdgesMuted: muted }),
+  setScenarioModalOpen: (open) => set({ scenarioModalOpen: open }),
   processLinksForActive: () => {
     const { walkthroughId, processLinksByWalkthrough } = get();
     if (!walkthroughId) return [];

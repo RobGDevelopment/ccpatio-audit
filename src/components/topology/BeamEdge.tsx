@@ -32,6 +32,12 @@ import {
   circuitTrailPaint,
   useSnakePathTiming,
 } from "./snakeTrail";
+import {
+  SCENARIO_CYAN,
+  SCENARIO_RED,
+  isScenarioEdgeLit,
+  scenarioEdgeStroke,
+} from "./scenarioEdgePolicy";
 
 export type BeamEdgeData = {
   label?: string;
@@ -79,7 +85,18 @@ function BeamEdgeComponent({
   const retractingIds = useTopologyStore((s) => s.retractingEdgeIds);
   const feederEdgeIds = useTopologyStore((s) => s.feederEdgeIds);
   const pendingFeederEdges = useTopologyStore((s) => s.pendingFeederEdges);
+  const canvasEdgesMuted = useTopologyStore((s) => s.canvasEdgesMuted);
+  const leadScenarioId = useTopologyStore((s) => s.leadScenarioId);
   const selectedMapNodeId = useTopologyStore((s) => s.selectedMapNodeId);
+
+  const scenarioLit = isScenarioEdgeLit(id, {
+    travelEdgeIds,
+    trailEdgeIds,
+    feederEdgeIds,
+    retractingEdgeIds: retractingIds,
+    pendingFeederEdges,
+  });
+  const isHidden = canvasEdgesMuted && !scenarioLit;
 
   const satellite = Boolean(data?.satellite);
   const cable = isDataCable(id, data?.cable);
@@ -121,14 +138,30 @@ function BeamEdgeComponent({
       ? ignitionForTarget(source)
       : ignite;
 
-  let baseStroke = "#22d3ee";
+  let baseStroke = SCENARIO_CYAN;
   let baseWidth = DORMANT_WIDTH;
-  let baseOpacity = data?.mutedBus ? 0.2 : 0.38;
-  let baseGlow: string | undefined = "rgba(34,211,238,0.25)";
+  let baseOpacity = 0;
+  let baseGlow: string | undefined = undefined;
   let baseDash: string | undefined = cable ? "8 6" : undefined;
 
-  if (satellite) {
-    baseStroke = "#ef4444";
+  if (isHidden) {
+    baseOpacity = 0;
+    baseGlow = undefined;
+  } else if (scenarioLit) {
+    baseOpacity = satellite ? 0.92 : isCompleted ? 0.88 : 0.95;
+    baseWidth = satellite ? 2.6 : isActive || isCompleted ? 2.4 : 2;
+    const stroke = scenarioEdgeStroke(id, source, target, graphNodes, {
+      satellite,
+      mapKind: data?.mapKind,
+    });
+    baseStroke = stroke;
+    baseGlow =
+      stroke === SCENARIO_RED
+        ? "rgba(239,68,68,0.55)"
+        : "rgba(6,182,212,0.55)";
+    baseDash = undefined;
+  } else if (satellite) {
+    baseStroke = SCENARIO_RED;
     baseWidth = 2;
     baseOpacity = isActive || isRetracting ? 0.55 : 0.42;
     baseDash = undefined;
@@ -145,7 +178,7 @@ function BeamEdgeComponent({
     baseDash = undefined;
   }
 
-  if (selectedMapNodeId) {
+  if (selectedMapNodeId && !leadScenarioId) {
     const mapped =
       source === selectedMapNodeId || target === selectedMapNodeId;
     if (mapped) {
@@ -156,28 +189,21 @@ function BeamEdgeComponent({
     }
   }
 
-  const canvasEdgesMuted = useTopologyStore((s) => s.canvasEdgesMuted);
-  const isFeeder = feederEdgeIds.includes(id);
-  const isPendingFeeder = pendingFeederEdges.some((e) => e.id === id);
-  const scenarioVisible =
-    isActive ||
-    isRetracting ||
-    isCompleted ||
-    isFeeder ||
-    isPendingFeeder ||
-    satellite;
-  if (canvasEdgesMuted && !scenarioVisible) {
-    return null;
-  }
-
   const headW = externalActive ? SNAKE_HEAD_WIDTH - 0.5 : SNAKE_HEAD_WIDTH;
   const particleR = externalActive
     ? SNAKE_HEAD_PARTICLE_R - 1.5
     : SNAKE_HEAD_PARTICLE_R;
-  const showHead = isActive || isRetracting;
+  const showHead = !isHidden && (isActive || isRetracting);
 
   return (
-    <>
+    <g
+      aria-hidden={isHidden}
+      style={
+        isHidden
+          ? { opacity: 0, visibility: "hidden", pointerEvents: "none" }
+          : undefined
+      }
+    >
       <path
         ref={pathRef}
         d={edgePath}
@@ -294,7 +320,7 @@ function BeamEdgeComponent({
         />
       ) : null}
 
-      {data?.label && (isActive || isCompleted || isRetracting) ? (
+      {!isHidden && data?.label && (isActive || isCompleted || isRetracting) ? (
         <EdgeLabelRenderer>
           <div
             className="nodrag nopan pointer-events-none absolute rounded border border-slate-800 bg-slate-950 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em]"
@@ -308,7 +334,7 @@ function BeamEdgeComponent({
           </div>
         </EdgeLabelRenderer>
       ) : null}
-    </>
+    </g>
   );
 }
 

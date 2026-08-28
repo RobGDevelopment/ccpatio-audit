@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { JOURNEY_COLORS, type JourneyId } from "./sequences";
 import { useTopologyStore } from "./topologyStore";
@@ -9,7 +9,6 @@ import { WALKTHROUGH_OPTIONS } from "./ghlPipelines";
 
 type Props = {
   progress: number;
-  onPlay: () => void;
   onResetScenario?: () => void;
   scenarioActive?: boolean;
   onPause: () => void;
@@ -19,7 +18,6 @@ type Props = {
 
 export function DashboardHeader({
   progress,
-  onPlay,
   onResetScenario,
   scenarioActive = false,
   onPause,
@@ -30,7 +28,9 @@ export function DashboardHeader({
   const journeyId = useTopologyStore((s) => s.journeyId);
   const walkthroughId = useTopologyStore((s) => s.walkthroughId);
   const setWalkthrough = useTopologyStore((s) => s.setWalkthrough);
+  const setScenarioModalOpen = useTopologyStore((s) => s.setScenarioModalOpen);
   const stepIndex = useTopologyStore((s) => s.stepIndex);
+  const playButtonRef = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const color = JOURNEY_COLORS[journeyId];
@@ -134,7 +134,11 @@ export function DashboardHeader({
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            onClick={onPlay}
+            ref={playButtonRef}
+            onClick={() => {
+              if (playbackState === "playing") return;
+              setScenarioModalOpen(true);
+            }}
             disabled={playbackState === "playing"}
             className="rounded-lg border border-cyan-500/45 bg-cyan-500/12 px-3 py-1.5 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-500/22 disabled:opacity-40"
             title="Run buyer journey scenario"
