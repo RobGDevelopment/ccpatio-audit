@@ -7,6 +7,12 @@ import {
   STATUS_STYLES,
   type LaunchpadModule,
 } from "@/lib/launchpad-modules";
+import { cn } from "@/lib/utils";
+
+const HIGHLIGHTED_PIM_TITLES = new Set([
+  "Global SKU Dictionary",
+  "Raw Materials Catalog",
+]);
 
 type ExecutiveLaunchpadProps = {
   operatorEmail: string;
@@ -15,9 +21,17 @@ type ExecutiveLaunchpadProps = {
 
 function ModuleCard({ module }: { module: LaunchpadModule }) {
   const isExternal = module.href.startsWith("/api/");
+  const isHighlighted = HIGHLIGHTED_PIM_TITLES.has(module.title);
 
   const card = (
-    <article className="group pim-glass flex h-full flex-col rounded-xl p-5 transition hover:border-emerald-500/30 hover:bg-slate-950/60">
+    <article
+      className={cn(
+        "group pim-glass flex h-full flex-col rounded-xl p-5 transition",
+        isHighlighted
+          ? "border-cyan-500/60 shadow-[0_0_20px_rgba(6,182,212,0.3)] animate-[pulse_3s_ease-in-out_infinite]"
+          : "hover:border-emerald-500/30 hover:bg-slate-950/60",
+      )}
+    >
       <div className="mb-3 flex items-start justify-between gap-3">
         <h3 className="text-lg font-semibold tracking-tight text-slate-100 group-hover:text-emerald-200">
           {module.title}
