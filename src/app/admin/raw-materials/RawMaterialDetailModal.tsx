@@ -11,10 +11,11 @@ import { patchAttributeField } from "@/app/admin/dictionary/actions";
 import {
   buildAllProductFieldDescriptors,
   calculateRowHealth,
-  isNaToken,
-  type ProductFieldDescriptor,
 } from "@/app/admin/dictionary/pim-catalog-utils";
 import { getOperatorName } from "@/app/admin/dictionary/InlineCells";
+import {
+  SmartFieldInput,
+} from "@/app/admin/shared/SmartFieldInput";
 import { validateRawMaterialCost, patchFieldToModalKey } from "@/server/pim/patch-validation";
 import { setAttributePath } from "@/server/pim/attributes/schemas";
 import { updateRawMaterial, type RawMaterialRow } from "./actions";
@@ -262,6 +263,9 @@ export function RawMaterialDetailModal({
             </Field>
             <Field label="Cost / unit">
               <input
+                type="number"
+                step="0.01"
+                min="0"
                 value={coreDraft.costPerUnit}
                 onChange={(e) => {
                   setCoreDraft((p) => ({ ...p, costPerUnit: e.target.value }));
@@ -275,7 +279,6 @@ export function RawMaterialDetailModal({
                   fieldErrors.base_cost ? "pim-input-missing" : ""
                 }`}
                 disabled={isPending}
-                inputMode="decimal"
               />
               {fieldErrors.base_cost ? (
                 <p className="mt-1 text-[11px] text-rose-400">
@@ -292,7 +295,7 @@ export function RawMaterialDetailModal({
               </h3>
               <div className="space-y-3">
                 {fields.map((field) => (
-                  <AttrFieldRow
+                  <SmartFieldInput
                     key={field.key}
                     field={field}
                     value={drafts[field.key] ?? field.initialValue}
@@ -362,58 +365,6 @@ function Field({
       </span>
       {children}
     </label>
-  );
-}
-
-function AttrFieldRow({
-  field,
-  value,
-  disabled,
-  fieldError,
-  onChange,
-  onMarkNa,
-}: {
-  field: ProductFieldDescriptor;
-  value: string;
-  disabled: boolean;
-  fieldError?: string;
-  onChange: (value: string) => void;
-  onMarkNa: () => void;
-}) {
-  const looksNa = isNaToken(value);
-  const isEmpty = !looksNa && !value.trim();
-
-  return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-      <span className="min-w-[7rem] shrink-0 pt-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
-        {field.label}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <input
-            value={value}
-            disabled={disabled}
-            onChange={(e) => onChange(e.target.value)}
-            className={`pim-input min-w-0 flex-1 py-2 text-sm ${
-              looksNa ? "pim-input-na" : ""
-            } ${
-              (field.isMissing && isEmpty) || fieldError ? "pim-input-missing" : ""
-            }`}
-          />
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={onMarkNa}
-            className="shrink-0 rounded border border-slate-700/60 px-2 py-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 transition hover:border-slate-600 hover:text-slate-300 disabled:opacity-50"
-          >
-            Mark N/A
-          </button>
-        </div>
-        {fieldError ? (
-          <p className="mt-1 text-[11px] text-rose-400">{fieldError}</p>
-        ) : null}
-      </div>
-    </div>
   );
 }
 

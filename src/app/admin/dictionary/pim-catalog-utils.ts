@@ -468,6 +468,21 @@ export function buildAllProductFieldDescriptors(
   return descriptors;
 }
 
+/** Attribute + core field descriptors for raw-material creation (all required = missing). */
+export function buildRawMaterialCreationFields(category: string): ProductFieldDescriptor[] {
+  return buildAllProductFieldDescriptors({
+    category,
+    itemType: "raw_material",
+    originalName: "",
+    globalSku: "",
+    uomPurchase: "",
+    uomConsume: "",
+    baseCost: "",
+    attributes: {},
+    catalog: null,
+  }).filter((field) => field.section === "attribute");
+}
+
 export type BatchCompletionStats = {
   label: string;
   total: number;

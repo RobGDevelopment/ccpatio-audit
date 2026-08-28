@@ -161,6 +161,16 @@ body {
   box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.35) !important;
 }
 
+.pim-input-valid {
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  background: rgba(16, 185, 129, 0.05) !important;
+}
+
+.pim-input-valid:focus {
+  border-color: rgba(16, 185, 129, 0.65) !important;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25) !important;
+}
+
 .pim-input:disabled {
   color: #64748b;
   cursor: not-allowed;

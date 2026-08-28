@@ -16,7 +16,14 @@ import {
   buildRawMaterialSkuBase,
   nextAvailableSku,
 } from "@/lib/raw-material-sku";
-import { validateRawMaterialCost } from "@/server/pim/patch-validation";
+import {
+  validateAttributeFieldPatch,
+  validateRawMaterialCost,
+} from "@/server/pim/patch-validation";
+import {
+  parseCategoryAttributes,
+  setAttributePath,
+} from "@/server/pim/attributes";
 import { getDb } from "@/server/db/client";
 import {
   product_bom,
@@ -46,6 +53,8 @@ export type RawMaterialInput = {
   category: string;
   unitOfMeasure: string;
   costPerUnit?: string;
+  /** Attribute path → string value (including N/A). */
+  attributes?: Record<string, string>;
 };
 
 export type RawMaterialMutationResult =
@@ -96,6 +105,29 @@ function validateInput(input: RawMaterialInput, skuRequired = false): string | n
   const costCheck = validateRawMaterialCost(input.costPerUnit ?? "");
   if (costCheck) {
     return costCheck.message;
+  }
+  return null;
+}
+
+function validateCreationAttributes(
+  category: string,
+  attributes: Record<string, string> | undefined,
+): string | null {
+  if (!attributes) return null;
+  let current: Record<string, unknown> = {};
+  for (const [path, raw] of Object.entries(attributes)) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return `Attribute ${path} is required (or mark N/A).`;
+    }
+    const err = validateAttributeFieldPatch({
+      category,
+      path,
+      value: trimmed,
+      currentAttributes: current,
+    });
+    if (err) return err.message;
+    current = setAttributePath(current, path, trimmed);
   }
   return null;
 }
@@ -425,6 +457,15 @@ async function upsertMappingAndCatalog(
   const cost = parseCost(input.costPerUnit);
   const now = new Date();
 
+  let parsedAttributes: Record<string, unknown> = {};
+  if (input.attributes) {
+    let acc: Record<string, unknown> = {};
+    for (const [path, raw] of Object.entries(input.attributes)) {
+      acc = setAttributePath(acc, path, raw.trim() || null);
+    }
+    parsedAttributes = parseCategoryAttributes(category, acc);
+  }
+
   return db.transaction(async (tx) => {
     const [mapping] = await tx
       .insert(sku_mappings)
@@ -438,6 +479,7 @@ async function upsertMappingAndCatalog(
         uom_purchase: uom,
         uom_consume: uom,
         base_cost: cost,
+        attributes: parsedAttributes,
         version: 1,
         updated_at: now,
       })
@@ -450,6 +492,7 @@ async function upsertMappingAndCatalog(
           uom_purchase: uom,
           uom_consume: uom,
           base_cost: cost,
+          attributes: parsedAttributes,
           version:
             existingVersion !== undefined
               ? existingVersion + 1
@@ -495,6 +538,14 @@ export async function createRawMaterial(
   const validationError = validateInput(input, false);
   if (validationError) {
     return { ok: false, error: validationError };
+  }
+
+  const attrError = validateCreationAttributes(
+    input.category,
+    input.attributes,
+  );
+  if (attrError) {
+    return { ok: false, error: attrError };
   }
 
   try {
