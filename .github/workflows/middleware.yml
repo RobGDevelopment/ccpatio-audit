@@ -1,0 +1,43 @@
+name: pim-dictionary
+
+on:
+  push:
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "next.config.ts"
+      - "drizzle.config.ts"
+      - "vitest.config.ts"
+      - ".github/workflows/middleware.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "next.config.ts"
+      - "drizzle.config.ts"
+      - "vitest.config.ts"
+      - ".github/workflows/middleware.yml"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/ccpatio
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run db:check

@@ -2,8 +2,10 @@
 
 ## Vercel setup
 
+The Next.js app lives at the **repo root** (`src/`, `package.json`, `next.config.ts`). Vercel should **not** use a Root Directory override — leave it blank or `.`.
+
 1. Create a GitHub repo from `ccpatio-audit` and connect it in Vercel.
-2. Set **Root Directory** to `middleware`.
+2. Confirm **Root Directory** is empty (repo root). **Framework Preset** should be **Next.js**.
 3. Add environment variables (Production + Preview):
 
 | Variable | Required | Notes |
@@ -23,12 +25,24 @@ Optional (integration phases):
 
 4. Deploy. First deploy will fail page loads until migrations run.
 
+## Fix Vercel 404 (shows "Ready" in ~4 seconds)
+
+If `ccpatio-audit.vercel.app` shows **404: NOT_FOUND** and the deploy finished in ~4 seconds, Vercel is **not** building the Next.js app.
+
+**Fix:**
+
+1. Vercel Dashboard → **ccpatio-audit** → **Settings** → **General**
+2. **Root Directory** — clear any value (must be repo root, not `middleware`)
+3. **Framework Preset** — **Next.js**
+4. **Deployments** → **⋯** on latest → **Redeploy**
+
+A correct build takes **1–3 minutes** and shows Next.js compile logs for routes `/`, `/admin/dictionary`, `/admin/audit`.
+
 ## Database migrations
 
 From your machine (with production `POSTGRES_URL` in env):
 
 ```bash
-cd middleware
 npm run db:migrate
 ```
 

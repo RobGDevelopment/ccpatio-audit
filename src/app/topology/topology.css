@@ -1,0 +1,261 @@
+/* Topology dashboard — scoped styles (imported by /topology layout only) */
+
+.topology-flow .react-flow__attribution {
+  display: none;
+}
+
+.topology-flow .react-flow__controls-button {
+  background: #020617 !important;
+  border-bottom-color: #334155 !important;
+  fill: #94a3b8 !important;
+}
+
+@keyframes simulation-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 18px 4px rgba(34, 211, 238, 0.65),
+      0 0 36px 8px rgba(34, 211, 238, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 32px 10px rgba(34, 211, 238, 1),
+      0 0 64px 18px rgba(34, 211, 238, 0.45);
+  }
+}
+
+.topology-flow .react-flow__node.simulation-pulse {
+  z-index: 1000 !important;
+}
+
+.topology-flow .react-flow__node.simulation-pulse > div {
+  animation: simulation-pulse 0.8s ease-in-out infinite;
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+@keyframes circuit-trail-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.85))
+      drop-shadow(0 0 16px rgba(34, 211, 238, 0.4));
+  }
+  50% {
+    opacity: 0.68;
+    filter: drop-shadow(0 0 20px rgba(34, 211, 238, 1))
+      drop-shadow(0 0 40px rgba(34, 211, 238, 0.7));
+  }
+}
+
+.topology-flow g.circuit-trail-pulse {
+  animation: circuit-trail-pulse 1.55s ease-in-out infinite;
+}
+
+.topology-flow .react-flow__controls-button:hover {
+  background: #0f172a !important;
+}
+
+/* Dark Grid — pipes behind solid buildings */
+.topology-flow .react-flow__edges {
+  z-index: -10 !important;
+}
+
+.topology-flow .react-flow__edge {
+  z-index: -10 !important;
+}
+
+.topology-flow .react-flow__edge-path {
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+.topology-flow .react-flow__nodes {
+  z-index: 10 !important;
+}
+
+.topology-flow .react-flow__node {
+  background: transparent;
+}
+
+.topology-flow .react-flow__node-zone {
+  z-index: 0 !important;
+  overflow: visible !important;
+}
+
+.topology-flow .react-flow__node-system,
+.topology-flow .react-flow__node-pipeline,
+.topology-flow .react-flow__node-stage,
+.topology-flow .react-flow__node-gateway,
+.topology-flow .react-flow__node-milestone,
+.topology-flow .react-flow__node-socket,
+.topology-flow .react-flow__node-gridTie {
+  z-index: 20 !important;
+}
+
+.topology-flow .react-flow__node-gridTie {
+  z-index: 30 !important;
+}
+
+.topology-flow .react-flow__node-system > div,
+.topology-flow .react-flow__node-pipeline > div,
+.topology-flow .react-flow__node-stage > div {
+  background-color: #020617 !important;
+}
+
+/* ── Gantt Control Plane — Dark Grid / Bloomberg terminal ── */
+.gantt-control-plane.dark-gantt,
+.gantt-control-plane.dark-gantt ._3eULf,
+.gantt-control-plane.dark-gantt ._2dZTy,
+.gantt-control-plane.dark-gantt ._CZjuD,
+.gantt-control-plane.dark-gantt ._2B2zv {
+  background: #020617 !important;
+  color: #94a3b8 !important;
+}
+
+/* Alternating row fills → slate, not white */
+.gantt-control-plane.dark-gantt ._2dZTy {
+  fill: #020617 !important;
+}
+.gantt-control-plane.dark-gantt ._2dZTy:nth-child(even) {
+  fill: #0f172a !important;
+}
+
+/* Grid lines */
+.gantt-control-plane.dark-gantt ._3rUKi,
+.gantt-control-plane.dark-gantt ._RuwuK,
+.gantt-control-plane.dark-gantt ._1rLuZ {
+  stroke: #1e293b !important;
+}
+
+/* Calendar header band */
+.gantt-control-plane.dark-gantt ._35nLX {
+  fill: #020617 !important;
+  stroke: #1e293b !important;
+}
+
+/* Timeline calendar text — readable day labels (not "10Tue") */
+.gantt-control-plane.dark-gantt ._9w8d5,
+.gantt-control-plane.dark-gantt ._2q1Kt {
+  fill: #94a3b8 !important;
+  font-family: var(--font-plex-mono), ui-monospace, monospace !important;
+  font-size: 10px !important;
+  letter-spacing: 0.02em;
+}
+
+/* Task bar labels — high-contrast white + shadow */
+.gantt-control-plane.dark-gantt ._3zRJQ,
+.gantt-control-plane.dark-gantt ._3KcaM {
+  fill: #ffffff !important;
+  font-weight: 600 !important;
+  paint-order: stroke fill;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 2.5px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.85));
+}
+
+/* Milestone diamonds — hollow + glow rim */
+.gantt-control-plane.dark-gantt ._2P2B1 {
+  fill-opacity: 0.2 !important;
+  stroke: #f8fafc !important;
+  stroke-width: 1.75 !important;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.55));
+}
+
+/* Scrollbars — Gantt timeline + WBS grid (Dark Grid) */
+.gantt-control-plane.dark-gantt ._1eT-t::-webkit-scrollbar-thumb,
+.gantt-control-plane.dark-gantt ._2k9Ys::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25) !important;
+  border-color: transparent !important;
+}
+
+.touchpoint-list,
+.hybrid-flow-canvas,
+.task-path-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(71 85 105) transparent;
+}
+.touchpoint-list::-webkit-scrollbar,
+.hybrid-flow-canvas::-webkit-scrollbar,
+.task-path-list::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.touchpoint-list::-webkit-scrollbar-track,
+.hybrid-flow-canvas::-webkit-scrollbar-track,
+.task-path-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.touchpoint-list::-webkit-scrollbar-thumb,
+.hybrid-flow-canvas::-webkit-scrollbar-thumb,
+.task-path-list::-webkit-scrollbar-thumb {
+  background: rgb(71 85 105);
+  border-radius: 4px;
+}
+
+
+/* Pixel-locked WBS rows — inset shadows only (no border-b height leak) */
+.wbs-data-grid .wbs-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.wbs-data-grid .wbs-th {
+  height: inherit;
+  max-height: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  vertical-align: middle;
+  box-sizing: border-box;
+  box-shadow: inset 0 -1px 0 #1e293b;
+  background: #020617;
+}
+.wbs-data-grid thead tr:first-child .wbs-th {
+  background: rgba(15, 23, 42, 0.95);
+}
+.wbs-data-grid .wbs-th-edge {
+  box-shadow:
+    inset 0 -1px 0 #1e293b,
+    inset -1px 0 0 #1e293b;
+}
+.wbs-data-grid .wbs-row {
+  box-sizing: border-box;
+}
+.wbs-data-grid .wbs-td {
+  box-sizing: border-box;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 14px;
+  vertical-align: middle;
+  box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.95);
+}
+.wbs-data-grid .wbs-td-edge {
+  box-shadow:
+    inset 0 -1px 0 rgba(15, 23, 42, 0.95),
+    inset -1px 0 0 rgba(30, 41, 59, 0.85);
+}
+
+/* Kill light table chrome if list ever re-enabled */
+.gantt-control-plane.dark-gantt ._3_ygE,
+.gantt-control-plane.dark-gantt ._3ZbQT {
+  background: #020617 !important;
+  border-color: #1e293b !important;
+}
+.gantt-control-plane.dark-gantt ._34SS0:nth-of-type(even) {
+  background-color: #0f172a !important;
+}
+.gantt-control-plane.dark-gantt ._2QjE6,
+.gantt-control-plane.dark-gantt ._2TfEi {
+  color: #94a3b8 !important;
+}
+.gantt-control-plane.dark-gantt ._3T42e {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+.gantt-control-plane.dark-gantt ._29NTg {
+  color: #94a3b8 !important;
+}
+
+

@@ -1,0 +1,10 @@
+# Quarantined legacy content (local archive — not part of deploy)
+_ARCHIVE_TO_REMOVE_/
+
+# Dev / tooling
+.github/
+.vscode/
+.cursor/
+
+# Docs not required at runtime (kept in repo for reference)
+docs/

@@ -1,0 +1,40 @@
+WBS ID,Task / Deliverable Description,Owner,Predecessor,Start Date,Duration (Days),End Date,Status
+1,Phase 1: GHL Cleanup & Architecture Lockdown,Robert G.,,08/21/2026,2,08/21/2026,In Progress
+1.1,Archive 25+ Draft/Unlabeled Workflows,Robert G.,,08/21/2026,1,08/21/2026,Completed
+1.2,Archive Obsolete & Backup Calendars,Robert G.,,08/21/2026,1,08/21/2026,Completed
+1.3,Replace Manual Tags with Mandatory Dropdown Fields in GHL,Robert G.,1.2,08/21/2026,2,08/24/2026,In Progress
+2,Phase 2: Master Schema Audit & Data Normalization,Robert G.,1,08/21/2026,7,09/02/2026,In Progress
+2.1,"Cross-Platform Access Provisioning (Katana, QBO, VividWorks, SketchUp)",Kian,1,08/21/2026,2,08/24/2026,In Progress
+2.2,Extract & Normalize Master Naming Schema across all apps,Robert G.,2.1,08/25/2026,3,08/27/2026,Not Started
+2.3,Map QBO Locations & Classes to GHL Dropdowns,Robert G.,1.3,09/01/2026,1,09/01/2026,Not Started
+2.4,Standardize Bill of Materials (BOM) nomenclature with Factory,Ops / Paula,2.2,09/02/2026,1,09/02/2026,Not Started
+3,Phase 3: Next.js API Middleware Construction,Robert G.,2,09/03/2026,7,09/11/2026,Not Started
+3.1,Scaffold Next.js framework & deploy to Vercel Staging,Robert G.,2.3,09/03/2026,1,09/03/2026,Not Started
+3.2,Develop Katana Webhook (Trigger: 'Produce Factory Order'),Robert G.,3.1,09/04/2026,2,09/07/2026,Not Started
+3.3,Implement Data Payload Validation (Zod) & DLQ,Robert G.,3.2,09/08/2026,2,09/09/2026,Not Started
+3.4,Develop QBO Webhook (Trigger: Clover Payment / 'Delivered'),Robert G.,3.3,09/10/2026,2,09/11/2026,Not Started
+4,Phase 4: Katana & QBO Integration Cutover,Exec / Systems,3,09/14/2026,5,09/18/2026,Not Started
+4.1,Sandbox Testing: End-to-End GHL to Katana BOM push,Robert G.,3.4,09/14/2026,2,09/15/2026,Not Started
+4.2,Sandbox Testing: End-to-End GHL to QBO invoice logic,Robert G.,3.4,09/16/2026,1,09/16/2026,Not Started
+4.3,Executive final review & training sign-off,Kian,4.2,09/17/2026,1,09/17/2026,Not Started
+4.4,Production Middleware Deployment & Cutover,Robert G.,4.3,09/18/2026,1,09/18/2026,Not Started
+3,"Phase 3: Middleware Ingress, Outbox & Validation (Sprints 1-2)",Robert G.,2,09/03/2026,7,09/11/2026,Not Started
+3.1,"Provision Vercel Postgres, Outbox Table & Sweeper (SKIP LOCKED)",Robert G.,2.3,09/03/2026,2,09/04/2026,Not Started
+3.2,Build POST /api/webhooks/ghl (rowCount === 0) & Redis Layer 1,Robert G.,3.1,2026-09-05,1900-01-01,2026-09-06,Not Started
+3.3,"Implement Zod Validation, Traffic Cop & saga_instances freezing",Robert G.,3.2,2026-09-07,1900-01-01,2026-09-08,Not Started
+3.4,Scaffold 3-Tier DLQ architecture & Deploy 48h Production Soak,Robert G.,3.3,2026-09-09,1900-01-01,2026-09-11,Not Started
+4,Phase 4: Katana & QBO Production Cutover (Sprints 3-4),Exec / Systems,3,2026-09-14,1900-01-06,2026-09-22,Not Started
+4.1,Implement Katana API & Claim-Check-Resume Invariant,Robert G.,3.4,2026-09-14,1900-01-01,2026-09-15,Not Started
+4.2,Build QBO OAuth Mutex (FOR UPDATE) & Katana Delivery Sync,Robert G.,4.1,2026-09-16,1900-01-01,2026-09-17,Not Started
+4.3,Implement Fuzzy Clover Deposit Matching Engine,Robert G.,4.2,2026-09-18,1900-01-01,2026-09-21,Not Started
+4.4,End-to-End Sandbox Dry-Run & Production Feature Flag Toggle,Kian / Robert G.,4.3,2026-09-22,1899-12-31,2026-09-22,Not Started
+3,"Phase 3: Middleware Ingress, Outbox & Validation (Sprints 1-2)",Robert G.,2,2026-09-03,7,2026-09-11,Not Started
+3.1,"Provision Vercel Postgres, Outbox Table & Sweeper (SKIP LOCKED)",Robert G.,2.3,2026-09-03,2,2026-09-04,Not Started
+3.2,Build POST /api/webhooks/ghl (rowCount === 0) & Redis Layer 1,Robert G.,3.1,2026-09-05,2,2026-09-06,Not Started
+3.3,"Implement Zod Validation, Traffic Cop & saga_instances freezing",Robert G.,3.2,2026-09-07,2,2026-09-08,Not Started
+3.4,Scaffold 3-Tier DLQ architecture & Deploy 48h Production Soak,Robert G.,3.3,2026-09-09,2,2026-09-11,Not Started
+4,Phase 4: Katana & QBO Production Cutover (Sprints 3-4),Exec / Systems,3,2026-09-14,7,2026-09-22,Not Started
+4.1,Implement Katana API & Claim-Check-Resume Invariant,Robert G.,3.4,2026-09-14,2,2026-09-15,Not Started
+4.2,Build QBO OAuth Mutex (FOR UPDATE) & Katana Delivery Sync,Robert G.,4.1,2026-09-16,2,2026-09-17,Not Started
+4.3,Implement Fuzzy Clover Deposit Matching Engine,Robert G.,4.2,2026-09-18,2,2026-09-21,Not Started
+4.4,End-to-End Sandbox Dry-Run & Production Feature Flag Toggle,Kian / Robert G.,4.3,2026-09-22,1,2026-09-22,Not Started

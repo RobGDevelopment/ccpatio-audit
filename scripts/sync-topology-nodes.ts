@@ -94,7 +94,7 @@ export const LIVE_IDS = {
   }
 
   fs.writeFileSync(outputPath, output, 'utf8');
-  console.log(\`Successfully synced live IDs to \${outputPath}\`);
+  console.log(`Successfully synced live IDs to ${outputPath}`);
 }
 
 main();
