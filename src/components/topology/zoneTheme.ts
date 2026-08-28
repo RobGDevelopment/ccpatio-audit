@@ -28,6 +28,21 @@ export const ZONE_DISTRICT: Record<
   z6: { accent: "#fbbf24", glow: "rgba(251,191,36,0.65)", label: "Factory" },
   z7: { accent: "#34d399", glow: "rgba(52,211,153,0.55)", label: "Logistics" },
   z8: { accent: "#10b981", glow: "rgba(16,185,129,0.65)", label: "Treasury" },
+  "z-digital": {
+    accent: "#3b82f6",
+    glow: "rgba(59,130,246,0.65)",
+    label: "Digital Ingress",
+  },
+  "z-mrp": {
+    accent: "#10b981",
+    glow: "rgba(16,185,129,0.65)",
+    label: "MRP / Katana",
+  },
+  "z-shop": {
+    accent: "#f59e0b",
+    glow: "rgba(245,158,11,0.65)",
+    label: "Shop Floor",
+  },
 };
 
 const MIDDLEWARE_CYAN = {

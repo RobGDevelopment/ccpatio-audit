@@ -108,9 +108,15 @@ export default async function DictionaryPage() {
                 Postgres; live sync across open browsers.
               </p>
               <p className="mt-3 flex flex-wrap items-center gap-4 text-xs">
+                <Link
+                  href="/"
+                  className="text-emerald-400/90 transition hover:text-emerald-300"
+                >
+                  ← Back to Launchpad
+                </Link>
                 <a
                   href="/admin/raw-materials"
-                  className="text-emerald-400/90 transition hover:text-emerald-300"
+                  className="text-slate-400 transition hover:text-slate-200"
                 >
                   Raw Materials Catalog →
                 </a>

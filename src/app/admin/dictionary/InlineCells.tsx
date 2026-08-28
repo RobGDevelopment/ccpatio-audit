@@ -216,6 +216,8 @@ type EditableSelectCellProps = {
   expectedVersion?: number;
   emptyLabel?: string;
   allowEmpty?: boolean;
+  allowNa?: boolean;
+  highlightMissing?: boolean;
   confirmLeavingFinishedGood?: boolean;
   className?: string;
   compact?: boolean;
@@ -248,6 +250,8 @@ export function EditableSelectCell({
   expectedVersion,
   emptyLabel = "—",
   allowEmpty = true,
+  allowNa = false,
+  highlightMissing = false,
   confirmLeavingFinishedGood = false,
   className = "",
   compact = false,
@@ -264,7 +268,9 @@ export function EditableSelectCell({
   }, [value]);
 
   function persist(next: string): void {
-    if (next === value) return;
+    const normalized =
+      allowNa && isNaToken(next) ? "N/A" : next;
+    if (normalized === value) return;
 
     if (
       confirmLeavingFinishedGood &&
@@ -302,7 +308,7 @@ export function EditableSelectCell({
             : await patchAttributeField({
                 globalSku,
                 path: field,
-                value: next,
+                value: normalized,
                 updatedBy: operator,
                 expectedVersion,
               });
@@ -316,8 +322,9 @@ export function EditableSelectCell({
       }
 
       setSaveState("saved");
+      setDraft(normalized);
       onSaved?.({
-        value: next,
+        value: normalized,
         updatedAt: result.updatedAt,
         updatedBy: result.updatedBy,
         version: result.version,
@@ -329,6 +336,8 @@ export function EditableSelectCell({
 
   const known = new Set(options.map(optionValue));
   const showOrphan = draft.length > 0 && !known.has(draft);
+  const looksNa = allowNa && isNaToken(draft);
+  const isEmpty = !looksNa && !draft.trim();
 
   return (
     <div
@@ -343,6 +352,8 @@ export function EditableSelectCell({
           persist(next);
         }}
         className={`pim-input appearance-none pr-5 ${compact ? "px-1 text-[10px]" : "pr-6"} ${
+          looksNa ? "pim-input-na" : ""
+        } ${highlightMissing && isEmpty ? "pim-input-missing" : ""} ${
           saveState === "saved"
             ? "border-emerald-500/50"
             : saveState === "error"

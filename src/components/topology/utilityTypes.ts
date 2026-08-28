@@ -140,6 +140,18 @@ const NODE_ZONE: Record<string, string> = {
   clover: "z8",
   reconciled: "z8",
   postcare: "z8",
+  "lc-ingress": "z-digital",
+  "lc-hmac": "z-digital",
+  "lc-inngest": "z-digital",
+  "lc-pim": "z-digital",
+  "lc-sales-order": "z-mrp",
+  "lc-bom": "z-mrp",
+  "lc-mo": "z-mrp",
+  "lc-aluminum": "z-shop",
+  "lc-surface": "z-shop",
+  "lc-upholstery": "z-shop",
+  "lc-qa": "z-shop",
+  "lc-logistics": "z-shop",
 };
 
 const OPERATIONAL_NODE_ZONE = new Map<string, string>();
@@ -155,6 +167,7 @@ export function registerOperationalNodeZones(
 
 export function zoneOfNode(nodeId: string): string | null {
   if (/^z[0-8]$/.test(nodeId)) return nodeId;
+  if (/^z-(digital|mrp|shop)$/.test(nodeId)) return nodeId;
   const gridTie = nodeId.match(/^gt-(?:in|out)-(z[0-8])$/);
   if (gridTie) return gridTie[1]!;
   const base = nodeId.includes("__") ? nodeId.split("__")[0]! : nodeId;

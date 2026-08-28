@@ -43,7 +43,7 @@ export type SkuMappingRow = {
 
 export type DictionaryTableMeta = {
   categoryOptions: string[];
-  activeTab: string;
+  columnTab: string;
   flashSkus: Record<string, boolean>;
   onPatchSaved: (sku: string, patch: Partial<SkuMappingRow>) => void;
   onToggleActive: (sku: string) => void;

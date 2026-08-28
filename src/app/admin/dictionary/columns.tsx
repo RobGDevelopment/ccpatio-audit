@@ -1,7 +1,8 @@
 "use client";
 
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
-import { getAttributePath, setAttributePath } from "@/server/pim/attributes/schemas";
+import { setAttributePath } from "@/server/pim/attributes/schemas";
+import { CATEGORY_REQUIRED_ATTRIBUTES } from "@/server/pim/attributes/health";
 import {
   EditableSelectCell,
   FABRIC_GRADE_OPTIONS,
@@ -16,12 +17,17 @@ import {
   ITEM_TYPE_OPTIONS,
   METAL_ALLOY_OPTIONS,
   METAL_PROFILE_OPTIONS,
-  POWDER_GLOSS_OPTIONS,
   SHADE_MOUNT_OPTIONS,
   SHADE_MOTOR_OPTIONS,
   UOM_OPTIONS,
 } from "./InlineCells";
-import { inferSuggestedNaFields, getMissingCatalogFields } from "./pim-catalog-utils";
+import {
+  calculateRowHealth,
+  catalogFieldToken,
+  inferSuggestedNaFields,
+  getMissingCatalogFields,
+  resolveAttributeValue,
+} from "./pim-catalog-utils";
 import type { DictionaryTableMeta, SkuMappingRow } from "./types";
 
 const col = createColumnHelper<SkuMappingRow>();
@@ -70,119 +76,118 @@ export function isFinishedGoodCatalogComplete(row: SkuMappingRow): boolean {
   }).length === 0;
 }
 
-function rowMissingFields(row: SkuMappingRow): Set<string> {
+function rowHealth(row: SkuMappingRow) {
+  return calculateRowHealth({
+    category: row.category,
+    itemType: row.itemType,
+    originalName: row.originalName,
+    globalSku: row.globalSku,
+    attributes: row.attributes,
+    catalog: row.catalog,
+  });
+}
+
+function rowMissingCatalogTokens(row: SkuMappingRow): Set<string> {
   return new Set(
-    getMissingCatalogFields({
-      category: row.category,
-      itemType: row.itemType,
-      originalName: row.originalName,
-      globalSku: row.globalSku,
-      catalog: row.catalog,
-    }),
+    rowHealth(row).missingCatalogFields.map((key) => catalogFieldToken(key)),
   );
 }
 
+function rowMissingAttributeKeys(row: SkuMappingRow): Set<string> {
+  return new Set(rowHealth(row).missingAttributeFields);
+}
+
 type AttrCol = {
-  path: string;
+  key: string;
+  paths: string[];
+  writePath: string;
   header: string;
   minWidth?: string;
   selectOptions?: ReadonlyArray<string | { value: string; label: string }>;
 };
 
-const ATTR_COLS: Record<string, AttrCol[]> = {
+const ATTR_COLUMN_META: Record<
+  string,
+  Omit<AttrCol, "key" | "paths" | "writePath">[]
+> = {
   dekton: [
-    { path: "slab_dims.l", header: "Slab L" },
-    { path: "slab_dims.w", header: "Slab W" },
-    { path: "thickness_mm", header: "Thick mm" },
+    { header: "Slab L" },
+    { header: "Slab W" },
+    { header: "Thick mm" },
     {
-      path: "finish",
       header: "Finish",
-      selectOptions: ["Matte", "Polished", "Textured", "Satin"],
+      selectOptions: ["Matte", "Polished", "Textured", "Satin", "N/A"],
     },
-    { path: "yield_sqft", header: "Yield sqft" },
-    { path: "routing_factor", header: "Route ×" },
+    { header: "Yield sqft" },
   ],
   fabric: [
-    { path: "roll_width_in", header: "Roll W" },
+    { header: "Roll W" },
     {
-      path: "fabric_grade",
       header: "Grade",
-      selectOptions: FABRIC_GRADE_OPTIONS,
+      selectOptions: [...FABRIC_GRADE_OPTIONS, "N/A"],
     },
-    { path: "yield_factor", header: "Yield ×" },
-    { path: "pattern.colorway", header: "Colorway" },
+    { header: "Pattern repeat" },
+    { header: "Rub count" },
+    { header: "Colorway" },
   ],
   metal: [
     {
-      path: "alloy_temper",
-      header: "Alloy",
-      selectOptions: METAL_ALLOY_OPTIONS,
-    },
-    {
-      path: "profile_type",
       header: "Profile",
-      selectOptions: METAL_PROFILE_OPTIONS,
+      selectOptions: [...METAL_PROFILE_OPTIONS, "N/A"],
     },
-    { path: "stick_len_in", header: "Stick in" },
-    { path: "wall_thick", header: "Wall" },
-    { path: "weight_plf", header: "lb/ft" },
+    { header: "Dimensions" },
+    { header: "Wall thick" },
+    {
+      header: "Alloy",
+      selectOptions: [...METAL_ALLOY_OPTIONS, "N/A"],
+    },
+    { header: "Stock L" },
   ],
   powder: [
-    { path: "ral_code", header: "RAL" },
-    { path: "brand_color.color_name", header: "Color" },
-    {
-      path: "aesthetics.gloss",
-      header: "Gloss",
-      selectOptions: POWDER_GLOSS_OPTIONS,
-    },
-    { path: "coverage_sqft_per_lb", header: "Cov sqft/lb" },
-    { path: "cure_schedule.temp_f", header: "Cure °F" },
-    { path: "cure_schedule.time_min", header: "Cure min" },
+    { header: "RAL" },
+    { header: "Finish type" },
+    { header: "Cure °F" },
+    { header: "Cure min" },
   ],
   shade: [
-    { path: "span_dims.w", header: "Span W" },
-    { path: "span_dims.l", header: "Span L" },
-    { path: "shade_specs.wind_load", header: "Wind" },
+    { header: "Span W" },
+    { header: "Span L" },
+    { header: "Wind" },
     {
-      path: "shade_specs.mount_cfg",
       header: "Mount",
-      selectOptions: SHADE_MOUNT_OPTIONS,
+      selectOptions: [...SHADE_MOUNT_OPTIONS, "N/A"],
     },
     {
-      path: "shade_specs.motor",
       header: "Motor",
-      selectOptions: SHADE_MOTOR_OPTIONS,
+      selectOptions: [...SHADE_MOTOR_OPTIONS, "N/A"],
     },
   ],
   firepit: [
-    { path: "fire_specs.btu", header: "BTU" },
+    { header: "BTU" },
     {
-      path: "fire_specs.fuel",
       header: "Fuel",
-      selectOptions: FIREPIT_FUEL_OPTIONS,
+      selectOptions: [...FIREPIT_FUEL_OPTIONS, "N/A"],
     },
-    { path: "fire_specs.burner", header: "Burner" },
+    { header: "Burner" },
     {
-      path: "fire_specs.ignition",
       header: "Ignition",
-      selectOptions: FIREPIT_IGNITION_OPTIONS,
+      selectOptions: [...FIREPIT_IGNITION_OPTIONS, "N/A"],
     },
-  ],
-  furniture: [
-    { path: "taxonomy.collection", header: "Collection" },
-    { path: "dimensions.l", header: "L" },
-    { path: "dimensions.d", header: "D" },
-    { path: "dimensions.h", header: "H" },
-    { path: "weight_lbs", header: "Wt" },
-  ],
-  "finished good": [
-    { path: "taxonomy.collection", header: "Collection" },
-    { path: "dimensions.l", header: "L" },
-    { path: "dimensions.d", header: "D" },
-    { path: "dimensions.h", header: "H" },
-    { path: "weight_lbs", header: "Wt" },
   ],
 };
+
+function buildAttrCols(tabKey: string): AttrCol[] {
+  const reqs = CATEGORY_REQUIRED_ATTRIBUTES[tabKey];
+  const meta = ATTR_COLUMN_META[tabKey];
+  if (!reqs || !meta) return [];
+  return reqs.map((req, index) => ({
+    key: req.key,
+    paths: req.paths,
+    writePath: req.paths[0]!,
+    header: meta[index]?.header ?? req.key,
+    selectOptions: meta[index]?.selectOptions,
+  }));
+}
 
 function StatusToggle({
   checked,
@@ -212,32 +217,28 @@ function StatusToggle({
 }
 
 function KatanaPunchlist({ row }: { row: SkuMappingRow }) {
+  const health = rowHealth(row);
   const needsCatalogHealth =
     row.category.trim().toLowerCase() === "finished good" ||
     row.itemType === "finished_good";
-  const missingFields = getMissingCatalogFields({
-    category: row.category,
-    itemType: row.itemType,
-    originalName: row.originalName,
-    globalSku: row.globalSku,
-    catalog: row.catalog,
-  });
-  const catalogOk = missingFields.length === 0;
   const variantId = row.katanaVariantId;
   const materialId = row.katanaMaterialId;
   const hasKatana = variantId !== null || materialId !== null;
 
-  // FG: blank required dims (unless in na_fields) → rose Missing
-  if (needsCatalogHealth && !catalogOk) {
+  if (health.hasMissingData) {
+    const labels = [
+      ...health.missingCatalogFields,
+      ...health.missingAttributeFields,
+    ];
     return (
       <div className="flex flex-col gap-0.5 items-start">
         <span
           className={`${EXEC_PILL} border-rose-500/25 bg-rose-500/10 text-rose-300`}
         >
-          Missing Dims
+          Missing Data
         </span>
         <span className="text-[9px] text-rose-400/80 leading-tight">
-          {missingFields.join(", ")}
+          {labels.join(", ")}
         </span>
       </div>
     );
@@ -304,11 +305,11 @@ function coreColumns(
       header: "",
       cell: ({ row, table }) => {
         const m = table.options.meta as DictionaryTableMeta;
-        if (!showExpandForRow(row.original, m.activeTab)) {
+        if (!showExpandForRow(row.original, row.original.category)) {
           return <span className="inline-block w-7" />;
         }
         const isOpen = Boolean(m.expanded[row.original.globalSku]);
-        const fgTab = isCompactTab(m.activeTab);
+        const fgTab = isCompactTab(row.original.category);
         return (
           <button
             type="button"
@@ -431,7 +432,7 @@ function coreColumns(
       header: "UOM buy",
       cell: ({ row, table }) => {
         const m = table.options.meta as DictionaryTableMeta;
-        const compact = isCompactTab(m.activeTab);
+        const compact = isCompactTab(row.original.category);
         return (
           <EditableSelectCell
             globalSku={row.original.globalSku}
@@ -458,7 +459,7 @@ function coreColumns(
       header: "UOM use",
       cell: ({ row, table }) => {
         const m = table.options.meta as DictionaryTableMeta;
-        const compact = isCompactTab(m.activeTab);
+        const compact = isCompactTab(row.original.category);
         return (
           <EditableSelectCell
             globalSku={row.original.globalSku}
@@ -604,11 +605,11 @@ function seatingCatalogColumns(
     allowNa: boolean;
   }> = [
     { field: "length", header: "L", catalogKey: "length", allowNa: true },
-    { field: "depth", header: "D", catalogKey: "depth", allowNa: true },
+    { field: "depth", header: "W", catalogKey: "depth", allowNa: true },
     { field: "height", header: "H", catalogKey: "height", allowNa: true },
     {
       field: "sit_height",
-      header: "Sit",
+      header: "Seat",
       catalogKey: "sitHeight",
       allowNa: true,
     },
@@ -639,7 +640,7 @@ function seatingCatalogColumns(
       cell: ({ row, table }) => {
         const m = table.options.meta as DictionaryTableMeta;
         const na = row.original.catalog?.naFields ?? [];
-        const missing = rowMissingFields(row.original);
+        const missing = rowMissingCatalogTokens(row.original);
         const suggested = inferSuggestedNaFields({
           originalName: row.original.originalName,
           description: row.original.catalog?.description,
@@ -712,27 +713,30 @@ function seatingCatalogColumns(
 function attributeColumns(
   tabKey: string,
 ): ColumnDef<SkuMappingRow, unknown>[] {
-  const defs = ATTR_COLS[tabKey] ?? [];
-  return defs.map(({ path, header, selectOptions }) =>
+  const defs = buildAttrCols(tabKey);
+  return defs.map(({ key, paths, writePath, header, selectOptions }) =>
     col.display({
-      id: `attr_${path}`,
+      id: `attr_${key}`,
       header,
       cell: ({ row, table }) => {
         const m = table.options.meta as DictionaryTableMeta;
-        const current = getAttributePath(row.original.attributes, path);
+        const current = resolveAttributeValue(row.original.attributes, paths);
+        const missing = rowMissingAttributeKeys(row.original);
         if (selectOptions) {
           return (
             <EditableSelectCell
               globalSku={row.original.globalSku}
-              field={path}
+              field={writePath}
               value={current}
               options={selectOptions}
               target="attribute"
               expectedVersion={row.original.version}
+              allowNa
+              highlightMissing={missing.has(key)}
               onSaved={({ value, updatedAt, updatedBy, version }) => {
                 const next = setAttributePath(
                   { ...row.original.attributes },
-                  path,
+                  writePath,
                   value || null,
                 );
                 m.onPatchSaved(row.original.globalSku, {
@@ -748,14 +752,16 @@ function attributeColumns(
         return (
           <InlineTextCell
             globalSku={row.original.globalSku}
-            field={path}
+            field={writePath}
             value={current}
             target="attribute"
             expectedVersion={row.original.version}
+            allowNa
+            highlightMissing={missing.has(key)}
             onSaved={({ value, updatedAt, updatedBy, version }) => {
               const next = setAttributePath(
                 { ...row.original.attributes },
-                path,
+                writePath,
                 value || null,
               );
               m.onPatchSaved(row.original.globalSku, {
@@ -883,7 +889,10 @@ export function buildDictionaryColumns(
     return [...core, ...seatingCatalogColumns(true), ...trailingColumns(true)];
   }
 
-  return [...core, ...attributeColumns(tabKey), ...trailingColumns(false)];
+  const healthTab =
+    tabKey === "powder coat" || tabKey === "powdercoat" ? "powder" : tabKey;
+
+  return [...core, ...attributeColumns(healthTab), ...trailingColumns(false)];
 }
 
 export { showBomForRow, EXEC_PILL };

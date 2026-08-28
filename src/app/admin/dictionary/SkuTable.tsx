@@ -89,7 +89,9 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
   const quickFilter = searchParams.get("filter");
   const [rows, setRows] = useState(initialRows);
   const [query, setQuery] = useState("");
-  const [activeTab, setActiveTab] = useState(ALL_TAB);
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [flashSkus, setFlashSkus] = useState<Record<string, boolean>>({});
   const [operator, setOperator] = useState("operator");
@@ -296,11 +298,37 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
       .map(([category, count]) => ({ category, count }));
   }, [rows]);
 
+  const columnTab = useMemo(() => {
+    if (selectedCategories.size === 0) return ALL_TAB;
+    if (selectedCategories.size === 1) {
+      return [...selectedCategories][0] ?? ALL_TAB;
+    }
+    return ALL_TAB;
+  }, [selectedCategories]);
+
+  const toggleCategory = useCallback((category: string) => {
+    setSelectedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  }, []);
+
+  const clearCategoryFilters = useCallback(() => {
+    setSelectedCategories(new Set());
+  }, []);
+
   const filtered = useMemo(() => {
     let byTab =
-      activeTab === ALL_TAB
+      selectedCategories.size === 0
         ? rows
-        : rows.filter((row) => (row.category || "Uncategorized") === activeTab);
+        : rows.filter((row) =>
+            selectedCategories.has(row.category || "Uncategorized"),
+          );
 
     if (quickFilter === "catalog") {
       byTab = byTab.filter((row) => row.catalog !== null);
@@ -333,12 +361,12 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
         row.originalName.toLowerCase().includes(needle) ||
         row.itemType.toLowerCase().includes(needle),
     );
-  }, [activeTab, query, rows, quickFilter]);
+  }, [selectedCategories, query, rows, quickFilter]);
 
   const tableMeta: DictionaryTableMeta = useMemo(
     () => ({
       categoryOptions,
-      activeTab,
+      columnTab,
       flashSkus,
       expanded,
       onPatchSaved: (sku, patch) => applyLocalPatch(sku, patch),
@@ -384,12 +412,12 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
         });
       },
     }),
-    [applyLocalPatch, activeTab, categoryOptions, expanded, flashSkus, rows],
+    [applyLocalPatch, columnTab, categoryOptions, expanded, flashSkus, rows],
   );
 
   const columns = useMemo(
-    () => buildDictionaryColumns(activeTab, tableMeta),
-    [activeTab, tableMeta],
+    () => buildDictionaryColumns(columnTab, tableMeta),
+    [columnTab, tableMeta],
   );
 
   // TanStack Table returns non-memoizable helpers by design.
@@ -464,16 +492,16 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
         <CategoryTab
           label={ALL_TAB}
           count={rows.length}
-          selected={activeTab === ALL_TAB}
-          onSelect={() => setActiveTab(ALL_TAB)}
+          selected={selectedCategories.size === 0}
+          onSelect={clearCategoryFilters}
         />
         {categoryTabs.map((tab) => (
           <CategoryTab
             key={tab.category}
             label={tab.category}
             count={tab.count}
-            selected={activeTab === tab.category}
-            onSelect={() => setActiveTab(tab.category)}
+            selected={selectedCategories.has(tab.category)}
+            onSelect={() => toggleCategory(tab.category)}
           />
         ))}
       </div>
@@ -512,10 +540,13 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
             ) : (
               table.getRowModel().rows.map((row) => {
                 const isOpen = Boolean(expanded[row.original.globalSku]);
-                const canExpand = showExpandForRow(row.original, activeTab);
+                const canExpand = showExpandForRow(
+                  row.original,
+                  row.original.category,
+                );
                 const fgTab =
-                  activeTab.trim().toLowerCase() === "finished good" ||
-                  activeTab.trim().toLowerCase() === "furniture";
+                  row.original.category.trim().toLowerCase() === "finished good" ||
+                  row.original.category.trim().toLowerCase() === "furniture";
                 return (
                   <Fragment key={row.id}>
                     <tr

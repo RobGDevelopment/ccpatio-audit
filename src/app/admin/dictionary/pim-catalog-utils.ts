@@ -1,3 +1,13 @@
+import {
+  calculateRowHealth as calculateRowHealthCore,
+  getMissingAttributeFields,
+  getMissingFinishedGoodFields,
+  isAttributeValueComplete,
+  normalizeCategoryForHealth,
+  resolveAttributeValue,
+  type RowHealthResult,
+} from "@/server/pim/attributes/health";
+
 /** True when user input means "not applicable" for a catalog dimension. */
 export function isNaToken(raw: string): boolean {
   const t = raw.trim().toLowerCase().replace(/\s+/g, "");
@@ -16,7 +26,6 @@ export type CatalogNaField =
 
 /**
  * Infer catalog fields that are typically N/A from factory name / description / SKU.
- * Used to pre-seed na_fields so bar tables etc. don't show false Missing alerts.
  */
 export function inferSuggestedNaFields(input: {
   originalName: string;
@@ -85,31 +94,35 @@ export function mergeNaFields(
 }
 
 export type CatalogHealthField =
-  | "msrp"
   | "length"
-  | "depth"
+  | "width"
   | "height"
+  | "seat_height"
   | "arm_height"
-  | "sit_height";
+  | "weight"
+  | "msrp";
 
-const CATALOG_HEALTH_CHECKS: Array<{
-  key: CatalogHealthField;
-  read: (c: {
-    msrp: string | null;
-    length: string | null;
-    depth: string | null;
-    height: string | null;
-    armHeight: string | null;
-    sitHeight: string | null;
-  }) => string | null | undefined;
-}> = [
-  { key: "msrp", read: (c) => c.msrp },
-  { key: "length", read: (c) => c.length },
-  { key: "depth", read: (c) => c.depth },
-  { key: "height", read: (c) => c.height },
-  { key: "arm_height", read: (c) => c.armHeight },
-  { key: "sit_height", read: (c) => c.sitHeight },
-];
+export {
+  getMissingAttributeFields,
+  isAttributeValueComplete,
+  normalizeCategoryForHealth,
+  resolveAttributeValue,
+  type RowHealthResult,
+};
+
+const HEALTH_TO_NA: Record<CatalogHealthField, string> = {
+  length: "length",
+  width: "depth",
+  height: "height",
+  seat_height: "sit_height",
+  arm_height: "arm_height",
+  weight: "weight",
+  msrp: "msrp",
+};
+
+export function catalogFieldToken(healthKey: CatalogHealthField): string {
+  return HEALTH_TO_NA[healthKey];
+}
 
 export function getMissingCatalogFields(input: {
   category: string;
@@ -130,21 +143,75 @@ export function getMissingCatalogFields(input: {
     naFields: string[];
   } | null;
 }): CatalogHealthField[] {
-  const cat = input.category.trim().toLowerCase();
+  const cat = normalizeCategoryForHealth(input.category);
   if (cat !== "finished good" && input.itemType !== "finished_good") {
     return [];
   }
-  if (!input.catalog) {
-    return CATALOG_HEALTH_CHECKS.map(({ key }) => key);
-  }
-  const c = input.catalog;
+
   const suggested = inferSuggestedNaFields({
     originalName: input.originalName,
-    description: c.description,
+    description: input.catalog?.description,
     globalSku: input.globalSku,
   });
-  const na = new Set([...c.naFields, ...suggested]);
-  return CATALOG_HEALTH_CHECKS.filter(
-    ({ key, read }) => !read(c)?.trim() && !na.has(key),
-  ).map(({ key }) => key);
+
+  const fgMissing = getMissingFinishedGoodFields({
+    catalog: input.catalog,
+    suggestedNa: suggested,
+  });
+
+  const out = new Set<CatalogHealthField>(fgMissing);
+
+  if (input.catalog) {
+    const msrp = input.catalog.msrp?.trim() ?? "";
+    const na = new Set([...input.catalog.naFields, ...suggested]);
+    if (!isAttributeValueComplete(msrp) && !na.has("msrp")) {
+      out.add("msrp");
+    }
+  } else {
+    out.add("msrp");
+  }
+
+  return [...out];
+}
+
+export function calculateRowHealth(input: {
+  category: string;
+  itemType: string;
+  originalName: string;
+  globalSku?: string;
+  attributes: Record<string, unknown>;
+  catalog: {
+    msrp: string | null;
+    length: string | null;
+    depth: string | null;
+    height: string | null;
+    armHeight: string | null;
+    sitHeight: string | null;
+    weight: string | null;
+    description: string | null;
+    imageUrl: string | null;
+    qboItemCode: string | null;
+    naFields: string[];
+  } | null;
+}): RowHealthResult & { missingCatalogFields: CatalogHealthField[] } {
+  const suggested = inferSuggestedNaFields({
+    originalName: input.originalName,
+    description: input.catalog?.description,
+    globalSku: input.globalSku,
+  });
+  const core = calculateRowHealthCore({
+    category: input.category,
+    itemType: input.itemType,
+    attributes: input.attributes,
+    catalog: input.catalog,
+    suggestedNa: suggested,
+  });
+  const missingCatalogFields = getMissingCatalogFields(input);
+  return {
+    missingAttributeFields: core.missingAttributeFields,
+    missingCatalogFields,
+    hasMissingData:
+      core.missingAttributeFields.length > 0 ||
+      missingCatalogFields.length > 0,
+  };
 }

@@ -1,4 +1,5 @@
 import { AG_RETAIL_HAPPY_PATH } from '../../schema/agRetailSequence';
+import { LIFECYCLE_EXEC_SEQUENCE } from "./lifecycleSequence";
 
 /**
  * Hand-authored cinematic narratives — granular stage IDs, not parent boxes.
@@ -903,8 +904,13 @@ export function getActiveSequence(
   journeyId: JourneyId,
   mode: SequenceMode
 ): SequenceStep[] {
-  /* Retail always mirrors AG JSON — board mode must not skip factory steps */
-  if (journeyId === "retail") return AG_RETAIL_HAPPY_PATH;
+  if (
+    journeyId === "retail" ||
+    journeyId === "trade" ||
+    journeyId === "warranty"
+  ) {
+    return LIFECYCLE_EXEC_SEQUENCE;
+  }
   if (mode === "board") return BOARD_SEQUENCES[journeyId];
   return SEQUENCES[journeyId];
 }

@@ -148,7 +148,7 @@ export function RawMaterialCombobox({
           ) : (
             visibleOptions.map((option, index) => (
               <button
-                key={option.id}
+                key={option.sku}
                 type="button"
                 role="option"
                 aria-selected={index === highlightIndex}

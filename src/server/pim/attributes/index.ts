@@ -15,3 +15,16 @@ export {
   shadeAttributesSchema,
   type CategoryAttributeKey,
 } from "./schemas";
+
+export {
+  calculateRowHealth,
+  CATEGORY_REQUIRED_ATTRIBUTES,
+  getMissingAttributeFields,
+  getMissingFinishedGoodFields,
+  isAttributeValueComplete,
+  normalizeCategoryForHealth,
+  resolveAttributeValue,
+  type FinishedGoodHealthField,
+  type RequiredAttributeField,
+  type RowHealthResult,
+} from "./health";

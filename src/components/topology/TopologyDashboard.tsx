@@ -38,7 +38,7 @@ import {
   BlankSlotNode,
   RailCardNode,
 } from "./nodes";
-import { granularNodes, granularEdges } from "./topologyData";
+import { lifecycleNodes, lifecycleEdges } from "./lifecycleTopologyData";
 import { useTopologyStore } from "./topologyStore";
 import { useSequenceController } from "./useSequenceController";
 import { JOURNEY_COLORS, type SequenceStep } from "./sequences";
@@ -166,8 +166,8 @@ function MovieModeBar({
 function TopologyCanvas() {
   const [mounted, setMounted] = useState(false);
   const isHydrated = useRef(false);
-  const [nodes, setNodes, onNodesChange] = useNodesState(granularNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(granularEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(lifecycleNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(lifecycleEdges);
   const { pause, stepNext, play, playMovie, exitMovie, resetPlayback } =
     useSequenceController();
 
@@ -715,6 +715,15 @@ function TopologyCanvas() {
               onBeforeDelete={onBeforeDelete}
               onInit={(instance) => {
                 flowRef.current = instance;
+                if (operationalTasks.length === 0) {
+                  requestAnimationFrame(() => {
+                    instance.fitView({
+                      padding: 0.12,
+                      maxZoom: 0.85,
+                      minZoom: 0.18,
+                    });
+                  });
+                }
               }}
               isValidConnection={isValidConnection}
               nodesDraggable={layoutEditMode && !movieMode}

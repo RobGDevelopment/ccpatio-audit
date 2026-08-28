@@ -177,6 +177,9 @@ export type SystemNodeData = {
   ghlPipelineId?: string;
   /** Top/Bottom system rail card */
   railKind?: "ghl" | "software";
+  /** Executive lifecycle map — zone band for carbon styling */
+  lifecycleZone?: "z-digital" | "z-mrp" | "z-shop";
+  lifecycleStep?: number;
 };
 
 export type SystemNodeType = Node<SystemNodeData, "system">;
@@ -462,16 +465,27 @@ function SystemNodeComponent({ id, data }: NodeProps<SystemNodeType>) {
           : {}),
       }}
       className={
-        id === "ghl-hub"
-          ? `${dragClass} relative min-w-[220px] cursor-pointer overflow-visible rounded-xl border bg-slate-950 px-3.5 py-3 text-slate-300 hover:border-slate-500`
-          : `${dragClass} relative min-w-[200px] cursor-pointer overflow-visible rounded-xl border bg-slate-950 px-3.5 py-2.5 text-slate-300 hover:border-slate-500`
+        data.lifecycleZone
+          ? `${dragClass} lifecycle-node-carbon relative min-w-[210px] cursor-pointer overflow-visible rounded-xl border px-3.5 py-2.5 text-slate-300 hover:border-slate-500`
+          : id === "ghl-hub"
+            ? `${dragClass} relative min-w-[220px] cursor-pointer overflow-visible rounded-xl border bg-slate-950 px-3.5 py-3 text-slate-300 hover:border-slate-500`
+            : `${dragClass} relative min-w-[200px] cursor-pointer overflow-visible rounded-xl border bg-slate-950 px-3.5 py-2.5 text-slate-300 hover:border-slate-500`
       }
       style={{
         borderWidth: 1.5,
         backgroundColor: "#020617",
         zIndex: 20,
         opacity: isDone ? 0.78 : undefined,
+        borderColor: data.lifecycleZone
+          ? isPrimary
+            ? color
+            : `${data.accent}99`
+          : undefined,
+        boxShadow: data.lifecycleZone && isPrimary
+          ? `inset 0 0 24px ${data.accent}22, 0 0 28px ${data.accent}88`
+          : undefined,
       }}
+      data-zone={data.lifecycleZone}
     >
       <MapSelectFrame id={id} />
       <IoPorts nodeId={id} />
@@ -493,7 +507,14 @@ function SystemNodeComponent({ id, data }: NodeProps<SystemNodeType>) {
           {data.icon ?? data.label.slice(0, 2).toUpperCase()}
         </div>
         <div className="min-w-0">
-          {data.operational && data.zone ? (
+          {data.cardKindLabel ? (
+            <div
+              className="text-[8px] font-semibold uppercase tracking-[0.16em]"
+              style={{ color: data.accent }}
+            >
+              {data.cardKindLabel}
+            </div>
+          ) : data.operational && data.zone ? (
             <span
               className="mb-1 inline-flex rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em]"
               style={{

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateRowHealth,
+  getMissingAttributeFields,
   getMissingCatalogFields,
   inferSuggestedNaFields,
   isNaToken,
+  isAttributeValueComplete,
 } from "@/app/admin/dictionary/pim-catalog-utils";
 import { isFinishedGoodCatalogComplete } from "@/app/admin/dictionary/columns";
 import type { SkuMappingRow } from "@/app/admin/dictionary/types";
@@ -55,6 +58,8 @@ describe("pim-catalog-utils", () => {
     expect(isNaToken("N/A")).toBe(true);
     expect(isNaToken("n/a")).toBe(true);
     expect(isNaToken("48")).toBe(false);
+    expect(isAttributeValueComplete("N/A")).toBe(true);
+    expect(isAttributeValueComplete("")).toBe(false);
   });
 
   it("does not treat missing image as a health gap", () => {
@@ -68,8 +73,7 @@ describe("pim-catalog-utils", () => {
         imageUrl: null,
       },
     });
-    expect(missing).not.toContain("image");
-    expect(missing).toEqual([]);
+    expect(missing).not.toContain("image" as never);
   });
 
   it("flags blank integration dims but not inferred N/A seating fields on tables", () => {
@@ -86,13 +90,13 @@ describe("pim-catalog-utils", () => {
         height: "42",
         armHeight: null,
         sitHeight: null,
+        weight: "95",
         naFields: [],
       },
     });
     expect(missing).toContain("msrp");
     expect(missing).not.toContain("arm_height");
-    expect(missing).not.toContain("sit_height");
-    expect(missing).not.toContain("image");
+    expect(missing).not.toContain("seat_height");
   });
 
   it("infers arm/sit N/A for bar tables", () => {
@@ -101,6 +105,63 @@ describe("pim-catalog-utils", () => {
         originalName: "BROOKLYN TABLE (BAR HEIGHT) 120 X 28",
       }),
     ).toEqual(["arm_height", "sit_height"]);
+  });
+
+  it("flags missing dekton attribute fields", () => {
+    expect(
+      getMissingAttributeFields({
+        category: "Dekton",
+        attributes: {
+          slab_length: "120",
+          finish: "N/A",
+        },
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        "slab_width",
+        "thickness_mm",
+        "yield_sqft",
+      ]),
+    );
+    expect(
+      getMissingAttributeFields({
+        category: "Dekton",
+        attributes: {
+          slab_length: "120",
+          slab_width: "56",
+          thickness_mm: "12",
+          finish: "Matte",
+          yield_sqft: "42",
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it("accepts N/A in attribute fields as complete", () => {
+    const missing = getMissingAttributeFields({
+      category: "Powder",
+      attributes: {
+        finish_type: "N/A",
+        cure_temp: "n/a",
+        cure_time: "400",
+        ral_code: "9005",
+      },
+    });
+    expect(missing).not.toContain("finish_type");
+    expect(missing).not.toContain("cure_temp");
+  });
+
+  it("calculateRowHealth merges catalog and attribute gaps", () => {
+    const health = calculateRowHealth({
+      category: "Fabric",
+      itemType: "raw_material",
+      originalName: "SUNBRELLA SOLSTIS",
+      globalSku: "FAB-1",
+      attributes: { grade: "A" },
+      catalog: null,
+    });
+    expect(health.hasMissingData).toBe(true);
+    expect(health.missingAttributeFields).toContain("roll_width");
   });
 });
 
@@ -112,6 +173,7 @@ describe("isFinishedGoodCatalogComplete", () => {
           catalog: {
             ...baseCatalog,
             imageUrl: null,
+            weight: "80",
           },
         }),
       ),
@@ -125,6 +187,7 @@ describe("isFinishedGoodCatalogComplete", () => {
           catalog: {
             ...baseCatalog,
             msrp: null,
+            weight: "80",
             naFields: ["arm_height", "sit_height"],
           },
         }),

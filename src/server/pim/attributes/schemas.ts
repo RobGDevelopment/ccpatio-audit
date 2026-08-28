@@ -19,6 +19,8 @@ const dimsObject = z
 
 export const dektonAttributesSchema = z
   .object({
+    slab_length: z.union([z.string(), z.number()]).optional(),
+    slab_width: z.union([z.string(), z.number()]).optional(),
     slab_dims: dimsObject.optional(),
     thickness_mm: z.union([z.string(), z.number()]).optional(),
     finish: z.string().optional(),
@@ -37,6 +39,11 @@ export const dektonAttributesSchema = z
 
 export const fabricAttributesSchema = z
   .object({
+    grade: z.string().optional(),
+    roll_width: z.union([z.string(), z.number()]).optional(),
+    pattern_repeat: z.union([z.string(), z.number()]).optional(),
+    rub_count: z.union([z.string(), z.number()]).optional(),
+    colorway: z.string().optional(),
     roll_width_in: z.union([z.string(), z.number()]).optional(),
     fabric_grade: z.string().optional(),
     performance: z
@@ -62,6 +69,10 @@ export const fabricAttributesSchema = z
 
 export const metalAttributesSchema = z
   .object({
+    alloy: z.string().optional(),
+    dimensions: z.string().optional(),
+    wall_thickness: z.union([z.string(), z.number()]).optional(),
+    stock_length: z.union([z.string(), z.number()]).optional(),
     alloy_temper: z.string().optional(),
     profile_type: z.string().optional(),
     wall_thick: z.union([z.string(), z.number()]).optional(),
@@ -72,6 +83,9 @@ export const metalAttributesSchema = z
 
 export const powderAttributesSchema = z
   .object({
+    finish_type: z.string().optional(),
+    cure_temp: z.union([z.string(), z.number()]).optional(),
+    cure_time: z.union([z.string(), z.number()]).optional(),
     brand_color: z
       .object({
         brand: z.string().optional(),
@@ -165,6 +179,7 @@ export const categoryAttributeSchemas = {
   fabric: fabricAttributesSchema,
   metal: metalAttributesSchema,
   powder: powderAttributesSchema,
+  "powder coat": powderAttributesSchema,
   shade: shadeAttributesSchema,
   firepit: firepitAttributesSchema,
   furniture: furnitureAttributesSchema,
@@ -174,7 +189,11 @@ export const categoryAttributeSchemas = {
 export type CategoryAttributeKey = keyof typeof categoryAttributeSchemas;
 
 export function getAttributeSchema(category: string) {
-  const key = normalizePimCategory(category) as CategoryAttributeKey;
+  const normalized = normalizePimCategory(category);
+  if (normalized === "powder coat" || normalized === "powdercoat") {
+    return powderAttributesSchema;
+  }
+  const key = normalized as CategoryAttributeKey;
   return categoryAttributeSchemas[key] ?? z.record(z.string(), z.unknown());
 }
 

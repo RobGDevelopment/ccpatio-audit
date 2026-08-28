@@ -3,10 +3,10 @@
  * Retail happy path is ALWAYS the AG JSON 50-step sequence (no board skip).
  */
 
+import { LIFECYCLE_EXEC_SEQUENCE } from "../components/topology/lifecycleSequence";
 import type { SequenceStep } from "../components/topology/sequences";
 import type { JourneyId } from "../components/topology/sequences";
 import type { MasterWorkflowSchema, WorkflowDef } from "./schemaTypes";
-import { AG_RETAIL_HAPPY_PATH } from "./agRetailSequence";
 
 export function findWorkflow(
   schema: MasterWorkflowSchema,
@@ -26,19 +26,16 @@ export function compileSequence(
   journeyId: JourneyId | string,
   _mode: "full" | "board" = "full"
 ): SequenceStep[] {
-  /* Force AG JSON retail-az-e2e-happy-path — wipe legacy board/full drift */
-  if (journeyId === "retail") {
-    return AG_RETAIL_HAPPY_PATH.map((s) => ({
+  /* Executive lifecycle map — sequential Node 1→12 for all happy-path journeys */
+  if (
+    journeyId === "retail" ||
+    journeyId === "trade" ||
+    journeyId === "warranty"
+  ) {
+    return LIFECYCLE_EXEC_SEQUENCE.map((s) => ({
       ...s,
-      travelEdges: [...(s.travelEdges ?? [])],
+      travelEdges: s.travelEdges ? [...s.travelEdges] : undefined,
       fanOutNodes: s.fanOutNodes ? [...s.fanOutNodes] : undefined,
-      externalTrigger: s.externalTrigger
-        ? {
-            ...s.externalTrigger,
-            travelEdges: [...s.externalTrigger.travelEdges],
-            targetNodeIds: [...s.externalTrigger.targetNodeIds],
-          }
-        : undefined,
     }));
   }
 

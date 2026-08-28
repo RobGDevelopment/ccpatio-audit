@@ -11,8 +11,8 @@ export default function TopologyPage() {
     <div
       className={
         movieMode
-          ? "fixed inset-0 z-[200] flex flex-col bg-[#030712]"
-          : "flex h-screen flex-col overflow-hidden bg-[#030712]"
+          ? "pim-carbon-shell fixed inset-0 z-[200] flex flex-col bg-[#030712]"
+          : "pim-carbon-shell flex h-screen flex-col overflow-hidden bg-[#030712]"
       }
     >
       <div className="absolute left-4 top-4 z-[210]">
