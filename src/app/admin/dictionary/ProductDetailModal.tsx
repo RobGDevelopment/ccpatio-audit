@@ -208,6 +208,8 @@ export function ProductDetailModal({
             applyPatchError(result, fields);
             if (result.error?.includes("Failed to find Server Action") || result.error?.includes("digest")) {
               toast.error("System updated. Please refresh your page to continue saving.");
+            } else {
+              toast.error(`Failed to save: ${result.error || "Database error"}. Please try again.`);
             }
             return;
           }
@@ -235,6 +237,8 @@ export function ProductDetailModal({
             applyPatchError(result, fields);
             if (result.error?.includes("Failed to find Server Action") || result.error?.includes("digest")) {
               toast.error("System updated. Please refresh your page to continue saving.");
+            } else {
+              toast.error(`Failed to save: ${result.error || "Database error"}. Please try again.`);
             }
             return;
           }
@@ -265,6 +269,8 @@ export function ProductDetailModal({
             applyPatchError(result, fields);
             if (result.error?.includes("Failed to find Server Action") || result.error?.includes("digest")) {
               toast.error("System updated. Please refresh your page to continue saving.");
+            } else {
+              toast.error(`Failed to save: ${result.error || "Database error"}. Please try again.`);
             }
             return;
           }

@@ -1157,6 +1157,7 @@ const MAPPING_PATCH_FIELDS = new Set([
 export type InlinePatchResult =
   | {
       ok: true;
+      success?: true;
       updatedAt: string;
       updatedBy: string | null;
       version: number;
@@ -1164,6 +1165,7 @@ export type InlinePatchResult =
     }
   | {
       ok: false;
+      success?: false;
       error: string;
       field?: string;
       message?: string;
@@ -1190,29 +1192,29 @@ export async function patchCatalogField(input: {
 }): Promise<InlinePatchResult> {
   const globalSku = input.globalSku.trim();
   const field = input.field.trim();
-  const operator = await resolvePimOperator(input.updatedBy);
-
-  if (!globalSku) {
-    return { ok: false, error: "SKU is required" };
-  }
-  if (!CATALOG_PATCH_FIELDS.has(field)) {
-    return { ok: false, error: `Field ${field} is not inline-editable` };
-  }
-
-  const raw = input.value.trim();
-  const catalogValidation = validateCatalogFieldPatch(
-    field,
-    raw,
-    ALLOWED_NA_FIELDS.has(field),
-  );
-  if (catalogValidation) {
-    return patchValidationError(
-      catalogValidation.field,
-      catalogValidation.message,
-    );
-  }
 
   try {
+    const operator = await resolvePimOperator(input.updatedBy);
+
+    if (!globalSku) {
+      return { ok: false, success: false, error: "SKU is required" };
+    }
+    if (!CATALOG_PATCH_FIELDS.has(field)) {
+      return { ok: false, success: false, error: `Field ${field} is not inline-editable` };
+    }
+
+    const raw = input.value.trim();
+    const catalogValidation = validateCatalogFieldPatch(
+      field,
+      raw,
+      ALLOWED_NA_FIELDS.has(field),
+    );
+    if (catalogValidation) {
+      return patchValidationError(
+        catalogValidation.field,
+        catalogValidation.message,
+      );
+    }
     const db = getDb();
     const markNa = isNaToken(raw) && ALLOWED_NA_FIELDS.has(field);
     const value = markNa
@@ -1322,26 +1324,26 @@ export async function patchMappingField(input: {
 }): Promise<InlinePatchResult> {
   const globalSku = input.globalSku.trim();
   const field = input.field.trim();
-  const operator = await resolvePimOperator(input.updatedBy);
-
-  if (!globalSku) {
-    return { ok: false, error: "SKU is required" };
-  }
-  if (!MAPPING_PATCH_FIELDS.has(field)) {
-    return { ok: false, error: `Field ${field} is not inline-editable` };
-  }
-
-  if (typeof input.value !== "boolean") {
-    const mappingValidation = validateMappingFieldPatch(field, input.value);
-    if (mappingValidation) {
-      return patchValidationError(
-        mappingValidation.field,
-        mappingValidation.message,
-      );
-    }
-  }
 
   try {
+    const operator = await resolvePimOperator(input.updatedBy);
+
+    if (!globalSku) {
+      return { ok: false, success: false, error: "SKU is required" };
+    }
+    if (!MAPPING_PATCH_FIELDS.has(field)) {
+      return { ok: false, success: false, error: `Field ${field} is not inline-editable` };
+    }
+
+    if (typeof input.value !== "boolean") {
+      const mappingValidation = validateMappingFieldPatch(field, input.value);
+      if (mappingValidation) {
+        return patchValidationError(
+          mappingValidation.field,
+          mappingValidation.message,
+        );
+      }
+    }
     const db = getDb();
     const now = new Date();
 
@@ -1457,16 +1459,16 @@ export async function patchAttributeField(input: {
 }): Promise<InlinePatchResult> {
   const globalSku = input.globalSku.trim();
   const path = input.path.trim();
-  const operator = await resolvePimOperator(input.updatedBy);
-
-  if (!globalSku) {
-    return { ok: false, error: "SKU is required" };
-  }
-  if (!path) {
-    return { ok: false, error: "Attribute path is required" };
-  }
 
   try {
+    const operator = await resolvePimOperator(input.updatedBy);
+
+    if (!globalSku) {
+      return { ok: false, success: false, error: "SKU is required" };
+    }
+    if (!path) {
+      return { ok: false, success: false, error: "Attribute path is required" };
+    }
     const { parseCategoryAttributes, setAttributePath } = await import(
       "@/server/pim/attributes"
     );
