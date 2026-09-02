@@ -485,18 +485,18 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
     <section className="h-full flex flex-col">
 
       {error ? (
-        <p className="text-sm text-rose-500 bg-rose-500/10 p-2 rounded">{error}</p>
+        <div className="text-sm text-rose-500 bg-rose-500/10 p-2 rounded">{error}</div>
       ) : null}
       {loading ? (
-        <p className="text-sm text-zinc-500">Loading BOM tree…</p>
+        <div className="text-sm text-zinc-500">Loading BOM tree…</div>
       ) : !tree ? (
-        <p className="text-sm text-zinc-500">Parent SKU not found.</p>
+        <div className="text-sm text-zinc-500">Parent SKU not found.</div>
       ) : (
         <div className="flex h-full flex-row overflow-hidden">
           <div className="w-80 flex-shrink-0 bg-zinc-950 border-r border-zinc-800 flex flex-col h-full overflow-y-auto shadow-[inset_-12px_0_24px_-12px_rgba(0,0,0,0.5)] pt-6 pb-6">
-            <p className="mb-2 px-4 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+            <div className="mb-2 px-4 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
               Build Recipe
-            </p>
+            </div>
             <div className="flex-1 overflow-y-auto">
               <TreeRows
                 node={tree}
@@ -517,7 +517,7 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
                     <h1 className="text-3xl font-bold tracking-tight text-zinc-50">{activeNode?.name || activeSku}</h1>
                     <span className="text-[11px] font-mono text-zinc-500 bg-zinc-950 px-2 py-1 rounded-md border border-zinc-800 uppercase tracking-widest mt-1">{activeSku}</span>
                   </div>
-                  <p className="text-sm text-zinc-400 mt-1">Define the materials, parts, and hardware required for this assembly.</p>
+                  <div className="text-sm text-zinc-400 mt-1">Define the materials, parts, and hardware required for this assembly.</div>
                 </div>
               </header>
 
@@ -546,10 +546,10 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
                         >
                           {child.name}
                         </button>
-                        <p className="font-mono text-[11px] text-zinc-500 mt-0.5">
+                        <div className="font-mono text-[11px] text-zinc-500 mt-0.5">
                           {child.sku} · Qty {child.quantity} · Scrap {child.scrapFactor} ·{" "}
                           {child.unitOfMeasure}
-                        </p>
+                        </div>
                       </div>
                       {child.lineId ? (
                         <button
@@ -646,9 +646,9 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
             </div>
 
             <div>
-              <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500 border-b border-zinc-800/60 pb-2">
+              <div className="mb-3 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500 border-b border-zinc-800/60 pb-2">
                 Routings · work centers
-              </p>
+              </div>
               <ul className="mb-4 divide-y divide-zinc-900/80">
                 {ops.length === 0 ? (
                   <li className="py-3 text-xs text-zinc-500">
@@ -661,13 +661,13 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
                       className="flex items-center justify-between gap-2 py-2 text-sm"
                     >
                       <div>
-                        <p className="font-mono text-[13px] text-zinc-100">
+                        <div className="font-mono text-[13px] text-zinc-100">
                           {op.sequence}. {op.workCenter}
-                        </p>
-                        <p className="text-[11px] text-zinc-500">
+                        </div>
+                        <div className="text-[11px] text-zinc-500">
                           setup {op.setupTimeMins ?? "—"} min · run{" "}
                           {op.runTimeMins ?? "—"} min
-                        </p>
+                        </div>
                       </div>
                       <button
                         type="button"
@@ -742,7 +742,7 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
         </div>
       )}
 
-      {error ? <p className="mt-3 text-xs text-red-400">{error}</p> : null}
+      {error ? <div className="mt-3 text-xs text-red-400">{error}</div> : null}
     </section>
   );
 }

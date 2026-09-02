@@ -13,13 +13,19 @@ export default async function BomBuilderPage({
   const decodedSku = decodeURIComponent(params.sku);
 
   const db = getDb();
-  const mapping = await db.query.sku_mappings.findFirst({
-    where: eq(sku_mappings.global_sku, decodedSku),
-    columns: { item_type: true },
-  });
+  const mappingResult = await db.select({ item_type: sku_mappings.item_type })
+    .from(sku_mappings)
+    .where(eq(sku_mappings.global_sku, decodedSku))
+    .limit(1);
+
+  const mapping = mappingResult[0];
 
   if (!mapping) {
-    notFound();
+    return (
+      <div className="flex h-screen w-full flex-col bg-zinc-950 font-sans text-zinc-300 p-8">
+        <div>Parent SKU {decodedSku} not found in the database.</div>
+      </div>
+    );
   }
 
   return (
