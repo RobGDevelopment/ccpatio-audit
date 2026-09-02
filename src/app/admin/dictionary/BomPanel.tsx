@@ -21,6 +21,7 @@ import {
   upsertItemOperation,
   type BomComponentCandidate,
   type BomTreeNode,
+  type ItemOperationRow,
 } from "@/app/admin/dictionary/actions";
 import { useToast } from "@/app/admin/shared/ToastProvider";
 
