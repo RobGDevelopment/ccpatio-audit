@@ -21,8 +21,8 @@ import {
   upsertItemOperation,
   type BomComponentCandidate,
   type BomTreeNode,
-  type ItemOperationRow,
 } from "@/app/admin/dictionary/actions";
+import { useToast } from "@/app/admin/shared/ToastProvider";
 
 type BomPanelProps = {
   productSku: string;
@@ -242,6 +242,7 @@ function TreeRows({
 }
 
 export function BomPanel({ productSku, itemType }: BomPanelProps) {
+  const toast = useToast();
   const [tree, setTree] = useState<BomTreeNode | null>(null);
   const [activeSku, setActiveSku] = useState(productSku);
   const [ops, setOps] = useState<ItemOperationRow[]>([]);
@@ -335,6 +336,9 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
       });
       if (!result.ok) {
         setError(result.error);
+        if (result.error?.includes("Failed to find Server Action") || result.error?.includes("digest")) {
+          toast.error("System updated. Please refresh your page to continue saving.");
+        }
         return;
       }
       setChildDraft((prev) => ({
@@ -346,7 +350,11 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
       const nextTree = await getBomTree(productSku);
       setTree(nextTree);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+        const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+        setError(msg);
+        if (msg.includes("Failed to find Server Action") || msg.includes("digest")) {
+          toast.error("System updated. Please refresh your page to continue saving.");
+        }
       }
     });
   }
@@ -358,12 +366,19 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
         const result = await deleteBOMLine(lineId);
       if (!result.ok) {
         setError(result.error);
+        if (result.error?.includes("Failed to find Server Action") || result.error?.includes("digest")) {
+          toast.error("System updated. Please refresh your page to continue saving.");
+        }
         return;
       }
       const nextTree = await getBomTree(productSku);
       setTree(nextTree);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+        const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+        setError(msg);
+        if (msg.includes("Failed to find Server Action") || msg.includes("digest")) {
+          toast.error("System updated. Please refresh your page to continue saving.");
+        }
       }
     });
   }
@@ -383,6 +398,9 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
       });
       if (!result.ok) {
         setError(result.error);
+        if (result.error?.includes("Failed to find Server Action") || result.error?.includes("digest")) {
+          toast.error("System updated. Please refresh your page to continue saving.");
+        }
         return;
       }
       setOpDraft({
@@ -393,7 +411,11 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
       });
       setOps(await getItemOperations(activeSku));
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+        const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+        setError(msg);
+        if (msg.includes("Failed to find Server Action") || msg.includes("digest")) {
+          toast.error("System updated. Please refresh your page to continue saving.");
+        }
       }
     });
   }
@@ -405,11 +427,18 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
         const result = await deleteItemOperation(id);
       if (!result.ok) {
         setError(result.error);
+        if (result.error?.includes("Failed to find Server Action") || result.error?.includes("digest")) {
+          toast.error("System updated. Please refresh your page to continue saving.");
+        }
         return;
       }
       setOps(await getItemOperations(activeSku));
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+        const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+        setError(msg);
+        if (msg.includes("Failed to find Server Action") || msg.includes("digest")) {
+          toast.error("System updated. Please refresh your page to continue saving.");
+        }
       }
     });
   }

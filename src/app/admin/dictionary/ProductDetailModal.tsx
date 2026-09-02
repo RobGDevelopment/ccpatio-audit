@@ -164,6 +164,7 @@ export function ProductDetailModal({
       return;
     }
 
+    const originalDrafts = { ...drafts };
     setError(null);
     setFieldErrors({});
     startTransition(async () => {
@@ -203,7 +204,11 @@ export function ProductDetailModal({
             expectedVersion: version,
           });
           if (!result.ok) {
+            setDrafts(originalDrafts);
             applyPatchError(result, fields);
+            if (result.error?.includes("Failed to find Server Action") || result.error?.includes("digest")) {
+              toast.error("System updated. Please refresh your page to continue saving.");
+            }
             return;
           }
           version = result.version;
@@ -226,7 +231,11 @@ export function ProductDetailModal({
             updatedBy: operator,
           });
           if (!result.ok) {
+            setDrafts(originalDrafts);
             applyPatchError(result, fields);
+            if (result.error?.includes("Failed to find Server Action") || result.error?.includes("digest")) {
+              toast.error("System updated. Please refresh your page to continue saving.");
+            }
             return;
           }
           version = result.version;
@@ -252,7 +261,11 @@ export function ProductDetailModal({
             expectedVersion: version,
           });
           if (!result.ok) {
+            setDrafts(originalDrafts);
             applyPatchError(result, fields);
+            if (result.error?.includes("Failed to find Server Action") || result.error?.includes("digest")) {
+              toast.error("System updated. Please refresh your page to continue saving.");
+            }
             return;
           }
           version = result.version;
@@ -277,7 +290,11 @@ export function ProductDetailModal({
       toast.success(`Saved ${row.globalSku}`);
       onClose();
       } catch (err: unknown) {
+        setDrafts(originalDrafts);
         const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+        if (msg.includes("Failed to find Server Action") || msg.includes("digest")) {
+          toast.error("System updated. Please refresh your page to continue saving.");
+        }
         setError(msg);
         toast.error(`Failed to save: ${msg}. Please try again.`);
       }
