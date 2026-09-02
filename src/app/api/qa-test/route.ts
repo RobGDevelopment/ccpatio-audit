@@ -21,16 +21,16 @@ export async function POST(request: Request) {
     
     // Test write: insert or update mapping
     const existing = await db.query.sku_mappings.findFirst({
-      where: eq(skuMappings.globalSku, fakeSku),
+      where: eq(skuMappings.global_sku, fakeSku),
     });
 
     if (!existing) {
       await db.insert(skuMappings).values({
-        globalSku: fakeSku,
-        originalName: `QA Test ${uuid}`,
+        global_sku: fakeSku,
+        original_name: `QA Test ${uuid}`,
         category: "Test",
-        itemType: "finished_good",
-        syncToWoo: false,
+        item_type: "finished_good",
+        sync_to_woo: false,
       });
     }
 
