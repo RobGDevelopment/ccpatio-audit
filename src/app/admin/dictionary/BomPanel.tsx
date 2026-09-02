@@ -204,9 +204,9 @@ function BomChildCombobox({
                       onMouseEnter={() => setHighlightIndex(idx)}
                       onClick={() => select(hit)}
                     >
-                      <span className="font-mono text-zinc-100">{hit.sku}</span>
-                      <span className="text-zinc-500">
-                        {hit.name} · {hit.itemType}
+                      <span className="font-semibold text-zinc-100">{hit.name}</span>
+                      <span className="font-mono text-zinc-500">
+                        {hit.sku} · {hit.itemType}
                       </span>
                     </button>
                   </li>
@@ -243,8 +243,8 @@ function TreeRows({
         onClick={() => onSelect(node.sku)}
         className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm transition ${
           isActive
-            ? "bg-emerald-500/10 text-emerald-300"
-            : "text-zinc-300 hover:bg-zinc-900/60"
+            ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-300"
+            : "border border-transparent text-zinc-300 hover:bg-zinc-900/60"
         }`}
         style={{ paddingLeft: 8 + indent }}
       >
@@ -252,9 +252,9 @@ function TreeRows({
           L{node.depth}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-mono text-[13px]">{node.sku}</span>
-          <span className="block truncate text-[11px] text-zinc-500">
-            {node.name} · {node.itemType}
+          <span className="block font-semibold text-sm text-zinc-100">{node.name}</span>
+          <span className="block truncate font-mono text-[11px] text-zinc-500">
+            {node.sku} · {node.itemType}
             {qtyLabel ? ` · ${qtyLabel}` : ""}
           </span>
         </span>
@@ -505,12 +505,12 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
       ) : !tree ? (
         <p className="text-sm text-zinc-500">Parent SKU not found.</p>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-3">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+          <div>
             <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
               Hierarchy L0 → L2+
             </p>
-            <div className="max-h-80 overflow-y-auto">
+            <div className="max-h-80 overflow-y-auto pr-2">
               <TreeRows
                 node={tree}
                 activeSku={activeSku}
@@ -519,12 +519,12 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-3">
-              <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="space-y-8 pl-4 border-l border-zinc-800/60">
+            <div>
+              <div className="mb-4 flex items-center justify-between gap-2 border-b border-zinc-800/60 pb-2">
                 <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
-                  Builder ·{" "}
-                  <span className="font-mono text-zinc-300">{activeSku}</span>
+                  Currently Editing:{" "}
+                  <span className="font-semibold text-zinc-300 normal-case tracking-normal text-sm">{activeNode?.name || activeSku}</span>
                 </p>
                 {!canEditActive ? (
                   <span className="text-[11px] text-amber-500/80">
@@ -533,7 +533,7 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
                 ) : null}
               </div>
 
-              <ul className="mb-3 divide-y divide-zinc-900/80">
+              <ul className="mb-4 divide-y divide-zinc-900/80">
                 {directChildren.length === 0 ? (
                   <li className="py-3 text-xs text-zinc-500">
                     No direct children on this node.
@@ -547,13 +547,13 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
                       <div className="min-w-0">
                         <button
                           type="button"
-                          className="font-mono text-[13px] text-zinc-100 hover:text-emerald-400"
+                          className="text-left font-semibold text-sm text-zinc-100 hover:text-emerald-400 block"
                           onClick={() => setActiveSku(child.sku)}
                         >
-                          {child.sku}
+                          {child.name}
                         </button>
-                        <p className="text-[11px] text-zinc-500">
-                          qty {child.quantity} · scrap {child.scrapFactor} ·{" "}
+                        <p className="font-mono text-[11px] text-zinc-500 mt-0.5">
+                          {child.sku} · qty {child.quantity} · scrap {child.scrapFactor} ·{" "}
                           {child.unitOfMeasure}
                         </p>
                       </div>
@@ -645,11 +645,11 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
               </form>
             </div>
 
-            <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-3">
-              <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+            <div>
+              <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500 border-b border-zinc-800/60 pb-2">
                 Routings · work centers
               </p>
-              <ul className="mb-3 divide-y divide-zinc-900/80">
+              <ul className="mb-4 divide-y divide-zinc-900/80">
                 {ops.length === 0 ? (
                   <li className="py-3 text-xs text-zinc-500">
                     No operations on this node.
