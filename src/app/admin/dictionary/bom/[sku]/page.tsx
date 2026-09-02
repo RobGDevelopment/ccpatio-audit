@@ -8,9 +8,11 @@ import Link from "next/link";
 export default async function BomBuilderPage({
   params,
 }: {
-  params: { sku: string };
+  params: Promise<{ sku: string }>;
 }) {
-  const decodedSku = decodeURIComponent(params.sku);
+  const resolvedParams = await params;
+  const decodedSku = decodeURIComponent(resolvedParams.sku);
+
 
   const db = getDb();
   const mappingResult = await db.select({ item_type: sku_mappings.item_type })
