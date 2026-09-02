@@ -48,7 +48,7 @@ type OpDraft = {
 const UNIT_OPTIONS = ["ea", "in", "yd", "ft", "lbs", "sqft", "oz", "gal"] as const;
 
 const INPUT =
-  "w-full border-b border-transparent bg-transparent py-1.5 font-mono text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors hover:border-zinc-700 focus:border-emerald-500";
+  "w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 shadow-sm transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 focus:bg-zinc-900";
 
 function flattenTree(node: BomTreeNode): BomTreeNode[] {
   const out: BomTreeNode[] = [node];
@@ -172,7 +172,7 @@ function BomChildCombobox({
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-zinc-700 bg-zinc-950 py-1 shadow-xl"
+          className="absolute z-20 mt-2 max-h-64 w-full overflow-auto rounded-lg border border-zinc-700 bg-zinc-800/95 backdrop-blur-md shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200"
         >
           {loading ? (
             <li className="px-3 py-2 text-xs text-zinc-500">Searching…</li>
@@ -198,8 +198,8 @@ function BomChildCombobox({
                       type="button"
                       role="option"
                       aria-selected={idx === highlightIndex}
-                      className={`flex w-full flex-col px-3 py-2 text-left text-xs ${
-                        idx === highlightIndex ? "bg-zinc-800" : "hover:bg-zinc-800/50"
+                      className={`flex w-full items-center justify-between px-4 py-3 text-left text-xs transition-colors duration-150 group cursor-pointer ${
+                        idx === highlightIndex ? "bg-zinc-700/80" : "hover:bg-zinc-700/80"
                       }`}
                       onMouseEnter={() => setHighlightIndex(idx)}
                       onClick={() => select(hit)}
@@ -241,12 +241,12 @@ function TreeRows({
       <button
         type="button"
         onClick={() => onSelect(node.sku)}
-        className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm transition ${
+        className={`flex w-[calc(100%-16px)] items-center gap-3 py-2 mx-2 pr-3 text-left transition-colors duration-150 ${
           isActive
-            ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-300"
-            : "border border-transparent text-zinc-300 hover:bg-zinc-900/60"
+            ? "bg-zinc-900 text-emerald-50 border-l-2 border-emerald-500 shadow-sm rounded-r-md cursor-default relative"
+            : "rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 border-l-2 border-transparent cursor-pointer"
         }`}
-        style={{ paddingLeft: 8 + indent }}
+        style={{ paddingLeft: 12 + indent }}
       >
         <span className="mt-0.5 shrink-0 font-mono text-[10px] uppercase tracking-wider text-zinc-600">
           L{node.depth}
@@ -482,20 +482,7 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
   const directChildren = activeNode?.children ?? [];
 
   return (
-    <section className="mt-8 border-t border-zinc-800/80 pt-6">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-300">
-            Multi-Level BOM &amp; Routings
-          </h3>
-          <p className="mt-1 text-xs text-zinc-500">
-            Tree for{" "}
-            <span className="font-mono text-zinc-400">{productSku}</span>
-            <span className="text-zinc-600"> · {itemType}</span>. Select a node
-            to add children or work-center operations.
-          </p>
-        </div>
-      </div>
+    <section className="h-full flex flex-col">
 
       {error ? (
         <p className="text-sm text-rose-500 bg-rose-500/10 p-2 rounded">{error}</p>
@@ -505,12 +492,12 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
       ) : !tree ? (
         <p className="text-sm text-zinc-500">Parent SKU not found.</p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <div>
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
-              Hierarchy L0 → L2+
+        <div className="flex h-full flex-row overflow-hidden">
+          <div className="w-80 flex-shrink-0 bg-zinc-950 border-r border-zinc-800 flex flex-col h-full overflow-y-auto shadow-[inset_-12px_0_24px_-12px_rgba(0,0,0,0.5)] pt-6 pb-6">
+            <p className="mb-2 px-4 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+              Build Recipe
             </p>
-            <div className="max-h-80 overflow-y-auto pr-2">
+            <div className="flex-1 overflow-y-auto">
               <TreeRows
                 node={tree}
                 activeSku={activeSku}
@@ -519,19 +506,22 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
             </div>
           </div>
 
-          <div className="space-y-8 pl-4 border-l border-zinc-800/60">
-            <div>
-              <div className="mb-4 flex items-center justify-between gap-2 border-b border-zinc-800/60 pb-2">
-                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
-                  Currently Editing:{" "}
-                  <span className="font-semibold text-zinc-300 normal-case tracking-normal text-sm">{activeNode?.name || activeSku}</span>
-                </p>
-                {!canEditActive ? (
-                  <span className="text-[11px] text-amber-500/80">
-                    Select a finished_good or sub_assembly node
-                  </span>
-                ) : null}
-              </div>
+          <div className="flex-1 bg-zinc-900 flex flex-col h-full overflow-y-auto relative shadow-[-8px_0_24px_-12px_rgba(0,0,0,0.8)] z-10 p-8">
+              <header className="sticky top-0 z-20 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 px-8 py-6 -mx-8 -mt-8 mb-8">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span className="text-xs font-semibold tracking-widest text-emerald-500/80 uppercase">Currently Editing</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <h1 className="text-3xl font-bold tracking-tight text-zinc-50">{activeNode?.name || activeSku}</h1>
+                    <span className="text-[11px] font-mono text-zinc-500 bg-zinc-950 px-2 py-1 rounded-md border border-zinc-800 uppercase tracking-widest mt-1">{activeSku}</span>
+                  </div>
+                  <p className="text-sm text-zinc-400 mt-1">Define the materials, parts, and hardware required for this assembly.</p>
+                </div>
+              </header>
+
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-8">
 
               <ul className="mb-4 divide-y divide-zinc-900/80">
                 {directChildren.length === 0 ? (
@@ -542,18 +532,22 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
                   directChildren.map((child) => (
                     <li
                       key={child.lineId ?? child.sku}
-                      className="flex items-center justify-between gap-2 py-2 text-sm"
+                      className={`flex items-center justify-between gap-4 py-3 relative ${
+                        child.itemType === 'sub_assembly' 
+                          ? "bg-zinc-950/30 border border-zinc-800/80 rounded-lg p-4 ml-6 before:absolute before:-left-6 before:top-1/2 before:w-6 before:h-px before:bg-zinc-800 mb-2 mt-2" 
+                          : "bg-transparent border-t border-dashed border-zinc-800/60 ml-12"
+                      }`}
                     >
                       <div className="min-w-0">
                         <button
                           type="button"
-                          className="text-left font-semibold text-sm text-zinc-100 hover:text-emerald-400 block"
+                          className="text-left font-semibold text-sm text-zinc-100 hover:text-emerald-400 block transition-colors"
                           onClick={() => setActiveSku(child.sku)}
                         >
                           {child.name}
                         </button>
                         <p className="font-mono text-[11px] text-zinc-500 mt-0.5">
-                          {child.sku} · qty {child.quantity} · scrap {child.scrapFactor} ·{" "}
+                          {child.sku} · Qty {child.quantity} · Scrap {child.scrapFactor} ·{" "}
                           {child.unitOfMeasure}
                         </p>
                       </div>
@@ -562,7 +556,7 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
                           type="button"
                           disabled={isPending}
                           onClick={() => onRemoveChild(child.lineId!)}
-                          className="text-xs text-zinc-500 hover:text-red-400 disabled:opacity-50"
+                          className="text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-2 py-1 rounded transition-colors disabled:opacity-50 active:scale-[0.98]"
                         >
                           Remove
                         </button>
@@ -593,31 +587,37 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
                     }))
                   }
                 />
-                <input
-                  className={INPUT}
-                  placeholder="Qty"
-                  inputMode="decimal"
-                  disabled={isPending || !canEditActive}
-                  value={childDraft.quantity}
-                  onChange={(e) =>
-                    setChildDraft((p) => ({ ...p, quantity: e.target.value }))
-                  }
-                />
-                <input
-                  className={INPUT}
-                  placeholder="Scrap"
-                  inputMode="decimal"
-                  disabled={isPending || !canEditActive}
-                  value={childDraft.scrapFactor}
-                  onChange={(e) =>
-                    setChildDraft((p) => ({
-                      ...p,
-                      scrapFactor: e.target.value,
-                    }))
-                  }
-                />
+                <div className="relative flex items-center">
+                  <input
+                    className={`${INPUT} w-24 tabular-nums pr-10 focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500`}
+                    placeholder="Qty"
+                    inputMode="decimal"
+                    disabled={isPending || !canEditActive}
+                    value={childDraft.quantity}
+                    onChange={(e) =>
+                      setChildDraft((p) => ({ ...p, quantity: e.target.value }))
+                    }
+                  />
+                  <span className="absolute right-3 text-xs font-medium text-zinc-500 pointer-events-none">Qty</span>
+                </div>
+                <div className="relative flex items-center">
+                  <input
+                    className={`${INPUT} w-24 tabular-nums pr-10 focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500`}
+                    placeholder="Scrap"
+                    inputMode="decimal"
+                    disabled={isPending || !canEditActive}
+                    value={childDraft.scrapFactor}
+                    onChange={(e) =>
+                      setChildDraft((p) => ({
+                        ...p,
+                        scrapFactor: e.target.value,
+                      }))
+                    }
+                  />
+                  <span className="absolute right-3 text-[10px] font-medium text-zinc-500 pointer-events-none">Scrap</span>
+                </div>
                 <select
-                  className={`${INPUT} appearance-none`}
+                  className={`${INPUT} appearance-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500`}
                   disabled={isPending || !canEditActive}
                   value={childDraft.unitOfMeasure}
                   onChange={(e) =>
@@ -638,9 +638,9 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
                   disabled={
                     isPending || !canEditActive || !childDraft.childSku.trim()
                   }
-                  className="rounded-lg border border-zinc-700/80 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:border-emerald-500/40 hover:text-emerald-400 disabled:opacity-50"
+                  className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-medium text-white shadow-sm ring-1 ring-emerald-500/50 transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap"
                 >
-                  Add child
+                  + Add Material
                 </button>
               </form>
             </div>

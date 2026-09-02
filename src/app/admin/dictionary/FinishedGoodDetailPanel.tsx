@@ -1,6 +1,5 @@
 "use client";
 
-import { BomPanel } from "./BomPanel";
 import { formatAuditStamp, InlineTextCell } from "./InlineCells";
 import type { DictionaryTableMeta, SkuMappingRow } from "./types";
 
@@ -141,9 +140,6 @@ export function FinishedGoodDetailPanel({
         </div>
       </div>
 
-      {(row.itemType === "finished_good" || row.itemType === "sub_assembly") && (
-        <BomPanel productSku={row.globalSku} itemType={row.itemType} />
-      )}
     </div>
   );
 }

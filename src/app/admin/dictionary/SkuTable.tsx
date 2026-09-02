@@ -32,7 +32,7 @@ import { CreateSkuModal } from "./CreateSkuModal";
 import { getOperatorName, setOperatorName } from "./InlineCells";
 import type { DictionaryTableMeta, SkuMappingRow } from "./types";
 import { FinishedGoodDetailPanel } from "./FinishedGoodDetailPanel";
-import { BomPanel } from "./BomPanel";
+
 import { ProductDetailModal } from "./ProductDetailModal";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
@@ -740,17 +740,11 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
                           colSpan={columns.length}
                           className="bg-slate-950/40 px-4 py-5"
                         >
-                          {fgTab ? (
+                          {fgTab && (
                             <FinishedGoodDetailPanel
                               key={row.original.globalSku}
                               row={row.original}
                               meta={tableMeta}
-                            />
-                          ) : (
-                            <BomPanel
-                              key={row.original.globalSku}
-                              productSku={row.original.globalSku}
-                              itemType={row.original.itemType}
                             />
                           )}
                         </td>

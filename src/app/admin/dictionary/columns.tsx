@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { resolveAttributeTabKey } from "@/lib/raw-material-sku";
 import { setAttributePath } from "@/server/pim/attributes/schemas";
@@ -350,17 +352,26 @@ function actionsColumn(): ColumnDef<SkuMappingRow, unknown> {
           onClick={(event) => event.stopPropagation()}
         >
           {canExpand ? (
-            <button
-              type="button"
-              aria-label="Toggle BOM / details"
-              onClick={(e) => {
-                e.stopPropagation();
-                m.onToggleExpand(row.original.globalSku);
-              }}
-              className="inline-flex h-7 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 text-[11px] font-medium tracking-wide text-emerald-400 transition hover:bg-emerald-500/20"
-            >
-              BOM / Details
-            </button>
+            normalizeTab(m.columnTab) === "finished good" || normalizeTab(m.columnTab) === "furniture" ? (
+              <button
+                type="button"
+                aria-label="Toggle details"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  m.onToggleExpand(row.original.globalSku);
+                }}
+                className="inline-flex h-7 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 text-[11px] font-medium tracking-wide text-emerald-400 transition hover:bg-emerald-500/20"
+              >
+                Details
+              </button>
+            ) : (
+              <Link
+                href={`/admin/dictionary/bom/${encodeURIComponent(row.original.globalSku)}`}
+                className="inline-flex h-7 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 text-[11px] font-medium tracking-wide text-emerald-400 transition hover:bg-emerald-500/20"
+              >
+                Build Recipe
+              </Link>
+            )
           ) : null}
           <button
             type="button"
