@@ -326,6 +326,7 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
     event.preventDefault();
     if (!canEditActive) return;
     setError(null);
+    const childDraftSnapshot = { ...childDraft };
     startTransition(async () => {
       try {
         const result = await upsertBOMLine({
@@ -336,6 +337,7 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
         unitOfMeasure: childDraft.unitOfMeasure,
       });
       if (!result.ok) {
+        setChildDraft(childDraftSnapshot);
         setError(result.error);
         if (result.error?.includes("Failed to find Server Action") || result.error?.includes("digest")) {
           toast.error("System updated. Please refresh your page to continue saving.");
@@ -351,6 +353,7 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
       const nextTree = await getBomTree(productSku);
       setTree(nextTree);
       } catch (err: unknown) {
+        setChildDraft(childDraftSnapshot);
         const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
         setError(msg);
         if (msg.includes("Failed to find Server Action") || msg.includes("digest")) {
@@ -388,6 +391,7 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
     event.preventDefault();
     if (!canEditActive) return;
     setError(null);
+    const opDraftSnapshot = { ...opDraft };
     startTransition(async () => {
       try {
         const result = await upsertItemOperation({
@@ -398,6 +402,7 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
         runTimeMins: opDraft.runTimeMins,
       });
       if (!result.ok) {
+        setOpDraft(opDraftSnapshot);
         setError(result.error);
         if (result.error?.includes("Failed to find Server Action") || result.error?.includes("digest")) {
           toast.error("System updated. Please refresh your page to continue saving.");
@@ -412,6 +417,7 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
       });
       setOps(await getItemOperations(activeSku));
       } catch (err: unknown) {
+        setOpDraft(opDraftSnapshot);
         const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
         setError(msg);
         if (msg.includes("Failed to find Server Action") || msg.includes("digest")) {
