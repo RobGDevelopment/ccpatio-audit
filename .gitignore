@@ -1,4 +1,4 @@
-﻿# dependencies
+# dependencies
 node_modules/
 .pnp
 .pnp.js
@@ -38,3 +38,9 @@ next-env.d.ts
 _ARCHIVE_TO_REMOVE_/
 
 .vercel
+
+# Isolated 3D WebGL Sandbox
+3d-sandbox/
+*.blend
+*.glb
+*.mp4

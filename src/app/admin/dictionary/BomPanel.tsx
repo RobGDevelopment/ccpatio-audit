@@ -325,7 +325,8 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
     if (!canEditActive) return;
     setError(null);
     startTransition(async () => {
-      const result = await upsertBOMLine({
+      try {
+        const result = await upsertBOMLine({
         parentSku: activeSku,
         childSku: childDraft.childSku,
         quantity: childDraft.quantity,
@@ -344,19 +345,26 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
       }));
       const nextTree = await getBomTree(productSku);
       setTree(nextTree);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+      }
     });
   }
 
   function onRemoveChild(lineId: string): void {
     setError(null);
     startTransition(async () => {
-      const result = await deleteBOMLine(lineId);
+      try {
+        const result = await deleteBOMLine(lineId);
       if (!result.ok) {
         setError(result.error);
         return;
       }
       const nextTree = await getBomTree(productSku);
       setTree(nextTree);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+      }
     });
   }
 
@@ -365,7 +373,8 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
     if (!canEditActive) return;
     setError(null);
     startTransition(async () => {
-      const result = await upsertItemOperation({
+      try {
+        const result = await upsertItemOperation({
         itemSku: activeSku,
         workCenter: opDraft.workCenter,
         sequence: Number(opDraft.sequence) || 10,
@@ -383,18 +392,25 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
         runTimeMins: "",
       });
       setOps(await getItemOperations(activeSku));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+      }
     });
   }
 
   function onRemoveOp(id: string): void {
     setError(null);
     startTransition(async () => {
-      const result = await deleteItemOperation(id);
+      try {
+        const result = await deleteItemOperation(id);
       if (!result.ok) {
         setError(result.error);
         return;
       }
       setOps(await getItemOperations(activeSku));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+      }
     });
   }
 

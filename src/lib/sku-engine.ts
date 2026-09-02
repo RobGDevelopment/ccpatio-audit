@@ -43,6 +43,7 @@ const CATEGORY_RULES: ReadonlyArray<[RegExp, string]> = [
   [/CORNER\s+SOFA/i, "COR-SOF"],
   [/CORNER\s+CHAISE/i, "COR-CHS"],
   [/ARMLESS\s+SOFA/i, "ARM-SOF"],
+  [/ARMLESS\s+LOVESEAT/i, "ARM-LOV"],
   [/MINI\s+LOVESEAT/i, "MIN-LOV"],
   [/LOVESEAT/i, "LOV-SOF"],
   [/\bSOFA\b/i, "SOF"],

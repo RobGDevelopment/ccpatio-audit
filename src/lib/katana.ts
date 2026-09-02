@@ -7,6 +7,8 @@
  * BOM       → POST /recipes   (keep_current_rows: false replaces existing lines)
  * Ops       → POST /product_operation_rows (minutes stored locally → seconds)
  * Orders    → POST /sales_orders
+ * MTO       → POST /manufacturing_order_make_to_order (create_subassemblies defaults false)
+ * MTO swap  → PATCH /manufacturing_order_recipe_rows/{id} via applyMtoIngredientOverrides
  * Recipe/ops sync respects ORDER_PIPELINE_MODE (live only for mutations)
  */
 
@@ -26,6 +28,19 @@ import {
   pipelineModeLabel,
 } from "@/server/pipeline/mode";
 import type { WooOrderWebhook } from "@/server/woocommerce/ingress.schema";
+import { katanaProductSyncFlags } from "@/lib/katana-product-flags";
+import {
+  collectChildMoIdsFromRecipeRows,
+  collectNestedManufacturingOrderIds,
+  findRecipeRowsByVariantId,
+  isMoInParentTree,
+  parseKatanaListPayload,
+  parseMoRecipeRow,
+  parseMoTreeNode,
+  resolveCreateSubassemblies,
+  type KatanaMoRecipeRow,
+  type KatanaMoTreeNode,
+} from "@/lib/katana-mto";
 
 const KATANA_API_BASE = "https://api.katanamrp.com/v1";
 const MAX_RATE_LIMIT_RETRIES = 3;
@@ -149,6 +164,25 @@ export type KatanaMakeToOrderResult = {
   salesOrderRowId: number;
   manufacturingOrderId: number;
   orderNo: string | null;
+  /** Extra MO ids returned on the MTO payload when create_subassemblies is true. */
+  relatedManufacturingOrderIds: number[];
+};
+
+export type MtoIngredientOverridePatch = {
+  recipeRowId: number;
+  manufacturingOrderId: number;
+  fromVariantId: number;
+  toVariantId: number;
+};
+
+export type MtoIngredientOverrideResult = {
+  parentMoId: number;
+  genericVariantId: number;
+  specificVariantId: number;
+  patched: MtoIngredientOverridePatch[];
+  skipped: boolean;
+  warning: string | null;
+  inspectedMoIds: number[];
 };
 
 type KatanaFetchOptions = {
@@ -226,13 +260,48 @@ function formatKatanaError(status: number, body: unknown): string {
   return message;
 }
 
-async function katanaFetch<T = unknown>(
+let katanaRequestPacer: (() => Promise<void>) | null = null;
+
+/**
+ * Install a hook awaited before every Katana request.
+ *
+ * Bulk catalog scripts use this to stay under the 60-requests-per-60-seconds
+ * limit. Pacing has to live here rather than in the caller's loop because the
+ * recursive syncs fan out into many requests per item, so a delay between
+ * top-level iterations would still burst through the limit. The order pipeline
+ * leaves it unset, so interactive requests are never delayed.
+ */
+export function setKatanaRequestPacer(
+  pacer: (() => Promise<void>) | null,
+): void {
+  katanaRequestPacer = pacer;
+}
+
+/** Serializes callers to at most one request per `intervalMs`. */
+export function createIntervalPacer(intervalMs: number): () => Promise<void> {
+  let tail = Promise.resolve();
+  let last = 0;
+  return () => {
+    tail = tail.then(async () => {
+      const wait = last + intervalMs - Date.now();
+      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+      last = Date.now();
+    });
+    return tail;
+  };
+}
+
+export async function katanaFetch<T = unknown>(
   pathname: string,
   options: KatanaFetchOptions = {},
 ): Promise<{ data: T; status: number; headers: Headers }> {
   const token = resolveKatanaToken();
   const retryCount = options.retryCount ?? 0;
   const url = `${KATANA_API_BASE}${pathname}`;
+
+  if (katanaRequestPacer) {
+    await katanaRequestPacer();
+  }
 
   const response = await fetch(url, {
     method: options.method ?? "GET",
@@ -344,6 +413,50 @@ export async function findVariantBySku(
   return null;
 }
 
+export async function findVariantById(
+  id: number,
+): Promise<KatanaVariantRecord | null> {
+  if (!Number.isFinite(id) || id <= 0) {
+    return null;
+  }
+
+  try {
+    const { data } = await katanaFetch<unknown>(`/variants/${id}`);
+    const record = asRecord(data);
+    if (!record?.id) {
+      const wrapped = asRecord(asRecord(data)?.data);
+      if (!wrapped?.id) {
+        return null;
+      }
+      return mapVariant(wrapped);
+    }
+    return mapVariant(record);
+  } catch {
+    return null;
+  }
+}
+
+async function resolveIngredientVariant(
+  childSku: string,
+): Promise<KatanaVariantRecord | null> {
+  const bySku = await findVariantBySku(childSku);
+  if (bySku) {
+    return bySku;
+  }
+
+  const ensured = await ensureKatanaVariantForSku(childSku);
+  if (!ensured.ok) {
+    return null;
+  }
+
+  const byId = await findVariantById(ensured.variantId);
+  if (byId) {
+    return byId;
+  }
+
+  return findVariantBySku(childSku);
+}
+
 function parseMoney(value: string | null | undefined): number | null {
   if (!value?.trim()) {
     return null;
@@ -444,11 +557,13 @@ async function upsertProductInKatana(input: {
   unitOfMeasure: string;
   salesPrice: string | null;
   description: string | null;
+  itemType?: ItemType | null;
 }): Promise<KatanaSyncResult> {
   const sku = input.sku.trim().toUpperCase();
   const existing = await findVariantBySku(sku);
   const salesPrice = parseMoney(input.salesPrice);
   const uom = mapUomToKatana(input.unitOfMeasure);
+  const flags = katanaProductSyncFlags(input.itemType ?? "finished_good");
 
   if (existing?.product_id) {
     await katanaFetch(`/products/${existing.product_id}`, {
@@ -458,8 +573,9 @@ async function upsertProductInKatana(input: {
         uom,
         category_name: input.category.trim() || undefined,
         additional_info: input.description?.trim() || undefined,
-        is_sellable: true,
-        is_producible: true,
+        is_sellable: flags.is_sellable,
+        is_producible: flags.is_producible,
+        is_purchasable: flags.is_purchasable,
       },
     });
 
@@ -494,9 +610,9 @@ async function upsertProductInKatana(input: {
       uom,
       category_name: input.category.trim() || undefined,
       additional_info: input.description?.trim() || undefined,
-      is_sellable: true,
-      is_producible: true,
-      is_purchasable: false,
+      is_sellable: flags.is_sellable,
+      is_producible: flags.is_producible,
+      is_purchasable: flags.is_purchasable,
       variants: [
         {
           sku,
@@ -548,13 +664,23 @@ export async function syncRawMaterialToKatana(
       return { ok: false, error: `Raw material ${needle} not found in catalog.` };
     }
 
-    return upsertMaterialInKatana({
+    const result = await upsertMaterialInKatana({
       sku: row.sku,
       name: row.name,
       category: row.category,
       unitOfMeasure: row.unit_of_measure,
       costPerUnit: row.cost_per_unit,
     });
+    if (result.ok) {
+      await db
+        .update(sku_mappings)
+        .set({
+          katana_variant_id: result.variantId,
+          katana_material_id: result.materialId ?? null,
+        })
+        .where(eq(sku_mappings.global_sku, needle));
+    }
+    return result;
   } catch (error: unknown) {
     if (error instanceof KatanaApiError) {
       return { ok: false, error: error.message };
@@ -589,16 +715,17 @@ export async function syncFinishedGoodToKatana(
       .limit(1);
 
     if (!row) {
-      return { ok: false, error: `Finished good ${needle} not found in catalog.` };
+      return { ok: false, error: `SKU ${needle} not found in sku_mappings.` };
     }
 
     const result = await upsertProductInKatana({
       sku: row.mapping.global_sku,
       name: row.mapping.original_name || row.mapping.global_sku,
       category: row.mapping.category,
-      unitOfMeasure: "ea",
+      unitOfMeasure: row.mapping.uom_consume || "ea",
       salesPrice: row.catalog?.msrp ?? null,
       description: row.catalog?.description ?? null,
+      itemType: row.mapping.item_type,
     });
 
     if (result.ok) {
@@ -783,17 +910,7 @@ export async function syncBOMToKatana(
       if (allowMutate && bomLines.length > 0 && productVariantId) {
         for (const line of bomLines) {
           const childSku = line.child_sku.trim().toUpperCase();
-          let ingredientVariant = await findVariantBySku(childSku);
-          if (!ingredientVariant) {
-            const ensured = await ensureKatanaVariantForSku(childSku);
-            if (!ensured.ok) {
-              return {
-                ok: false,
-                error: `Component ${childSku}: ${ensured.error}`,
-              };
-            }
-            ingredientVariant = await findVariantBySku(childSku);
-          }
+          const ingredientVariant = await resolveIngredientVariant(childSku);
           if (!ingredientVariant) {
             return {
               ok: false,
@@ -1370,13 +1487,17 @@ function extractSalesOrderRowIds(data: Record<string, unknown>): number[] {
 
 /**
  * Create Make-to-Order manufacturing orders for each sales order row.
- * POST /manufacturing_order_make_to_order { sales_order_row_id }
+ * POST /manufacturing_order_make_to_order { sales_order_row_id, create_subassemblies }
+ *
+ * `createSubassemblies` defaults to **false**. Live Woo / GHL Inngest callers must
+ * omit the flag so factory MOs stay flat until Phase 4 is wired on purpose.
  */
 export async function createMakeToOrderManufacturingOrders(
   salesOrderRowIds: number[],
   options?: { createSubassemblies?: boolean },
 ): Promise<KatanaMakeToOrderResult[]> {
   const results: KatanaMakeToOrderResult[] = [];
+  const createSubassemblies = resolveCreateSubassemblies(options);
 
   for (const salesOrderRowId of salesOrderRowIds) {
     if (!Number.isFinite(salesOrderRowId) || salesOrderRowId <= 0) {
@@ -1392,7 +1513,7 @@ export async function createMakeToOrderManufacturingOrders(
         method: "POST",
         body: {
           sales_order_row_id: salesOrderRowId,
-          create_subassemblies: options?.createSubassemblies ?? false,
+          create_subassemblies: createSubassemblies,
         },
       },
     );
@@ -1409,8 +1530,258 @@ export async function createMakeToOrderManufacturingOrders(
       salesOrderRowId,
       manufacturingOrderId,
       orderNo: typeof data.order_no === "string" ? data.order_no : null,
+      relatedManufacturingOrderIds: collectNestedManufacturingOrderIds(data).filter(
+        (id) => id !== manufacturingOrderId,
+      ),
     });
   }
 
   return results;
+}
+
+async function listManufacturingOrderRecipeRows(
+  manufacturingOrderId: number,
+): Promise<KatanaMoRecipeRow[]> {
+  const rows: KatanaMoRecipeRow[] = [];
+  const limit = 50;
+
+  for (let page = 1; page <= 5; page += 1) {
+    const query = new URLSearchParams();
+    query.set("manufacturing_order_id", String(manufacturingOrderId));
+    query.set("limit", String(limit));
+    query.set("page", String(page));
+
+    const { data } = await katanaFetch<unknown>(
+      `/manufacturing_order_recipe_rows?${query.toString()}`,
+    );
+
+    const pageRows = parseKatanaListPayload(data)
+      .map(parseMoRecipeRow)
+      .filter((row): row is KatanaMoRecipeRow => row !== null);
+
+    rows.push(...pageRows);
+    if (pageRows.length < limit) {
+      break;
+    }
+  }
+
+  return rows;
+}
+
+async function getManufacturingOrderTreeNode(
+  manufacturingOrderId: number,
+): Promise<{ node: KatanaMoTreeNode; nestedMoIds: number[] } | null> {
+  try {
+    const { data } = await katanaFetch<unknown>(
+      `/manufacturing_orders/${manufacturingOrderId}`,
+    );
+    const record = parseKatanaListPayload(data)[0];
+    const node = record ? parseMoTreeNode(record) : null;
+    if (!node) {
+      return null;
+    }
+    return {
+      node,
+      nestedMoIds: collectNestedManufacturingOrderIds(data).filter(
+        (id) => id !== manufacturingOrderId,
+      ),
+    };
+  } catch (error) {
+    console.warn("[katana] failed to load manufacturing order for MTO override", {
+      manufacturingOrderId,
+      error: error instanceof Error ? error.message : error,
+    });
+    return null;
+  }
+}
+
+async function listManufacturingOrdersForSalesOrder(
+  salesOrderId: number,
+): Promise<KatanaMoTreeNode[]> {
+  const parseNodes = (data: unknown): KatanaMoTreeNode[] =>
+    parseKatanaListPayload(data)
+      .map(parseMoTreeNode)
+      .filter((row): row is KatanaMoTreeNode => row !== null);
+
+  const query = new URLSearchParams();
+  query.set("sales_order_id", String(salesOrderId));
+  query.set("limit", "50");
+
+  try {
+    const { data } = await katanaFetch<unknown>(
+      `/manufacturing_orders?${query.toString()}`,
+    );
+    return parseNodes(data);
+  } catch (error) {
+    if (
+      !(error instanceof KatanaApiError) ||
+      (error.status !== 400 && error.status !== 422)
+    ) {
+      throw error;
+    }
+  }
+
+  const fallback = await katanaFetch<unknown>(
+    "/manufacturing_orders?is_linked_to_sales_order=true&limit=50",
+  );
+  return parseNodes(fallback.data);
+}
+
+/**
+ * Swap RM-FAB-GENERIC (or any placeholder) on a parent MO and its
+ * create_subassemblies children for a specific FAB-* variant.
+ *
+ * Looks up GET /manufacturing_order_recipe_rows?manufacturing_order_id= on
+ * the parent and nested child MOs, then PATCH /manufacturing_order_recipe_rows/{id}.
+ * Missing generic rows log a warning and skip — they never throw.
+ */
+export async function applyMtoIngredientOverrides(
+  parentMoId: number,
+  options: { genericVariantId: number; specificVariantId: number },
+): Promise<MtoIngredientOverrideResult> {
+  const genericVariantId = Number(options.genericVariantId);
+  const specificVariantId = Number(options.specificVariantId);
+  const empty: MtoIngredientOverrideResult = {
+    parentMoId,
+    genericVariantId,
+    specificVariantId,
+    patched: [],
+    skipped: true,
+    warning: null,
+    inspectedMoIds: [],
+  };
+
+  if (!Number.isFinite(parentMoId) || parentMoId <= 0) {
+    const warning = `applyMtoIngredientOverrides skipped: invalid parentMoId=${parentMoId}`;
+    console.warn("[katana]", warning);
+    return { ...empty, warning };
+  }
+  if (!Number.isFinite(genericVariantId) || genericVariantId <= 0) {
+    const warning = `applyMtoIngredientOverrides skipped: invalid genericVariantId=${options.genericVariantId}`;
+    console.warn("[katana]", warning);
+    return { ...empty, warning };
+  }
+  if (!Number.isFinite(specificVariantId) || specificVariantId <= 0) {
+    const warning = `applyMtoIngredientOverrides skipped: invalid specificVariantId=${options.specificVariantId}`;
+    console.warn("[katana]", warning);
+    return { ...empty, warning };
+  }
+  if (genericVariantId === specificVariantId) {
+    const warning =
+      "applyMtoIngredientOverrides skipped: genericVariantId and specificVariantId are identical";
+    console.warn("[katana]", warning);
+    return { ...empty, warning };
+  }
+
+  const parentLoaded = await getManufacturingOrderTreeNode(parentMoId);
+  const parent = parentLoaded?.node ?? null;
+  const queue: number[] = [parentMoId];
+  const inspected = new Set<number>();
+  const patched: MtoIngredientOverridePatch[] = [];
+  let genericRowSeen = false;
+
+  const enqueueTrusted = (ids: number[]) => {
+    for (const id of ids) {
+      if (!inspected.has(id) && Number.isFinite(id) && id > 0) {
+        queue.push(id);
+      }
+    }
+  };
+
+  if (parentLoaded) {
+    enqueueTrusted(parentLoaded.nestedMoIds);
+  }
+
+  let listedSiblings = false;
+
+  while (queue.length > 0) {
+    const moId = queue.shift();
+    if (moId == null || inspected.has(moId)) {
+      continue;
+    }
+    inspected.add(moId);
+
+    let rows: KatanaMoRecipeRow[];
+    try {
+      rows = await listManufacturingOrderRecipeRows(moId);
+    } catch (error) {
+      console.warn("[katana] failed to list MO recipe rows; continuing", {
+        manufacturingOrderId: moId,
+        error: error instanceof Error ? error.message : error,
+      });
+      continue;
+    }
+
+    const matches = findRecipeRowsByVariantId(rows, genericVariantId);
+    if (matches.length > 0) {
+      genericRowSeen = true;
+    }
+    for (const row of matches) {
+      try {
+        await katanaFetch(`/manufacturing_order_recipe_rows/${row.id}`, {
+          method: "PATCH",
+          body: { variant_id: specificVariantId },
+        });
+        patched.push({
+          recipeRowId: row.id,
+          manufacturingOrderId: row.manufacturing_order_id,
+          fromVariantId: genericVariantId,
+          toVariantId: specificVariantId,
+        });
+      } catch (error) {
+        console.warn("[katana] PATCH manufacturing_order_recipe_rows failed; skipping row", {
+          recipeRowId: row.id,
+          manufacturingOrderId: row.manufacturing_order_id,
+          error: error instanceof Error ? error.message : error,
+        });
+      }
+    }
+
+    enqueueTrusted(collectChildMoIdsFromRecipeRows(rows));
+
+    if (
+      patched.length === 0 &&
+      !listedSiblings &&
+      parent?.sales_order_id != null &&
+      queue.length === 0
+    ) {
+      listedSiblings = true;
+      try {
+        const siblings = await listManufacturingOrdersForSalesOrder(parent.sales_order_id);
+        enqueueTrusted(
+          siblings.filter((candidate) => isMoInParentTree(candidate, parent)).map((row) => row.id),
+        );
+      } catch (error) {
+        console.warn("[katana] failed to list sibling MOs for MTO override", {
+          parentMoId,
+          salesOrderId: parent.sales_order_id,
+          error: error instanceof Error ? error.message : error,
+        });
+      }
+    }
+  }
+
+  if (patched.length === 0) {
+    const warning = genericRowSeen
+      ? `applyMtoIngredientOverrides: genericVariantId=${genericVariantId} found on MO tree ${parentMoId} but PATCH failed; override skipped`
+      : `applyMtoIngredientOverrides: no recipe row with genericVariantId=${genericVariantId} ` +
+        `on parent MO ${parentMoId} or its subassembly MOs; override skipped`;
+    console.warn("[katana]", warning);
+    return {
+      ...empty,
+      skipped: true,
+      warning,
+      inspectedMoIds: [...inspected],
+    };
+  }
+
+  return {
+    parentMoId,
+    genericVariantId,
+    specificVariantId,
+    patched,
+    skipped: false,
+    warning: null,
+    inspectedMoIds: [...inspected],
+  };
 }

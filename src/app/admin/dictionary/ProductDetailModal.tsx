@@ -167,8 +167,9 @@ export function ProductDetailModal({
     setError(null);
     setFieldErrors({});
     startTransition(async () => {
-      const operator = getOperatorName();
-      let version = row.version;
+      try {
+        const operator = getOperatorName();
+        let version = row.version;
       let nextAttributes = { ...row.attributes };
       let nextCatalog: CatalogFields | null = row.catalog
         ? { ...row.catalog, naFields: [...row.catalog.naFields] }
@@ -275,6 +276,11 @@ export function ProductDetailModal({
       });
       toast.success(`Saved ${row.globalSku}`);
       onClose();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+        setError(msg);
+        toast.error(`Failed to save: ${msg}. Please try again.`);
+      }
     });
   }, [drafts, fields, focusMissing, onClose, onPatchSaved, row, toast, applyPatchError]);
 

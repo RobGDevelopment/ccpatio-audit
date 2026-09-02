@@ -1,0 +1,6 @@
+# Sunbrella browse/category pages for live scrape mode (one URL per line).
+# These SSR pages expose product links with embedded SKUs — unlike the JS Fabric Finder.
+https://www.sunbrella.com/browse-fabrics/fabrics-by-use/outdoor-upholstery
+https://www.sunbrella.com/browse-fabrics/fabrics-by-use/all-fabrics/solids
+https://www.sunbrella.com/browse-fabrics/fabrics-by-use/all-fabrics/stripes
+https://www.sunbrella.com/browse-fabrics/fabrics-by-use/all-fabrics/black--solids

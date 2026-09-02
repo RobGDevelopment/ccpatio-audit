@@ -135,7 +135,8 @@ export function CreateSkuModal({
     setError(null);
     setFieldErrors({});
     startTransition(async () => {
-      const result = await createSkuMapping(payload);
+      try {
+        const result = await createSkuMapping(payload);
       if (!result.ok) {
         setError(result.error);
         toast.error(result.error);
@@ -144,6 +145,11 @@ export function CreateSkuModal({
       toast.success(`Created ${result.row.globalSku}`);
       onCreated(result.row);
       onClose();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+        setError(msg);
+        toast.error(`Failed to create SKU: ${msg}. Please try again.`);
+      }
     });
   }, [
     baseCost,

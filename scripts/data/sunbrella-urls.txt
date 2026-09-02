@@ -1,0 +1,7 @@
+# Fallback URL list for: node scripts/scrape_sunbrella.js --mode=urls
+# Formats: product URL | Name|SKU | JSON per line
+
+Canvas Black|5408-0000
+Cabana Classic|58030-0000
+https://www.sunbrella.com/sunbrella-upholstery-canvas-air-blue-5410-0000
+https://www.sunbrella.com/sunbrella-upholstery-spectrum-carbon-48085-0000

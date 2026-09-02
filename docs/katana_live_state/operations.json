@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "pulledAt": "2026-09-01T20:30:13.867Z",
+    "endpoint": "/operations",
+    "status": 404,
+    "ok": false,
+    "pagesFetched": 1,
+    "recordCount": 0,
+    "pagination": null,
+    "error": "HTTP 404 Not Found"
+  },
+  "data": []
+}

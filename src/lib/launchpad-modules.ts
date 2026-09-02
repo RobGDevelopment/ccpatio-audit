@@ -1,4 +1,4 @@
-export type ModuleStatus = "Live" | "Sandbox" | "Walk Phase";
+export type ModuleStatus = "Live" | "Sandbox" | "Walk Phase" | "POC";
 
 export type LaunchpadModule = {
   id: string;
@@ -38,6 +38,15 @@ export const LAUNCHPAD_MODULES: LaunchpadModule[] = [
     requiresAuth: true,
   },
   {
+    id: "cpq-configurator",
+    title: "3D CPQ Configurator",
+    description:
+      "Interactive WebGL environment for real-time product visualization, Draco compression, and material swapping.",
+    href: "http://localhost:3001",
+    status: "POC",
+    requiresAuth: false,
+  },
+  {
     id: "topology",
     title: "Topology Blueprint",
     description:
@@ -70,4 +79,5 @@ export const STATUS_STYLES: Record<ModuleStatus, string> = {
   Live: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
   Sandbox: "border-amber-500/40 bg-amber-500/10 text-amber-200",
   "Walk Phase": "border-sky-500/40 bg-sky-500/10 text-sky-200",
+  POC: "border-violet-500/40 bg-violet-500/10 text-violet-200",
 };

@@ -20,7 +20,10 @@ type ExecutiveLaunchpadProps = {
 };
 
 function ModuleCard({ module }: { module: LaunchpadModule }) {
-  const isExternal = module.href.startsWith("/api/");
+  const isExternal =
+    module.href.startsWith("http://") ||
+    module.href.startsWith("https://") ||
+    module.href.startsWith("/api/");
   const isHighlighted = HIGHLIGHTED_PIM_TITLES.has(module.title);
 
   const card = (
