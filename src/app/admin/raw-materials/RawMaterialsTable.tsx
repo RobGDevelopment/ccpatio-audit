@@ -362,7 +362,7 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
             ref={addButtonRef}
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/25"
+            className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-zinc-50 transition hover:bg-emerald-500 shadow-sm"
           >
             Add Raw Material
           </button>
@@ -372,7 +372,7 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
                 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
                 : syncLabel === "poll"
                   ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
-                  : "border-slate-600/50 bg-slate-800/60 text-slate-400"
+                  : "border-zinc-600/50 bg-zinc-800/60 text-zinc-400"
             }`}
           >
             {syncLabel === "live"
@@ -381,23 +381,23 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
                 ? "Poll sync"
                 : "Connecting..."}
           </span>
-          <p className="text-xs tabular-nums text-slate-500">
-            <span className="font-medium text-slate-300">{filtered.length}</span>{" "}
+          <p className="text-xs tabular-nums text-zinc-500">
+            <span className="font-medium text-zinc-300">{filtered.length}</span>{" "}
             shown · {localRows.length} total
           </p>
         </div>
       </div>
 
       <div className="space-y-1">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
           Categories{" "}
-          <span className="font-normal normal-case tracking-normal text-slate-600">
+          <span className="font-normal normal-case tracking-normal text-zinc-600">
             (Click to toggle multiple)
           </span>
         </p>
         <div
           role="tablist"
-          className="flex gap-1 overflow-x-auto border-b border-slate-800/80 pb-px scrollbar-none"
+          className="flex gap-1 overflow-x-auto border-b border-zinc-800/80 pb-px scrollbar-none"
         >
           <CategoryTab
             label={ALL_TAB}
@@ -420,22 +420,22 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
 
       <CategoryProgressBar stats={progressStats} />
 
-      <div className="overflow-hidden rounded-lg border border-slate-800/50">
+      <div className="overflow-hidden rounded-lg border border-zinc-800">
         <div className="max-h-[min(75vh,62rem)] overflow-auto">
           <table className="w-full table-fixed border-collapse text-left text-sm">
             <colgroup>
-              <col className="w-[14%]" />
               <col className="w-[22%]" />
+              <col className="w-[14%]" />
               <col className="w-[14%]" />
               <col className="w-[8%]" />
               <col className="w-[12%]" />
               <col className="w-[14%]" />
               <col className="w-[16%]" />
             </colgroup>
-            <thead className="sticky top-0 z-10 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-md">
-              <tr className="text-[10px] uppercase tracking-wider text-slate-500">
-                <th className="px-3 py-3 font-medium">SKU (Auto)</th>
+            <thead className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950">
+              <tr className="text-[10px] uppercase tracking-wider text-zinc-500">
                 <th className="px-3 py-3 font-medium">Name</th>
+                <th className="px-3 py-3 font-medium">SKU (Auto)</th>
                 <th className="px-3 py-3 font-medium">Category</th>
                 <th className="px-3 py-3 font-medium">UOM</th>
                 <th className="px-3 py-3 font-medium">Cost / Unit</th>
@@ -443,10 +443,10 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
                 <th className="px-3 py-3 font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-900/70">
+            <tbody className="divide-y divide-zinc-800">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-12 text-center text-zinc-500">
                     No raw materials match this filter.
                   </td>
                 </tr>
@@ -454,7 +454,7 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
                 filtered.map((row) => (
                   <tr
                     key={row.sku}
-                    className={`cursor-pointer transition-colors hover:bg-slate-900/35 ${
+                    className={`cursor-pointer transition-colors hover:bg-zinc-900/35 ${
                       flashSkus[row.sku] ? "pim-row-flash" : ""
                     } ${!row.isActive ? "opacity-55" : ""}`}
                     tabIndex={0}
@@ -467,19 +467,19 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
                     }
                     onClick={(event) => openDetail(row, false, event.currentTarget)}
                   >
-                    <td className="px-3 py-2.5 font-mono text-[13px] text-slate-100">
-                      {row.sku}
-                    </td>
                     <td className="px-3 py-2.5">
-                      <span className="block truncate text-slate-300">
+                      <span className="block truncate text-[15px] font-semibold text-zinc-50">
                         {row.name}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-slate-400">{row.category}</td>
-                    <td className="px-3 py-2.5 font-mono text-slate-400">
+                    <td className="px-3 py-2.5 font-mono text-[11px] text-zinc-500">
+                      {row.sku}
+                    </td>
+                    <td className="px-3 py-2.5 text-zinc-400">{row.category}</td>
+                    <td className="px-3 py-2.5 font-mono text-zinc-400">
                       {row.unitOfMeasure}
                     </td>
-                    <td className="px-3 py-2.5 font-mono text-slate-400">
+                    <td className="px-3 py-2.5 font-mono text-zinc-400">
                       {row.costPerUnit ?? "—"}
                     </td>
                     <td className="px-3 py-2.5">
@@ -501,7 +501,7 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
                           }}
                           aria-label={`Inspect ${row.sku}`}
                           title="Inspect / edit"
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 text-slate-400 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-700/60 text-zinc-400 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
                         >
                           <InspectIcon />
                         </button>
@@ -510,7 +510,7 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
                           onClick={() => onDelete(row.sku)}
                           disabled={isPending}
                           aria-label={`Delete ${row.sku}`}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-rose-500/10 hover:text-rose-400 disabled:opacity-50"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition hover:bg-rose-500/10 hover:text-rose-400 disabled:opacity-50"
                         >
                           <TrashIcon />
                         </button>
@@ -552,9 +552,9 @@ export function RawMaterialsTable({ rows: initialRows, onFilteredStatsChange }: 
 
       {error ? <p className="text-xs text-rose-400">{error}</p> : null}
 
-      <p className="text-[11px] text-slate-600">
+      <p className="text-[11px] text-zinc-600">
         Edits sync to{" "}
-        <code className="font-mono text-slate-500">sku_mappings</code> and the
+        <code className="font-mono text-zinc-500">sku_mappings</code> and the
         Global SKU Dictionary in real time. Deletions are blocked when a SKU is
         referenced in a BOM.
       </p>
@@ -586,7 +586,7 @@ function CategoryTab({
       className={`inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition ${
         selected
           ? "border-emerald-500 text-emerald-300"
-          : "border-transparent text-slate-500 hover:text-slate-300"
+          : "border-transparent text-zinc-500 hover:text-zinc-300"
       }`}
     >
       {showRemoveIndicator ? (
@@ -605,7 +605,7 @@ function CategoryTab({
         className={`${EXEC_PILL} ${
           selected
             ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-            : "border-slate-700/50 bg-slate-900/80 text-slate-500"
+            : "border-zinc-700/50 bg-zinc-900/80 text-zinc-500"
         }`}
       >
         {count}

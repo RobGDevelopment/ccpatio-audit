@@ -91,19 +91,19 @@ export default async function DictionaryPage() {
   const incomplete = missingData;
 
   return (
-    <main className="pim-carbon-shell min-h-screen text-slate-50">
+    <main className="pim-carbon-shell min-h-screen text-zinc-50">
       <DictionaryTour />
       <div className="w-full px-2 py-4 sm:px-3">
         <header className="pim-glass mb-4 rounded-lg px-4 py-5 sm:px-5">
-          <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-slate-500">
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-zinc-500">
             CC Patio · Enterprise PIM Terminal
           </p>
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div id="dictionary-tour-mission">
-              <h1 className="text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">
+              <h1 className="text-3xl font-semibold tracking-tight text-zinc-50 sm:text-4xl">
                 Global E2E SKU Dictionary
               </h1>
-              <ol className="mt-2 max-w-2xl list-decimal space-y-1 pl-4 text-sm leading-relaxed text-slate-400">
+              <ol className="mt-2 max-w-2xl list-decimal space-y-1 pl-4 text-sm leading-relaxed text-zinc-400">
                 <li>Fill in missing data highlighted in red (or enter N/A).</li>
                 <li>
                   Check the &apos;Web&apos; box for any items that should sync to
@@ -122,18 +122,18 @@ export default async function DictionaryPage() {
                 </Link>
                 <a
                   href="/admin/raw-materials"
-                  className="text-slate-400 transition hover:text-slate-200"
+                  className="text-zinc-400 transition hover:text-zinc-200"
                 >
                   Raw Materials Catalog →
                 </a>
                 <Link
                   href="/admin/audit"
-                  className="text-slate-400 transition hover:text-slate-200"
+                  className="text-zinc-400 transition hover:text-zinc-200"
                 >
                   Change log →
                 </Link>
                 {session ? (
-                  <span className="text-slate-500">
+                  <span className="text-zinc-500">
                     Signed in as{" "}
                     <span className="font-mono text-emerald-300/90">
                       {session.email}
@@ -169,7 +169,7 @@ export default async function DictionaryPage() {
           </div>
           <div
             aria-hidden
-            className="relative mt-6 h-px w-full overflow-hidden bg-slate-800/80"
+            className="relative mt-6 h-px w-full overflow-hidden bg-zinc-800/80"
           >
             <div className="animate-beam-glide absolute top-0 left-0 h-full w-1/4 bg-linear-to-r from-transparent via-emerald-500/40 to-transparent" />
           </div>
@@ -201,11 +201,11 @@ function Stat({
         ? "text-amber-200"
         : tone === "ok"
           ? "text-emerald-300"
-          : "text-slate-50";
+          : "text-zinc-50";
 
   const content = (
     <>
-      <dt className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
+      <dt className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
         {label}
       </dt>
       <dd
@@ -216,7 +216,7 @@ function Stat({
     </>
   );
 
-  const containerClass = "rounded-lg border border-slate-800/60 bg-slate-950/40 px-3 py-2 transition hover:bg-slate-900/60 cursor-pointer";
+  const containerClass = "rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 transition-all hover:bg-zinc-900 hover:border-emerald-500/50 hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] cursor-pointer";
 
   if (href) {
     return (

@@ -237,39 +237,39 @@ function leanCoreColumns(
   meta: DictionaryTableMeta,
 ): ColumnDef<SkuMappingRow, unknown>[] {
   return [
-    col.accessor("globalSku", {
-      header: "SKU",
-      cell: ({ row }) => (
-        <span
-          className="whitespace-nowrap font-mono text-[11px] text-slate-100"
-          title={row.original.globalSku}
-        >
-          {row.original.globalSku}
-        </span>
-      ),
-    }),
     col.accessor("originalName", {
       header: "Name",
       cell: ({ row }) => (
         <span
-          className="block max-w-48 truncate text-sm text-slate-300"
+          className="block max-w-48 truncate text-[15px] font-semibold text-zinc-50"
           title={row.original.originalName}
         >
           {row.original.originalName || "—"}
         </span>
       ),
     }),
+    col.accessor("globalSku", {
+      header: "SKU",
+      cell: ({ row }) => (
+        <span
+          className="whitespace-nowrap font-mono text-[11px] text-zinc-500"
+          title={row.original.globalSku}
+        >
+          {row.original.globalSku}
+        </span>
+      ),
+    }),
     col.accessor("category", {
       header: "Category",
       cell: ({ row }) => (
-        <span className="text-sm text-slate-400">{row.original.category}</span>
+        <span className="text-sm text-zinc-400">{row.original.category}</span>
       ),
     }),
     col.display({
       id: "uom",
       header: "UOM",
       cell: ({ row }) => (
-        <span className="font-mono text-xs text-slate-400">
+        <span className="font-mono text-xs text-zinc-400">
           {row.original.uomConsume ?? row.original.uomPurchase ?? "—"}
         </span>
       ),
@@ -285,7 +285,7 @@ function leanCoreColumns(
           ? row.original.catalog?.msrp
           : (row.original.baseCost ?? row.original.catalog?.cost);
         return (
-          <span className="font-mono text-xs text-slate-400">
+          <span className="font-mono text-xs text-zinc-400">
             {value?.trim() ? value : "—"}
           </span>
         );
@@ -313,7 +313,7 @@ function ecommColumn(): ColumnDef<SkuMappingRow, unknown> {
               m.onToggleSyncToWoo(row.original.globalSku, event.target.checked)
             }
             aria-label={`WooCommerce export for ${row.original.globalSku}`}
-            className="h-4 w-4 rounded border-slate-600 bg-slate-950 text-emerald-500 focus:ring-emerald-500/40"
+            className="h-4 w-4 rounded border-zinc-600 bg-zinc-950 text-emerald-500 focus:ring-emerald-500/40"
           />
         </div>
       );
@@ -360,14 +360,14 @@ function actionsColumn(): ColumnDef<SkuMappingRow, unknown> {
                   e.stopPropagation();
                   m.onToggleExpand(row.original.globalSku);
                 }}
-                className="inline-flex h-7 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 text-[11px] font-medium tracking-wide text-emerald-400 transition hover:bg-emerald-500/20"
+                className="inline-flex h-7 items-center justify-center rounded-md bg-emerald-600 px-3 text-[11px] font-medium tracking-wide text-zinc-50 transition hover:bg-emerald-500 shadow-sm"
               >
                 Details
               </button>
             ) : (
               <Link
                 href={`/admin/dictionary/bom/${encodeURIComponent(row.original.globalSku)}`}
-                className="inline-flex h-7 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 text-[11px] font-medium tracking-wide text-emerald-400 transition hover:bg-emerald-500/20"
+                className="inline-flex h-7 items-center justify-center rounded-md bg-emerald-600 px-3 text-[11px] font-medium tracking-wide text-zinc-50 transition hover:bg-emerald-500 shadow-sm"
               >
                 Build Recipe
               </Link>
@@ -381,7 +381,7 @@ function actionsColumn(): ColumnDef<SkuMappingRow, unknown> {
               e.stopPropagation();
               m.onOpenProductDetail(row.original, undefined, e.currentTarget);
             }}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 text-slate-400 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-700/60 text-zinc-400 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
           >
             <InspectIcon />
           </button>
@@ -393,7 +393,7 @@ function actionsColumn(): ColumnDef<SkuMappingRow, unknown> {
               e.stopPropagation();
               m.onDelete(row.original.globalSku);
             }}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-rose-500/10 hover:text-rose-400"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition hover:bg-rose-500/10 hover:text-rose-400"
           >
             <TrashIcon />
           </button>

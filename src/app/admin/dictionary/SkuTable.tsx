@@ -593,11 +593,11 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
             ref={addButtonRef}
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/25"
+            className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-zinc-50 transition hover:bg-emerald-500 shadow-sm"
           >
             Add SKU
           </button>
-          <label className="flex items-center gap-2 text-[11px] text-slate-400">
+          <label className="flex items-center gap-2 text-[11px] text-zinc-400">
             <span className="uppercase tracking-wider">Signed in</span>
             <span className="font-mono text-emerald-300/90">{operator}</span>
           </label>
@@ -607,7 +607,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
                 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
                 : syncLabel === "poll"
                   ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
-                  : "border-slate-600/50 bg-slate-800/60 text-slate-400"
+                  : "border-zinc-600/50 bg-zinc-800/60 text-zinc-400"
             }`}
           >
             {syncLabel === "live"
@@ -616,14 +616,14 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
                 ? "Poll sync"
                 : "Connecting..."}
           </span>
-          <p className="text-xs tabular-nums text-slate-500">
-            <span className="font-medium text-slate-300">{filtered.length}</span>{" "}
+          <p className="text-xs tabular-nums text-zinc-500">
+            <span className="font-medium text-zinc-300">{filtered.length}</span>{" "}
             shown
           </p>
           <button
             type="button"
             onClick={() => downloadCsv(filtered)}
-            className="rounded-md border border-slate-700/60 bg-slate-950/60 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-slate-500 hover:text-slate-100"
+            className="rounded-md border border-zinc-700/60 bg-zinc-950/60 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100"
           >
             Export CSV
           </button>
@@ -631,15 +631,15 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
       </div>
 
       <div className="space-y-1" data-tour="dictionary-category-tabs">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
           Categories{" "}
-          <span className="font-normal normal-case tracking-normal text-slate-600">
+          <span className="font-normal normal-case tracking-normal text-zinc-600">
             (Click to toggle multiple)
           </span>
         </p>
         <div
           role="tablist"
-          className="flex gap-1 overflow-x-auto border-b border-slate-800/80 pb-px scrollbar-none"
+          className="flex gap-1 overflow-x-auto border-b border-zinc-800/80 pb-px scrollbar-none"
         >
           <CategoryTab
             label={ALL_TAB}
@@ -662,13 +662,13 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
 
       <CategoryProgressBar stats={progressStats} />
 
-      <div className="max-h-[min(75vh,62rem)] overflow-auto rounded-lg border border-slate-800/50">
+      <div className="max-h-[min(75vh,62rem)] overflow-auto rounded-lg border border-zinc-800">
         <table className="w-full border-collapse text-left text-sm">
-          <thead className="sticky top-0 z-10 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-md">
+          <thead className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr
                 key={headerGroup.id}
-                className="text-[10px] uppercase tracking-wider text-slate-500"
+                className="text-[10px] uppercase tracking-wider text-zinc-500"
               >
                 {headerGroup.headers.map((header) => (
                   <th
@@ -687,12 +687,12 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y divide-slate-900/70">
+          <tbody className="divide-y divide-zinc-800">
             {filtered.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-4 py-12 text-center text-sm text-slate-500"
+                  className="px-4 py-12 text-center text-sm text-zinc-500"
                 >
                   No SKUs match this filter.
                 </td>
@@ -710,7 +710,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
                 return (
                   <Fragment key={row.id}>
                     <tr
-                      className={`cursor-pointer transition-colors hover:bg-slate-900/35 ${
+                      className={`cursor-pointer transition-colors hover:bg-zinc-900/35 ${
                         row.original.isActive ? "" : "opacity-55"
                       } ${flashSkus[row.original.globalSku] ? "pim-row-flash" : ""}`}
                       tabIndex={0}
@@ -738,7 +738,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
                       <tr>
                         <td
                           colSpan={columns.length}
-                          className="bg-slate-950/40 px-4 py-5"
+                          className="bg-zinc-950/40 px-4 py-5"
                         >
                           {fgTab && (
                             <FinishedGoodDetailPanel
@@ -757,7 +757,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
           </tbody>
         </table>
       </div>
-      <p className="text-[11px] text-slate-600">
+      <p className="text-[11px] text-zinc-600">
         Finished Good rows show image and dims inline. Use the expand control for
         description, QBO, Woo/GHL, audit stamp, and BOM.
       </p>
@@ -814,7 +814,7 @@ function CategoryTab({
       className={`inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition ${
         selected
           ? "border-emerald-500 text-emerald-300"
-          : "border-transparent text-slate-500 hover:text-slate-300"
+          : "border-transparent text-zinc-500 hover:text-zinc-300"
       }`}
     >
       {showRemoveIndicator ? (
@@ -833,7 +833,7 @@ function CategoryTab({
         className={`${EXEC_PILL} ${
           selected
             ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-            : "border-slate-700/50 bg-slate-900/80 text-slate-500"
+            : "border-zinc-700/50 bg-zinc-900/80 text-zinc-500"
         }`}
       >
         {count}

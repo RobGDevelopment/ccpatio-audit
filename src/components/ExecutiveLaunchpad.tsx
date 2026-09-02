@@ -29,14 +29,14 @@ function ModuleCard({ module }: { module: LaunchpadModule }) {
   const card = (
     <article
       className={cn(
-        "group pim-glass flex h-full flex-col rounded-xl p-5 transition",
+        "group pim-glass flex h-full flex-col rounded-xl p-5 transition-all duration-300",
         isHighlighted
-          ? "border-red-500/70 shadow-[0_0_25px_rgba(239,68,68,0.4)] animate-[pulse_2s_ease-in-out_infinite]"
-          : "opacity-40 grayscale blur-[1px] hover:opacity-80 hover:grayscale-0 hover:blur-none hover:border-emerald-500/30 hover:bg-slate-950/60",
+          ? "border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.15)] bg-zinc-900 hover:border-emerald-500/80 hover:shadow-[0_0_30px_rgba(16,185,129,0.3)]"
+          : "opacity-40 grayscale blur-[1px] hover:opacity-100 hover:grayscale-0 hover:blur-none hover:border-zinc-700 hover:bg-zinc-900 hover:shadow-[inset_-12px_0_24px_-12px_rgba(0,0,0,0.5)]",
       )}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
-        <h3 className="text-lg font-semibold tracking-tight text-slate-100 group-hover:text-emerald-200">
+        <h3 className="text-lg font-semibold tracking-tight text-zinc-100 group-hover:text-emerald-200">
           {module.title}
         </h3>
         <span
@@ -45,7 +45,7 @@ function ModuleCard({ module }: { module: LaunchpadModule }) {
           {module.status}
         </span>
       </div>
-      <p className="flex-1 text-sm leading-relaxed text-slate-400">
+      <p className="flex-1 text-sm leading-relaxed text-zinc-400">
         {module.description}
       </p>
       <p className="mt-4 text-xs font-medium text-emerald-400/90 group-hover:text-emerald-300">
@@ -70,21 +70,21 @@ export function ExecutiveLaunchpad({
   operatorName,
 }: ExecutiveLaunchpadProps) {
   return (
-    <main className="pim-carbon-shell min-h-screen text-slate-50">
+    <main className="pim-carbon-shell min-h-screen text-zinc-50">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:py-14">
         <header className="pim-glass mb-8 rounded-xl px-6 py-5 sm:px-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-slate-500">
+              <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-zinc-500">
                 CC Patio · Enterprise PIM Terminal
               </p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
                 Executive Launchpad
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-slate-400">
+              <p className="mt-2 max-w-2xl text-sm text-zinc-400">
                 Signed in as{" "}
-                <span className="font-medium text-slate-200">{operatorName}</span>{" "}
-                <span className="text-slate-500">({operatorEmail})</span>
+                <span className="font-medium text-zinc-200">{operatorName}</span>{" "}
+                <span className="text-zinc-500">({operatorEmail})</span>
               </p>
             </div>
             <LogoutButton />
@@ -93,10 +93,10 @@ export function ExecutiveLaunchpad({
 
         <section>
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">
               Active modules
             </h2>
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-zinc-600">
               {LAUNCHPAD_MODULES.length} tools available
             </p>
           </div>
