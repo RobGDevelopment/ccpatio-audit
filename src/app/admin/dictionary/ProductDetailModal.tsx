@@ -149,15 +149,7 @@ export function ProductDetailModal({
       return draft !== initial;
     });
 
-    if (focusMissing) {
-      for (const field of fields) {
-        const raw = drafts[field.key]?.trim() ?? "";
-        if (!raw) {
-          setError(`Enter a value for ${field.label} or mark it N/A.`);
-          return;
-        }
-      }
-    }
+
 
     if (changed.length === 0) {
       onClose();

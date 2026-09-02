@@ -442,7 +442,7 @@ export function buildAllProductFieldDescriptors(
         target: "catalog",
         patchField: patch,
         allowNa: true,
-        section: "catalog",
+        section: (key === "length" || key === "width") ? "core" : "catalog",
         initialValue: na.has(naKey) ? "N/A" : (raw?.trim() ?? ""),
         isMissing: missingCatalog.has(key),
       });
