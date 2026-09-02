@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   useTransition,
+  Fragment,
   type FormEvent,
   type KeyboardEvent,
 } from "react";
@@ -109,7 +110,15 @@ function BomChildCombobox({
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, []);
 
-  const visible = useMemo(() => options.slice(0, 12), [options]);
+  const visible = useMemo(() => {
+    const sorted = [...options].sort((a, b) => {
+      const catA = a.category || "Uncategorized";
+      const catB = b.category || "Uncategorized";
+      if (catA !== catB) return catA.localeCompare(catB);
+      return a.sku.localeCompare(b.sku);
+    });
+    return sorted.slice(0, 15);
+  }, [options]);
 
   function select(hit: BomComponentCandidate): void {
     onChange(hit.sku, hit);
@@ -158,32 +167,45 @@ function BomChildCombobox({
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-zinc-700 bg-zinc-950 py-1 shadow-xl"
+          className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-zinc-700 bg-zinc-950 py-1 shadow-xl"
         >
           {loading ? (
             <li className="px-3 py-2 text-xs text-zinc-500">Searching…</li>
           ) : visible.length === 0 ? (
             <li className="px-3 py-2 text-xs text-zinc-500">No matches</li>
           ) : (
-            visible.map((hit, idx) => (
-              <li key={hit.sku}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={idx === highlightIndex}
-                  className={`flex w-full flex-col px-3 py-2 text-left text-xs ${
-                    idx === highlightIndex ? "bg-zinc-800" : "hover:bg-zinc-900"
-                  }`}
-                  onMouseEnter={() => setHighlightIndex(idx)}
-                  onClick={() => select(hit)}
-                >
-                  <span className="font-mono text-zinc-100">{hit.sku}</span>
-                  <span className="text-zinc-500">
-                    {hit.category ? `${hit.category} · ` : ""}{hit.name} · {hit.itemType}
-                  </span>
-                </button>
-              </li>
-            ))
+            visible.map((hit, idx) => {
+              const prev = idx > 0 ? visible[idx - 1] : null;
+              const cat = hit.category || "Uncategorized";
+              const showHeader = !prev || (prev.category || "Uncategorized") !== cat;
+
+              return (
+                <Fragment key={hit.sku}>
+                  {showHeader && (
+                    <li className="bg-zinc-900 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+                      {cat}
+                    </li>
+                  )}
+                  <li>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={idx === highlightIndex}
+                      className={`flex w-full flex-col px-3 py-2 text-left text-xs ${
+                        idx === highlightIndex ? "bg-zinc-800" : "hover:bg-zinc-800/50"
+                      }`}
+                      onMouseEnter={() => setHighlightIndex(idx)}
+                      onClick={() => select(hit)}
+                    >
+                      <span className="font-mono text-zinc-100">{hit.sku}</span>
+                      <span className="text-zinc-500">
+                        {hit.name} · {hit.itemType}
+                      </span>
+                    </button>
+                  </li>
+                </Fragment>
+              );
+            })
           )}
         </ul>
       ) : null}

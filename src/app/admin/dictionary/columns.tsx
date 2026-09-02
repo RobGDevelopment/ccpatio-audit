@@ -353,14 +353,13 @@ function actionsColumn(): ColumnDef<SkuMappingRow, unknown> {
             <button
               type="button"
               aria-label="Toggle BOM / details"
-              title="BOM / details"
               onClick={(e) => {
                 e.stopPropagation();
                 m.onToggleExpand(row.original.globalSku);
               }}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-emerald-500/20 text-emerald-400/80 transition hover:bg-emerald-500/10"
+              className="inline-flex h-7 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 text-[11px] font-medium tracking-wide text-emerald-400 transition hover:bg-emerald-500/20"
             >
-              ▾
+              BOM / Details
             </button>
           ) : null}
           <button
