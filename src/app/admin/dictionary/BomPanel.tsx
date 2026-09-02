@@ -17,7 +17,7 @@ import {
   deleteItemOperation,
   getBomTree,
   getItemOperations,
-  searchBomComponents,
+  searchBomMaterials,
   upsertBOMLine,
   upsertItemOperation,
   type BomComponentCandidate,
@@ -83,9 +83,14 @@ function BomChildCombobox({
     if (!open) return;
     let cancelled = false;
     const handle = window.setTimeout(async () => {
+      if (!query.trim()) {
+        setOptions([]);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
-        const rows = await searchBomComponents(query);
+        const rows = await searchBomMaterials(query);
         if (!cancelled) {
           setOptions(rows);
           setHighlightIndex(0);
@@ -93,7 +98,7 @@ function BomChildCombobox({
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }, 180);
+    }, 300);
     return () => {
       cancelled = true;
       window.clearTimeout(handle);
@@ -171,6 +176,8 @@ function BomChildCombobox({
         >
           {loading ? (
             <li className="px-3 py-2 text-xs text-zinc-500">Searching…</li>
+          ) : !query.trim() ? (
+            <li className="px-3 py-2 text-xs text-zinc-500">Start typing to search raw materials...</li>
           ) : visible.length === 0 ? (
             <li className="px-3 py-2 text-xs text-zinc-500">No matches</li>
           ) : (

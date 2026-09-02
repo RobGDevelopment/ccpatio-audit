@@ -308,7 +308,7 @@ export async function getBomTree(rootSku: string): Promise<BomTreeNode | null> {
   return build(root, 0, new Set());
 }
 
-export async function searchBomComponents(
+export async function searchBomMaterials(
   query: string,
 ): Promise<BomComponentCandidate[]> {
   const q = query.trim();
@@ -338,7 +338,7 @@ export async function searchBomComponents(
     .from(sku_mappings)
     .where(and(...filters))
     .orderBy(asc(sku_mappings.global_sku))
-    .limit(24);
+    .limit(50);
 }
 
 export async function upsertBOMLine(
@@ -465,7 +465,10 @@ export async function upsertBOMLine(
 
     revalidateDictionary();
     return { ok: true, line: mapBomRow(inserted, child) };
-  } catch (error: unknown) {
+  } catch (error: any) {
+    if (error?.code === "23505" || error?.message?.includes("duplicate key")) {
+      return { ok: false, error: "This material is already in the BOM." };
+    }
     const message =
       error instanceof Error ? error.message : "Unknown BOM save failure";
     return { ok: false, error: message };
