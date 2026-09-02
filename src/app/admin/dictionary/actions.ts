@@ -17,9 +17,10 @@ import {
   validateRawMaterialCost,
 } from "@/server/pim/patch-validation";
 import {
-  syncBOMToKatana,
+  syncBOMToKatana as syncBOMTreeToKatana,
   syncFinishedGoodToKatana,
 } from "@/lib/katana";
+import { syncBOMToKatana } from "@/lib/katana/orchestrator";
 import { getDb } from "@/server/db/client";
 import { logPimAudit, resolvePimOperator } from "@/lib/pim-audit";
 import {
@@ -438,6 +439,10 @@ export async function upsertBOMLine(
         return { ok: false, error: "BOM line not found" };
       }
 
+      if (process.env.DOWNSTREAM_MUTATIONS === 'true') {
+        await syncBOMToKatana(parentSku, childSku, Number(quantity));
+      }
+
       revalidateDictionary();
       return { ok: true, line: mapBomRow(updated, child) };
     }
@@ -453,6 +458,10 @@ export async function upsertBOMLine(
         updated_at: now,
       })
       .returning();
+
+    if (process.env.DOWNSTREAM_MUTATIONS === 'true') {
+      await syncBOMToKatana(parentSku, childSku, Number(quantity));
+    }
 
     revalidateDictionary();
     return { ok: true, line: mapBomRow(inserted, child) };
@@ -942,7 +951,7 @@ export async function syncFinishedGoodToKatanaAction(
 export async function syncBOMToKatanaAction(
   finishedGoodSku: string,
 ): Promise<KatanaSyncActionResult> {
-  const result = await syncBOMToKatana(finishedGoodSku);
+  const result = await syncBOMTreeToKatana(finishedGoodSku);
   if (result.ok) {
     revalidateDictionary();
     return { ok: true, message: result.message };
