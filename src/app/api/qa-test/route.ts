@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db/index";
-import { skuMappings } from "@/db/schema";
+import { getDb } from "@/server/db/client";
+import { sku_mappings as skuMappings } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
@@ -17,9 +17,10 @@ export async function POST(request: Request) {
     }
 
     const fakeSku = `QA-TEST-${uuid.substring(0, 8).toUpperCase()}`;
+    const db = getDb();
     
     // Test write: insert or update mapping
-    const existing = await db.query.skuMappings.findFirst({
+    const existing = await db.query.sku_mappings.findFirst({
       where: eq(skuMappings.globalSku, fakeSku),
     });
 
