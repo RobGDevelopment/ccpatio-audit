@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "qa:clean": "node -e \"const fs=require('fs'); fs.rmSync('.next', {recursive:true, force:true}); fs.rmSync('node_modules/.cache', {recursive:true, force:true});\"",
+    "qa:phase1-build": "npm run qa:clean && tsc --noEmit && npx cross-env NEXT_TELEMETRY_DISABLED=1 NODE_ENV=production next build",
+    "qa:phase2-db": "tsx scripts/qa/proof-of-life.runner.ts",
+    "qa:lifecycle": "npm run qa:phase1-build && npm run qa:phase2-db",
     "dev:pim": "next dev -p 3000",
     "dev:sandbox": "npm run dev --prefix 3d-sandbox",
     "dev": "concurrently -c \"cyan,magenta\" -n \"PIM,3D\" \"npm run dev:pim\" \"npm run dev:sandbox\"",
