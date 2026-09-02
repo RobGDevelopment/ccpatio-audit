@@ -73,7 +73,7 @@ export function validateCatalogFieldPatch(
 ): PatchValidationError | null {
   const trimmed = raw.trim();
   if (!trimmed) {
-    return { field, message: "Value is required (or mark N/A)." };
+    return null;
   }
   if (allowNa && isNaToken(trimmed)) {
     return null;
@@ -119,7 +119,7 @@ export function validateAttributeFieldPatch(input: {
 }): PatchValidationError | null {
   const trimmed = input.value.trim();
   if (!trimmed) {
-    return { field: input.path, message: "Value is required (or mark N/A)." };
+    return null;
   }
   if (isNaToken(trimmed)) {
     return null;
@@ -153,7 +153,7 @@ export function validateAttributeFieldPatch(input: {
   }
 
   if (!isAttributeValueComplete(trimmed)) {
-    return { field: input.path, message: "Value cannot be blank." };
+    return null;
   }
 
   return null;

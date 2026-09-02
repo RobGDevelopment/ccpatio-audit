@@ -153,15 +153,15 @@ function mapOperationRow(
 function parseQuantity(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) {
-    return null;
+    return "0";
   }
   const normalized = trimmed.replace(/,/g, "");
   if (!/^\d+(\.\d+)?$/.test(normalized)) {
-    return null;
+    return "0";
   }
   const n = Number(normalized);
-  if (!Number.isFinite(n) || n <= 0) {
-    return null;
+  if (!Number.isFinite(n) || n < 0) {
+    return "0";
   }
   return normalized;
 }
@@ -172,11 +172,11 @@ function parseScrapFactor(raw: string | undefined): string | null {
   }
   const normalized = raw.trim().replace(/,/g, "");
   if (!/^\d+(\.\d+)?$/.test(normalized)) {
-    return null;
+    return "1.0000";
   }
   const n = Number(normalized);
-  if (!Number.isFinite(n) || n <= 0) {
-    return null;
+  if (!Number.isFinite(n) || n < 0) {
+    return "1.0000";
   }
   return Number(n).toFixed(4);
 }
