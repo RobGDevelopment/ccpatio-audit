@@ -1,6 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { DeveloperFeedbackForm } from "@/app/admin/shared/DeveloperFeedbackForm";
+import { DiscontinueButton } from "@/app/admin/shared/DiscontinueButton";
 import {
   useCallback,
   useEffect,
@@ -417,15 +419,21 @@ export function ProductDetailModal({
           )}
         </div>
 
-        <footer className="flex shrink-0 flex-col gap-2 border-t border-slate-800/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          {error ? (
-            <p className="text-xs text-rose-400">{error}</p>
-          ) : (
-            <p className="text-[11px] text-slate-500">
-              Saves patch sku_mappings, finished_goods_catalog, and attributes.
-            </p>
-          )}
+        <footer className="flex shrink-0 flex-col gap-4 border-t border-slate-800/80 px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col items-start gap-3 w-full max-w-sm">
+            {error ? (
+              <p className="text-xs text-rose-400">{error}</p>
+            ) : (
+              <p className="text-[11px] text-slate-500">
+                Saves patch sku_mappings, finished_goods_catalog, and attributes.
+              </p>
+            )}
+            <div className="w-full">
+              <DeveloperFeedbackForm globalSku={row.globalSku} panelLocation="Product Detail Modal" />
+            </div>
+          </div>
           <div className="flex shrink-0 gap-2 self-end">
+            <DiscontinueButton globalSku={row.globalSku} />
             <button
               type="button"
               onClick={onClose}

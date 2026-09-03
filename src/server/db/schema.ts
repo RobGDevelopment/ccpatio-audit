@@ -274,3 +274,18 @@ export const pim_audit_log = pgTable("pim_audit_log", {
   new_value: text("new_value"),
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
+
+/** Staff feedback and task notes, tied to a SKU and panel context. */
+export const staff_notes = pgTable("staff_notes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  global_sku: text("global_sku"),
+  panel_location: text("panel_location").notNull(),
+  operator_email: text("operator_email").notNull(),
+  note: text("note").notNull(),
+  is_urgent: boolean("is_urgent").notNull().default(false),
+  status: text("status", { enum: ["pending", "acknowledged", "completed"] })
+    .notNull()
+    .default("pending"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});

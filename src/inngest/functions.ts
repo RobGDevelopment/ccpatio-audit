@@ -349,4 +349,91 @@ export const syncGhlOpportunity = inngest.createFunction(
   },
 );
 
-export const inngestFunctions = [processWooCommerceOrder, syncGhlOpportunity];
+export const sendStaffFeedbackDigest = inngest.createFunction(
+  { 
+    id: "send-staff-feedback-digest", 
+    name: "Send Twice-Daily Staff Feedback Digest",
+    triggers: [{ cron: "0 9,17 * * *" }]
+  },
+  async ({ step }: any) => {
+    const reportHTML = await step.run("fetch-and-compile-notes", async () => {
+      const { getDb } = await import("@/server/db/client");
+      const { staff_notes } = await import("@/server/db/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      const db = getDb();
+      const pendingNotes = await db.query.staff_notes.findMany({
+        where: eq(staff_notes.status, "pending"),
+        orderBy: (notes: any, { desc }: any) => [desc(notes.created_at)],
+      });
+
+      if (pendingNotes.length === 0) {
+        return null;
+      }
+
+      const listItems = pendingNotes.map((n: any) => 
+        `<li><strong>${n.operator_email}</strong> [${n.panel_location}] (SKU: ${n.global_sku || 'N/A'}): ${n.note}</li>`
+      ).join("");
+
+      return `
+        <h2>Daily Staff Feedback Digest</h2>
+        <p>You have ${pendingNotes.length} pending requests from the staff:</p>
+        <ul>${listItems}</ul>
+      `;
+    });
+
+    if (reportHTML) {
+      await step.run("send-digest-email", async () => {
+        const { Resend } = await import("resend");
+        const resend = new Resend(process.env.RESEND_API_KEY || "re_placeholder");
+        
+        await resend.emails.send({
+          from: "CC Patio Admin <admin@ccpatio.com>",
+          to: "rjg.cal@gmail.com",
+          subject: "📋 CC Patio PIM: Staff Feedback Digest",
+          html: reportHTML,
+        });
+      });
+    }
+
+    return { ok: true, sent: !!reportHTML };
+  }
+);
+
+export const archiveKatanaVariant = inngest.createFunction(
+  { 
+    id: "archive-katana-variant", 
+    name: "Archive Katana Variant on Discontinue",
+    triggers: [{ event: "katana/variant.archive" }]
+  },
+  async ({ event, step }: any) => {
+    await step.run("archive-variant-in-katana", async () => {
+      const { getDb } = await import("@/server/db/client");
+      const { sku_mappings } = await import("@/server/db/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      const db = getDb();
+      const mapping = await db.query.sku_mappings.findFirst({
+        where: eq(sku_mappings.global_sku, event.data.globalSku),
+      });
+
+      if (mapping && mapping.katana_variant_id) {
+        const { archiveKatanaVariant: archiveApiCall } = await import("@/lib/katana/client");
+        try {
+          await archiveApiCall(mapping.katana_variant_id);
+        } catch (e) {
+          console.error("[Katana Archive] Failed", e);
+        }
+      }
+    });
+
+    return { ok: true, globalSku: event.data.globalSku };
+  }
+);
+
+export const inngestFunctions = [
+  processWooCommerceOrder, 
+  syncGhlOpportunity,
+  sendStaffFeedbackDigest,
+  archiveKatanaVariant
+];

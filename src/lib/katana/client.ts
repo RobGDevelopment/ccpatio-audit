@@ -140,3 +140,15 @@ export async function upsertKatanaRecipeRow(
     body: JSON.stringify(payload),
   });
 }
+
+/**
+ * Archives a Katana variant by its SKU or ID.
+ */
+export async function archiveKatanaVariant(variantId: number): Promise<void> {
+  // In a real implementation, you'd PATCH the variant or material/product status
+  await fetchKatana(`/variants/${variantId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ is_active: false }),
+  });
+}
+

@@ -12,19 +12,10 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import {
-  deleteBOMLine,
-  deleteItemOperation,
-  getBomTree,
-  getItemOperations,
-  searchBomMaterials,
-  upsertBOMLine,
-  upsertItemOperation,
-  type BomComponentCandidate,
-  type BomTreeNode,
-  type ItemOperationRow,
-} from "@/app/admin/dictionary/actions";
+import { deleteBOMLine, deleteItemOperation, getBomTree, getItemOperations, searchBomMaterials, upsertBOMLine, upsertItemOperation, type BomComponentCandidate, type BomTreeNode, type ItemOperationRow } from "@/app/admin/dictionary/actions";
 import { useToast } from "@/app/admin/shared/ToastProvider";
+import { DeveloperFeedbackForm } from "@/app/admin/shared/DeveloperFeedbackForm";
+import { DiscontinueButton } from "@/app/admin/shared/DiscontinueButton";
 
 type BomPanelProps = {
   productSku: string;
@@ -507,8 +498,8 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
           </div>
 
           <div className="flex-1 bg-zinc-900 flex flex-col h-full overflow-y-auto relative shadow-[-8px_0_24px_-12px_rgba(0,0,0,0.8)] z-10 p-8">
-              <header className="sticky top-0 z-20 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 px-8 py-6 -mx-8 -mt-8 mb-8">
-                <div className="flex flex-col gap-1">
+              <header className="sticky top-0 z-20 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 px-8 py-6 -mx-8 -mt-8 mb-8 flex justify-between items-start gap-4">
+                <div className="flex flex-col gap-1 max-w-2xl">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                     <span className="text-xs font-semibold tracking-widest text-emerald-500/80 uppercase">Currently Editing</span>
@@ -517,7 +508,13 @@ export function BomPanel({ productSku, itemType }: BomPanelProps) {
                     <h1 className="text-3xl font-bold tracking-tight text-zinc-50">{activeNode?.name || activeSku}</h1>
                     <span className="text-[11px] font-mono text-zinc-500 bg-zinc-950 px-2 py-1 rounded-md border border-zinc-800 uppercase tracking-widest mt-1">{activeSku}</span>
                   </div>
-                  <div className="text-sm text-zinc-400 mt-1">Define the materials, parts, and hardware required for this assembly.</div>
+                  <div className="text-sm text-zinc-400 mt-1 mb-2">Define the materials, parts, and hardware required for this assembly.</div>
+                  <div className="w-full">
+                    <DeveloperFeedbackForm globalSku={activeSku} panelLocation="BOM Builder" />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 shrink-0">
+                  <DiscontinueButton globalSku={activeSku} />
                 </div>
               </header>
 
