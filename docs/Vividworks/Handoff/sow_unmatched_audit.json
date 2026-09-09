@@ -1,0 +1,129 @@
+{
+  "generatedAt": "2026-09-09T02:16:58.364Z",
+  "unmatchedCount": 2,
+  "fuzzyMatchedCount": 6,
+  "unmatched": [
+    {
+      "phase": 2,
+      "sowLine": 136,
+      "sowName": "MILAN ONE-SIDED SOFA (base)",
+      "generatedSkuWithoutExcel": "FIN-MLN-SOF",
+      "closestCandidates": [
+        {
+          "memo": "MILAN ONE-SIDED SOFA 72\" X 36\" x 16\" SH",
+          "excelRow": 68,
+          "score": 0.6111111111111112
+        },
+        {
+          "memo": "MILAN ONE SIDED SOFA 84\" X 36\" X 16\" SH",
+          "excelRow": 69,
+          "score": 0.6111111111111112
+        },
+        {
+          "memo": "MILAN ONE-SIDED SOFA 96\" X 36\" X 16\" SH",
+          "excelRow": 70,
+          "score": 0.6111111111111112
+        },
+        {
+          "memo": "MILAN DOUBLE-SIDED SOFA 60\" X 62\" X 16\" SH",
+          "excelRow": 71,
+          "score": 0.5384615384615384
+        },
+        {
+          "memo": "ANGULAR SIDE TABLE",
+          "excelRow": 96,
+          "score": 0.4
+        }
+      ]
+    },
+    {
+      "phase": 2,
+      "sowLine": 138,
+      "sowName": "BRAVADA COFFEE TABLE (unspecified size)",
+      "generatedSkuWithoutExcel": "FIN-BRV-COF-TAB",
+      "closestCandidates": [
+        {
+          "memo": "BRAVADA COFFEE TABLE 28\" x 42\" x 17\"",
+          "excelRow": 76,
+          "score": 0.5945945945945945
+        },
+        {
+          "memo": "BRAVADA COFFEE TABLE 36\" x 36\" x 17\"",
+          "excelRow": 77,
+          "score": 0.5945945945945945
+        },
+        {
+          "memo": "BRAVADA COFFEE TABLE 36\" x 56\" x 17\"",
+          "excelRow": 78,
+          "score": 0.5945945945945945
+        },
+        {
+          "memo": "BRAVADA COFFEE TABLE 36\" x 72\"",
+          "excelRow": 79,
+          "score": 0.5945945945945945
+        },
+        {
+          "memo": "BRAVADA COFFEE TABLE 42\" x 42\" x 17\"",
+          "excelRow": 80,
+          "score": 0.5945945945945945
+        }
+      ]
+    }
+  ],
+  "fuzzyMatched": [
+    {
+      "phase": 1,
+      "sowLine": 49,
+      "sowName": "MILAN OTTOMAN 56\" x 42\" x 16\"",
+      "excelRow": 65,
+      "excelMemo": "MILAN OTTOMAN 56\"x 42\" x 16\"",
+      "confidence": 0.9615384615384616,
+      "canonicalSku": "FIN-MLN-OTT-56X42"
+    },
+    {
+      "phase": 2,
+      "sowLine": 152,
+      "sowName": "WATERFALL SIDE TABLE 40\" x 13\" x 12\"",
+      "excelRow": 105,
+      "excelMemo": "WATERFALL SIDE TABLE 40\"x 13\" x 12\"",
+      "confidence": 0.9696969696969697,
+      "canonicalSku": "FIN-WFT-SID-TAB-40X13"
+    },
+    {
+      "phase": 2,
+      "sowLine": 230,
+      "sowName": "BRAVADA ROUNDED BENCH 96\" X 34\" X 18\" SH",
+      "excelRow": 211,
+      "excelMemo": "BRAVADA ROUNDED BENCH 96\" X 34\" 18\" SH",
+      "confidence": 0.9459459459459459,
+      "canonicalSku": "FIN-BRV-BCH-96X34"
+    },
+    {
+      "phase": 2,
+      "sowLine": 243,
+      "sowName": "BROOKLYN OTTOMAN 56\" x 42\" x 17\"",
+      "excelRow": 230,
+      "excelMemo": "BROOKLYN OTTOMAN 56\"x 42\" x 17\"",
+      "confidence": 0.9655172413793104,
+      "canonicalSku": "FIN-BRK-OTT-56X42"
+    },
+    {
+      "phase": 2,
+      "sowLine": 254,
+      "sowName": "CABANA DAYBED 84\" x 84\" x 78\"",
+      "excelRow": 248,
+      "excelMemo": "CABANA DAYBED 84\"x 84\" x 78\"",
+      "confidence": 0.9615384615384616,
+      "canonicalSku": "FIN-CAB-DYB-84X84"
+    },
+    {
+      "phase": 2,
+      "sowLine": 265,
+      "sowName": "TWO 4 LB. COATED LEAD WEIGHTS (8 LBS. TOTAL)",
+      "excelRow": 267,
+      "excelMemo": "TWE 4 LB. COATED LEAD WEIGHTS (8 LBS. TOTAL)",
+      "confidence": 0.975,
+      "canonicalSku": "FIN-TJM-MIS"
+    }
+  ]
+}

@@ -14,8 +14,26 @@ export const LAUNCHPAD_MODULES: LaunchpadModule[] = [
     id: "dictionary",
     title: "Global SKU Dictionary",
     description:
-      "Live spreadsheet of finished goods and integration fields before data flows to Katana, WooCommerce, GHL, and QuickBooks.",
+      "Live spreadsheet of finished goods, nested BOMs, and catalog fields. Publish to Katana/Woo/Clover is Approve-only (MDM hub).",
     href: "/admin/dictionary",
+    status: "Live",
+    requiresAuth: true,
+  },
+  {
+    id: "quarantine",
+    title: "Product Quarantine",
+    description:
+      "Human review of SketchUp intakes — MSRP, SEO, BOM check, then Approve to enqueue catalog fan-out.",
+    href: "/admin/quarantine",
+    status: "Live",
+    requiresAuth: true,
+  },
+  {
+    id: "factory-bom",
+    title: "Factory BOM Builder",
+    description:
+      "Review heuristic FRAME/CUSH drafts for Phase 1 and 2, tweak quantities, and approve into live product_bom.",
+    href: "/admin/factory-bom",
     status: "Live",
     requiresAuth: true,
   },
@@ -48,18 +66,18 @@ export const LAUNCHPAD_MODULES: LaunchpadModule[] = [
   },
   {
     id: "topology",
-    title: "Topology Blueprint",
+    title: "Topology Blueprint (Demo)",
     description:
-      "Interactive E2E lifecycle map — zones, pipelines, manufacturing sequences, and integration rails.",
+      "Historical E2E lifecycle visualization. Not ingress. Not operating procedure. Binding SoT: docs/MDM_MASTER_BLUEPRINT.md.",
     href: "/topology",
     status: "Sandbox",
     requiresAuth: true,
   },
   {
     id: "presentation",
-    title: "Operations Command Center",
+    title: "Operations Command Center (Demo)",
     description:
-      "Executive briefing deck — current-state chaos, dual-pipeline architecture, training gates, and margin ledger.",
+      "Executive briefing deck. Demo only — not the MDM control plane and not a DLQ.",
     href: "/presentation",
     status: "Walk Phase",
     requiresAuth: true,

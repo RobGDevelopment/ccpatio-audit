@@ -29,7 +29,15 @@ export const itemTypeEnum = pgEnum("item_type", [
   "service",
 ]);
 
+export const userRoleEnum = pgEnum("user_role", [
+  "SuperAdmin",
+  "IT_Admin",
+  "Ops_Manager",
+  "Designer",
+]);
+
 export type ItemType = (typeof itemTypeEnum.enumValues)[number];
+export type UserRole = (typeof userRoleEnum.enumValues)[number];
 
 export type QboAccounts = {
   income?: string;
@@ -48,6 +56,8 @@ export const sku_mappings = pgTable("sku_mappings", {
   is_active: boolean("is_active").notNull().default(true),
   /** When true, SKU is eligible for WooCommerce catalog export. */
   sync_to_woo: boolean("sync_to_woo").notNull().default(false),
+  /** When true, SKU is eligible for Clover POS catalog export. */
+  sync_to_clover: boolean("sync_to_clover").notNull().default(false),
   uom_purchase: text("uom_purchase"),
   uom_consume: text("uom_consume"),
   base_cost: numeric("base_cost", { precision: 12, scale: 4 }),
@@ -87,6 +97,10 @@ export const finished_goods_catalog = pgTable("finished_goods_catalog", {
   description: text("description"),
   image_url: text("image_url"),
   qbo_item_code: text("qbo_item_code"),
+  /** Woo / catalog URL slug (MDM Phase 1). */
+  slug: text("slug"),
+  seo_title: text("seo_title"),
+  seo_description: text("seo_description"),
   /**
    * PIM fields explicitly marked Not Applicable (e.g. arm_height on a table).
    * Values are DataHealthField keys: msrp | length | depth | height |
@@ -169,6 +183,85 @@ export const item_operations = pgTable("item_operations", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
+/** Factory recipe review — drafts never feed explodeBomTree / Katana. */
+export const recipeReviewStatusEnum = pgEnum("recipe_review_status", [
+  "draft_pending_review",
+  "edited",
+  "factory_approved",
+]);
+
+export const recipeSourceEnum = pgEnum("recipe_source", [
+  "heuristic",
+  "manager",
+  "katana_import",
+]);
+
+export type RecipeReviewStatus =
+  (typeof recipeReviewStatusEnum.enumValues)[number];
+export type RecipeSource = (typeof recipeSourceEnum.enumValues)[number];
+
+export const product_bom_draft = pgTable(
+  "product_bom_draft",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    parent_sku: text("parent_sku")
+      .notNull()
+      .references(() => sku_mappings.global_sku, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
+    child_sku: text("child_sku")
+      .notNull()
+      .references(() => sku_mappings.global_sku, {
+        onUpdate: "cascade",
+        onDelete: "restrict",
+      }),
+    quantity: numeric("quantity", { precision: 12, scale: 4 }).notNull(),
+    scrap_factor: numeric("scrap_factor", { precision: 12, scale: 4 })
+      .notNull()
+      .default("1.0000"),
+    unit_of_measure: text("unit_of_measure").notNull(),
+    status: recipeReviewStatusEnum("status")
+      .notNull()
+      .default("draft_pending_review"),
+    source: recipeSourceEnum("source").notNull().default("heuristic"),
+    notes: text("notes"),
+    reviewed_by: text("reviewed_by"),
+    reviewed_at: timestamp("reviewed_at"),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("product_bom_draft_parent_child_uidx").on(
+      table.parent_sku,
+      table.child_sku,
+    ),
+  ],
+);
+
+export const item_operations_draft = pgTable("item_operations_draft", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  item_sku: text("item_sku")
+    .notNull()
+    .references(() => sku_mappings.global_sku, {
+      onUpdate: "cascade",
+      onDelete: "cascade",
+    }),
+  work_center: varchar("work_center", { length: 120 }).notNull(),
+  sequence: integer("sequence").notNull().default(10),
+  setup_time_mins: numeric("setup_time_mins", { precision: 12, scale: 4 }),
+  run_time_mins: numeric("run_time_mins", { precision: 12, scale: 4 }),
+  status: recipeReviewStatusEnum("status")
+    .notNull()
+    .default("draft_pending_review"),
+  source: recipeSourceEnum("source").notNull().default("heuristic"),
+  notes: text("notes"),
+  reviewed_by: text("reviewed_by"),
+  reviewed_at: timestamp("reviewed_at"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const skuMappingsRelations = relations(sku_mappings, ({ many }) => ({
   bomAsParent: many(product_bom, { relationName: "bom_parent" }),
   bomAsChild: many(product_bom, { relationName: "bom_child" }),
@@ -195,12 +288,45 @@ export const itemOperationsRelations = relations(item_operations, ({ one }) => (
   }),
 }));
 
+export const productBomDraftRelations = relations(
+  product_bom_draft,
+  ({ one }) => ({
+    parent: one(sku_mappings, {
+      fields: [product_bom_draft.parent_sku],
+      references: [sku_mappings.global_sku],
+      relationName: "bom_draft_parent",
+    }),
+    child: one(sku_mappings, {
+      fields: [product_bom_draft.child_sku],
+      references: [sku_mappings.global_sku],
+      relationName: "bom_draft_child",
+    }),
+  }),
+);
+
+export const itemOperationsDraftRelations = relations(
+  item_operations_draft,
+  ({ one }) => ({
+    item: one(sku_mappings, {
+      fields: [item_operations_draft.item_sku],
+      references: [sku_mappings.global_sku],
+    }),
+  }),
+);
+
 /**
  * Raw materials catalog — Katana materials, fabrics, powder, aluminum, etc.
+ * `sku` must exist on the hub (`sku_mappings`) so BOM children stay consistent.
  */
 export const raw_materials_catalog = pgTable("raw_materials_catalog", {
   id: uuid("id").defaultRandom().primaryKey(),
-  sku: text("sku").notNull().unique(),
+  sku: text("sku")
+    .notNull()
+    .unique()
+    .references(() => sku_mappings.global_sku, {
+      onUpdate: "cascade",
+      onDelete: "restrict",
+    }),
   name: text("name").notNull().default(""),
   category: text("category").notNull().default(""),
   unit_of_measure: text("unit_of_measure").notNull().default("ea"),
@@ -208,6 +334,79 @@ export const raw_materials_catalog = pgTable("raw_materials_catalog", {
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
+
+/** SketchUp / CAD intake lifecycle (MDM quarantine gate). */
+export const productIntakeStatusEnum = pgEnum("product_intake_status", [
+  "quarantined",
+  "approved",
+  "rejected",
+  "superseded",
+]);
+
+export type ProductIntakeStatus =
+  (typeof productIntakeStatusEnum.enumValues)[number];
+
+/**
+ * Validated SketchUp exports awaiting human MSRP/SEO review.
+ * Invalid payloads never insert — Zod rejects at the webhook gateway.
+ */
+export const product_intake = pgTable("product_intake", {
+  export_id: uuid("export_id").primaryKey(),
+  status: productIntakeStatusEnum("status").notNull().default("quarantined"),
+  raw_payload: jsonb("raw_payload").notNull(),
+  zod_issues: jsonb("zod_issues").$type<unknown[] | null>(),
+  proposed_sku: varchar("proposed_sku", { length: 120 }),
+  created_by: varchar("created_by", { length: 255 }),
+  reject_reason: text("reject_reason"),
+  /** OCC token — bumped on every status mutation. */
+  version: integer("version").notNull().default(1),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/** Outbound catalog fan-out status per hub SKU × spoke. */
+export const channelSyncStatusEnum = pgEnum("channel_sync_status", [
+  "pending",
+  "success",
+  "failed",
+]);
+
+export type ChannelSyncStatus =
+  (typeof channelSyncStatusEnum.enumValues)[number];
+
+export const channelSyncChannelEnum = pgEnum("channel_sync_channel", [
+  "katana",
+  "woocommerce",
+  "clover",
+]);
+
+export type ChannelSyncChannel =
+  (typeof channelSyncChannelEnum.enumValues)[number];
+
+export const channel_sync = pgTable(
+  "channel_sync",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    global_sku: text("global_sku")
+      .notNull()
+      .references(() => sku_mappings.global_sku, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
+    channel: channelSyncChannelEnum("channel").notNull(),
+    external_id: varchar("external_id", { length: 255 }),
+    status: channelSyncStatusEnum("status").notNull().default("pending"),
+    last_error: text("last_error"),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("channel_sync_sku_channel_uidx").on(
+      table.global_sku,
+      table.channel,
+    ),
+  ],
+);
 
 /**
  * Idempotent ingress log for async webhook / queue processing.
@@ -287,5 +486,22 @@ export const staff_notes = pgTable("staff_notes", {
     .notNull()
     .default("pending"),
   created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/** Mission Control RBAC — maps auth.users UUID to an application role. */
+export const user_roles = pgTable("user_roles", {
+  id: uuid("id").primaryKey(), // Tied to auth.users.id manually or via trigger
+  role: userRoleEnum("role").notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/** Mission Control Vault — encrypted API keys for vendors. */
+export const vendor_credentials = pgTable("vendor_credentials", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  service_name: varchar("service_name", { length: 255 }).notNull().unique(), // e.g. 'katana', 'woocommerce'
+  encrypted_token: text("encrypted_token").notNull(), // pgsodium transparent encryption target
+  updated_by: uuid("updated_by").references(() => user_roles.id),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });

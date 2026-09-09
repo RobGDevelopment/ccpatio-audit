@@ -20,7 +20,6 @@ import {
   syncBOMToKatana as syncBOMTreeToKatana,
   syncFinishedGoodToKatana,
 } from "@/lib/katana";
-import { syncBOMToKatana } from "@/lib/katana/orchestrator";
 import { getDb } from "@/server/db/client";
 import { logPimAudit, resolvePimOperator } from "@/lib/pim-audit";
 import {
@@ -192,6 +191,8 @@ const BOM_UNITS = new Set([
   "sqft",
   "oz",
   "gal",
+  "boardft",
+  "slab",
 ]);
 
 const PRODUCIBLE: ItemType[] = ["finished_good", "sub_assembly"];
@@ -371,7 +372,7 @@ export async function upsertBOMLine(
       return {
         ok: false,
         error:
-          "unit_of_measure must be one of: in, yd, ea, lbs, ft, sqft, oz, gal",
+          "unit_of_measure must be one of: in, yd, ea, lbs, ft, sqft, oz, gal, boardft, slab",
       };
     }
 
@@ -439,8 +440,8 @@ export async function upsertBOMLine(
         return { ok: false, error: "BOM line not found" };
       }
 
-      if (process.env.DOWNSTREAM_MUTATIONS === 'true') {
-        await syncBOMToKatana(parentSku, childSku, Number(quantity));
+      if (process.env.DOWNSTREAM_MUTATIONS === "true") {
+        await syncBOMTreeToKatana(parentSku);
       }
 
       revalidateDictionary();
@@ -459,8 +460,8 @@ export async function upsertBOMLine(
       })
       .returning();
 
-    if (process.env.DOWNSTREAM_MUTATIONS === 'true') {
-      await syncBOMToKatana(parentSku, childSku, Number(quantity));
+    if (process.env.DOWNSTREAM_MUTATIONS === "true") {
+      await syncBOMTreeToKatana(parentSku);
     }
 
     revalidateDictionary();

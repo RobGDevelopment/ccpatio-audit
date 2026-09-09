@@ -36,7 +36,7 @@ type OpDraft = {
   runTimeMins: string;
 };
 
-const UNIT_OPTIONS = ["ea", "in", "yd", "ft", "lbs", "sqft", "oz", "gal"] as const;
+const UNIT_OPTIONS = ["ea", "in", "yd", "ft", "lbs", "lb", "sqft", "oz", "gal", "boardft", "slab"] as const;
 
 const INPUT =
   "w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 shadow-sm transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 focus:bg-zinc-900";

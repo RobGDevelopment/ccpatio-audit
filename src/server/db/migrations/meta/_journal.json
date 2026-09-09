@@ -92,6 +92,34 @@
       "when": 1788036000000,
       "tag": "0012_sync_to_woo",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788390000000,
+      "tag": "0013_mdm_phase1_intake",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788393600000,
+      "tag": "0014_mdm_phase2_quarantine",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1788449532395,
+      "tag": "0015_perfect_fallen_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788970000000,
+      "tag": "0017_factory_bom_draft",
+      "breakpoints": true
     }
   ]
 }

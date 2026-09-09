@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { loadEnvConfig } from "@next/env";
 loadEnvConfig(process.cwd());
 
-import { getDb } from "../../src/server/db/client";
+import { getDb, closeDb } from "../../src/server/db/client";
 import { sku_mappings as skuMappings } from "../../src/server/db/schema";
 import { eq } from "drizzle-orm";
 import { spawn } from "child_process";
@@ -35,7 +35,13 @@ async function run() {
   if (!portUsed) {
     console.log(`Starting Next.js production server on port 3000...`);
     const cmd = process.platform === "win32" ? "npm.cmd" : "npm";
-    serverProcess = spawn(cmd, ["run", "start"], { stdio: "ignore", shell: true });
+    serverProcess = spawn(cmd, ["run", "start"], {
+      stdio: "ignore",
+      shell: true,
+      detached: true,
+      windowsHide: true,
+    });
+    serverProcess.unref();
     isServerStartedByUs = true;
     
     let booted = false;
@@ -100,15 +106,14 @@ async function run() {
     process.exit(1);
   } finally {
     if (isServerStartedByUs) {
-      console.log(`Shutting down Next.js server via API...`);
-      try {
-        await fetch(`${targetUrl}/api/qa-test`, { method: "DELETE" });
-      } catch (e) {}
+      console.log(
+        `Leaving Next.js server running for subsequent qa:lifecycle phases (webhooks, e2e).`,
+      );
     } else {
-       console.log(`Leaving server running since it was already active.`);
+      console.log(`Leaving server running since it was already active.`);
     }
-    // Force exit to cleanup hanging child processes in Windows
-    setTimeout(() => process.exit(0), 1000);
+    await closeDb().catch(() => undefined);
+    setTimeout(() => process.exit(0), 500);
   }
 }
 run();

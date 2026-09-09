@@ -127,6 +127,12 @@ export default async function DictionaryPage() {
                   Raw Materials Catalog →
                 </a>
                 <Link
+                  href="/admin/factory-bom"
+                  className="text-zinc-400 transition hover:text-zinc-200"
+                >
+                  Factory BOM Builder →
+                </Link>
+                <Link
                   href="/admin/audit"
                   className="text-zinc-400 transition hover:text-zinc-200"
                 >
