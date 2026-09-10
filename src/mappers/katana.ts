@@ -5,10 +5,13 @@
  *
  * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md Phase 3.
  */
-import { katanaProductSyncFlags } from "@/lib/katana-product-flags";
+import {
+  katanaIsSellableProduct,
+  katanaProductSyncFlags,
+} from "@/lib/katana-product-flags";
+import { stageKatanaCatalogGraph } from "@/mappers/katana-catalog-guard";
 import type {
   HubBomEdge,
-  HubOperation,
   HubProductGraph,
   HubSkuNode,
 } from "@/mappers/types";
@@ -119,7 +122,7 @@ export function formatKatanaProductPayload(
     name: node.originalName || node.globalSku,
     uom: mapUomToKatana(node.uomConsume ?? node.uomPurchase),
     category_name: node.category || "Finished Good",
-    is_sellable: flags.is_sellable,
+    is_sellable: katanaIsSellableProduct(node.itemType, node.globalSku),
     is_producible: flags.is_producible,
     is_purchasable: flags.is_purchasable,
     ...(typeof attrs.description === "string"
@@ -217,10 +220,11 @@ export function formatKatanaOperationRowsForSku(
 export function buildKatanaPublishPlan(
   graph: HubProductGraph,
 ): KatanaMappedRequest[] {
-  const map = bySku(graph);
-  const order = bottomUpSkuOrder(graph);
+  const staged = stageKatanaCatalogGraph(graph).graph;
+  const map = bySku(staged);
+  const order = bottomUpSkuOrder(staged);
   const requests: KatanaMappedRequest[] = [];
-  const salesPrice = parseMoney(graph.commerce.msrp ?? null);
+  const salesPrice = parseMoney(staged.commerce.msrp ?? null);
 
   const materials = order.filter(
     (sku) => map.get(sku)?.itemType === "raw_material",
@@ -247,21 +251,28 @@ export function buildKatanaPublishPlan(
     const node = map.get(sku);
     if (!node) continue;
     const price =
-      node.itemType === "finished_good" && sku === graph.rootSku.toUpperCase()
+      node.itemType === "finished_good" && sku === staged.rootSku.toUpperCase()
         ? salesPrice
         : null;
+    const body = formatKatanaProductPayload(node, price);
+    const variants = body.variants;
+    if (!Array.isArray(variants) || variants.length !== 1) {
+      throw new Error(
+        `Katana product ${sku} must publish exactly one variant (no colorway explosion).`,
+      );
+    }
     requests.push({
       method: "POST",
       path: "/products",
       kind: "product",
       sku,
       idempotencyKey: `katana-product-${sku}`,
-      body: formatKatanaProductPayload(node, price),
+      body,
     });
   }
 
   for (const sku of products) {
-    const recipe = formatKatanaRecipeRowsForParent(graph, sku);
+    const recipe = formatKatanaRecipeRowsForParent(staged, sku);
     if (recipe.rows.length === 0) continue;
     requests.push({
       method: "POST",
@@ -284,7 +295,7 @@ export function buildKatanaPublishPlan(
   }
 
   for (const sku of products) {
-    const opRows = formatKatanaOperationRowsForSku(graph, sku);
+    const opRows = formatKatanaOperationRowsForSku(staged, sku);
     if (opRows.length === 0) continue;
     requests.push({
       method: "POST",

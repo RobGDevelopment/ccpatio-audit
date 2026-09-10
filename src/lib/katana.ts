@@ -28,7 +28,10 @@ import {
   pipelineModeLabel,
 } from "@/server/pipeline/mode";
 import type { WooOrderWebhook } from "@/server/woocommerce/ingress.schema";
-import { katanaProductSyncFlags } from "@/lib/katana-product-flags";
+import {
+  katanaIsSellableProduct,
+  katanaProductSyncFlags,
+} from "@/lib/katana-product-flags";
 import {
   collectChildMoIdsFromRecipeRows,
   collectNestedManufacturingOrderIds,
@@ -585,6 +588,10 @@ async function upsertProductInKatana(input: {
   const salesPrice = parseMoney(input.salesPrice);
   const uom = mapUomToKatana(input.unitOfMeasure);
   const flags = katanaProductSyncFlags(input.itemType ?? "finished_good");
+  const isSellable = katanaIsSellableProduct(
+    input.itemType ?? "finished_good",
+    sku,
+  );
 
   if (existing?.product_id) {
     await katanaFetch(`/products/${existing.product_id}`, {
@@ -594,7 +601,7 @@ async function upsertProductInKatana(input: {
         uom,
         category_name: input.category.trim() || undefined,
         additional_info: input.description?.trim() || undefined,
-        is_sellable: flags.is_sellable,
+        is_sellable: isSellable,
         is_producible: flags.is_producible,
         is_purchasable: flags.is_purchasable,
       },
@@ -631,7 +638,7 @@ async function upsertProductInKatana(input: {
       uom,
       category_name: input.category.trim() || undefined,
       additional_info: input.description?.trim() || undefined,
-      is_sellable: flags.is_sellable,
+      is_sellable: isSellable,
       is_producible: flags.is_producible,
       is_purchasable: flags.is_purchasable,
       variants: [

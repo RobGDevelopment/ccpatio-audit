@@ -47,7 +47,16 @@ Every superseded document listed above must begin with:
 
 (Agents may include the alert emoji in the banner if matching the Phase 0 directive verbatim.)
 
-### 0.3 Repository location (do not recreate `/middleware`)
+### 0.3 Related companion — vendor capital-stack handoff
+
+The VividWorks / PrimeView contract (Master SKU dictionary, Katana `POST /sales_orders` target, and internal Katana↔QBO / GHL / Clover / SketchUp map) lives in:
+
+- [`docs/CAPITAL_STACK_VENDOR_HANDOFF.md`](./CAPITAL_STACK_VENDOR_HANDOFF.md)
+- [`docs/CAPITAL_STACK_VENDOR_HANDOFF.pdf`](./CAPITAL_STACK_VENDOR_HANDOFF.pdf)
+
+That packet does **not** authorize order ingress, GHL→Katana manufacturing, or a custom QBO mutex in this repository. Vendors hit Katana directly. This hub remains catalog + BOM only.
+
+### 0.4 Repository location (do not recreate `/middleware`)
 
 The Next.js App Router application lives at the **repository root** (`src/`, `package.json`, `drizzle.config.ts`). There is no `middleware/` package. Deploy to Vercel from repo root. Do not scaffold a second Next.js app.
 

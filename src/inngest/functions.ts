@@ -488,12 +488,28 @@ export const publishApprovedProduct = inngest.createFunction(
       return loadHubProductGraph(globalSku);
     });
 
+    const staged = await step.run("validate-catalog-graph", async () => {
+      const { NonRetriableError } = await import("inngest");
+      const {
+        KatanaCatalogPublishError,
+        stageKatanaCatalogGraph,
+      } = await import("@/mappers/katana-catalog-guard");
+      try {
+        return stageKatanaCatalogGraph(graph);
+      } catch (error) {
+        if (error instanceof KatanaCatalogPublishError) {
+          throw new NonRetriableError(error.message, { cause: error });
+        }
+        throw error;
+      }
+    });
+
     const [katana, woocommerce, clover] = await Promise.all([
       step.run("publish-katana", async () => {
         const { publishToKatana } = await import(
           "@/server/mdm/publish-channels"
         );
-        return publishToKatana(graph);
+        return publishToKatana(staged.graph);
       }),
       step.run("publish-woocommerce", async () => {
         const { publishToWooCommerce } = await import(
@@ -513,6 +529,8 @@ export const publishApprovedProduct = inngest.createFunction(
       ok: true,
       globalSku,
       exportId,
+      strippedColorwaySkus: staged.strippedColorwaySkus,
+      warnings: staged.warnings,
       channels: { katana, woocommerce, clover },
     };
   },

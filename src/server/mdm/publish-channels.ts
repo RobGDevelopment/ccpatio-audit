@@ -11,6 +11,10 @@ import {
   KatanaApiError,
 } from "@/lib/katana";
 import { upsertWooCommerceProduct, WooCommerceApiError } from "@/lib/woocommerce-catalog";
+import {
+  KatanaCatalogPublishError,
+  stageKatanaCatalogGraph,
+} from "@/mappers/katana-catalog-guard";
 import { buildKatanaPublishPlan } from "@/mappers/katana";
 import { mapFinishedGoodToClover } from "@/mappers/clover";
 import { mapFinishedGoodToWooCommerce } from "@/mappers/woocommerce";
@@ -95,21 +99,31 @@ function extractCreatedIds(data: unknown): {
 export async function publishToKatana(
   graph: HubProductGraph,
 ): Promise<{ skipped: boolean; externalId: string | null }> {
-  const globalSku = graph.rootSku.toUpperCase();
+  let stagedGraph = graph;
+  try {
+    stagedGraph = stageKatanaCatalogGraph(graph).graph;
+  } catch (error) {
+    if (error instanceof KatanaCatalogPublishError) {
+      throw new NonRetriableError(error.message, { cause: error });
+    }
+    throw error;
+  }
+
+  const globalSku = stagedGraph.rootSku.toUpperCase();
   const existing = await getChannelSyncRow(globalSku, "katana");
   if (existing?.status === "success") {
     return { skipped: true, externalId: existing.external_id };
   }
 
   const variantIds = new Map<string, number>();
-  for (const node of graph.skus) {
+  for (const node of stagedGraph.skus) {
     if (node.katanaVariantId != null) {
       variantIds.set(node.globalSku.toUpperCase(), node.katanaVariantId);
     }
   }
 
   try {
-    const plan = buildKatanaPublishPlan(graph);
+    const plan = buildKatanaPublishPlan(stagedGraph);
     let rootExternalId: string | null = null;
 
     for (const request of plan) {

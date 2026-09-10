@@ -41,3 +41,20 @@ export function katanaProductSyncFlags(
       };
   }
 }
+
+/**
+ * Sellable Katana products are Master SKUs only (`FIN-*` finished goods)
+ * plus rare `service` rows. Colorways, SAs, and materials never sell.
+ */
+export function katanaIsSellableProduct(
+  itemType: ItemType | null | undefined,
+  sku: string,
+): boolean {
+  const flags = katanaProductSyncFlags(itemType);
+  if (!flags.is_sellable) return false;
+  if (itemType === "service") return true;
+  return (
+    itemType === "finished_good" &&
+    sku.trim().toUpperCase().startsWith("FIN-")
+  );
+}
