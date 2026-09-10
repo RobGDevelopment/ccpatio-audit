@@ -129,15 +129,11 @@ export async function GET(
   return NextResponse.json({ data: [] });
 }
 
-export async function POST(
+async function captureMutation(
+  method: string,
   request: Request,
-  context: { params: Promise<{ path?: string[] }> },
-) {
-  if (!mirrorEnabled()) {
-    return NextResponse.json({ error: "not found" }, { status: 404 });
-  }
-
-  const { path = [] } = await context.params;
+  path: string[],
+): Promise<NextResponse> {
   const joined = `/${path.join("/")}`;
   let body: unknown = null;
   try {
@@ -147,7 +143,7 @@ export async function POST(
   }
 
   captures.push({
-    method: "POST",
+    method,
     path: joined,
     body,
     at: new Date().toISOString(),
@@ -159,28 +155,70 @@ export async function POST(
 
   if (path.includes("products")) {
     const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-    const sku = String(record.sku ?? "UNKNOWN");
+    const sku = String(record.sku ?? path[path.length - 1] ?? "UNKNOWN");
     const id = fakeId(sku);
     return NextResponse.json(
       {
         id,
         variants: [variantRecord(sku, id, "finished_good")],
       },
-      { status: 201 },
+      { status: method === "POST" ? 201 : 200 },
     );
   }
 
   if (path.includes("materials")) {
     const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-    const sku = String(record.sku ?? "UNKNOWN");
+    const sku = String(record.sku ?? path[path.length - 1] ?? "UNKNOWN");
     const id = fakeId(sku);
     return NextResponse.json(
       { id, variants: [variantRecord(sku, id, "raw_material")] },
-      { status: 201 },
+      { status: method === "POST" ? 201 : 200 },
     );
   }
 
-  return NextResponse.json({ ok: true, captured: true }, { status: 201 });
+  if (path.includes("variants")) {
+    const id = Number(path[path.length - 1]) || fakeId("variant");
+    return NextResponse.json({ id, ok: true }, { status: 200 });
+  }
+
+  return NextResponse.json(
+    { ok: true, captured: true },
+    { status: method === "POST" ? 201 : 200 },
+  );
+}
+
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ path?: string[] }> },
+) {
+  if (!mirrorEnabled()) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+  const { path = [] } = await context.params;
+  return captureMutation("POST", request, path);
+}
+
+/** Katana upsert path PATCHes existing materials/products/variants. */
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ path?: string[] }> },
+) {
+  if (!mirrorEnabled()) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+  const { path = [] } = await context.params;
+  return captureMutation("PATCH", request, path);
+}
+
+export async function PUT(
+  request: Request,
+  context: { params: Promise<{ path?: string[] }> },
+) {
+  if (!mirrorEnabled()) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+  const { path = [] } = await context.params;
+  return captureMutation("PUT", request, path);
 }
 
 export async function DELETE() {
