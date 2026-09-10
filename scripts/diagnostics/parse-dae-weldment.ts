@@ -231,11 +231,11 @@ function walkScene(
   const hits: InstanceHit[] = [];
 
   function walk(
-    node: cheerio.Element,
+    node: unknown,
     parentMat: Mat4,
     path: string[],
   ): void {
-    const $node = $(node);
+    const $node = $(node as never);
     const name = $node.attr("name") || $node.attr("id") || "node";
     if (name.startsWith("skp_camera")) return;
 

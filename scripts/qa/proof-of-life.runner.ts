@@ -29,44 +29,81 @@ async function run() {
   let serverProcess: any = null;
   const targetUrl = "http://localhost:3000";
 
-  const portUsed = await isPortInUse(3000);
-  let isServerStartedByUs = false;
+  async function waitForHealthyHome(label: string): Promise<boolean> {
+    for (let i = 0; i < 30; i++) {
+      try {
+        const r = await fetch(targetUrl);
+        if (r.ok) {
+          const html = await r.text();
+          // Stale `next start` after qa:clean deletes `.next` serves crash HTML.
+          if (
+            !html.includes("This page couldn’t load") &&
+            !html.includes("This page couldn't load")
+          ) {
+            console.log(label);
+            return true;
+          }
+        }
+      } catch {
+        /* still booting */
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    return false;
+  }
 
-  if (!portUsed) {
-    console.log(`Starting Next.js production server on port 3000...`);
+  function spawnProdServer() {
     const cmd = process.platform === "win32" ? "npm.cmd" : "npm";
-    serverProcess = spawn(cmd, ["run", "start"], {
+    const child = spawn(cmd, ["run", "start"], {
       stdio: "ignore",
       shell: true,
       detached: true,
       windowsHide: true,
       env: {
         ...process.env,
+        // Same mirror + God Mode contract Playwright webServer uses, so
+        // reuseExistingServer during qa:phase3-e2e still hits a correct stack.
         E2E_GODMODE_SECRET:
           process.env.E2E_GODMODE_SECRET || "local-e2e-godmode-secret",
+        KATANA_E2E_MIRROR: process.env.KATANA_E2E_MIRROR || "true",
+        KATANA_API_BASE:
+          process.env.KATANA_API_BASE ||
+          "http://127.0.0.1:3000/api/qa/katana-mirror/v1",
+        KATANA_API_KEY:
+          process.env.KATANA_API_KEY ||
+          process.env.KATANA_PERSONAL_ACCESS_TOKEN ||
+          "e2e-mirror-token",
       },
     });
-    serverProcess.unref();
-    isServerStartedByUs = true;
-    
-    let booted = false;
-    for(let i = 0; i < 30; i++) {
-       try {
-          const r = await fetch(targetUrl);
-          if (r.ok) {
-            booted = true;
-            break;
-          }
-       } catch(e) {}
-       await new Promise(r => setTimeout(r, 1000));
+    child.unref();
+    return child;
+  }
+
+  let portUsed = await isPortInUse(3000);
+  let isServerStartedByUs = false;
+
+  if (portUsed) {
+    const healthy = await waitForHealthyHome(
+      "Server already running on port 3000 and healthy — reusing it...",
+    );
+    if (!healthy) {
+      console.warn(
+        "Port 3000 is occupied by an unhealthy server (likely stale after qa:clean). Aborting reuse.",
+      );
+      console.error(
+        "Free port 3000 (stop the old Next process) and re-run qa:lifecycle.",
+      );
+      process.exit(1);
     }
+  } else {
+    console.log(`Starting Next.js production server on port 3000...`);
+    serverProcess = spawnProdServer();
+    isServerStartedByUs = true;
+    const booted = await waitForHealthyHome("Server booted successfully.");
     if (!booted) {
       console.error("Failed to boot Next.js server. Tests aborted.");
       process.exit(1);
     }
-    console.log("Server booted successfully.");
-  } else {
-    console.log("Server already running on port 3000, using it...");
   }
 
   try {
