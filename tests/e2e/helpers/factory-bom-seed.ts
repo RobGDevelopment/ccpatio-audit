@@ -223,8 +223,23 @@ export async function seedFactoryBomE2eDraft(): Promise<void> {
       scrap_factor: "1.0000",
       unit_of_measure: "lb",
       status: "draft_pending_review",
-      source: "heuristic",
-      notes: "FRAME powder",
+      source: "sketchup_geometry",
+      notes: `4ea 34.0in 45/45C LP CUT-SQ2-16-34.0-4545C\n${JSON.stringify({
+        cut_list: [
+          {
+            role: "apron",
+            profile: "SQ2-16",
+            lengthIn: 34,
+            endA: 45,
+            endB: 45,
+            qtyEa: 4,
+            lengthConvention: "long_point",
+            sourceName: "apron",
+            confidence: "stated",
+            drawingPartNumber: "CUT-SQ2-16-34.0-4545C",
+          },
+        ],
+      })}`,
     },
     {
       parent_sku: E2E_CUSH_SKU,

@@ -127,6 +127,23 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
 
     await expect(page.getByTestId("factory-bom-cad-dropzone")).toBeVisible();
 
+    // FRAME powder line is seeded with a cut_list JSON trailer — Cut Cards must
+    // hide the raw developer payload (video 04:22 failure mode).
+    await page.getByTestId(`factory-bom-parent-${E2E_FRAME_SKU}`).click();
+    const powderLine = page.getByTestId(`factory-bom-line-${E2E_POWDER_SKU}`);
+    await expect(powderLine).toBeVisible();
+    await expect(
+      page.getByTestId(`factory-bom-cut-cards-${E2E_POWDER_SKU}`),
+    ).toBeVisible();
+    await expect(powderLine).toContainText(/4 pcs \| 34\.0 in/i);
+    await expect(powderLine).not.toContainText("cut_list");
+    await expect(powderLine).not.toContainText('{"');
+    const powderNote = page.getByTestId(
+      `factory-bom-manager-note-${E2E_POWDER_SKU}`,
+    );
+    await expect(powderNote).toBeVisible();
+    await expect(powderNote).not.toHaveValue(/\{/);
+
     // CUSH holds RM-FAB-GENERIC in the two-level FRAME/CUSH graph.
     await page.getByTestId(`factory-bom-parent-${E2E_CUSH_SKU}`).click();
     await expect(page.getByTestId(`factory-bom-line-${E2E_FABRIC_SKU}`)).toBeVisible();

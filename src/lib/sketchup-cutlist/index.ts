@@ -48,3 +48,14 @@ export {
   type ParseDaeResult,
   type TubeRollup,
 } from "./parse-dae-weldment";
+
+export {
+  CUT_LIST_TRAILER_RE,
+  coerceCutLine,
+  composeBomNotes,
+  endsLabel,
+  formatFloorCutCard,
+  formatKatanaIngredientNote,
+  splitBomNotes,
+  type BomNotesParts,
+} from "./notes-codec";

@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useState, type KeyboardEvent } from "react";
+import {
+  composeBomNotes,
+  endsLabel,
+  formatFloorCutCard,
+  splitBomNotes,
+} from "@/lib/sketchup-cutlist/notes-codec";
+import type { CutLine } from "@/lib/sketchup-cutlist/types";
 import type { DraftBomLine } from "./actions";
 import { PIM_INPUT, UNIT_OPTIONS, statusClass, statusLabel } from "./factory-bom-ui";
 
@@ -16,36 +23,54 @@ type Props = {
   onRemove: () => void;
 };
 
+function blankCut(): CutLine {
+  return {
+    role: "",
+    profile: "UNKNOWN",
+    lengthIn: 0,
+    endA: 90,
+    endB: 90,
+    qtyEa: 1,
+    lengthConvention: "square",
+    sourceName: "",
+    confidence: "stated",
+    drawingPartNumber: null,
+  };
+}
+
 export function BomMaterialRow({ line, isPending, onSave, onRemove }: Props) {
   const [quantity, setQuantity] = useState(String(Number(line.quantity)));
   const [scrap, setScrap] = useState(String(Number(line.scrapFactor)));
   const [uom, setUom] = useState(line.unitOfMeasure);
-  const [notes, setNotes] = useState(line.notes ?? "");
+  const [managerNote, setManagerNote] = useState("");
+  const [cuts, setCuts] = useState<CutLine[]>([]);
 
   useEffect(() => {
     setQuantity(String(Number(line.quantity)));
     setScrap(String(Number(line.scrapFactor)));
     setUom(line.unitOfMeasure);
-    setNotes(line.notes ?? "");
+    const parts = splitBomNotes(line.notes);
+    setManagerNote(parts.managerNote);
+    setCuts(parts.cutList);
   }, [line.id, line.quantity, line.scrapFactor, line.unitOfMeasure, line.notes]);
 
   function commitIfChanged(): void {
     const nextQty = quantity.trim();
     const nextScrap = scrap.trim();
     const nextUom = uom.trim().toLowerCase();
-    const nextNotes = notes;
+    const composed = composeBomNotes({ managerNote, cutList: cuts }) ?? "";
     const same =
       Number(nextQty) === Number(line.quantity) &&
       Number(nextScrap) === Number(line.scrapFactor) &&
       nextUom === line.unitOfMeasure.toLowerCase() &&
-      nextNotes.trim() === (line.notes ?? "").trim();
+      composed.trim() === (line.notes ?? "").trim();
     if (same) return;
     if (!nextQty || !Number.isFinite(Number(nextQty))) return;
     onSave({
       quantity: nextQty,
       scrapFactor: nextScrap || "1",
       unitOfMeasure: nextUom || "ea",
-      notes: nextNotes,
+      notes: composed,
     });
   }
 
@@ -57,7 +82,14 @@ export function BomMaterialRow({ line, isPending, onSave, onRemove }: Props) {
     }
   }
 
-  const notesEmpty = !notes.trim();
+  function patchCut(index: number, patch: Partial<CutLine>): void {
+    setCuts((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    );
+  }
+
+  const noteEmpty = !managerNote.trim() && cuts.length === 0;
+  const showCutCards = cuts.length > 0;
 
   return (
     <div
@@ -140,20 +172,149 @@ export function BomMaterialRow({ line, isPending, onSave, onRemove }: Props) {
           </button>
         </div>
       </div>
+
+      {showCutCards ? (
+        <div
+          className="mt-3 overflow-x-auto rounded-md border border-zinc-800"
+          data-testid={`factory-bom-cut-cards-${line.childSku}`}
+        >
+          <div className="border-b border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">
+            Cut list
+          </div>
+          <table className="w-full min-w-[28rem] text-left text-xs">
+            <thead>
+              <tr className="border-b border-zinc-800 text-[10px] uppercase tracking-wider text-zinc-500">
+                <th className="px-2 py-2 font-medium">Qty</th>
+                <th className="px-2 py-2 font-medium">Length (in)</th>
+                <th className="px-2 py-2 font-medium">Ends</th>
+                <th className="px-2 py-2 font-medium">Summary</th>
+                <th className="px-2 py-2 font-medium">Part #</th>
+                <th className="px-2 py-2 font-medium" />
+              </tr>
+            </thead>
+            <tbody>
+              {cuts.map((cut, index) => (
+                <tr
+                  key={`${cut.drawingPartNumber ?? cut.role}-${index}`}
+                  className="border-b border-zinc-900/80"
+                  data-testid={`factory-bom-cut-row-${line.childSku}-${index}`}
+                >
+                  <td className="px-2 py-1.5">
+                    <input
+                      aria-label={`Cut qty ${index + 1} for ${line.childSku}`}
+                      disabled={isPending}
+                      value={String(cut.qtyEa)}
+                      className={`${PIM_INPUT} w-14 font-mono`}
+                      onChange={(e) =>
+                        patchCut(index, { qtyEa: Number(e.target.value) || 0 })
+                      }
+                      onBlur={commitIfChanged}
+                      onKeyDown={onEnterBlur}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <input
+                      aria-label={`Cut length ${index + 1} for ${line.childSku}`}
+                      disabled={isPending}
+                      value={String(cut.lengthIn)}
+                      className={`${PIM_INPUT} w-20 font-mono`}
+                      onChange={(e) =>
+                        patchCut(index, {
+                          lengthIn: Number(e.target.value) || 0,
+                        })
+                      }
+                      onBlur={commitIfChanged}
+                      onKeyDown={onEnterBlur}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <select
+                      aria-label={`Cut ends ${index + 1} for ${line.childSku}`}
+                      disabled={isPending}
+                      value={`${cut.endA ?? 90}/${cut.endB ?? 90}`}
+                      className={PIM_INPUT}
+                      onChange={(e) => {
+                        const [a, b] = e.target.value.split("/").map(Number);
+                        patchCut(index, {
+                          endA: a === 45 ? 45 : 90,
+                          endB: b === 45 ? 45 : 90,
+                        });
+                      }}
+                      onBlur={commitIfChanged}
+                    >
+                      <option value="90/90">{endsLabel(90, 90)}</option>
+                      <option value="45/45">{endsLabel(45, 45)}</option>
+                      <option value="45/90">{endsLabel(45, 90)}</option>
+                      <option value="90/45">{endsLabel(90, 45)}</option>
+                    </select>
+                  </td>
+                  <td className="px-2 py-1.5 text-zinc-300">
+                    {formatFloorCutCard(cut)}
+                  </td>
+                  <td className="px-2 py-1.5 font-mono text-[11px] text-zinc-500">
+                    {(cut.drawingPartNumber ?? cut.role) || "—"}
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      className="text-[11px] text-zinc-500 hover:text-rose-300 disabled:opacity-40"
+                      onClick={() => {
+                        const nextCuts = cuts.filter((_, i) => i !== index);
+                        setCuts(nextCuts);
+                        onSave({
+                          quantity:
+                            quantity.trim() || String(Number(line.quantity)),
+                          scrapFactor: scrap.trim() || "1",
+                          unitOfMeasure: uom.trim().toLowerCase() || "ea",
+                          notes:
+                            composeBomNotes({
+                              managerNote,
+                              cutList: nextCuts,
+                            }) ?? "",
+                        });
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="flex justify-end border-t border-zinc-800 px-2 py-1.5">
+            <button
+              type="button"
+              disabled={isPending}
+              data-testid={`factory-bom-add-cut-${line.childSku}`}
+              className="text-[11px] text-emerald-400/90 hover:text-emerald-300 disabled:opacity-40"
+              onClick={() => setCuts((prev) => [...prev, blankCut()])}
+            >
+              + Add cut row
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <label className="mt-3 block">
         <span className="mb-1 block text-[10px] uppercase tracking-wider text-amber-400/80">
-          Cut-list / chop-saw notes
+          {showCutCards ? "Manager note" : "Cut-list / chop-saw notes"}
         </span>
         <textarea
-          aria-label={`Notes for ${line.childSku}`}
-          value={notes}
+          data-testid={`factory-bom-manager-note-${line.childSku}`}
+          aria-label={`Manager note for ${line.childSku}`}
+          value={managerNote}
           disabled={isPending}
           rows={2}
-          placeholder="Cut 2x 34 inches 45/45"
+          placeholder={
+            showCutCards
+              ? "Optional floor note (human text only — never paste JSON)"
+              : "Cut 2x 34 inches 45/45"
+          }
           className={`pim-input min-h-16 w-full resize-y py-2 text-sm ${
-            notesEmpty ? "border-amber-500/20" : ""
+            noteEmpty ? "border-amber-500/20" : ""
           }`}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={(e) => setManagerNote(e.target.value)}
           onBlur={commitIfChanged}
         />
       </label>

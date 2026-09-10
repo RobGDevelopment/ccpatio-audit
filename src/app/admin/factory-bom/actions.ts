@@ -13,6 +13,7 @@ import { processCadUploadJob } from "@/lib/cad-upload/process-job";
 import { getPimSession, logPimAudit } from "@/lib/pim-audit";
 import { syncBOMToKatana } from "@/lib/katana";
 import { runSecondaryExtract } from "@/lib/secondary-extraction";
+import { splitBomNotes } from "@/lib/sketchup-cutlist";
 import { inngest } from "@/inngest/client";
 import {
   CAD_MAX_BYTES,
@@ -709,21 +710,8 @@ export async function approveDraftRecipe(
 
   const now = new Date();
   for (const line of lines) {
-    let cutList: unknown[] = [];
-    if (line.notes) {
-      const jsonMatch = line.notes.match(/\n(\{[\s\S]*"cut_list"[\s\S]*\})\s*$/);
-      if (jsonMatch) {
-        try {
-          const parsed = JSON.parse(jsonMatch[1]) as { cut_list?: unknown[] };
-          if (Array.isArray(parsed.cut_list)) cutList = parsed.cut_list;
-        } catch {
-          /* keep notes as plain text */
-        }
-      }
-    }
-    const notesText = line.notes
-      ? line.notes.replace(/\n\{[\s\S]*"cut_list"[\s\S]*\}\s*$/, "").trim()
-      : null;
+    const { managerNote, cutList } = splitBomNotes(line.notes);
+    const notesText = managerNote || null;
 
     await db
       .insert(product_bom)
