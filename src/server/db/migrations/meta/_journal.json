@@ -127,6 +127,20 @@
       "when": 1789056400000,
       "tag": "0018_sketchup_cutlist_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789142800000,
+      "tag": "0019_secondary_extraction",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789229200000,
+      "tag": "0020_cad_uploads",
+      "breakpoints": true
     }
   ]
 }

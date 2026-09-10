@@ -8,6 +8,8 @@ import {
   ilike,
   inArray,
   isNull,
+  like,
+  not,
   or,
   sql,
 } from "drizzle-orm";
@@ -72,7 +74,21 @@ const UNIT_OPTIONS = new Set([
   "gal",
 ]);
 
-const RAW_ITEM_TYPES: ItemType[] = ["raw_material", "sub_assembly"];
+const RAW_ITEM_TYPES: ItemType[] = ["raw_material"];
+
+/** Strict gate: master ingredient DB — never FIN-* / SA-* / finished goods. */
+function isDisplayableRawMaterial(row: RawMaterialRow): boolean {
+  const sku = row.sku.toUpperCase();
+  if (sku.startsWith("FIN-") || sku.startsWith("SA-")) return false;
+  if (
+    row.itemType === "finished_good" ||
+    row.itemType === "sub_assembly" ||
+    row.itemType === "service"
+  ) {
+    return false;
+  }
+  return row.itemType === "raw_material" || sku.startsWith("RM-");
+}
 
 function parseCost(raw: string | undefined): string | null {
   if (!raw?.trim()) {
@@ -211,6 +227,19 @@ async function fetchJoinedRows(): Promise<RawMaterialRow[]> {
       sku_mappings,
       eq(raw_materials_catalog.sku, sku_mappings.global_sku),
     )
+    .where(
+      and(
+        not(like(raw_materials_catalog.sku, "FIN-%")),
+        not(like(raw_materials_catalog.sku, "SA-%")),
+        or(
+          eq(sku_mappings.item_type, "raw_material"),
+          and(
+            isNull(sku_mappings.global_sku),
+            like(raw_materials_catalog.sku, "RM-%"),
+          ),
+        ),
+      ),
+    )
     .orderBy(asc(raw_materials_catalog.category), asc(raw_materials_catalog.sku));
 
   const mappingOnly = await db
@@ -227,13 +256,16 @@ async function fetchJoinedRows(): Promise<RawMaterialRow[]> {
       and(
         inArray(sku_mappings.item_type, RAW_ITEM_TYPES),
         isNull(raw_materials_catalog.id),
+        not(like(sku_mappings.global_sku, "FIN-%")),
+        not(like(sku_mappings.global_sku, "SA-%")),
       ),
     )
     .orderBy(asc(sku_mappings.category), asc(sku_mappings.global_sku));
 
   const mapped = [...catalogJoined, ...mappingOnly]
     .map(({ mapping, catalog }) => mapJoinedRow(mapping, catalog))
-    .filter((row): row is RawMaterialRow => row !== null);
+    .filter((row): row is RawMaterialRow => row !== null)
+    .filter(isDisplayableRawMaterial);
 
   return mergeRows(mapped);
 }
@@ -265,7 +297,8 @@ export async function fetchRawMaterialBySku(
     .limit(1);
 
   if (row) {
-    return mapJoinedRow(row.mapping, row.catalog);
+    const mapped = mapJoinedRow(row.mapping, row.catalog);
+    return mapped && isDisplayableRawMaterial(mapped) ? mapped : null;
   }
 
   const [catalogRow] = await db
@@ -281,9 +314,9 @@ export async function fetchRawMaterialBySku(
     .where(eq(raw_materials_catalog.sku, needle))
     .limit(1);
 
-  return catalogRow
-    ? mapJoinedRow(catalogRow.mapping, catalogRow.catalog)
-    : null;
+  if (!catalogRow) return null;
+  const mapped = mapJoinedRow(catalogRow.mapping, catalogRow.catalog);
+  return mapped && isDisplayableRawMaterial(mapped) ? mapped : null;
 }
 
 /** Poll fallback when Realtime is unavailable. */
@@ -338,7 +371,8 @@ export async function fetchRawMaterialDeltas(
   return mergeRows(
     [...rows, ...catalogOnly]
       .map(({ mapping, catalog }) => mapJoinedRow(mapping, catalog))
-      .filter((row): row is RawMaterialRow => row !== null),
+      .filter((row): row is RawMaterialRow => row !== null)
+      .filter(isDisplayableRawMaterial),
   );
 }
 
@@ -361,11 +395,22 @@ export async function listRawMaterials(query = ""): Promise<RawMaterialRow[]> {
       eq(raw_materials_catalog.sku, sku_mappings.global_sku),
     )
     .where(
-      or(
-        ilike(raw_materials_catalog.sku, pattern),
-        ilike(raw_materials_catalog.name, pattern),
-        ilike(raw_materials_catalog.category, pattern),
-        ilike(sku_mappings.original_name, pattern),
+      and(
+        not(like(raw_materials_catalog.sku, "FIN-%")),
+        not(like(raw_materials_catalog.sku, "SA-%")),
+        or(
+          eq(sku_mappings.item_type, "raw_material"),
+          and(
+            isNull(sku_mappings.global_sku),
+            like(raw_materials_catalog.sku, "RM-%"),
+          ),
+        ),
+        or(
+          ilike(raw_materials_catalog.sku, pattern),
+          ilike(raw_materials_catalog.name, pattern),
+          ilike(raw_materials_catalog.category, pattern),
+          ilike(sku_mappings.original_name, pattern),
+        ),
       ),
     )
     .orderBy(asc(raw_materials_catalog.sku))
@@ -374,7 +419,8 @@ export async function listRawMaterials(query = ""): Promise<RawMaterialRow[]> {
   return mergeRows(
     rows
       .map(({ mapping, catalog }) => mapJoinedRow(mapping, catalog))
-      .filter((row): row is RawMaterialRow => row !== null),
+      .filter((row): row is RawMaterialRow => row !== null)
+      .filter(isDisplayableRawMaterial),
   );
 }
 

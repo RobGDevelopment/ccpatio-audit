@@ -8,61 +8,36 @@ import {
   useRef,
   useState,
   useTransition,
-  type FormEvent,
   type KeyboardEvent,
 } from "react";
-import Link from "next/link";
 import { useToast } from "@/app/admin/shared/ToastProvider";
-import { KatanaSyncButton } from "@/components/KatanaSyncButton";
 import {
   approveDraftRecipe,
   deleteDraftBomLine,
+  deleteDraftOperation,
   getDraftBomTree,
+  getRecipeEstimate,
   listDraftLinesForParent,
+  listDraftOperations,
   publishApprovedRecipeToKatana,
+  recalculateEstimatesAction,
   searchFactoryMaterials,
+  updateEstimateOverridesAction,
   upsertDraftBomLine,
+  upsertDraftOperation,
   type BomComponentCandidate,
   type BomTreeNode,
   type DraftBomLine,
+  type DraftOperationRow,
   type FactoryProductRow,
+  type RecipeEstimateRow,
 } from "./actions";
 import type { RecipeReviewStatus } from "@/server/db/schema";
-
-const INPUT =
-  "w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 shadow-sm transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 focus:bg-zinc-900";
-
-const UNIT_OPTIONS = [
-  "ea",
-  "ft",
-  "yd",
-  "lb",
-  "lbs",
-  "boardft",
-  "slab",
-  "sqft",
-  "in",
-] as const;
-
-function statusLabel(status: RecipeReviewStatus | "none"): string {
-  if (status === "draft_pending_review") return "Auto-generated";
-  if (status === "edited") return "Edited";
-  if (status === "factory_approved") return "Factory approved";
-  return "No draft";
-}
-
-function statusClass(status: RecipeReviewStatus | "none"): string {
-  if (status === "factory_approved") {
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
-  }
-  if (status === "edited") {
-    return "border-amber-500/40 bg-amber-500/10 text-amber-200";
-  }
-  if (status === "draft_pending_review") {
-    return "border-sky-500/40 bg-sky-500/10 text-sky-200";
-  }
-  return "border-zinc-700 bg-zinc-900 text-zinc-400";
-}
+import { BomAssemblyCard } from "./BomAssemblyCard";
+import { CadUploadDropzone } from "./CadUploadDropzone";
+import { FactoryProductSidebar } from "./FactoryProductSidebar";
+import { RecipeHeader } from "./RecipeHeader";
+import { PIM_INPUT } from "./factory-bom-ui";
 
 function flattenTree(node: BomTreeNode): BomTreeNode[] {
   return [node, ...node.children.flatMap(flattenTree)];
@@ -72,10 +47,12 @@ function MaterialCombobox({
   value,
   onChange,
   disabled,
+  testId = "factory-bom-material-combobox",
 }: {
   value: string;
   onChange: (sku: string, hit?: BomComponentCandidate) => void;
   disabled?: boolean;
+  testId?: string;
 }) {
   const listboxId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -157,13 +134,13 @@ function MaterialCombobox({
     <div ref={containerRef} className="relative min-w-0">
       <input
         role="combobox"
-        data-testid="factory-bom-material-combobox"
+        data-testid={testId}
         aria-expanded={open}
         aria-controls={listboxId}
         value={query}
         disabled={disabled}
         placeholder="Search fabric, metal, foam, powder…"
-        className={INPUT}
+        className={PIM_INPUT}
         onFocus={() => setOpen(true)}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -220,26 +197,37 @@ function MaterialCombobox({
   );
 }
 
-export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[] }) {
+type AssemblyBundle = {
+  node: BomTreeNode;
+  lines: DraftBomLine[];
+  ops: DraftOperationRow[];
+};
+
+export function FactoryBomWorkbench({
+  products,
+  initialSku,
+}: {
+  products: FactoryProductRow[];
+  initialSku?: string;
+}) {
   const toast = useToast();
+  const resolvedInitial =
+    initialSku && products.some((row) => row.sku === initialSku)
+      ? initialSku
+      : (products[0]?.sku ?? "");
   const [query, setQuery] = useState("");
   const [phase, setPhase] = useState<"all" | "1" | "2">("all");
-  const [selectedSku, setSelectedSku] = useState(products[0]?.sku ?? "");
+  const [selectedSku, setSelectedSku] = useState(resolvedInitial);
   const [tree, setTree] = useState<BomTreeNode | null>(null);
-  const [activeParent, setActiveParent] = useState(selectedSku);
-  const [lines, setLines] = useState<DraftBomLine[]>([]);
+  const [bundles, setBundles] = useState<AssemblyBundle[]>([]);
+  const [activeParent, setActiveParent] = useState(resolvedInitial);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [childSku, setChildSku] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const [scrap, setScrap] = useState("1.0000");
-  const [uom, setUom] = useState("ea");
-  const [bannerStatus, setBannerStatus] = useState<
-    RecipeReviewStatus | "none"
-  >(products[0]?.reviewStatus ?? "none");
+  const [bannerStatus, setBannerStatus] = useState<RecipeReviewStatus | "none">(
+    products.find((row) => row.sku === resolvedInitial)?.reviewStatus ?? "none",
+  );
   const [liveCopied, setLiveCopied] = useState(false);
-  const activeParentRef = useRef(activeParent);
-  activeParentRef.current = activeParent;
+  const [estimate, setEstimate] = useState<RecipeEstimateRow | null>(null);
 
   const selected = products.find((row) => row.sku === selectedSku) ?? null;
 
@@ -257,17 +245,40 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
     });
   }, [products, query, phase]);
 
+  async function loadBundles(rootSku: string): Promise<{
+    nextTree: BomTreeNode | null;
+    nextBundles: AssemblyBundle[];
+  }> {
+    const nextTree = await getDraftBomTree(rootSku);
+    if (!nextTree) return { nextTree: null, nextBundles: [] };
+    const parents = flattenTree(nextTree).filter(
+      (n) => n.depth === 0 || n.itemType === "sub_assembly",
+    );
+    const nextBundles: AssemblyBundle[] = [];
+    for (const node of parents) {
+      const [lines, ops] = await Promise.all([
+        listDraftLinesForParent(node.sku),
+        listDraftOperations(node.sku),
+      ]);
+      nextBundles.push({ node, lines, ops });
+    }
+    return { nextTree, nextBundles };
+  }
+
   async function reload(sku: string): Promise<void> {
-    const nextTree = await getDraftBomTree(sku);
+    const [{ nextTree, nextBundles }, nextEstimate] = await Promise.all([
+      loadBundles(sku),
+      getRecipeEstimate(sku),
+    ]);
     setTree(nextTree);
-    const preferred = activeParentRef.current;
-    const focus =
-      nextTree && flattenTree(nextTree).some((n) => n.sku === preferred)
-        ? preferred
-        : sku;
-    setActiveParent(focus);
-    const nextLines = await listDraftLinesForParent(focus);
-    setLines(nextLines);
+    setBundles(nextBundles);
+    setEstimate(nextEstimate);
+    if (
+      nextBundles.length > 0 &&
+      !nextBundles.some((bundle) => bundle.node.sku === activeParent)
+    ) {
+      setActiveParent(sku);
+    }
   }
 
   useEffect(() => {
@@ -283,16 +294,21 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
     void (async () => {
       setError(null);
       try {
-        const nextTree = await getDraftBomTree(selectedSku);
+        const [{ nextTree, nextBundles }, nextEstimate] = await Promise.all([
+          loadBundles(selectedSku),
+          getRecipeEstimate(selectedSku),
+        ]);
         if (cancelled) return;
         setTree(nextTree);
+        setBundles(nextBundles);
+        setEstimate(nextEstimate);
         setActiveParent(selectedSku);
-        const nextLines = await listDraftLinesForParent(selectedSku);
-        if (!cancelled) setLines(nextLines);
       } catch (loadError: unknown) {
         if (!cancelled) {
           setError(
-            loadError instanceof Error ? loadError.message : "Failed to load draft BOM",
+            loadError instanceof Error
+              ? loadError.message
+              : "Failed to load draft BOM",
           );
         }
       }
@@ -302,61 +318,25 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
     };
   }, [selectedSku]);
 
-  const parents = tree ? flattenTree(tree).filter((n) => n.depth === 0 || n.itemType === "sub_assembly") : [];
-
-  function onSelectParent(sku: string): void {
-    setActiveParent(sku);
-    startTransition(async () => {
-      setLines(await listDraftLinesForParent(sku));
-    });
-  }
-
-  function onAdd(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    setError(null);
-    const parentSku = activeParentRef.current;
-    const nextChild = childSku;
-    const nextQty = quantity;
-    const nextScrap = scrap;
-    const nextUom = uom;
-    startTransition(async () => {
-      const result = await upsertDraftBomLine({
-        parentSku,
-        childSku: nextChild,
-        quantity: nextQty,
-        scrapFactor: nextScrap,
-        unitOfMeasure: nextUom,
-      });
-      if (!result.ok) {
-        setError(result.error);
-        toast.error(result.error);
-        return;
-      }
-      setChildSku("");
-      setQuantity("1");
-      toast.success("Draft line saved");
-      setBannerStatus("edited");
-      await reload(selectedSku);
-    });
-  }
-
-  function onEditQuantity(line: DraftBomLine, nextQty: string): void {
-    if (
-      nextQty.trim() === "" ||
-      !Number.isFinite(Number(nextQty)) ||
-      Number(nextQty) === Number(line.quantity)
-    ) {
-      return;
-    }
+  function onSaveLine(
+    line: DraftBomLine,
+    next: {
+      quantity: string;
+      scrapFactor: string;
+      unitOfMeasure: string;
+      notes: string;
+    },
+  ): void {
     setError(null);
     startTransition(async () => {
       const result = await upsertDraftBomLine({
         id: line.id,
         parentSku: line.parentSku,
         childSku: line.childSku,
-        quantity: nextQty,
-        scrapFactor: line.scrapFactor,
-        unitOfMeasure: line.unitOfMeasure,
+        quantity: next.quantity,
+        scrapFactor: next.scrapFactor,
+        unitOfMeasure: next.unitOfMeasure,
+        notes: next.notes,
       });
       if (!result.ok) {
         setError(result.error);
@@ -369,7 +349,7 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
     });
   }
 
-  function onRemove(id: string): void {
+  function onRemoveLine(id: string): void {
     setError(null);
     startTransition(async () => {
       const result = await deleteDraftBomLine(id);
@@ -382,17 +362,86 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
     });
   }
 
+  function onAddLine(data: {
+    parentSku: string;
+    childSku: string;
+    quantity: string;
+    scrapFactor: string;
+    unitOfMeasure: string;
+  }): void {
+    setError(null);
+    setActiveParent(data.parentSku);
+    startTransition(async () => {
+      const result = await upsertDraftBomLine(data);
+      if (!result.ok) {
+        setError(result.error);
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Draft line saved");
+      setBannerStatus("edited");
+      await reload(selectedSku);
+    });
+  }
+
+  function onAddOp(data: {
+    itemSku: string;
+    workCenter: string;
+    sequence: number;
+    setupTimeMins: string;
+    runTimeMins: string;
+  }): void {
+    setError(null);
+    startTransition(async () => {
+      const result = await upsertDraftOperation({
+        itemSku: data.itemSku,
+        workCenter: data.workCenter,
+        sequence: data.sequence,
+        setupTimeMins: data.setupTimeMins,
+        runTimeMins: data.runTimeMins,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Draft routing saved");
+      setBannerStatus("edited");
+      await reload(selectedSku);
+    });
+  }
+
+  function onRemoveOp(id: string): void {
+    setError(null);
+    startTransition(async () => {
+      const result = await deleteDraftOperation(id);
+      if (!result.ok) {
+        setError(result.error);
+        toast.error(result.error);
+        return;
+      }
+      await reload(selectedSku);
+    });
+  }
+
   function onApprove(): void {
     if (!selectedSku) return;
+    const includePack = Boolean(estimate?.overrides.includePackagingBom);
+    const applyWeight = Boolean(estimate?.overrides.applyEstimatedWeight);
     if (
       !window.confirm(
-        `Copy the draft recipe for ${selectedSku} into live product_bom? Katana is not updated until catalog publish.`,
+        `Copy the draft recipe for ${selectedSku} into live product_bom?${
+          includePack ? " Packaging BOM will be included." : ""
+        }${applyWeight ? " FG weight will be updated." : ""} Katana is not updated until catalog publish.`,
       )
     ) {
       return;
     }
     startTransition(async () => {
-      const result = await approveDraftRecipe(selectedSku);
+      const result = await approveDraftRecipe(selectedSku, {
+        includePackagingBom: includePack,
+        applyEstimatedWeight: applyWeight,
+      });
       if (!result.ok) {
         setError(result.error);
         toast.error(result.error);
@@ -405,276 +454,176 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
     });
   }
 
+  function onRecalculateEstimates(forceOps: boolean): void {
+    if (!selectedSku) return;
+    startTransition(async () => {
+      const result = await recalculateEstimatesAction(selectedSku, { forceOps });
+      if (!result.ok) {
+        setError(result.error);
+        toast.error(result.error);
+        return;
+      }
+      setEstimate(result.estimate);
+      toast.success("Estimates recalculated");
+      await reload(selectedSku);
+    });
+  }
+
+  function onSaveEstimateOverrides(patch: {
+    weightLbs?: number;
+    dimWeightLbs?: number;
+    laborMinutes?: number;
+    includePackagingBom?: boolean;
+    applyEstimatedWeight?: boolean;
+  }): void {
+    if (!selectedSku) return;
+    startTransition(async () => {
+      const result = await updateEstimateOverridesAction(selectedSku, patch);
+      if (!result.ok) {
+        setError(result.error);
+        toast.error(result.error);
+        return;
+      }
+      setEstimate(result.estimate);
+    });
+  }
+
+  const rootBundle = bundles.find((bundle) => bundle.node.sku === selectedSku);
+  const childBundles = bundles.filter(
+    (bundle) =>
+      bundle.node.sku !== selectedSku && bundle.node.itemType === "sub_assembly",
+  );
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] min-h-0">
-      <aside className="flex w-80 shrink-0 flex-col border-r border-zinc-800 bg-zinc-950">
-        <div className="space-y-2 border-b border-zinc-800 p-3">
-          <input
-            data-testid="factory-bom-search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search Phase 1 / 2 SKUs…"
-            className={INPUT}
-          />
-          <div className="flex gap-1">
-            {(["all", "1", "2"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setPhase(value)}
-                className={`flex-1 rounded-md border px-2 py-1 text-xs ${
-                  phase === value
-                    ? "border-emerald-500/50 text-emerald-300"
-                    : "border-zinc-800 text-zinc-500"
-                }`}
-              >
-                {value === "all" ? "All" : `P${value}`}
-              </button>
-            ))}
-          </div>
-        </div>
-        <ul className="flex-1 overflow-auto">
-          {filtered.length === 0 ? (
-            <li className="px-4 py-6 text-sm text-zinc-500">
-              No VividWorks hub SKUs yet. Run{" "}
-              <code className="font-mono text-zinc-300">
-                npx tsx scripts/vividworks/07-generate-heuristic-boms.ts --live
-              </code>
-            </li>
-          ) : (
-            filtered.map((row) => (
-              <li key={row.sku}>
-                <button
-                  type="button"
-                  data-testid={`factory-bom-product-${row.sku}`}
-                  onClick={() => setSelectedSku(row.sku)}
-                  className={`flex w-full flex-col items-start gap-1 border-l-2 px-4 py-3 text-left ${
-                    row.sku === selectedSku
-                      ? "border-emerald-500 bg-zinc-900"
-                      : "border-transparent hover:bg-zinc-900/60"
-                  }`}
-                >
-                  <span className="text-sm font-medium text-zinc-100">{row.name}</span>
-                  <span className="font-mono text-[11px] text-zinc-500">{row.sku}</span>
-                  <span
-                    className={`mt-1 rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${statusClass(row.reviewStatus)}`}
-                  >
-                    {statusLabel(row.reviewStatus)}
-                  </span>
-                </button>
-              </li>
-            ))
-          )}
-        </ul>
-      </aside>
+      <FactoryProductSidebar
+        products={products}
+        filtered={filtered}
+        query={query}
+        phase={phase}
+        selectedSku={selectedSku}
+        onQueryChange={setQuery}
+        onPhaseChange={setPhase}
+        onSelectSku={setSelectedSku}
+      />
 
       <section className="flex min-w-0 flex-1 flex-col">
         {!selected ? (
           <div className="p-8 text-zinc-500">Select a finished good.</div>
         ) : (
           <>
-            <header className="flex items-start justify-between gap-4 border-b border-zinc-800 px-6 py-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                  {selected.collection} · {selected.phaseSource}
-                </p>
-                <h2 className="mt-1 text-xl font-semibold text-zinc-50">{selected.name}</h2>
-                <p className="mt-1 font-mono text-xs text-zinc-500">{selected.sku}</p>
-                <p className="mt-2 text-xs text-zinc-400">
-                  {selected.length ?? "—"} × {selected.depth ?? "—"} × {selected.height ?? "—"}
-                  {selected.msrp ? ` · ${selected.msrp}` : ""}
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <span
-                  data-testid="factory-bom-recipe-status"
-                  className={`rounded border px-2 py-1 text-xs uppercase tracking-wide ${statusClass(bannerStatus)}`}
-                >
-                  {statusLabel(bannerStatus)}
-                </span>
-                {selected.liveBom || liveCopied ? (
-                  <span className="text-[11px] text-amber-300">
-                    Live product_bom already has children
-                  </span>
-                ) : null}
-                <Link
-                  href={`/admin/dictionary/bom/${encodeURIComponent(selected.sku)}`}
-                  className="text-xs text-emerald-400 hover:text-emerald-300"
-                >
-                  Open live Dictionary BOM →
-                </Link>
-                <button
-                  type="button"
-                  data-testid="factory-bom-approve"
-                  disabled={isPending || selected.draftLineCount === 0}
-                  onClick={onApprove}
-                  className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200 disabled:opacity-40"
-                >
-                  Approve to live hub
-                </button>
-                <div data-testid="factory-bom-publish-katana">
-                  <KatanaSyncButton
-                    label="Publish recipes to Katana"
-                    secondaryLabel="Publishing recipes…"
-                    onSync={async () => {
-                      const result = await publishApprovedRecipeToKatana(selectedSku);
-                      if (!result.ok) return { ok: false, error: result.error };
-                      return {
-                        ok: true,
-                        message: "Catalog recipes posted (or dry-run) via POST /recipes",
-                      };
-                    }}
-                  />
-                </div>
-              </div>
-            </header>
-
-            <div className="flex gap-2 overflow-x-auto border-b border-zinc-800 px-6 py-2">
-              {parents.map((node) => (
-                <button
-                  key={node.sku}
-                  type="button"
-                  data-testid={`factory-bom-parent-${node.sku}`}
-                  onClick={() => onSelectParent(node.sku)}
-                  className={`shrink-0 rounded-md border px-3 py-1.5 text-xs ${
-                    node.sku === activeParent
-                      ? "border-emerald-500/50 text-emerald-200"
-                      : "border-zinc-800 text-zinc-400"
-                  }`}
-                >
-                  {node.itemType === "finished_good" ? "FG" : node.sku.endsWith("-CUSH") ? "CUSH" : "FRAME"}
-                  <span className="ml-2 font-mono text-[10px] text-zinc-500">{node.sku}</span>
-                </button>
-              ))}
-            </div>
+            <RecipeHeader
+              selected={selected}
+              bannerStatus={bannerStatus}
+              liveCopied={liveCopied}
+              isPending={isPending}
+              estimate={estimate}
+              onApprove={onApprove}
+              onRecalculateEstimates={onRecalculateEstimates}
+              onSaveEstimateOverrides={onSaveEstimateOverrides}
+              onPublishKatana={async () => {
+                const result = await publishApprovedRecipeToKatana(selectedSku);
+                if (!result.ok) return { ok: false, error: result.error };
+                return {
+                  ok: true,
+                  message:
+                    "Catalog recipes posted (or dry-run) via POST /recipes",
+                };
+              }}
+            />
 
             {error ? (
               <p className="px-6 py-2 text-sm text-rose-300">{error}</p>
             ) : null}
 
-            <div className="flex-1 overflow-auto px-6 py-4">
-              <table className="w-full text-left text-sm">
-                <thead className="text-[10px] uppercase tracking-wider text-zinc-500">
-                  <tr>
-                    <th className="py-2">Child</th>
-                    <th>Qty</th>
-                    <th>Scrap</th>
-                    <th>UOM</th>
-                    <th>Status</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-zinc-500">
-                        No draft lines on this node. Add a raw material or run the heuristic script.
-                      </td>
-                    </tr>
-                  ) : (
-                    lines.map((line) => (
-                      <tr
-                        key={line.id}
-                        data-testid={`factory-bom-line-${line.childSku}`}
-                        className="border-t border-zinc-800"
-                      >
-                        <td className="py-3">
-                          <div className="font-medium text-zinc-100">{line.childName}</div>
-                          <div className="font-mono text-[11px] text-zinc-500">
-                            {line.childSku} · {line.childItemType}
-                          </div>
-                          {line.notes ? (
-                            <div className="mt-1 text-[11px] text-zinc-500">{line.notes}</div>
-                          ) : null}
-                        </td>
-                        <td>
-                          <input
-                            data-testid={`factory-bom-qty-${line.childSku}`}
-                            aria-label={`Quantity for ${line.childSku}`}
-                            defaultValue={String(Number(line.quantity))}
-                            key={`${line.id}:${line.quantity}`}
-                            disabled={isPending}
-                            className={`${INPUT} w-24 py-2 font-mono`}
-                            onBlur={(event) => onEditQuantity(line, event.target.value)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                event.preventDefault();
-                                (event.target as HTMLInputElement).blur();
-                              }
-                            }}
-                          />
-                        </td>
-                        <td className="font-mono text-zinc-400">{line.scrapFactor}</td>
-                        <td className="uppercase text-zinc-400">{line.unitOfMeasure}</td>
-                        <td>
-                          <span className={`rounded border px-1.5 py-0.5 text-[10px] ${statusClass(line.status)}`}>
-                            {statusLabel(line.status)}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            disabled={isPending}
-                            onClick={() => onRemove(line.id)}
-                            className="text-xs text-rose-300 hover:text-rose-200"
-                          >
-                            Remove
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            <div className="border-b border-zinc-800 px-6 pb-3">
+              <CadUploadDropzone
+                globalSku={selected.sku}
+                isPending={isPending}
+                onDraftReady={() => {
+                  void reload(selected.sku).then(() => {
+                    toast.success("CAD draft BOM + estimates ready");
+                    setBannerStatus("edited");
+                  });
+                }}
+              />
             </div>
 
-            <form
-              onSubmit={onAdd}
-              className="grid grid-cols-1 gap-3 border-t border-zinc-800 px-6 py-4 md:grid-cols-12"
-            >
-              <div className="md:col-span-5">
-                <MaterialCombobox
-                  value={childSku}
-                  onChange={(sku, hit) => {
-                    setChildSku(sku);
-                    if (hit?.uom) setUom(hit.uom.toLowerCase());
+            <div className="flex-1 space-y-4 overflow-auto px-6 py-4">
+              {!tree || !rootBundle ? (
+                <p className="text-sm text-zinc-500">
+                  No draft recipe tree yet. Drop a .dae CAD file above, run the
+                  heuristic seed, or add lines after selecting a finished good.
+                </p>
+              ) : (
+                <BomAssemblyCard
+                  node={rootBundle.node}
+                  lines={rootBundle.lines}
+                  ops={rootBundle.ops}
+                  level={1}
+                  defaultOpen
+                  isPending={isPending}
+                  isActiveAddTarget={activeParent === rootBundle.node.sku}
+                  onActivate={() => setActiveParent(rootBundle.node.sku)}
+                  materialCombobox={({ value, onChange, disabled }) => (
+                    <MaterialCombobox
+                      value={value}
+                      disabled={disabled}
+                      testId={
+                        activeParent === rootBundle.node.sku
+                          ? "factory-bom-material-combobox"
+                          : `factory-bom-material-combobox-${rootBundle.node.sku}`
+                      }
+                      onChange={onChange}
+                    />
+                  )}
+                  onSaveLine={onSaveLine}
+                  onRemoveLine={onRemoveLine}
+                  onAddLine={(data) => {
+                    setActiveParent(data.parentSku);
+                    onAddLine(data);
                   }}
-                  disabled={isPending}
+                  onAddOp={onAddOp}
+                  onRemoveOp={onRemoveOp}
+                  nestedCards={childBundles.map((bundle) => (
+                    <BomAssemblyCard
+                      key={bundle.node.sku}
+                      node={bundle.node}
+                      lines={bundle.lines}
+                      ops={bundle.ops}
+                      level={2}
+                      defaultOpen={
+                        bundle.node.sku === activeParent ||
+                        childBundles.length <= 2
+                      }
+                      isPending={isPending}
+                      isActiveAddTarget={activeParent === bundle.node.sku}
+                      onActivate={() => setActiveParent(bundle.node.sku)}
+                      materialCombobox={({ value, onChange, disabled }) => (
+                        <MaterialCombobox
+                          value={value}
+                          disabled={disabled}
+                          testId={
+                            activeParent === bundle.node.sku
+                              ? "factory-bom-material-combobox"
+                              : `factory-bom-material-combobox-${bundle.node.sku}`
+                          }
+                          onChange={onChange}
+                        />
+                      )}
+                      onSaveLine={onSaveLine}
+                      onRemoveLine={onRemoveLine}
+                      onAddLine={(data) => {
+                        setActiveParent(data.parentSku);
+                        onAddLine(data);
+                      }}
+                      onAddOp={onAddOp}
+                      onRemoveOp={onRemoveOp}
+                    />
+                  ))}
                 />
-              </div>
-              <input
-                data-testid="factory-bom-add-qty"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className={`${INPUT} md:col-span-2`}
-                placeholder="Qty"
-              />
-              <input
-                value={scrap}
-                onChange={(e) => setScrap(e.target.value)}
-                className={`${INPUT} md:col-span-2`}
-                placeholder="Scrap"
-              />
-              <select
-                value={uom}
-                onChange={(e) => setUom(e.target.value)}
-                className={`${INPUT} md:col-span-2`}
-              >
-                {UNIT_OPTIONS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                data-testid="factory-bom-add-line"
-                disabled={isPending || !childSku}
-                className="rounded-lg border border-zinc-700 px-4 py-3 text-sm text-zinc-200 disabled:opacity-40 md:col-span-1"
-              >
-                Add
-              </button>
-            </form>
+              )}
+            </div>
           </>
         )}
       </section>

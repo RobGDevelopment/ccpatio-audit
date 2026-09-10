@@ -464,6 +464,21 @@ async function main(): Promise<void> {
     console.log(
       `[heuristic] DRAFT ${row.canonicalSku} ${plan.family} lines=${plan.lines.length}`,
     );
+
+    try {
+      const { runSecondaryExtract } = await import(
+        "@/lib/secondary-extraction"
+      );
+      const est = await runSecondaryExtract(row.canonicalSku);
+      console.log(
+        `[heuristic] estimates ${row.canonicalSku} weight=${est.estWeightLbs} dim=${est.estDimWeightLbs} labor=${est.estLaborMinutes} ops=${est.opsUpdated}`,
+      );
+    } catch (estError: unknown) {
+      console.warn(
+        `[heuristic] estimate skip ${row.canonicalSku}:`,
+        estError instanceof Error ? estError.message : estError,
+      );
+    }
   }
 
   console.log("[heuristic] summary", stats);

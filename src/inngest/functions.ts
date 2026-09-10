@@ -539,6 +539,93 @@ export const systemHealthPing = inngest.createFunction(
 );
 
 /**
+ * Factory BOM CAD upload → draft BOM + secondary estimates (never live hub).
+ * Binding: docs/CAD_UPLOAD_PIPELINE_PLAN.md
+ */
+export const processCadUpload = inngest.createFunction(
+  {
+    id: "process-cad-upload",
+    name: "Process CAD Upload",
+    triggers: [{ event: "cad/model.uploaded" }],
+    concurrency: {
+      limit: 1,
+      key: "event.data.globalSku",
+    },
+    onFailure: async ({ event }) => {
+      const original = event.data.event;
+      const globalSku = String(
+        (original?.data as { globalSku?: unknown } | undefined)?.globalSku ??
+          "",
+      );
+      const uploadId = String(
+        (original?.data as { uploadId?: unknown } | undefined)?.uploadId ?? "",
+      );
+      const errMsg =
+        typeof event.data.error?.message === "string"
+          ? event.data.error.message
+          : "process-cad-upload exhausted retries";
+
+      if (uploadId) {
+        try {
+          const { getDb } = await import("@/server/db/client");
+          const { cad_uploads } = await import("@/server/db/schema");
+          const { eq } = await import("drizzle-orm");
+          await getDb()
+            .update(cad_uploads)
+            .set({
+              status: "failed",
+              error_message: errMsg,
+              updated_at: new Date(),
+            })
+            .where(eq(cad_uploads.id, uploadId));
+        } catch {
+          /* best-effort */
+        }
+      }
+
+      await sendOhCrapAlert({
+        reason: "unknown",
+        source: "system",
+        externalId: uploadId || globalSku || event.data.run_id,
+        sku: globalSku || undefined,
+        message: errMsg,
+        resolutionPath: globalSku
+          ? `/admin/factory-bom?sku=${encodeURIComponent(globalSku)}`
+          : "/admin/factory-bom",
+      });
+    },
+  },
+  async ({ event, step }) => {
+    const data = {
+      uploadId: String(event.data.uploadId ?? ""),
+      globalSku: String(event.data.globalSku ?? "")
+        .trim()
+        .toUpperCase(),
+      storagePath: String(event.data.storagePath ?? ""),
+      ext: (String(event.data.ext ?? "dae").toLowerCase() === "skp"
+        ? "skp"
+        : "dae") as "dae" | "skp",
+      sha256:
+        typeof event.data.sha256 === "string" ? event.data.sha256 : undefined,
+      operatorEmail: String(event.data.operatorEmail ?? ""),
+      replaceImage: Boolean(event.data.replaceImage),
+    };
+
+    if (!data.uploadId || !data.globalSku || !data.storagePath) {
+      const { NonRetriableError } = await import("inngest");
+      throw new NonRetriableError("cad/model.uploaded missing required fields");
+    }
+
+    return step.run("process-cad-bytes", async () => {
+      const { processCadUploadJob } = await import(
+        "@/lib/cad-upload/process-job"
+      );
+      return processCadUploadJob(data);
+    });
+  },
+);
+
+/**
  * Served by `/api/inngest`. Transactional Woo/GHL order consumers are
  * intentionally absent — see `docs/MDM_MASTER_BLUEPRINT.md` Phase 0.
  */
@@ -547,6 +634,7 @@ export const inngestFunctions = [
   archiveKatanaVariant,
   publishApprovedProduct,
   systemHealthPing,
+  processCadUpload,
 ];
 
 /**

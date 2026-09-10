@@ -125,6 +125,8 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
 
     await expect(page.getByTestId("factory-bom-recipe-status")).toContainText(/Auto-generated/i);
 
+    await expect(page.getByTestId("factory-bom-cad-dropzone")).toBeVisible();
+
     // CUSH holds RM-FAB-GENERIC in the two-level FRAME/CUSH graph.
     await page.getByTestId(`factory-bom-parent-${E2E_CUSH_SKU}`).click();
     await expect(page.getByTestId(`factory-bom-line-${E2E_FABRIC_SKU}`)).toBeVisible();

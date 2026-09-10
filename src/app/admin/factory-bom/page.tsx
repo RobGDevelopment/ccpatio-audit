@@ -5,8 +5,13 @@ import { FactoryBomWorkbench } from "./FactoryBomWorkbench";
 
 export const dynamic = "force-dynamic";
 
-export default async function FactoryBomPage() {
+export default async function FactoryBomPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sku?: string }>;
+}) {
   const session = await getPimSession();
+  const params = await searchParams;
   const products = await listFactoryProducts();
   const pending = products.filter(
     (row) => row.reviewStatus === "draft_pending_review",
@@ -15,6 +20,7 @@ export default async function FactoryBomPage() {
   const approved = products.filter(
     (row) => row.reviewStatus === "factory_approved",
   ).length;
+  const initialSku = params.sku?.trim().toUpperCase() || undefined;
 
   return (
     <div className="flex h-screen w-full flex-col bg-zinc-950 font-sans text-zinc-300">
@@ -50,7 +56,7 @@ export default async function FactoryBomPage() {
           ) : null}
         </div>
       </header>
-      <FactoryBomWorkbench products={products} />
+      <FactoryBomWorkbench products={products} initialSku={initialSku} />
     </div>
   );
 }

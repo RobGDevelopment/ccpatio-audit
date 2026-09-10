@@ -204,6 +204,19 @@ async function main(): Promise<void> {
   console.log(
     `\nUpserted ${n} product_bom_draft rows (source=sketchup_geometry).`,
   );
+
+  try {
+    const { runSecondaryExtract } = await import("@/lib/secondary-extraction");
+    const est = await runSecondaryExtract(plan.finSku);
+    console.log(
+      `[cutlist] estimates ${plan.finSku} weight=${est.estWeightLbs} labor=${est.estLaborMinutes}`,
+    );
+  } catch (estError: unknown) {
+    console.warn(
+      "[cutlist] estimate skip:",
+      estError instanceof Error ? estError.message : estError,
+    );
+  }
 }
 
 main()

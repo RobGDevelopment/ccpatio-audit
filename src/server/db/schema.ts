@@ -215,11 +215,147 @@ export const recipeSourceEnum = pgEnum("recipe_source", [
   "manager",
   "katana_import",
   "sketchup_geometry",
+  "secondary_extract",
 ]);
 
 export type RecipeReviewStatus =
   (typeof recipeReviewStatusEnum.enumValues)[number];
 export type RecipeSource = (typeof recipeSourceEnum.enumValues)[number];
+
+/**
+ * Manager-editable physics constants for Secondary Extraction (mass / powder area).
+ * Prefer sku_mappings.attributes.weight_plf when set on the RM row.
+ */
+export const material_physics_factors = pgTable(
+  "material_physics_factors",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    material_sku: text("material_sku")
+      .notNull()
+      .references(() => sku_mappings.global_sku, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
+    profile_code: text("profile_code").notNull().default(""),
+    weight_plf: numeric("weight_plf", { precision: 12, scale: 4 }),
+    density_pcf: numeric("density_pcf", { precision: 12, scale: 4 }),
+    oz_per_yd2: numeric("oz_per_yd2", { precision: 12, scale: 4 }),
+    fabric_width_in: numeric("fabric_width_in", { precision: 12, scale: 4 }),
+    perimeter_in: numeric("perimeter_in", { precision: 12, scale: 4 }),
+    coverage_sqft_per_lb: numeric("coverage_sqft_per_lb", {
+      precision: 12,
+      scale: 4,
+    }),
+    notes: text("notes"),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("material_physics_factors_sku_profile_uidx").on(
+      table.material_sku,
+      table.profile_code,
+    ),
+  ],
+);
+
+/**
+ * Draft-only Secondary Extraction outputs (weight / DIM / labor / packaging).
+ * Never feeds Katana until Approve copies selected fields.
+ */
+export const recipe_estimates_draft = pgTable("recipe_estimates_draft", {
+  root_sku: text("root_sku")
+    .primaryKey()
+    .references(() => sku_mappings.global_sku, {
+      onUpdate: "cascade",
+      onDelete: "cascade",
+    }),
+  est_weight_lbs: numeric("est_weight_lbs", { precision: 12, scale: 4 }),
+  weight_breakdown: jsonb("weight_breakdown")
+    .$type<Record<string, number>>()
+    .notNull()
+    .default({}),
+  est_dim_weight_lbs: numeric("est_dim_weight_lbs", { precision: 12, scale: 4 }),
+  carton_lwh_in: jsonb("carton_lwh_in")
+    .$type<{ l: number; w: number; h: number } | null>()
+    .default(null),
+  packaging_bom: jsonb("packaging_bom")
+    .$type<Record<string, unknown> | null>()
+    .default(null),
+  est_labor_minutes: numeric("est_labor_minutes", { precision: 12, scale: 4 }),
+  labor_breakdown: jsonb("labor_breakdown")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
+  est_packaging_cost: numeric("est_packaging_cost", { precision: 12, scale: 4 }),
+  overrides: jsonb("overrides")
+    .$type<{
+      weightLbs?: number;
+      dimWeightLbs?: number;
+      laborMinutes?: number;
+      includePackagingBom?: boolean;
+      applyEstimatedWeight?: boolean;
+    }>()
+    .notNull()
+    .default({}),
+  status: recipeReviewStatusEnum("status")
+    .notNull()
+    .default("draft_pending_review"),
+  source: recipeSourceEnum("source").notNull().default("secondary_extract"),
+  calc_version: text("calc_version").notNull().default("1"),
+  inputs_hash: text("inputs_hash"),
+  reviewed_by: text("reviewed_by"),
+  reviewed_at: timestamp("reviewed_at"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/** CAD upload job tracker — Factory BOM drag-drop → Inngest draft extract. */
+export const cadUploadStatusEnum = pgEnum("cad_upload_status", [
+  "uploaded",
+  "queued",
+  "processing",
+  "draft_ready",
+  "failed",
+]);
+
+export type CadUploadStatus = (typeof cadUploadStatusEnum.enumValues)[number];
+
+export const cadUploadThumbnailSourceEnum = pgEnum("cad_upload_thumbnail_source", [
+  "skp_embed",
+  "operator_upload",
+  "none",
+]);
+
+export type CadUploadThumbnailSource =
+  (typeof cadUploadThumbnailSourceEnum.enumValues)[number];
+
+export const cad_uploads = pgTable("cad_uploads", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  global_sku: text("global_sku")
+    .notNull()
+    .references(() => sku_mappings.global_sku, {
+      onUpdate: "cascade",
+      onDelete: "cascade",
+    }),
+  storage_path: text("storage_path").notNull(),
+  original_filename: text("original_filename").notNull(),
+  content_type: text("content_type"),
+  byte_size: integer("byte_size"),
+  sha256: text("sha256"),
+  ext: text("ext").notNull(),
+  status: cadUploadStatusEnum("status").notNull().default("uploaded"),
+  inngest_event_id: text("inngest_event_id"),
+  error_message: text("error_message"),
+  thumbnail_source: cadUploadThumbnailSourceEnum("thumbnail_source")
+    .notNull()
+    .default("none"),
+  thumbnail_url: text("thumbnail_url"),
+  force_rename: boolean("force_rename").notNull().default(false),
+  replace_image: boolean("replace_image").notNull().default(false),
+  uploaded_by: text("uploaded_by"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export const product_bom_draft = pgTable(
   "product_bom_draft",

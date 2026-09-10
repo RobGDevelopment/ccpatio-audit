@@ -39,3 +39,12 @@ export {
 } from "./family-templates";
 
 export { critiqueCutlistPlan } from "./vision-critic";
+
+export {
+  classifyExtrusion,
+  parseDaeWeldment,
+  parseDaeWeldmentFromXml,
+  rollupTubes,
+  type ParseDaeResult,
+  type TubeRollup,
+} from "./parse-dae-weldment";
