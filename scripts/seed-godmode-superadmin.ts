@@ -36,8 +36,19 @@ function requireEnv(name: string, fallback?: string): string {
   return value;
 }
 
+type AuthAdminList = {
+  auth: {
+    admin: {
+      listUsers: (params: { page: number; perPage: number }) => Promise<{
+        data: { users: User[] };
+        error: { message: string } | null;
+      }>;
+    };
+  };
+};
+
 async function findUserByEmail(
-  admin: ReturnType<typeof createClient>,
+  admin: AuthAdminList,
   email: string,
 ): Promise<User | null> {
   const normalized = email.toLowerCase();
