@@ -13,11 +13,13 @@ import {
 } from "react";
 import Link from "next/link";
 import { useToast } from "@/app/admin/shared/ToastProvider";
+import { KatanaSyncButton } from "@/components/KatanaSyncButton";
 import {
   approveDraftRecipe,
   deleteDraftBomLine,
   getDraftBomTree,
   listDraftLinesForParent,
+  publishApprovedRecipeToKatana,
   searchFactoryMaterials,
   upsertDraftBomLine,
   type BomComponentCandidate,
@@ -155,6 +157,7 @@ function MaterialCombobox({
     <div ref={containerRef} className="relative min-w-0">
       <input
         role="combobox"
+        data-testid="factory-bom-material-combobox"
         aria-expanded={open}
         aria-controls={listboxId}
         value={query}
@@ -201,6 +204,7 @@ function MaterialCombobox({
                       }`}
                       onMouseEnter={() => setHighlightIndex(idx)}
                       onClick={() => select(hit)}
+                      data-testid={`factory-bom-material-option-${hit.sku}`}
                     >
                       <span className="font-semibold text-zinc-100">{hit.name}</span>
                       <span className="font-mono text-zinc-500">{hit.sku}</span>
@@ -230,6 +234,12 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
   const [quantity, setQuantity] = useState("1");
   const [scrap, setScrap] = useState("1.0000");
   const [uom, setUom] = useState("ea");
+  const [bannerStatus, setBannerStatus] = useState<
+    RecipeReviewStatus | "none"
+  >(products[0]?.reviewStatus ?? "none");
+  const [liveCopied, setLiveCopied] = useState(false);
+  const activeParentRef = useRef(activeParent);
+  activeParentRef.current = activeParent;
 
   const selected = products.find((row) => row.sku === selectedSku) ?? null;
 
@@ -250,14 +260,22 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
   async function reload(sku: string): Promise<void> {
     const nextTree = await getDraftBomTree(sku);
     setTree(nextTree);
+    const preferred = activeParentRef.current;
     const focus =
-      nextTree && flattenTree(nextTree).some((n) => n.sku === activeParent)
-        ? activeParent
+      nextTree && flattenTree(nextTree).some((n) => n.sku === preferred)
+        ? preferred
         : sku;
     setActiveParent(focus);
     const nextLines = await listDraftLinesForParent(focus);
     setLines(nextLines);
   }
+
+  useEffect(() => {
+    const row = products.find((item) => item.sku === selectedSku);
+    if (!row) return;
+    setBannerStatus(row.reviewStatus);
+    setLiveCopied(Boolean(row.liveBom));
+  }, [products, selectedSku]);
 
   useEffect(() => {
     if (!selectedSku) return;
@@ -296,13 +314,18 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
   function onAdd(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     setError(null);
+    const parentSku = activeParentRef.current;
+    const nextChild = childSku;
+    const nextQty = quantity;
+    const nextScrap = scrap;
+    const nextUom = uom;
     startTransition(async () => {
       const result = await upsertDraftBomLine({
-        parentSku: activeParent,
-        childSku,
-        quantity,
-        scrapFactor: scrap,
-        unitOfMeasure: uom,
+        parentSku,
+        childSku: nextChild,
+        quantity: nextQty,
+        scrapFactor: nextScrap,
+        unitOfMeasure: nextUom,
       });
       if (!result.ok) {
         setError(result.error);
@@ -312,6 +335,36 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
       setChildSku("");
       setQuantity("1");
       toast.success("Draft line saved");
+      setBannerStatus("edited");
+      await reload(selectedSku);
+    });
+  }
+
+  function onEditQuantity(line: DraftBomLine, nextQty: string): void {
+    if (
+      nextQty.trim() === "" ||
+      !Number.isFinite(Number(nextQty)) ||
+      Number(nextQty) === Number(line.quantity)
+    ) {
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const result = await upsertDraftBomLine({
+        id: line.id,
+        parentSku: line.parentSku,
+        childSku: line.childSku,
+        quantity: nextQty,
+        scrapFactor: line.scrapFactor,
+        unitOfMeasure: line.unitOfMeasure,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Draft quantity updated");
+      setBannerStatus("edited");
       await reload(selectedSku);
     });
   }
@@ -346,6 +399,8 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
         return;
       }
       toast.success("Draft copied to live product_bom");
+      setBannerStatus("factory_approved");
+      setLiveCopied(true);
       await reload(selectedSku);
     });
   }
@@ -355,6 +410,7 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
       <aside className="flex w-80 shrink-0 flex-col border-r border-zinc-800 bg-zinc-950">
         <div className="space-y-2 border-b border-zinc-800 p-3">
           <input
+            data-testid="factory-bom-search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search Phase 1 / 2 SKUs…"
@@ -390,6 +446,7 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
               <li key={row.sku}>
                 <button
                   type="button"
+                  data-testid={`factory-bom-product-${row.sku}`}
                   onClick={() => setSelectedSku(row.sku)}
                   className={`flex w-full flex-col items-start gap-1 border-l-2 px-4 py-3 text-left ${
                     row.sku === selectedSku
@@ -430,11 +487,12 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
               </div>
               <div className="flex flex-col items-end gap-2">
                 <span
-                  className={`rounded border px-2 py-1 text-xs uppercase tracking-wide ${statusClass(selected.reviewStatus)}`}
+                  data-testid="factory-bom-recipe-status"
+                  className={`rounded border px-2 py-1 text-xs uppercase tracking-wide ${statusClass(bannerStatus)}`}
                 >
-                  {statusLabel(selected.reviewStatus)}
+                  {statusLabel(bannerStatus)}
                 </span>
-                {selected.liveBom ? (
+                {selected.liveBom || liveCopied ? (
                   <span className="text-[11px] text-amber-300">
                     Live product_bom already has children
                   </span>
@@ -447,12 +505,27 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
                 </Link>
                 <button
                   type="button"
+                  data-testid="factory-bom-approve"
                   disabled={isPending || selected.draftLineCount === 0}
                   onClick={onApprove}
                   className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200 disabled:opacity-40"
                 >
                   Approve to live hub
                 </button>
+                <div data-testid="factory-bom-publish-katana">
+                  <KatanaSyncButton
+                    label="Publish recipes to Katana"
+                    secondaryLabel="Publishing recipes…"
+                    onSync={async () => {
+                      const result = await publishApprovedRecipeToKatana(selectedSku);
+                      if (!result.ok) return { ok: false, error: result.error };
+                      return {
+                        ok: true,
+                        message: "Catalog recipes posted (or dry-run) via POST /recipes",
+                      };
+                    }}
+                  />
+                </div>
               </div>
             </header>
 
@@ -461,6 +534,7 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
                 <button
                   key={node.sku}
                   type="button"
+                  data-testid={`factory-bom-parent-${node.sku}`}
                   onClick={() => onSelectParent(node.sku)}
                   className={`shrink-0 rounded-md border px-3 py-1.5 text-xs ${
                     node.sku === activeParent
@@ -499,7 +573,11 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
                     </tr>
                   ) : (
                     lines.map((line) => (
-                      <tr key={line.id} className="border-t border-zinc-800">
+                      <tr
+                        key={line.id}
+                        data-testid={`factory-bom-line-${line.childSku}`}
+                        className="border-t border-zinc-800"
+                      >
                         <td className="py-3">
                           <div className="font-medium text-zinc-100">{line.childName}</div>
                           <div className="font-mono text-[11px] text-zinc-500">
@@ -509,7 +587,23 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
                             <div className="mt-1 text-[11px] text-zinc-500">{line.notes}</div>
                           ) : null}
                         </td>
-                        <td className="font-mono text-zinc-200">{line.quantity}</td>
+                        <td>
+                          <input
+                            data-testid={`factory-bom-qty-${line.childSku}`}
+                            aria-label={`Quantity for ${line.childSku}`}
+                            defaultValue={String(Number(line.quantity))}
+                            key={`${line.id}:${line.quantity}`}
+                            disabled={isPending}
+                            className={`${INPUT} w-24 py-2 font-mono`}
+                            onBlur={(event) => onEditQuantity(line, event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                (event.target as HTMLInputElement).blur();
+                              }
+                            }}
+                          />
+                        </td>
                         <td className="font-mono text-zinc-400">{line.scrapFactor}</td>
                         <td className="uppercase text-zinc-400">{line.unitOfMeasure}</td>
                         <td>
@@ -549,6 +643,7 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
                 />
               </div>
               <input
+                data-testid="factory-bom-add-qty"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 className={`${INPUT} md:col-span-2`}
@@ -573,6 +668,7 @@ export function FactoryBomWorkbench({ products }: { products: FactoryProductRow[
               </select>
               <button
                 type="submit"
+                data-testid="factory-bom-add-line"
                 disabled={isPending || !childSku}
                 className="rounded-lg border border-zinc-700 px-4 py-3 text-sm text-zinc-200 disabled:opacity-40 md:col-span-1"
               >

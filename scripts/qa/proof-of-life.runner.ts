@@ -40,6 +40,11 @@ async function run() {
       shell: true,
       detached: true,
       windowsHide: true,
+      env: {
+        ...process.env,
+        E2E_GODMODE_SECRET:
+          process.env.E2E_GODMODE_SECRET || "local-e2e-godmode-secret",
+      },
     });
     serverProcess.unref();
     isServerStartedByUs = true;

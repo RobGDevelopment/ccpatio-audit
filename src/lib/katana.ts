@@ -42,8 +42,22 @@ import {
   type KatanaMoTreeNode,
 } from "@/lib/katana-mto";
 
-const KATANA_API_BASE = "https://api.katanamrp.com/v1";
+const KATANA_API_BASE_DEFAULT = "https://api.katanamrp.com/v1";
 const MAX_RATE_LIMIT_RETRIES = 3;
+
+/** Live Katana, or a local E2E mirror when `KATANA_API_BASE` / `KATANA_E2E_MIRROR` is set. */
+export function resolveKatanaApiBase(): string {
+  const override = process.env.KATANA_API_BASE?.trim();
+  if (override) return override.replace(/\/$/, "");
+  if (process.env.KATANA_E2E_MIRROR === "true") {
+    return "http://127.0.0.1:3000/api/qa/katana-mirror/v1";
+  }
+  return KATANA_API_BASE_DEFAULT;
+}
+
+export function isKatanaE2eMirror(): boolean {
+  return process.env.KATANA_E2E_MIRROR === "true";
+}
 
 export class KatanaApiError extends Error {
   readonly status: number;
@@ -189,6 +203,9 @@ type KatanaFetchOptions = {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
   retryCount?: number;
+  /** Attached as `Idempotency-Key` on mutating catalog calls (MDM Phase 4). */
+  idempotencyKey?: string;
+  headers?: Record<string, string>;
 };
 
 
@@ -297,7 +314,7 @@ export async function katanaFetch<T = unknown>(
 ): Promise<{ data: T; status: number; headers: Headers }> {
   const token = resolveKatanaToken();
   const retryCount = options.retryCount ?? 0;
-  const url = `${KATANA_API_BASE}${pathname}`;
+  const url = `${resolveKatanaApiBase()}${pathname}`;
 
   if (katanaRequestPacer) {
     await katanaRequestPacer();
@@ -309,6 +326,10 @@ export async function katanaFetch<T = unknown>(
       Authorization: `Bearer ${token}`,
       Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.idempotencyKey
+        ? { "Idempotency-Key": options.idempotencyKey }
+        : {}),
+      ...(options.headers ?? {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
@@ -827,7 +848,7 @@ export async function syncBOMToKatana(
   }
 
   const mode = getOrderPipelineMode();
-  const allowMutate = canMutateKatanaOrders(mode);
+  const allowMutate = canMutateKatanaOrders(mode) || isKatanaE2eMirror();
 
   try {
     const db = getDb();
@@ -905,6 +926,8 @@ export async function syncBOMToKatana(
         ingredient_variant_id: number;
         quantity: number;
         notes?: string;
+        product_sku?: string;
+        ingredient_sku?: string;
       }> = [];
 
       if (allowMutate && bomLines.length > 0 && productVariantId) {
@@ -932,7 +955,9 @@ export async function syncBOMToKatana(
             product_variant_id: productVariantId,
             ingredient_variant_id: ingredientVariant.id,
             quantity: effectiveQty,
-            notes: line.unit_of_measure,
+            notes: (line.notes ?? "").trim() || line.unit_of_measure,
+            product_sku: sku,
+            ingredient_sku: childSku,
           });
         }
 

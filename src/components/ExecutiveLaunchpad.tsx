@@ -17,14 +17,15 @@ const HIGHLIGHTED_PIM_TITLES = new Set([
 type ExecutiveLaunchpadProps = {
   operatorEmail: string;
   operatorName: string;
+  isAdmin?: boolean;
 };
 
-function ModuleCard({ module }: { module: LaunchpadModule }) {
+function ModuleCard({ module, isHighlightedOverride }: { module: LaunchpadModule, isHighlightedOverride?: boolean }) {
   const isExternal =
     module.href.startsWith("http://") ||
     module.href.startsWith("https://") ||
     module.href.startsWith("/api/");
-  const isHighlighted = HIGHLIGHTED_PIM_TITLES.has(module.title);
+  const isHighlighted = isHighlightedOverride || HIGHLIGHTED_PIM_TITLES.has(module.title);
 
   const card = (
     <article
@@ -68,6 +69,7 @@ function ModuleCard({ module }: { module: LaunchpadModule }) {
 export function ExecutiveLaunchpad({
   operatorEmail,
   operatorName,
+  isAdmin,
 }: ExecutiveLaunchpadProps) {
   return (
     <main className="pim-carbon-shell min-h-screen text-zinc-50">
@@ -97,13 +99,27 @@ export function ExecutiveLaunchpad({
               Active modules
             </h2>
             <p className="text-xs text-zinc-600">
-              {LAUNCHPAD_MODULES.length} tools available
+              {LAUNCHPAD_MODULES.length + (isAdmin ? 1 : 0)} tools available
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {LAUNCHPAD_MODULES.map((module) => (
               <ModuleCard key={module.id} module={module} />
             ))}
+            
+            {isAdmin && (
+              <ModuleCard
+                module={{
+                  id: "mission-control",
+                  title: "Mission Control",
+                  description: "System Health, Key Rotation, and Error Recovery (IT Only)",
+                  href: "/mission-control",
+                  status: "Live",
+                  requiresAuth: true
+                }}
+                isHighlightedOverride={true}
+              />
+            )}
           </div>
         </section>
       </div>

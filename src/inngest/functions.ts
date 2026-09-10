@@ -431,9 +431,129 @@ export const archiveKatanaVariant = inngest.createFunction(
   }
 );
 
+/**
+ * Phase 4 — durable catalog fan-out saga (Katana / Woo / Clover).
+ * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md §12.
+ */
+export const publishApprovedProduct = inngest.createFunction(
+  {
+    id: "publish-approved-product",
+    name: "Publish Approved Product",
+    triggers: [{ event: "product.approved" }],
+    concurrency: {
+      limit: 1,
+      key: "event.data.globalSku",
+    },
+    onFailure: async ({ event }) => {
+      const original = event.data.event;
+      const globalSku = String(
+        (original?.data as { globalSku?: unknown } | undefined)?.globalSku ??
+          "",
+      );
+      const exportId = String(
+        (original?.data as { exportId?: unknown } | undefined)?.exportId ?? "",
+      );
+      const errMsg =
+        typeof event.data.error?.message === "string"
+          ? event.data.error.message
+          : "publish-approved-product exhausted retries";
+
+      await sendOhCrapAlert({
+        reason: "unknown",
+        source: "system",
+        externalId: exportId || globalSku || event.data.run_id,
+        sku: globalSku || undefined,
+        message: errMsg,
+        resolutionPath: globalSku
+          ? `/admin/quarantine?sku=${encodeURIComponent(globalSku)}`
+          : "/admin/quarantine",
+      });
+    },
+  },
+  async ({ event, step }) => {
+    const globalSku = String(event.data.globalSku ?? "").trim().toUpperCase();
+    const exportId = String(event.data.exportId ?? "");
+
+    if (!globalSku) {
+      const { NonRetriableError } = await import("inngest");
+      throw new NonRetriableError(
+        "product.approved missing event.data.globalSku",
+      );
+    }
+
+    const graph = await step.run("load-hub-state", async () => {
+      const { loadHubProductGraph } = await import(
+        "@/server/mdm/load-hub-product-graph"
+      );
+      return loadHubProductGraph(globalSku);
+    });
+
+    const [katana, woocommerce, clover] = await Promise.all([
+      step.run("publish-katana", async () => {
+        const { publishToKatana } = await import(
+          "@/server/mdm/publish-channels"
+        );
+        return publishToKatana(graph);
+      }),
+      step.run("publish-woocommerce", async () => {
+        const { publishToWooCommerce } = await import(
+          "@/server/mdm/publish-channels"
+        );
+        return publishToWooCommerce(graph);
+      }),
+      step.run("publish-clover", async () => {
+        const { publishToClover } = await import(
+          "@/server/mdm/publish-channels"
+        );
+        return publishToClover(graph);
+      }),
+    ]);
+
+    return {
+      ok: true,
+      globalSku,
+      exportId,
+      channels: { katana, woocommerce, clover },
+    };
+  },
+);
+
+/**
+ * Phase 5 — daily authenticated pings for Katana / Woo / Clover tokens.
+ * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md §13.
+ */
+export const systemHealthPing = inngest.createFunction(
+  {
+    id: "system-health-ping",
+    name: "system.health.ping",
+    triggers: [{ cron: "0 6 * * *" }],
+  },
+  async ({ step }) => {
+    return step.run("ping-catalog-spokes", async () => {
+      const { runSpokeTokenHealthCheck } = await import(
+        "@/server/mdm/token-health"
+      );
+      return runSpokeTokenHealthCheck();
+    });
+  },
+);
+
+/**
+ * Served by `/api/inngest`. Transactional Woo/GHL order consumers are
+ * intentionally absent — see `docs/MDM_MASTER_BLUEPRINT.md` Phase 0.
+ */
 export const inngestFunctions = [
-  processWooCommerceOrder, 
-  syncGhlOpportunity,
   sendStaffFeedbackDigest,
-  archiveKatanaVariant
+  archiveKatanaVariant,
+  publishApprovedProduct,
+  systemHealthPing,
 ];
+
+/**
+ * V8 order pipeline — defined but NOT registered. Do not add these to
+ * `inngestFunctions` or `serve()`. Native vendor connectors own orders.
+ */
+export const unregisteredTransactionalFunctions = [
+  processWooCommerceOrder,
+  syncGhlOpportunity,
+] as const;

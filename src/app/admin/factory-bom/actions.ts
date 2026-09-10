@@ -9,6 +9,7 @@ import {
   type BomTreeNode,
 } from "@/app/admin/dictionary/actions";
 import { getPimSession, logPimAudit } from "@/lib/pim-audit";
+import { syncBOMToKatana } from "@/lib/katana";
 import { getDb } from "@/server/db/client";
 import {
   finished_goods_catalog,
@@ -460,6 +461,22 @@ export async function approveDraftRecipe(
 
   const now = new Date();
   for (const line of lines) {
+    let cutList: unknown[] = [];
+    if (line.notes) {
+      const jsonMatch = line.notes.match(/\n(\{[\s\S]*"cut_list"[\s\S]*\})\s*$/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]) as { cut_list?: unknown[] };
+          if (Array.isArray(parsed.cut_list)) cutList = parsed.cut_list;
+        } catch {
+          /* keep notes as plain text */
+        }
+      }
+    }
+    const notesText = line.notes
+      ? line.notes.replace(/\n\{[\s\S]*"cut_list"[\s\S]*\}\s*$/, "").trim()
+      : null;
+
     await db
       .insert(product_bom)
       .values({
@@ -468,6 +485,8 @@ export async function approveDraftRecipe(
         quantity: line.quantity,
         scrap_factor: line.scrap_factor,
         unit_of_measure: line.unit_of_measure,
+        notes: notesText,
+        cut_list: cutList as typeof product_bom.$inferInsert.cut_list,
         updated_at: now,
       })
       .onConflictDoUpdate({
@@ -476,6 +495,8 @@ export async function approveDraftRecipe(
           quantity: sql`excluded.quantity`,
           scrap_factor: sql`excluded.scrap_factor`,
           unit_of_measure: sql`excluded.unit_of_measure`,
+          notes: sql`excluded.notes`,
+          cut_list: sql`excluded.cut_list`,
           updated_at: sql`now()`,
         },
       });
@@ -533,6 +554,32 @@ export async function approveDraftRecipe(
     globalSku: sku,
     action: "factory_bom_approve",
     newValue: `${lines.length} lines copied to live product_bom`,
+  });
+  revalidateFactory();
+  return { ok: true };
+}
+
+/**
+ * Catalog recipe fan-out (POST /recipes), not sales-order MTO.
+ * No-ops mutations unless ORDER_PIPELINE_MODE=live or KATANA_E2E_MIRROR=true.
+ */
+export async function publishApprovedRecipeToKatana(
+  rootSku: string,
+): Promise<BomMutationResult> {
+  const session = await requireSession();
+  if ("error" in session) return { ok: false, error: session.error };
+
+  const sku = rootSku.trim().toUpperCase();
+  if (!sku) return { ok: false, error: "SKU is required" };
+
+  const result = await syncBOMToKatana(sku);
+  if (!result.ok) return { ok: false, error: result.error };
+
+  await logPimAudit({
+    operatorEmail: session.email,
+    globalSku: sku,
+    action: "factory_bom_katana_recipes",
+    newValue: result.message ?? "Katana recipe sync",
   });
   revalidateFactory();
   return { ok: true };

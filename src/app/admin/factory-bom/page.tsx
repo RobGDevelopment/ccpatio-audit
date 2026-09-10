@@ -27,14 +27,20 @@ export default async function FactoryBomPage() {
             ← Launchpad
           </Link>
           <div className="h-4 w-px bg-zinc-800" />
-          <h1 className="text-sm font-semibold uppercase tracking-wide text-zinc-100">
+          <h1
+            data-testid="factory-bom-title"
+            className="text-sm font-semibold uppercase tracking-wide text-zinc-100"
+          >
             Factory BOM Builder
           </h1>
           <span className="text-xs text-zinc-500">
             Draft recipes only — live Katana explode path is untouched until Approve
           </span>
         </div>
-        <div className="flex items-center gap-4 text-xs text-zinc-500">
+        <div
+          data-testid="factory-bom-status-banner"
+          className="flex items-center gap-4 text-xs text-zinc-500"
+        >
           <span>{products.length} hub SKUs</span>
           <span className="text-sky-300">{pending} auto</span>
           <span className="text-amber-200">{edited} edited</span>

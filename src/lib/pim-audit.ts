@@ -1,22 +1,44 @@
 import { desc, eq } from "drizzle-orm";
+import { cookies, headers } from "next/headers";
 import { getDb } from "@/server/db/client";
 import { pim_audit_log, pim_operators } from "@/server/db/schema";
-import type { PimSession } from "@/lib/pim-session";
-import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
 import {
-  PIM_SESSION_COOKIE,
-  verifyPimSessionToken,
-} from "@/lib/pim-session";
+  E2E_GODMODE_COOKIE,
+  getE2eGodModeSecret,
+  verifyE2eGodModeCookie,
+} from "@/lib/e2e-god-mode";
+
+export type PimSession = {
+  email: string;
+  name: string;
+};
 
 export async function getPimSession(): Promise<PimSession | null> {
   try {
     const jar = await cookies();
-    const token = jar.get(PIM_SESSION_COOKIE)?.value;
-    return verifyPimSessionToken(token);
+    const hdrs = await headers();
+    const e2e = await verifyE2eGodModeCookie(
+      jar.get(E2E_GODMODE_COOKIE)?.value ?? hdrs.get("x-ccpatio-e2e-godmode"),
+      getE2eGodModeSecret(),
+    );
+    if (e2e) {
+      return { email: e2e.email, name: e2e.email };
+    }
   } catch {
-    // Outside Next.js request scope (vitest, scripts)
+    // fall through to Supabase Auth
+  }
+
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && user.email) {
+      return { email: user.email, name: user.email };
+    }
+  } catch {
     return null;
   }
+  return null;
 }
 
 export async function resolvePimOperator(clientLabel?: string): Promise<{

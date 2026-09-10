@@ -2,7 +2,7 @@
  * Oh-Crap protocol — wired into Inngest onFailure + validation/Katana catch paths.
  *
  * Failure path: autonomous rule fails → email ops admin → deep link to
- * Next.js resolution UI (`/admin/dictionary?sku=…`).
+ * Next.js resolution UI (`/admin/quarantine`).
  */
 
 export type OhCrapReason =
@@ -61,7 +61,7 @@ export function buildResolutionUrl(input: OhCrapAlertInput): string {
   if (input.sku) {
     params.set("sku", input.sku);
   }
-  return `${base}/admin/dictionary?${params.toString()}`;
+  return `${base}/admin/quarantine?${params.toString()}`;
 }
 
 function formatEmailBody(input: OhCrapAlertInput, resolutionUrl: string): string {
@@ -74,7 +74,7 @@ function formatEmailBody(input: OhCrapAlertInput, resolutionUrl: string): string
     input.sku ? `SKU: ${input.sku}` : null,
     `Message: ${input.message}`,
     "",
-    "Resolve here (open dictionary / quarantine UI):",
+    "Resolve here (open quarantine UI):",
     resolutionUrl,
     "",
     "Do not invent SKUs. Fix the dictionary or correct the GHL payload, then replay.",

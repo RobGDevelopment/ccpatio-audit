@@ -1,106 +1,57 @@
-# CC Patio ERP/PIM — Autonomous Build Progress
+> HISTORICAL — V8 TRANSACTIONAL BUS. DO NOT IMPLEMENT.
+>
+> Binding SoT: `docs/MDM_MASTER_BLUEPRINT.md`
 
-Last updated: 2026-08-27
+# CC Patio MDM Hub — Build Progress
 
-> **Source of truth:** [`docs/MASTER_ARCHITECTURE_BLUEPRINT.md`](docs/MASTER_ARCHITECTURE_BLUEPRINT.md)  
-> **Execution posture:** Phase 1–2 PIM (schema + dynamic TanStack dictionary) COMPLETE. Phase 3 Multi-Level BOM **blocked** pending authorization.
+Last updated: 2026-09-03
 
-## Priority 1–3 + PIM Evolution
+> **Sole source of truth:** [`docs/MDM_MASTER_BLUEPRINT.md`](docs/MDM_MASTER_BLUEPRINT.md)  
+> **Execution posture:** Phases 0–5 COMPLETE. MDM hub exit protocol delivered (token cron, health liveness, IT runbook).  
+> Pre-MDM V8/order-pipeline notes below are **archive only**. Do not implement Woo/GHL → Katana sales orders.
+
+## MDM phases
+
+| Phase | Status | Notes |
+|------|--------|-------|
+| 0 Repo governance & exorcism | COMPLETE | Historical banners on all §0.1 docs; order Inngest consumers unregistered; Woo/GHL order webhooks `410`; launchpad marked demo |
+| 1 SketchUp gateway & recursive BOM | COMPLETE | `product_intake`, `channel_sync`, SEO cols, RM FK, `bom_explosion` view + `queries/bom.ts`, Zod ingest, `POST /api/webhooks/sketchup` |
+| 2 Quarantine UI | COMPLETE | `/admin/quarantine`, Approve/Reject actions, `product.approved` enqueue (no sync HTTP in Server Action) |
+| 3 Hardcoded mappers | COMPLETE | `src/mappers/{katana,woocommerce,clover}.ts`; orchestrator deleted; unit tests on Ocean Sofa fixture |
+| 4 Inngest `product.approved` fan-out | COMPLETE | Saga + parallel channel steps; `channel_sync` idempotency; concurrency 1/`globalSku`; `onFailure` Oh-Crap |
+| 5 Exit protocol | COMPLETE | `system.health.ping` cron `0 6 * * *`; `/api/health` liveness; `docs/IT_RUNBOOK.md` |
+
+## Phase 0 verification
+
+| Item | Result |
+|------|--------|
+| §0.2 banner on 9 superseded documents | DONE |
+| `processWooCommerceOrder` / `syncGhlOpportunity` not in Inngest `serve()` | DONE |
+| Woo + GHL order routes return 410 | DONE |
+| Inngest still serves staff digest + variant archive | DONE |
+
+PIM dictionary, raw materials, and multi-level `product_bom` remain live catalog tools. Dictionary Save does not fan out to Katana/Woo/Clover (Approve is Phase 2+).
+
+---
+
+## Archive — pre-MDM PIM work (do not treat as architecture)
+
+The following records dictionary/BOM work completed before the MDM pivot. Transactional Woo/GHL → Katana SO/MTO items are **retired**, not complete.
+
+### PIM / dictionary (still in use)
 
 | Item | Status | Notes |
 |------|--------|-------|
-| P3 Sandbox / HMAC / Oh-Crap / pipeline | COMPLETE | Crawl = `ORDER_PIPELINE_MODE=log` |
-| Drizzle journal hygiene | COMPLETE | noop `0005_grey_ben_urich`; registered `0006`–`0008` |
-| Phase 1 universal columns + Zod attrs | COMPLETE | `item_type`, UOMs, `attributes`, `version` on `sku_mappings` |
-| Phase 2 TanStack dynamic columns | COMPLETE | Category tab column factory; attribute JSONB patches + OCC |
-| Phase 3 Multi-Level BOM | BLOCKED | Awaiting explicit authorization |
+| Universal columns + Zod attrs | COMPLETE | `item_type`, UOMs, `attributes`, `version` on `sku_mappings` |
+| TanStack dynamic columns | COMPLETE | Category tab column factory; attribute JSONB patches + OCC |
+| Multi-level BOM schema `0009` | COMPLETE | Adjacency `parent_sku` / `child_sku` |
+| Raw materials catalog | COMPLETE | `/admin/raw-materials` |
+| Katana material/product/recipe sync helpers | COMPLETE | Master-data only; not Approve fan-out |
 
-## Phase 2–5 (middleware build — complete)
+### Retired V8 order pipeline (do not re-enable)
 
-### Phase 2: Raw Materials Catalog & BOM Linkage
-
-| Task | Status | Notes |
-|------|--------|-------|
-| 2.1 Database — `raw_materials_catalog` | COMPLETE | Migration `0004_raw_materials_catalog.sql` |
-| 2.2 PIM UI — `/admin/raw-materials` CRUD | COMPLETE | `actions.ts`, `RawMaterialsTable.tsx`, `page.tsx` |
-| 2.3 BOM Editor — searchable material combobox | COMPLETE | `RawMaterialCombobox.tsx`, catalog validation on upsert |
-
-## Phase 3: Inngest Integration Hub
-
-| Task | Status | Notes |
-|------|--------|-------|
-| 3.1 Inngest client + functions scaffold | COMPLETE | `src/inngest/client.ts`, `src/inngest/functions.ts` |
-| 3.2 WooCommerce & GHL queues + API route | COMPLETE | `incoming_webhooks` table, `/api/inngest`, functions wired |
-
-## Phase 4: Katana MRP API Bridge & Sync Engine
-
-| Task | Status | Notes |
-|------|--------|-------|
-| 4.1 Katana API client (`src/lib/katana.ts`) | COMPLETE | Bearer auth, 429 retry, 422 logging |
-| 4.2 Sync functions — material, product, BOM | COMPLETE | `/materials`, `/products`, `/recipes` |
-| 4.3 Server Actions + UI sync buttons | COMPLETE | `KatanaSyncButton`, dictionary + raw-materials |
-
-## Phase 5: Order Pipeline & Katana Sales Orders
-
-| Task | Status | Notes |
-|------|--------|-------|
-| 5.1 `createKatanaSalesOrder()` | COMPLETE | POST `/sales_orders`, SKU→variant_id, customer upsert |
-| 5.2 WooCommerce Inngest queue wiring | COMPLETE | `process-woocommerce-order` pushes SO, updates webhook status |
-| 5.3 GHL Won opportunity → Katana SO | COMPLETE | `sync-ghl-opportunity` when Won + `line_items` present |
-
-## Verification Log
-
-| Step | Result |
+| Item | Status |
 |------|--------|
-| 2.1 migration + typecheck | PASS |
-| 2.2 typecheck | PASS |
-| 2.3 typecheck | PASS |
-| 3.x migration `0005_incoming_webhooks.sql` | PASS |
-| 3.x typecheck | PASS |
-| 3.x `npm run build` | PASS |
-| 4.x typecheck | PASS |
-| 4.x `npm run build` | PASS |
-| 5.x typecheck | PASS |
-
-## New Routes
-
-- `/admin/raw-materials` — Raw materials CRUD
-- `/api/inngest` — Inngest serve endpoint
-
-## Katana Sync (Phase 4)
-
-| Function | Endpoint | UI trigger |
-|----------|----------|------------|
-| `syncRawMaterialToKatana` | POST/PATCH `/materials` | Raw Materials expanded row |
-| `syncFinishedGoodToKatana` | POST/PATCH `/products` | SKU Dictionary expanded row |
-| `syncBOMToKatana` | POST `/recipes` | BOM editor header |
-| `createKatanaSalesOrder` | POST `/sales_orders` | Inngest Woo/GHL queues |
-
-**Env:** `KATANA_PERSONAL_ACCESS_TOKEN` (preferred) or `KATANA_API_KEY`
-
-## Migrations to Apply (if not already run)
-
-```bash
-cd middleware
-npm run db:migrate
-```
-
-Applied in this session: `0004_raw_materials_catalog`, `0005_incoming_webhooks`
-
-## Inngest Events
-
-| Event | Function | Purpose |
-|-------|----------|---------|
-| `woo.order.validated` | `process-woocommerce-order` | Log + create Katana sales order |
-| `ghl/opportunity.sync` | `sync-ghl-opportunity` | Won opportunities with line items → Katana SO |
-
-## Files Added/Modified (Phase 4–5)
-
-- `middleware/src/lib/katana.ts` — HTTP client, sync engine, sales order pipeline
-- `middleware/src/inngest/functions.ts` — Katana SO creation on Woo/GHL events
-- `middleware/src/components/KatanaSyncButton.tsx` — spinner + toast UI
-- `middleware/src/app/admin/dictionary/actions.ts` — finished good + BOM sync actions
-- `middleware/src/app/admin/raw-materials/actions.ts` — raw material sync action
-- `middleware/src/app/admin/dictionary/SkuTable.tsx` — Sync to Katana button
-- `middleware/src/components/BomEditor.tsx` — Sync BOM button
-- `middleware/src/app/admin/raw-materials/RawMaterialsTable.tsx` — Sync button
+| `process-woocommerce-order` → Katana SO + MTO | UNREGISTERED |
+| `sync-ghl-opportunity` → Katana SO + MTO | UNREGISTERED |
+| Woo/GHL order webhook enqueue | `410 Gone` |

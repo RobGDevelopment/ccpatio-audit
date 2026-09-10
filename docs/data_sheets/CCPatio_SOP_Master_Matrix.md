@@ -1,3 +1,7 @@
+> HISTORICAL — V8 TRANSACTIONAL BUS. DO NOT IMPLEMENT.
+>
+> Binding SoT: `docs/MDM_MASTER_BLUEPRINT.md`
+
 # CCPATIO Standard Operating Procedure — Master Matrix
 
 > Auto-generated from `sequences.ts`, `stories.ts`, `roleConfig.ts`, and `dwellCalendar.ts`.  

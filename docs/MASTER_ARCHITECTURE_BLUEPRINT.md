@@ -1,3 +1,7 @@
+> HISTORICAL — V8 TRANSACTIONAL BUS. DO NOT IMPLEMENT.
+>
+> Binding SoT: `docs/MDM_MASTER_BLUEPRINT.md`
+
 # CC Patio — Master Architecture Blueprint
 
 **Document ID:** `MASTER_ARCHITECTURE_BLUEPRINT`  

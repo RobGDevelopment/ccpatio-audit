@@ -152,6 +152,26 @@ export const product_bom = pgTable(
       .notNull()
       .default("1.0000"),
     unit_of_measure: text("unit_of_measure").notNull(),
+    /** Chop-saw cut-list / mitre notes for Katana recipe row notes. */
+    notes: text("notes"),
+    /** Structured cut pieces (drawing CUT-* identity) — not Katana children. */
+    cut_list: jsonb("cut_list")
+      .$type<
+        Array<{
+          role: string;
+          profile: string;
+          lengthIn: number;
+          endA: number | null;
+          endB: number | null;
+          qtyEa: number;
+          lengthConvention: string;
+          sourceName: string;
+          confidence: string;
+          drawingPartNumber: string | null;
+        }>
+      >()
+      .notNull()
+      .default([]),
     created_at: timestamp("created_at").defaultNow().notNull(),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -194,6 +214,7 @@ export const recipeSourceEnum = pgEnum("recipe_source", [
   "heuristic",
   "manager",
   "katana_import",
+  "sketchup_geometry",
 ]);
 
 export type RecipeReviewStatus =

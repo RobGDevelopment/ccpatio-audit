@@ -1,3 +1,7 @@
+> HISTORICAL — V8 TRANSACTIONAL BUS. DO NOT IMPLEMENT.
+>
+> Binding SoT: `docs/MDM_MASTER_BLUEPRINT.md`
+
 # CCPATIO V8 Middleware — Zero-Data-Loss Ingress & Mirroring
 
 This plan addresses the construction of the V8 Middleware to process GoHighLevel (GHL) webhooks (starting with the Gate 1 Sales AZ Approval) using a Postgres outbox, Upstash Redis for deduplication, and Katana ERP integration under Inngest Concurrent Claim Resolution (CCR) leases.

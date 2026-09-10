@@ -1,3 +1,7 @@
+> HISTORICAL — V8 TRANSACTIONAL BUS. DO NOT IMPLEMENT.
+>
+> Binding SoT: `docs/MDM_MASTER_BLUEPRINT.md`
+
 # CCPATIO END-TO-END CUSTOMER LIFECYCLE & STAGE MAPPING
 
 **Purpose:** This document maps the physical movement of a customer opportunity across all GoHighLevel (GHL) pipelines, defining the exact human workflows and the automated middleware triggers.

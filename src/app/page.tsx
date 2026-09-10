@@ -2,17 +2,37 @@ import Link from "next/link";
 import { LandingRegisterForm } from "./LandingRegisterForm";
 import { ExecutiveLaunchpad } from "@/components/ExecutiveLaunchpad";
 import { getPimSession } from "@/lib/pim-audit";
+import { createClient } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const session = await getPimSession();
 
+  let isAdmin = false;
   if (session) {
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+        if (roleData && (roleData.role === "SuperAdmin" || roleData.role === "IT_Admin")) {
+          isAdmin = true;
+        }
+      }
+    } catch {
+      // Ignored
+    }
+
     return (
       <ExecutiveLaunchpad
         operatorEmail={session.email}
         operatorName={session.name}
+        isAdmin={isAdmin}
       />
     );
   }

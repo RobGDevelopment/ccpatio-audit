@@ -1,3 +1,7 @@
+> HISTORICAL — V8 TRANSACTIONAL BUS. DO NOT IMPLEMENT.
+>
+> Binding SoT: `docs/MDM_MASTER_BLUEPRINT.md`
+
 # Workflow Sequence Audit Report
 
 > Auto-generated from `sequences.ts`, `dwellCalendar.ts`, `granularGraph.ts`, and `stories.ts`.

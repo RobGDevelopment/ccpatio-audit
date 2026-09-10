@@ -21,6 +21,7 @@ import {
   syncFinishedGoodToKatana,
 } from "@/lib/katana";
 import { getDb } from "@/server/db/client";
+import { getSupabaseSecretKey, getSupabaseUrl, createSupabaseFetch } from "@/lib/supabase-env";
 import { logPimAudit, resolvePimOperator } from "@/lib/pim-audit";
 import {
   finished_goods_catalog,
@@ -647,15 +648,16 @@ function sanitizeFileName(sku: string, file: File): string {
 }
 
 function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const url = getSupabaseUrl();
+  const key = getSupabaseSecretKey();
   if (!url || !key) {
     throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
+      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY)",
     );
   }
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: createSupabaseFetch(key) },
   });
 }
 
