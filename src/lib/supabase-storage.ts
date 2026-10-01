@@ -61,6 +61,31 @@ export async function downloadCadObject(storagePath: string): Promise<Buffer> {
   return Buffer.from(ab);
 }
 
+export function materialObjectPath(globalSku: string, ext: string): string {
+  const sku = globalSku.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, "_");
+  const cleanExt = ext.replace(/^\./, "").toLowerCase();
+  return `materials/${sku}.${cleanExt}`;
+}
+
+export async function uploadMaterialImage(input: {
+  globalSku: string;
+  buffer: Buffer;
+  contentType: string;
+  ext: string;
+}): Promise<string> {
+  const supabase = getSupabaseAdmin();
+  const path = materialObjectPath(input.globalSku, input.ext);
+  const { error } = await supabase.storage
+    .from(PRODUCT_IMAGES_BUCKET)
+    .upload(path, input.buffer, {
+      upsert: true,
+      contentType: input.contentType,
+    });
+  if (error) throw new Error(error.message);
+  const { data } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export async function uploadProductImage(input: {
   globalSku: string;
   buffer: Buffer;
