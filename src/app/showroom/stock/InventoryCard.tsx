@@ -1,15 +1,20 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { availableTone, formatQty, type StockRow } from "@/lib/stock-display";
-import { uploadShowroomStockImage } from "../actions";
+import Image from "next/image";
+import { useState } from "react";
+import { ImagePlus } from "lucide-react";
+import { useToast } from "@/app/admin/shared/ToastProvider";
+import { formatQty, type StockRow } from "@/lib/stock-display";
 import { eyebrow } from "../showroom-ui";
 
-const toneClass = {
-  green: "text-emerald-700",
-  amber: "text-amber-700",
-  red: "text-rose-700",
-} as const;
+const floatCard =
+  "group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_8px_20px_-3px_rgba(6,81,237,0.15)]";
+
+function availableBadgeClass(available: number): string {
+  if (available > 10) return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (available > 0) return "bg-amber-50 text-amber-700 border-amber-200";
+  return "bg-red-50 text-red-700 border-red-200";
+}
 
 function Swatch({ name }: { name: string }) {
   return (
@@ -25,82 +30,44 @@ function Swatch({ name }: { name: string }) {
 }
 
 export function InventoryCard({ row }: { row: StockRow }) {
+  const toast = useToast();
   const [failed, setFailed] = useState(false);
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const tone = availableTone(row.available);
-  const displayUrl = uploadedUrl ?? row.imageUrl;
-  const showImage = Boolean(displayUrl) && !failed;
+  const showImage = Boolean(row.imageUrl) && !failed;
 
-  function onFile(file: File | undefined) {
-    if (!file) return;
-    setError(null);
-    const preview = URL.createObjectURL(file);
-    setUploadedUrl(preview);
-    setFailed(false);
-    const formData = new FormData();
-    formData.set("sku", row.sku);
-    formData.set("image", file);
-    startTransition(async () => {
-      try {
-        const result = await uploadShowroomStockImage(formData);
-        URL.revokeObjectURL(preview);
-        if (!result.ok) {
-          setUploadedUrl(null);
-          setFailed(true);
-          setError(result.error);
-          return;
-        }
-        setUploadedUrl(result.imageUrl);
-      } catch (uploadError: unknown) {
-        URL.revokeObjectURL(preview);
-        setUploadedUrl(null);
-        setFailed(true);
-        setError(uploadError instanceof Error ? uploadError.message : "Upload failed");
-      }
-    });
+  function handleImageUpload(variantId: string) {
+    toast.success("Supabase upload modal coming soon");
+    console.info("Supabase upload modal coming soon", variantId);
   }
 
   return (
-    <article className="overflow-hidden rounded-2xl bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-      <div className="aspect-[4/3] bg-slate-100">
-        {showImage ? (
-          <img
-            src={displayUrl ?? undefined}
+    <article className={floatCard}>
+      <span className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[2px] overflow-hidden" aria-hidden="true">
+        <span className="animate-beam-glide absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-[#C5A059] to-transparent opacity-80 group-hover:opacity-100" />
+      </span>
+      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+        {showImage && row.imageUrl ? (
+          <Image
+            src={row.imageUrl}
             alt={row.name}
-            className="h-full w-full object-cover"
-            onError={() => {
-              setFailed(true);
-              setUploadedUrl(null);
-            }}
+            fill
+            unoptimized
+            sizes="(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw"
+            className="object-cover"
+            onError={() => setFailed(true)}
           />
         ) : (
           <button
             type="button"
             className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 text-slate-500"
-            onClick={() => inputRef.current?.click()}
-            disabled={pending}
+            onClick={() => handleImageUpload(row.sku)}
           >
             <Swatch name={row.name} />
-            <span className="text-xs uppercase tracking-widest">
-              {pending ? "Uploading…" : "Add photo"}
+            <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest">
+              <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
+              Add photo
             </span>
-            {error ? <span className="px-4 text-center text-xs text-rose-700">{error}</span> : null}
           </button>
         )}
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          aria-label={`Upload image for ${row.name}`}
-          onChange={(event) => {
-            onFile(event.target.files?.[0]);
-            event.target.value = "";
-          }}
-        />
       </div>
       <div className="space-y-4 p-5">
         <div>
@@ -118,7 +85,13 @@ export function InventoryCard({ row }: { row: StockRow }) {
           </div>
           <div>
             <dt className={eyebrow}>Available</dt>
-            <dd className={`mt-1 font-medium ${toneClass[tone]}`}>{formatQty(row.available)}</dd>
+            <dd className="mt-1">
+              <span
+                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium tabular-nums ${availableBadgeClass(row.available)}`}
+              >
+                {formatQty(row.available)}
+              </span>
+            </dd>
           </div>
         </dl>
       </div>
