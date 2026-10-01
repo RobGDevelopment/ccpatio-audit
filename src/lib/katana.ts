@@ -214,6 +214,8 @@ type KatanaFetchOptions = {
   /** Attached as `Idempotency-Key` on mutating catalog calls (MDM Phase 4). */
   idempotencyKey?: string;
   headers?: Record<string, string>;
+  /** Read-only callers pass the live host so the QA mirror cannot blank a catalog. */
+  baseUrl?: string;
 };
 
 
@@ -322,7 +324,7 @@ export async function katanaFetch<T = unknown>(
 ): Promise<{ data: T; status: number; headers: Headers }> {
   const token = resolveKatanaToken();
   const retryCount = options.retryCount ?? 0;
-  const url = `${resolveKatanaApiBase()}${pathname}`;
+  const url = `${(options.baseUrl ?? resolveKatanaApiBase()).replace(/\/$/, "")}${pathname}`;
 
   if (katanaRequestPacer) {
     await katanaRequestPacer();
