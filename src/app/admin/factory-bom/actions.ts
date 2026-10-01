@@ -977,6 +977,8 @@ export type CadUploadRow = {
 export async function getLatestCadUpload(
   rootSku: string,
 ): Promise<CadUploadRow | null> {
+  const session = await requireSession();
+  if ("error" in session) return null;
   const sku = rootSku.trim().toUpperCase();
   if (!sku) return null;
   const db = getDb();

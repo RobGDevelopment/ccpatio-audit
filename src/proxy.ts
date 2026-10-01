@@ -14,6 +14,16 @@ import {
   supabaseAuthCookieOptions,
   withEmbeddableAuthCookie,
 } from "@/utils/supabase/auth-cookie";
+import {
+  EMBED_AUTH_COOKIE,
+  EMBED_AUTH_HEADER,
+  EMBED_CONTEXT_HEADER,
+  embedAuthCookieOptions,
+  embedAuthCookieValue,
+  embedCookieIsValid,
+  embedKeyIsValid,
+  getGhlEmbedSecret,
+} from "@/lib/embed-auth";
 
 const PUBLIC_PATHS = new Set(["/", "/api/health"]);
 const STOCK_CHECKER_PATH = "/tools/stock-checker";
@@ -76,34 +86,85 @@ function applyFramePolicy(response: NextResponse, pathname: string): NextRespons
   return response;
 }
 
+function requestHeadersFor(
+  request: NextRequest,
+  pathname: string,
+  embedAuthed: boolean,
+): Headers {
+  const headers = new Headers(request.headers);
+  headers.delete(EMBED_AUTH_HEADER);
+  if (isEmbedPath(pathname)) headers.set(EMBED_CONTEXT_HEADER, "1");
+  else headers.delete(EMBED_CONTEXT_HEADER);
+  if (embedAuthed) headers.set(EMBED_AUTH_HEADER, "1");
+  return headers;
+}
+
 function continueWithRequest(requestHeaders: Headers): NextResponse {
   return NextResponse.next({
     request: { headers: requestHeaders },
   });
 }
 
+function embedDenied(pathname: string): NextResponse {
+  return applyFramePolicy(
+    new NextResponse("This embed link is missing a valid access key.", {
+      status: 401,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    }),
+    pathname,
+  );
+}
+
+async function embedGrantFromRequest(
+  request: NextRequest,
+): Promise<"key" | "cookie" | null> {
+  const secret = getGhlEmbedSecret();
+  if (!secret) return null;
+  if (embedKeyIsValid(request.nextUrl.searchParams.get("embedKey"), secret)) {
+    return "key";
+  }
+  if (await embedCookieIsValid(request.cookies.get(EMBED_AUTH_COOKIE)?.value, secret)) {
+    return "cookie";
+  }
+  return null;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isPublicAsset(pathname) || isBypassedPath(pathname)) {
-    return NextResponse.next();
+    return continueWithRequest(requestHeadersFor(request, pathname, false));
   }
 
   if (pathname === STOCK_CHECKER_PATH) {
-    return applyFramePolicy(NextResponse.next(), pathname);
+    return applyFramePolicy(
+      continueWithRequest(requestHeadersFor(request, pathname, false)),
+      pathname,
+    );
   }
 
   if (PUBLIC_PATHS.has(pathname)) {
-    return applyFramePolicy(NextResponse.next(), pathname);
+    return applyFramePolicy(
+      continueWithRequest(requestHeadersFor(request, pathname, false)),
+      pathname,
+    );
   }
 
   if (!isProtectedPath(pathname)) {
-    return NextResponse.next();
+    return continueWithRequest(requestHeadersFor(request, pathname, false));
   }
 
-  const requestHeaders = new Headers(request.headers);
-  if (isEmbedPath(pathname)) {
-    requestHeaders.set("x-ccpatio-embed", "1");
+  const embedGrant = isEmbedPath(pathname) ? await embedGrantFromRequest(request) : null;
+  const requestHeaders = requestHeadersFor(request, pathname, embedGrant !== null);
+  if (embedGrant) {
+    const response = continueWithRequest(requestHeaders);
+    const secret = getGhlEmbedSecret();
+    response.cookies.set(
+      EMBED_AUTH_COOKIE,
+      await embedAuthCookieValue(secret),
+      embedAuthCookieOptions(),
+    );
+    return applyFramePolicy(response, pathname);
   }
 
   const e2eToken =
@@ -117,6 +178,7 @@ export async function proxy(request: NextRequest) {
   const supabaseUrl = getSupabaseUrl();
   const supabasePublishableKey = getSupabasePublishableKey();
   if (!supabaseUrl || !supabasePublishableKey) {
+    if (isEmbedPath(pathname)) return embedDenied(pathname);
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/";
     loginUrl.searchParams.set("next", pathname);
@@ -153,6 +215,7 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    if (isEmbedPath(pathname)) return embedDenied(pathname);
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/";
     loginUrl.searchParams.set("next", pathname);

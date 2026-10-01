@@ -8,6 +8,7 @@ import {
   getE2eGodModeSecret,
   verifyE2eGodModeCookie,
 } from "@/lib/e2e-god-mode";
+import { EMBED_AUTH_HEADER, EMBED_CONTEXT_HEADER } from "@/lib/embed-auth";
 
 export type PimSession = {
   email: string;
@@ -24,6 +25,12 @@ export async function getPimSession(): Promise<PimSession | null> {
     );
     if (e2e) {
       return { email: e2e.email, name: e2e.email };
+    }
+    if (
+      hdrs.get(EMBED_CONTEXT_HEADER) === "1" &&
+      hdrs.get(EMBED_AUTH_HEADER) === "1"
+    ) {
+      return { email: "ghl-embed@ccpatio.com", name: "GHL Embed" };
     }
   } catch {
     // fall through to Supabase Auth
