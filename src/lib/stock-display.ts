@@ -32,6 +32,8 @@ export type StockCatalogItem = {
   sku: string;
   name: string;
   imageUrl?: string | null;
+  /** Katana `category_name` on the parent material or product. */
+  category?: string | null;
 };
 
 export const STOCK_PREFIXES = ["FAB-", "STN-DKT-", "FRP-"] as const;
@@ -59,8 +61,14 @@ export function matchesStockFamily(sku: string, family: StockFamily): boolean {
 
 export function filterStockCatalog(
   items: StockCatalogItem[],
-  input: { query?: string; prefix?: string; family?: StockFamily },
+  input: { query?: string; prefix?: string; family?: StockFamily; category?: string },
 ): StockCatalogItem[] {
+  const category = input.category?.trim().toLowerCase() ?? "";
+  if (category) {
+    return items
+      .filter((item) => (item.category ?? "").trim().toLowerCase() === category)
+      .sort(byName);
+  }
   if (input.family) {
     return items.filter((item) => matchesStockFamily(item.sku, input.family!)).sort(byName);
   }

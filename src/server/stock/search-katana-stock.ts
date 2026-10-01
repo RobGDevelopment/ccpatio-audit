@@ -1,5 +1,6 @@
 import { katanaFetch, resolveLiveKatanaApiBase } from "@/lib/katana";
 import { stockFacet, type StockCollection } from "@/lib/stock-facets";
+import { katanaCategoryName } from "@/lib/stock-categories";
 import {
   filterStockCatalog,
   isStockPrefix,
@@ -109,6 +110,7 @@ function itemsFromParents(parents: Record<string, unknown>[]): StockCatalogItem[
         sku,
         name: name || sku,
         imageUrl: imageFromRecord(record) ?? parentImage,
+        category: katanaCategoryName(parent),
       });
     }
   }
@@ -188,20 +190,23 @@ async function inventoryForVariants(
 
 function familyMatches(
   catalog: StockCatalogItem[],
-  input: { query?: string; prefix?: string; family?: StockFamily },
+  input: { query?: string; prefix?: string; family?: StockFamily; category?: string },
 ): StockCatalogItem[] | { error: string } {
   const prefix = input.prefix?.trim().toUpperCase() ?? "";
   const query = input.query?.trim().toLowerCase() ?? "";
-  if (!input.family && prefix && !isStockPrefix(prefix)) {
+  const category = input.category?.trim() ?? "";
+  if (!input.family && !category && prefix && !isStockPrefix(prefix)) {
     return { error: "Unknown stock filter." };
   }
   const matches = filterStockCatalog(catalog, {
-    family: input.family,
-    prefix: input.family ? undefined : prefix || undefined,
-    query: input.family || prefix ? undefined : query,
+    category: category || undefined,
+    family: category ? undefined : input.family,
+    prefix: input.family || category ? undefined : prefix || undefined,
+    query: input.family || category || prefix ? undefined : query,
   });
   console.log("[showroom-stock] filter", {
     family: input.family ?? null,
+    category: category || null,
     prefix: prefix || null,
     query: query || null,
     rawVariants: catalog.length,
@@ -229,13 +234,29 @@ function groupCollections(items: StockCatalogItem[]): StockCollection[] {
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
-/** Collection pills for one family. Does not read inventory. */
+/** One row per distinct Katana category, including factory-only names. */
+export async function listCatalogCategoryItems(): Promise<{ category: string }[]> {
+  const catalog = await loadCatalog();
+  const seen = new Set<string>();
+  const items: { category: string }[] = [];
+  for (const item of catalog) {
+    const category = (item.category ?? "").trim();
+    const key = category.toLowerCase();
+    if (!category || seen.has(key)) continue;
+    seen.add(key);
+    items.push({ category });
+  }
+  return items;
+}
+
 export async function listStockCollections(input: {
   prefix?: string;
   family?: StockFamily;
+  category?: string;
 }): Promise<StockCollectionResult> {
   const prefix = input.prefix?.trim().toUpperCase() ?? "";
-  if (!input.family && !prefix) return { ok: false, error: "Choose a stock family." };
+  const category = input.category?.trim() ?? "";
+  if (!input.family && !prefix && !category) return { ok: false, error: "Choose a stock family." };
   const catalog = await loadCatalog();
   const matches = familyMatches(catalog, input);
   if ("error" in matches) return { ok: false, error: matches.error };
@@ -251,12 +272,14 @@ export async function searchKatanaStock(input: {
   query?: string;
   prefix?: string;
   family?: StockFamily;
+  category?: string;
   collection?: string;
 }): Promise<StockSearchResult> {
   const prefix = input.prefix?.trim().toUpperCase() ?? "";
   const query = input.query?.trim().toLowerCase() ?? "";
   const collection = input.collection?.trim().toLowerCase() ?? "";
-  const browsingFamily = Boolean(input.family);
+  const category = input.category?.trim() ?? "";
+  const browsingFamily = Boolean(input.family || category);
   if (!browsingFamily && prefix && !isStockPrefix(prefix)) {
     return { ok: false, error: "Unknown stock filter." };
   }
@@ -269,6 +292,7 @@ export async function searchKatanaStock(input: {
     query,
     prefix: prefix || undefined,
     family: input.family,
+    category: category || undefined,
   });
   if ("error" in matched) return { ok: false, error: matched.error };
   const matches = collection

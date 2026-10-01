@@ -13,12 +13,17 @@ import {
 import { getDb } from "@/server/db/client";
 import { sku_mappings } from "@/server/db/schema";
 import {
+  listShowroomCategoryItems as loadShowroomCategoryItems,
   listShowroomCollections as loadShowroomCollections,
   searchShowroomStock as loadShowroomStock,
   type ShowroomStockFilter,
 } from "@/server/showroom/stock";
 
 export type { ShowroomStockFilter };
+
+export async function listShowroomCategoryItems() {
+  return loadShowroomCategoryItems();
+}
 
 export async function listShowroomCollections(filter: ShowroomStockFilter) {
   return loadShowroomCollections(filter);

@@ -2,25 +2,20 @@
 
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { Search } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { sellableCategoryTabs } from "@/lib/stock-categories";
 import { stockFacet, type StockCollection } from "@/lib/stock-facets";
 import type { StockRow } from "@/lib/stock-display";
 import {
+  listShowroomCategoryItems,
   listShowroomCollections,
   searchShowroomStock,
-  type ShowroomStockFilter,
 } from "../actions";
 import { eyebrow, softField } from "../showroom-ui";
 import { FacetPicker } from "./FacetPicker";
 import { InventoryCard } from "./InventoryCard";
 import type { ViewMode } from "./ViewModeToggle";
 import { ViewModeToggle } from "./ViewModeToggle";
-
-const CATEGORIES: { id: ShowroomStockFilter; label: string }[] = [
-  { id: "fabrics", label: "Fabrics" },
-  { id: "dekton", label: "Dekton" },
-  { id: "frames", label: "Frames" },
-];
 
 const VIEW_MODE_KEY = "ccpatio.showroom.viewMode";
 
@@ -63,7 +58,8 @@ export function LiveStockView({
   defaultViewMode?: ViewMode;
   persistViewMode?: boolean;
 } = {}) {
-  const [category, setCategory] = useState<ShowroomStockFilter | null>(null);
+  const [categoryItems, setCategoryItems] = useState<{ category: string }[]>([]);
+  const [category, setCategory] = useState<string | null>(null);
   const [collection, setCollection] = useState<string | null>(null);
   const [variant, setVariant] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -76,6 +72,7 @@ export function LiveStockView({
   const [viewModeHydrated, setViewModeHydrated] = useState(false);
   const [pending, startTransition] = useTransition();
   const request = useRef(0);
+  const categories = useMemo(() => sellableCategoryTabs(categoryItems), [categoryItems]);
 
   useEffect(() => {
     if (!persistViewMode) {
@@ -126,7 +123,7 @@ export function LiveStockView({
   }, [rows, collection, variant, query, inStockOnly, sortBy]);
   const showGrid = Boolean(category);
 
-  function chooseCategory(next: ShowroomStockFilter) {
+  const chooseCategory = useCallback((next: string) => {
     const id = ++request.current;
     setCategory(next);
     setCollection(null);
@@ -136,30 +133,68 @@ export function LiveStockView({
     setCollections([]);
     setMessage(null);
     startTransition(async () => {
-      const [listed, stock] = await Promise.all([
-        listShowroomCollections(next),
-        searchShowroomStock({ filter: next }),
-      ]);
-      if (id !== request.current) return;
-      if (!listed.ok) {
+      try {
+        const [listed, stock] = await Promise.all([
+          listShowroomCollections(next),
+          searchShowroomStock({ filter: next }),
+        ]);
+        if (id !== request.current) return;
+        if (!listed.ok) {
+          setCollections([]);
+          setMessage(listed.error);
+        } else {
+          setCollections(listed.collections);
+        }
+        if (!stock.ok) {
+          setRows([]);
+          setMessage(stock.error);
+          return;
+        }
+        setRows(stock.rows);
+        if (stock.rows.length === 0) {
+          setMessage("Nothing in this category.");
+        } else if (listed.ok) {
+          setMessage(null);
+        }
+      } catch (error: unknown) {
+        if (id !== request.current) return;
         setCollections([]);
-        setMessage(listed.error);
-      } else {
-        setCollections(listed.collections);
-      }
-      if (!stock.ok) {
         setRows([]);
-        setMessage(stock.error);
-        return;
-      }
-      setRows(stock.rows);
-      if (stock.rows.length === 0) {
-        setMessage("Nothing in this family.");
-      } else if (listed.ok) {
-        setMessage(null);
+        setMessage(error instanceof Error ? error.message : "Could not read Katana.");
       }
     });
-  }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    startTransition(async () => {
+      try {
+        const listed = await listShowroomCategoryItems();
+        if (!active) return;
+        if (!listed.ok) {
+          setCategoryItems([]);
+          setMessage(listed.error);
+          return;
+        }
+        setCategoryItems(listed.items);
+        if (sellableCategoryTabs(listed.items).length === 0) {
+          setMessage("No sellable categories in Katana.");
+        }
+      } catch (error: unknown) {
+        if (!active) return;
+        setCategoryItems([]);
+        setMessage(error instanceof Error ? error.message : "Could not read Katana categories.");
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (category !== null || categories.length === 0) return;
+    chooseCategory(categories[0]);
+  }, [category, categories, chooseCategory]);
 
   function clearCollection() {
     setCollection(null);
@@ -222,22 +257,22 @@ export function LiveStockView({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Category">
-            {CATEGORIES.map((item) => {
-              const selected = category === item.id;
+          <div className="flex min-w-0 flex-1 flex-wrap gap-2" role="tablist" aria-label="Category">
+            {categories.map((name) => {
+              const selected = category === name;
               return (
                 <button
-                  key={item.id}
+                  key={name}
                   type="button"
                   role="tab"
                   aria-selected={selected}
-                  className={`relative overflow-hidden rounded-lg px-4 py-2 text-sm transition-all duration-150 ease-out ${
+                  className={`relative shrink-0 overflow-hidden rounded-lg px-4 py-2 text-sm transition-all duration-150 ease-out ${
                     selected ? tactileActive : tactileIdle
                   }`}
-                  onClick={() => chooseCategory(item.id)}
+                  onClick={() => chooseCategory(name)}
                 >
                   {selected ? <GoldBeam /> : null}
-                  {item.label}
+                  {name}
                 </button>
               );
             })}

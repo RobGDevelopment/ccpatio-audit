@@ -3,13 +3,19 @@ import type { StockRow } from "@/lib/stock-display";
 import { getDb } from "@/server/db/client";
 import { finished_goods_catalog } from "@/server/db/schema";
 import {
+  listCatalogCategoryItems,
   listStockCollections,
   searchKatanaStock,
   type StockCollectionResult,
   type StockSearchResult,
 } from "@/server/stock/search-katana-stock";
 
-export type ShowroomStockFilter = "fabrics" | "dekton" | "frames";
+/** Katana category_name shown as a live-stock tab. */
+export type ShowroomStockFilter = string;
+
+export type ShowroomCategoryResult =
+  | { ok: true; items: { category: string }[] }
+  | { ok: false; error: string };
 
 async function overlayPimImages(rows: StockRow[]): Promise<StockRow[]> {
   if (rows.length === 0) return rows;
@@ -32,12 +38,23 @@ async function overlayPimImages(rows: StockRow[]): Promise<StockRow[]> {
   }));
 }
 
+export async function listShowroomCategoryItems(): Promise<ShowroomCategoryResult> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Sign in to view live stock." };
+  try {
+    return { ok: true, items: await listCatalogCategoryItems() };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Could not read Katana categories.";
+    return { ok: false, error: message };
+  }
+}
+
 export async function listShowroomCollections(
   filter: ShowroomStockFilter,
 ): Promise<StockCollectionResult> {
   const session = await getPimSession();
   if (!session) return { ok: false, error: "Sign in to view live stock." };
-  return listStockCollections({ family: filter });
+  return listStockCollections({ category: filter });
 }
 
 export async function searchShowroomStock(input: {
@@ -51,7 +68,7 @@ export async function searchShowroomStock(input: {
   const result = await searchKatanaStock({
     query: input.query,
     collection: input.collection,
-    family: input.filter,
+    category: input.filter,
   });
   if (!result.ok) return result;
   return { ok: true, rows: await overlayPimImages(result.rows) };
