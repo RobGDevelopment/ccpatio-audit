@@ -58,6 +58,11 @@ export function resolveKatanaApiBase(): string {
   return KATANA_API_BASE_DEFAULT;
 }
 
+/** Live Katana. Ignores KATANA_API_BASE and the E2E mirror. */
+export function resolveLiveKatanaApiBase(): string {
+  return KATANA_API_BASE_DEFAULT;
+}
+
 export function isKatanaE2eMirror(): boolean {
   return process.env.KATANA_E2E_MIRROR === "true";
 }

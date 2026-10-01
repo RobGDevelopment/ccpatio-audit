@@ -1,10 +1,11 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import {
   createSupabaseFetch,
   getSupabasePublishableKey,
   getSupabaseUrl,
 } from "@/lib/supabase-env";
+import { supabaseAuthCookieOptions, withEmbeddableAuthCookie } from "@/utils/supabase/auth-cookie";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -22,6 +23,7 @@ export async function createClient() {
     supabaseUrl,
     supabaseAnonKey,
     {
+      cookieOptions: supabaseAuthCookieOptions,
       global: {
         fetch: createSupabaseFetch(supabaseAnonKey),
       },
@@ -32,7 +34,7 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, withEmbeddableAuthCookie(options)),
             );
           } catch {
             // The `setAll` method was called from a Server Component.

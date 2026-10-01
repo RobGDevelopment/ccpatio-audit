@@ -206,9 +206,12 @@ type AssemblyBundle = {
 export function FactoryBomWorkbench({
   products,
   initialSku,
+  embedded = false,
 }: {
   products: FactoryProductRow[];
   initialSku?: string;
+  /** Fill the parent (GHL iframe) instead of assuming a 56px page header. */
+  embedded?: boolean;
 }) {
   const toast = useToast();
   const resolvedInitial =
@@ -495,7 +498,13 @@ export function FactoryBomWorkbench({
   );
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] min-h-0">
+    <div
+      className={
+        embedded
+          ? "flex h-full min-h-0 w-full flex-1"
+          : "flex h-[calc(100vh-3.5rem)] min-h-0"
+      }
+    >
       <FactoryProductSidebar
         products={products}
         filtered={filtered}

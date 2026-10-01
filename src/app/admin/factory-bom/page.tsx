@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getPimSession } from "@/lib/pim-audit";
-import { listFactoryProducts } from "./actions";
+import { listFactoryProducts } from "@/server/factory-bom/list-factory-products";
 import { FactoryBomWorkbench } from "./FactoryBomWorkbench";
 
 export const dynamic = "force-dynamic";

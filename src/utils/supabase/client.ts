@@ -4,6 +4,7 @@ import {
   getSupabasePublishableKey,
   getSupabaseUrl,
 } from "@/lib/supabase-env";
+import { supabaseAuthCookieOptions } from "@/utils/supabase/auth-cookie";
 
 export function createClient() {
   const supabaseUrl = getSupabaseUrl();
@@ -16,6 +17,7 @@ export function createClient() {
   }
 
   return createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: supabaseAuthCookieOptions,
     global: {
       fetch: createSupabaseFetch(supabaseAnonKey),
     },
