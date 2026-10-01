@@ -10,7 +10,7 @@ import {
   searchShowroomStock,
   type ShowroomStockFilter,
 } from "../actions";
-import { eyebrow, field } from "../showroom-ui";
+import { eyebrow, softField } from "../showroom-ui";
 import { FacetPicker } from "./FacetPicker";
 import { InventoryCard } from "./InventoryCard";
 import type { ViewMode } from "./ViewModeToggle";
@@ -26,8 +26,11 @@ const VIEW_MODE_KEY = "ccpatio.showroom.viewMode";
 
 type StockSort = "alpha" | "stock";
 
-const floatControl =
-  "relative overflow-hidden border border-slate-200 bg-white shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_8px_20px_-3px_rgba(6,81,237,0.15)]";
+const softControl =
+  "border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]";
+
+const tactileIdle = "border-b-2 border-slate-200 bg-white text-slate-600";
+const tactileActive = "translate-y-0.5 bg-slate-50 text-slate-900 shadow-inner";
 
 function fuzzyIncludes(value: string, needle: string): boolean {
   const haystack = value.toLowerCase();
@@ -43,7 +46,7 @@ function fuzzyIncludes(value: string, needle: string): boolean {
 function GoldBeam() {
   return (
     <span className="pointer-events-none absolute inset-x-0 top-0 h-[2px] overflow-hidden" aria-hidden="true">
-      <span className="animate-beam-glide absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-[#C5A059] to-transparent" />
+      <span className="animate-beam-glide-lux absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-[#C5A059] to-transparent" />
     </span>
   );
 }
@@ -54,7 +57,7 @@ function readViewMode(value: string | null): ViewMode | null {
 }
 
 export function LiveStockView({
-  defaultViewMode = "carousel",
+  defaultViewMode = "dropdown",
   persistViewMode = true,
 }: {
   defaultViewMode?: ViewMode;
@@ -103,7 +106,11 @@ export function LiveStockView({
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const filtered = rows.filter((row) => {
-      if (variant && stockFacet(row.name).variant.toLowerCase() !== variant.toLowerCase()) {
+      const facet = stockFacet(row.name);
+      if (collection && facet.collection.toLowerCase() !== collection.toLowerCase()) {
+        return false;
+      }
+      if (variant && facet.variant.toLowerCase() !== variant.toLowerCase()) {
         return false;
       }
       if (inStockOnly && row.available <= 0) return false;
@@ -116,8 +123,8 @@ export function LiveStockView({
       }
       return left.name.localeCompare(right.name) || left.sku.localeCompare(right.sku);
     });
-  }, [rows, variant, query, inStockOnly, sortBy]);
-  const showGrid = Boolean(collection);
+  }, [rows, collection, variant, query, inStockOnly, sortBy]);
+  const showGrid = Boolean(category);
 
   function chooseCategory(next: ShowroomStockFilter) {
     const id = ++request.current;
@@ -126,54 +133,50 @@ export function LiveStockView({
     setVariant(null);
     setQuery("");
     setRows([]);
+    setCollections([]);
     setMessage(null);
     startTransition(async () => {
-      const result = await listShowroomCollections(next);
+      const [listed, stock] = await Promise.all([
+        listShowroomCollections(next),
+        searchShowroomStock({ filter: next }),
+      ]);
       if (id !== request.current) return;
-      if (!result.ok) {
+      if (!listed.ok) {
         setCollections([]);
-        setMessage(result.error);
+        setMessage(listed.error);
+      } else {
+        setCollections(listed.collections);
+      }
+      if (!stock.ok) {
+        setRows([]);
+        setMessage(stock.error);
         return;
       }
-      setCollections(result.collections);
-      setMessage(result.collections.length === 0 ? "Nothing in this family." : null);
+      setRows(stock.rows);
+      if (stock.rows.length === 0) {
+        setMessage("Nothing in this family.");
+      } else if (listed.ok) {
+        setMessage(null);
+      }
     });
   }
 
   function clearCollection() {
-    request.current += 1;
     setCollection(null);
     setVariant(null);
-    setRows([]);
-    setMessage(null);
   }
 
   function chooseCollection(name: string) {
-    if (!category) return;
-    const id = ++request.current;
     setCollection(name);
     setVariant(null);
-    setQuery("");
-    setMessage(null);
-    startTransition(async () => {
-      const result = await searchShowroomStock({ filter: category, collection: name });
-      if (id !== request.current) return;
-      if (!result.ok) {
-        setRows([]);
-        setMessage(result.error);
-        return;
-      }
-      setRows(result.rows);
-      setMessage(result.rows.length === 0 ? "Nothing in this collection." : null);
-    });
   }
 
   return (
     <section
-      className="rounded-3xl bg-slate-50"
+      className="rounded-3xl bg-[#F8F9FA]"
       data-stock-view={viewMode}
     >
-      <div className="sticky top-0 z-30 space-y-4 border-b border-slate-200/70 bg-white/90 px-6 py-4 backdrop-blur-md sm:px-8">
+      <div className="sticky top-0 z-30 space-y-4 border-b border-slate-100 bg-[#F8F9FA]/90 px-6 py-4 backdrop-blur-md sm:px-8">
         <div className="space-y-3">
           <p className={eyebrow}>Live stock</p>
           <div className="relative">
@@ -182,7 +185,7 @@ export function LiveStockView({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search by name or SKU"
-              className={`${field} bg-white/80 pl-9 backdrop-blur-md`}
+              className={`${softField} pl-9`}
               aria-label="Search live stock"
             />
           </div>
@@ -192,7 +195,7 @@ export function LiveStockView({
               role="switch"
               aria-checked={inStockOnly}
               onClick={() => setInStockOnly((current) => !current)}
-              className={`${floatControl} inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs text-slate-700`}
+              className={`${softControl} inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs text-slate-700`}
             >
               <span
                 className={`relative h-5 w-9 rounded-full transition-colors duration-300 ${inStockOnly ? "bg-slate-900" : "bg-slate-200"}`}
@@ -209,7 +212,7 @@ export function LiveStockView({
                 value={sortBy}
                 aria-label="Sort by"
                 onChange={(event) => setSortBy(event.target.value as StockSort)}
-                className={`${floatControl} rounded-full px-3 py-2 text-xs text-slate-800`}
+                className={`${softControl} rounded-full px-3 py-2 text-xs text-slate-800`}
               >
                 <option value="alpha">Alphabetical</option>
                 <option value="stock">Highest stock first</option>
@@ -228,8 +231,8 @@ export function LiveStockView({
                   type="button"
                   role="tab"
                   aria-selected={selected}
-                  className={`${floatControl} rounded-full px-4 py-2 text-sm ${
-                    selected ? "border-[#C5A059]/70 text-slate-900" : "text-slate-600"
+                  className={`relative overflow-hidden rounded-lg px-4 py-2 text-sm transition-all duration-150 ease-out ${
+                    selected ? tactileActive : tactileIdle
                   }`}
                   onClick={() => chooseCategory(item.id)}
                 >
@@ -304,13 +307,13 @@ export function LiveStockView({
         <AnimatePresence>
           {showGrid ? (
             <motion.div
-              key={collection ?? "grid"}
+              key={category ?? "grid"}
               layout="position"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 16 }}
               transition={{ duration: 0.22 }}
-              className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
+              className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4"
             >
               {visible.map((row) => (
                 <InventoryCard key={row.sku} row={row} />

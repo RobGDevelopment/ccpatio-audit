@@ -16,7 +16,7 @@ export default async function EmbedShowroomPage() {
   return (
     <div className="h-full min-h-0 flex-1 overflow-auto bg-[#FAFAFA] text-slate-900">
       <div className="mx-auto max-w-6xl px-4 py-6">
-        <LiveStockView defaultViewMode="grid" persistViewMode={false} />
+        <LiveStockView defaultViewMode="dropdown" persistViewMode={false} />
       </div>
     </div>
   );

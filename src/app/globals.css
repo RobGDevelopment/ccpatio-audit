@@ -209,6 +209,19 @@ body {
   animation: beam-glide 4.5s ease-in-out infinite;
 }
 
+@keyframes beam-glide-lux {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.animate-beam-glide-lux {
+  animation: beam-glide-lux 4s ease-in-out infinite;
+}
+
 @keyframes pim-spin {
   to {
     transform: rotate(360deg);

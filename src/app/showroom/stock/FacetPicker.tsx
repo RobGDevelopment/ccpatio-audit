@@ -9,7 +9,7 @@ import {
 } from "@headlessui/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useRef, useState, type ReactNode } from "react";
-import { field, pillActive, pillBase, pillIdle } from "../showroom-ui";
+import { pillActive, pillBase, pillIdle, softField } from "../showroom-ui";
 import type { ViewMode } from "./ViewModeToggle";
 
 function fuzzyScore(name: string, query: string): number | null {
@@ -74,7 +74,7 @@ function FacetCombobox({
     >
       <div className="relative max-w-lg">
         <ComboboxInput
-          className={`${field} bg-white pr-16`}
+          className={`${softField} pr-16`}
           placeholder={placeholder}
           aria-label={placeholder}
           autoComplete="off"

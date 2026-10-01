@@ -1,14 +1,14 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ImagePlus } from "lucide-react";
-import { useToast } from "@/app/admin/shared/ToastProvider";
 import { formatQty, type StockRow } from "@/lib/stock-display";
+import { variantImagePublicUrl } from "@/lib/product-image-url";
 import { eyebrow } from "../showroom-ui";
+import { ImageUploadModal } from "./ImageUploadModal";
 
 const floatCard =
-  "group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_8px_20px_-3px_rgba(6,81,237,0.15)]";
+  "group relative overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]";
 
 function availableBadgeClass(available: number): string {
   if (available > 10) return "bg-emerald-50 text-emerald-700 border-emerald-200";
@@ -30,36 +30,45 @@ function Swatch({ name }: { name: string }) {
 }
 
 export function InventoryCard({ row }: { row: StockRow }) {
-  const toast = useToast();
-  const [failed, setFailed] = useState(false);
-  const showImage = Boolean(row.imageUrl) && !failed;
+  const [imageExists, setImageExists] = useState(true);
+  const [version, setVersion] = useState(0);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const imageUrl = variantImagePublicUrl(row.sku);
+  const src = imageUrl && version > 0 ? `${imageUrl}?v=${version}` : imageUrl;
 
-  function handleImageUpload(variantId: string) {
-    toast.success("Supabase upload modal coming soon");
-    console.info("Supabase upload modal coming soon", variantId);
-  }
+  useEffect(() => {
+    setImageExists(true);
+    setVersion(0);
+  }, [row.sku]);
 
   return (
     <article className={floatCard}>
       <span className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[2px] overflow-hidden" aria-hidden="true">
-        <span className="animate-beam-glide absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-[#C5A059] to-transparent opacity-80 group-hover:opacity-100" />
+        <span className="animate-beam-glide-lux absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-[#C5A059] to-transparent opacity-80 group-hover:opacity-100" />
       </span>
-      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
-        {showImage && row.imageUrl ? (
-          <Image
-            src={row.imageUrl}
-            alt={row.name}
-            fill
-            unoptimized
-            sizes="(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover"
-            onError={() => setFailed(true)}
-          />
+      <div className="relative h-32 overflow-hidden bg-slate-100">
+        {imageExists && src ? (
+          <div className="relative h-full w-full">
+            <img
+              key={`${row.sku}-${version}`}
+              src={src}
+              alt={row.name}
+              className="h-full w-full object-cover"
+              onError={() => setImageExists(false)}
+            />
+            <button
+              type="button"
+              className="absolute inset-0 cursor-pointer"
+              aria-label={`Replace photo for ${row.name}`}
+              onClick={() => setUploadOpen(true)}
+            />
+          </div>
         ) : (
           <button
             type="button"
+            data-testid="inventory-add-photo"
             className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 text-slate-500"
-            onClick={() => handleImageUpload(row.sku)}
+            onClick={() => setUploadOpen(true)}
           >
             <Swatch name={row.name} />
             <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest">
@@ -69,12 +78,12 @@ export function InventoryCard({ row }: { row: StockRow }) {
           </button>
         )}
       </div>
-      <div className="space-y-4 p-5">
+      <div className="space-y-2 p-3">
         <div>
-          <h3 className="text-lg font-semibold tracking-tight text-slate-900">{row.name}</h3>
-          <p className="mt-1 font-mono text-xs text-slate-500">{row.sku}</p>
+          <h3 className="text-sm font-semibold tracking-tight text-slate-900">{row.name}</h3>
+          <p className="mt-0.5 font-mono text-xs text-slate-500">{row.sku}</p>
         </div>
-        <dl className="grid grid-cols-3 gap-3 text-sm">
+        <dl className="grid grid-cols-3 gap-2 text-xs">
           <div>
             <dt className={eyebrow}>In stock</dt>
             <dd className="mt-1 text-slate-900">{formatQty(row.inStock)}</dd>
@@ -87,7 +96,7 @@ export function InventoryCard({ row }: { row: StockRow }) {
             <dt className={eyebrow}>Available</dt>
             <dd className="mt-1">
               <span
-                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium tabular-nums ${availableBadgeClass(row.available)}`}
+                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium tabular-nums ${availableBadgeClass(row.available)}`}
               >
                 {formatQty(row.available)}
               </span>
@@ -95,6 +104,16 @@ export function InventoryCard({ row }: { row: StockRow }) {
           </div>
         </dl>
       </div>
+      <ImageUploadModal
+        isOpen={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        sku={row.sku}
+        variantName={row.name}
+        onUploaded={() => {
+          setImageExists(true);
+          setVersion((current) => current + 1);
+        }}
+      />
     </article>
   );
 }

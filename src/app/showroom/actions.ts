@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { getPimSession } from "@/lib/pim-audit";
 import { upsertCatalogImageUrl } from "@/lib/catalog-image";
-import { uploadMaterialImage } from "@/lib/supabase-storage";
+import { variantImageObjectName, VARIANT_IMAGE_MAX_BYTES } from "@/lib/product-image-url";
+import {
+  PRODUCT_IMAGES_BUCKET,
+  getSupabaseAdmin,
+  uploadMaterialImage,
+} from "@/lib/supabase-storage";
 import { getDb } from "@/server/db/client";
 import { sku_mappings } from "@/server/db/schema";
 import {
@@ -89,4 +94,46 @@ export async function uploadShowroomStockImage(
   revalidatePath("/showroom");
   revalidatePath("/embed/showroom");
   return { ok: true, imageUrl };
+}
+
+const VARIANT_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+/** Signed upload for `{SKU}.jpg` in product-images. The browser client performs the put. */
+export async function requestVariantImageUpload(input: {
+  sku: string;
+  byteSize: number;
+  contentType: string;
+}): Promise<
+  | { ok: true; path: string; token: string }
+  | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Sign in to upload an image." };
+
+  const path = variantImageObjectName(input.sku);
+  if (!path) return { ok: false, error: "SKU is required." };
+
+  if (!Number.isFinite(input.byteSize) || input.byteSize <= 0) {
+    return { ok: false, error: "Choose an image file." };
+  }
+  if (input.byteSize > VARIANT_IMAGE_MAX_BYTES) {
+    return { ok: false, error: "Image must be 5 MB or smaller." };
+  }
+  if (!VARIANT_IMAGE_TYPES.has(input.contentType)) {
+    return { ok: false, error: "Use a JPG, PNG, or WebP image." };
+  }
+
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.storage
+      .from(PRODUCT_IMAGES_BUCKET)
+      .createSignedUploadUrl(path, { upsert: true });
+    if (error || !data?.token) {
+      return { ok: false, error: error?.message ?? "Could not start the upload." };
+    }
+    return { ok: true, path, token: data.token };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Could not start the upload.";
+    return { ok: false, error: message };
+  }
 }
