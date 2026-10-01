@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { RecipeEstimateRow } from "./actions";
-import { PIM_INPUT } from "./factory-bom-ui";
+import { PIM_INPUT, tactileButton, tactileIdle, tactilePressed } from "./factory-bom-ui";
 
 type Props = {
   estimate: RecipeEstimateRow | null;
@@ -89,36 +89,35 @@ export function EstimatePanel({
 
   return (
     <div className="mt-3 space-y-2" data-testid="factory-bom-estimate-panel">
-      <div className="flex flex-wrap gap-2">
-        <span className="rounded border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-200">
+      <div className="flex flex-wrap items-end gap-2">
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className={`rounded-lg px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide ${
+            open ? tactilePressed : tactileIdle
+          }`}
+        >
           AI Estimate
-        </span>
-        <span className="rounded border border-amber-500/30 bg-amber-950/40 px-2 py-0.5 font-mono text-[11px] text-amber-100">
+        </button>
+        <span className={`${tactileIdle} rounded-lg px-3 py-1.5 font-mono text-[11px]`}>
           Ship {chipWeight} lb
         </span>
-        <span className="rounded border border-amber-500/30 bg-amber-950/40 px-2 py-0.5 font-mono text-[11px] text-amber-100">
+        <span className={`${tactileIdle} rounded-lg px-3 py-1.5 font-mono text-[11px]`}>
           DIM {chipDim} lb
         </span>
-        <span className="rounded border border-amber-500/30 bg-amber-950/40 px-2 py-0.5 font-mono text-[11px] text-amber-100">
+        <span className={`${tactileIdle} rounded-lg px-3 py-1.5 font-mono text-[11px]`}>
           Labor {chipLabor} min
         </span>
-        <span className="rounded border border-amber-500/30 bg-amber-950/40 px-2 py-0.5 font-mono text-[11px] text-amber-100">
+        <span className={`${tactileIdle} rounded-lg px-3 py-1.5 font-mono text-[11px]`}>
           Pack {chipPackCost}
         </span>
       </div>
 
-      <button
-        type="button"
-        className="text-[11px] text-amber-300/90 underline-offset-2 hover:underline"
-        onClick={() => setOpen((v) => !v)}
-      >
-        {open ? "Hide" : "Show"} secondary estimates
-      </button>
-
       {open ? (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-xs text-zinc-200">
+        <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-800">
           {!estimate ? (
-            <p className="text-zinc-500">
+            <p className="text-slate-500">
               No estimate yet. Recalculate from draft geometry.
             </p>
           ) : (
@@ -133,11 +132,11 @@ export function EstimatePanel({
                     ["hardware", breakdown.hardware],
                   ] as const
                 ).map(([label, value]) => (
-                  <div key={label} className="rounded border border-zinc-800 px-2 py-1">
-                    <div className="text-[10px] uppercase tracking-wide text-zinc-500">
+                  <div key={label} className="rounded-lg border border-slate-100 bg-white px-2 py-1">
+                    <div className="text-[10px] uppercase tracking-wide text-slate-500">
                       {label}
                     </div>
-                    <div className="font-mono text-amber-100">
+                    <div className="font-mono text-slate-800">
                       {value != null ? Number(value).toFixed(2) : "—"} lb
                     </div>
                   </div>
@@ -146,7 +145,7 @@ export function EstimatePanel({
 
               <div className="mb-3 grid gap-2 sm:grid-cols-3">
                 <label className="block">
-                  <span className="text-[10px] uppercase text-zinc-500">
+                  <span className="text-[10px] uppercase text-slate-500">
                     Override weight (lb)
                   </span>
                   <input
@@ -161,7 +160,7 @@ export function EstimatePanel({
                   />
                 </label>
                 <label className="block">
-                  <span className="text-[10px] uppercase text-zinc-500">
+                  <span className="text-[10px] uppercase text-slate-500">
                     Override DIM (lb)
                   </span>
                   <input
@@ -176,7 +175,7 @@ export function EstimatePanel({
                   />
                 </label>
                 <label className="block">
-                  <span className="text-[10px] uppercase text-zinc-500">
+                  <span className="text-[10px] uppercase text-slate-500">
                     Override labor (min)
                   </span>
                   <input
@@ -193,7 +192,7 @@ export function EstimatePanel({
               </div>
 
               <div className="mb-3 flex flex-col gap-2">
-                <label className="flex items-center gap-2 text-zinc-300">
+                <label className="flex items-center gap-2 text-slate-600">
                   <input
                     type="checkbox"
                     checked={includePack}
@@ -205,7 +204,7 @@ export function EstimatePanel({
                   />
                   Include packaging BOM on Approve
                 </label>
-                <label className="flex items-center gap-2 text-zinc-300">
+                <label className="flex items-center gap-2 text-slate-600">
                   <input
                     type="checkbox"
                     checked={applyWeight}
@@ -229,7 +228,7 @@ export function EstimatePanel({
               disabled={isPending}
               data-testid="factory-bom-recalculate-estimates"
               onClick={() => onRecalculate(false)}
-              className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-amber-100 disabled:opacity-40"
+              className={`${tactileButton} px-3 py-1.5 text-xs disabled:opacity-40`}
             >
               Recalculate from geometry
             </button>
@@ -246,7 +245,7 @@ export function EstimatePanel({
                 }
                 onRecalculate(true);
               }}
-              className="rounded border border-zinc-600 px-3 py-1.5 text-zinc-300 disabled:opacity-40"
+              className={`${tactileButton} px-3 py-1.5 text-xs disabled:opacity-40`}
             >
               Force recalculate ops
             </button>

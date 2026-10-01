@@ -12,6 +12,8 @@ type Props = {
   children: ReactNode;
   className?: string;
   buttonTestId?: string;
+  /** `soft` is the light Factory BOM surface. Default keeps the dark admin hover. */
+  tone?: "carbon" | "soft";
 };
 
 export function PimDisclosure({
@@ -24,7 +26,9 @@ export function PimDisclosure({
   children,
   className = "",
   buttonTestId,
+  tone = "carbon",
 }: Props) {
+  const soft = tone === "soft";
   return (
     <div className={className}>
       <div className="flex w-full items-start gap-1 px-2 py-2">
@@ -33,7 +37,11 @@ export function PimDisclosure({
           aria-label={open ? "Collapse" : "Expand"}
           aria-expanded={open}
           onClick={onToggle}
-          className="mt-1 rounded px-2 py-1 text-zinc-500 transition hover:bg-zinc-900/60 hover:text-zinc-300"
+          className={
+            soft
+              ? "mt-1 rounded px-2 py-1 text-slate-400 transition hover:bg-slate-50 hover:text-slate-800"
+              : "mt-1 rounded px-2 py-1 text-zinc-500 transition hover:bg-zinc-900/60 hover:text-zinc-300"
+          }
         >
           <span
             aria-hidden
@@ -50,7 +58,11 @@ export function PimDisclosure({
             onActivate?.();
             if (!open) onToggle();
           }}
-          className="flex min-w-0 flex-1 items-start justify-between gap-3 rounded-md px-2 py-1 text-left transition hover:bg-zinc-900/40"
+          className={
+            soft
+              ? "flex min-w-0 flex-1 items-start justify-between gap-3 rounded-md px-2 py-1 text-left transition hover:bg-slate-50"
+              : "flex min-w-0 flex-1 items-start justify-between gap-3 rounded-md px-2 py-1 text-left transition hover:bg-zinc-900/40"
+          }
         >
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -62,7 +74,15 @@ export function PimDisclosure({
         </button>
       </div>
       {open ? (
-        <div className="border-t border-zinc-800/80 px-4 pb-4 pt-3">{children}</div>
+        <div
+          className={
+            soft
+              ? "border-t border-slate-100 px-4 pb-4 pt-3"
+              : "border-t border-zinc-800/80 px-4 pb-4 pt-3"
+          }
+        >
+          {children}
+        </div>
       ) : null}
     </div>
   );

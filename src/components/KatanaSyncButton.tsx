@@ -51,11 +51,11 @@ export function KatanaSyncButton({
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        className="inline-flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex items-center gap-2 rounded-lg border-b-2 border-slate-950 bg-slate-800 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-150 ease-out hover:translate-y-[2px] hover:border-b-0 hover:shadow-inner active:translate-y-[2px] active:border-b-0 active:shadow-inner disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isPending ? (
           <span
-            className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-300/30 border-t-sky-300"
+            className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
             aria-hidden
           />
         ) : (
@@ -69,10 +69,10 @@ export function KatanaSyncButton({
       {toast ? (
         <div
           role="status"
-          className={`absolute left-0 top-full z-20 mt-2 min-w-[16rem] max-w-sm rounded-lg border px-3 py-2 text-xs shadow-lg ${
+          className={`absolute left-0 top-full z-20 mt-2 min-w-[16rem] max-w-sm rounded-lg border px-3 py-2 text-xs shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${
             toast.type === "success"
-              ? "border-emerald-500/30 bg-emerald-950/95 text-emerald-200"
-              : "border-red-500/30 bg-red-950/95 text-red-200"
+              ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+              : "border-rose-100 bg-rose-50 text-rose-700"
           }`}
         >
           {toast.message}

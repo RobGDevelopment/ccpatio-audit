@@ -5,7 +5,7 @@ import { KatanaSyncButton } from "@/components/KatanaSyncButton";
 import type { FactoryProductRow, RecipeEstimateRow } from "./actions";
 import type { RecipeReviewStatus } from "@/server/db/schema";
 import { EstimatePanel } from "./EstimatePanel";
-import { statusClass, statusLabel } from "./factory-bom-ui";
+import { primaryButton, statusClass, statusLabel } from "./factory-bom-ui";
 
 type Props = {
   selected: FactoryProductRow;
@@ -37,14 +37,14 @@ export function RecipeHeader({
   onSaveEstimateOverrides,
 }: Props) {
   return (
-    <header className="flex items-start justify-between gap-4 border-b border-zinc-800 px-6 py-4">
+    <header className="flex items-start justify-between gap-4 border-b border-slate-100 pb-6">
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
           {selected.collection} · {selected.phaseSource}
         </p>
-        <h2 className="mt-1 text-xl font-semibold text-zinc-50">{selected.name}</h2>
-        <p className="mt-1 font-mono text-xs text-zinc-500">{selected.sku}</p>
-        <p className="mt-2 text-xs text-zinc-400">
+        <h2 className="mt-1 text-xl font-semibold text-slate-800">{selected.name}</h2>
+        <p className="mt-1 font-mono text-xs text-slate-500">{selected.sku}</p>
+        <p className="mt-2 text-xs text-slate-500">
           {selected.length ?? "—"} × {selected.depth ?? "—"} × {selected.height ?? "—"}
           {selected.msrp ? ` · ${selected.msrp}` : ""}
         </p>
@@ -58,18 +58,18 @@ export function RecipeHeader({
       <div className="flex flex-col items-end gap-2">
         <span
           data-testid="factory-bom-recipe-status"
-          className={`rounded border px-2 py-1 text-xs uppercase tracking-wide ${statusClass(bannerStatus)}`}
+          className={statusClass(bannerStatus)}
         >
           {statusLabel(bannerStatus)}
         </span>
         {selected.liveBom || liveCopied ? (
-          <span className="text-[11px] text-amber-300">
+          <span className="text-[11px] text-amber-700">
             Live product_bom already has children
           </span>
         ) : null}
         <Link
           href={`/admin/dictionary/bom/${encodeURIComponent(selected.sku)}`}
-          className="text-xs text-emerald-400 hover:text-emerald-300"
+          className="text-xs text-slate-500 hover:text-slate-800"
         >
           Open live Dictionary BOM →
         </Link>
@@ -78,7 +78,7 @@ export function RecipeHeader({
           data-testid="factory-bom-approve"
           disabled={isPending || selected.draftLineCount === 0}
           onClick={onApprove}
-          className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200 disabled:opacity-40"
+          className={`${primaryButton} px-4 py-2 text-sm`}
         >
           Approve to live hub
         </button>

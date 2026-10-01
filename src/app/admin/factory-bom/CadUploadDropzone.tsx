@@ -8,6 +8,7 @@ import {
   uploadCadStillImage,
   type CadUploadRow,
 } from "./actions";
+import { pill, tactileButton } from "./factory-bom-ui";
 
 type Props = {
   globalSku: string;
@@ -18,15 +19,15 @@ type Props = {
 function statusTone(status: CadUploadRow["status"] | null): string {
   switch (status) {
     case "draft_ready":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
+      return `${pill} bg-emerald-50 text-emerald-700`;
     case "failed":
-      return "border-rose-500/40 bg-rose-500/10 text-rose-200";
+      return `${pill} bg-rose-50 text-rose-700`;
     case "processing":
     case "queued":
     case "uploaded":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-100";
+      return `${pill} bg-amber-50 text-amber-700`;
     default:
-      return "border-zinc-700 bg-zinc-950/60 text-zinc-400";
+      return `${pill} bg-slate-100 text-slate-500`;
   }
 }
 
@@ -156,16 +157,16 @@ export function CadUploadDropzone({
   return (
     <div
       data-testid="factory-bom-cad-dropzone"
-      className="mt-3 rounded-lg border border-dashed border-zinc-600/80 bg-zinc-950/40 p-3"
+      className="mt-6"
     >
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
           CAD upload · Master SKU{" "}
-          <span className="font-mono text-zinc-300">{globalSku}</span>
+          <span className="font-mono text-slate-800">{globalSku}</span>
         </p>
         {job ? (
           <span
-            className={`rounded border px-2 py-0.5 text-[10px] uppercase tracking-wide ${statusTone(job.status)}`}
+            className={statusTone(job.status)}
             data-testid="factory-bom-cad-status"
           >
             {job.status.replace(/_/g, " ")}
@@ -184,24 +185,23 @@ export function CadUploadDropzone({
           setDragOver(false);
           void handleFiles(e.dataTransfer.files);
         }}
-        className={`rounded-md border px-3 py-6 text-center transition ${
+        className={`rounded-lg border-2 border-dashed px-3 py-8 text-center transition-colors ${
           dragOver
-            ? "border-emerald-400/60 bg-emerald-500/10"
-            : "border-zinc-800 bg-zinc-900/40"
+            ? "border-slate-400 bg-slate-100"
+            : "border-slate-200 bg-slate-50 hover:bg-slate-100"
         }`}
       >
-        <p className="text-sm text-zinc-200">
-          Drop <span className="font-mono text-emerald-300">.dae</span> for
-          cut-list drafts
+        <p className="text-sm text-slate-800">
+          Drop <span className="font-mono">.dae</span> for cut-list drafts
         </p>
-        <p className="mt-1 text-[11px] text-zinc-500">
-          Optional: .skp (thumbnail only) · .jpg/.png still for PIM image
+        <p className="mt-1 text-xs text-slate-500">
+          Optional: .skp for thumbnail
         </p>
         <button
           type="button"
           disabled={busy || isPending}
           onClick={() => inputRef.current?.click()}
-          className="mt-3 rounded border border-zinc-600 px-3 py-1.5 text-xs text-zinc-200 disabled:opacity-40"
+          className={`${tactileButton} mt-4 px-3 py-1.5 text-xs disabled:opacity-40`}
         >
           {busy ? "Uploading…" : "Choose files"}
         </button>
@@ -215,7 +215,7 @@ export function CadUploadDropzone({
         />
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-zinc-400">
+      <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-slate-500">
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -235,11 +235,11 @@ export function CadUploadDropzone({
       </div>
 
       {job?.errorMessage ? (
-        <p className="mt-2 text-xs text-rose-300">{job.errorMessage}</p>
+        <p className="mt-2 text-xs text-rose-600">{job.errorMessage}</p>
       ) : null}
-      {error ? <p className="mt-2 text-xs text-rose-300">{error}</p> : null}
+      {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
       {job?.status === "draft_ready" ? (
-        <p className="mt-2 text-xs text-emerald-300">
+        <p className="mt-2 text-xs text-emerald-700">
           Draft BOM + estimates ready — review below, then Approve when ready.
         </p>
       ) : null}

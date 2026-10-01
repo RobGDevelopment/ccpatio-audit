@@ -2,7 +2,14 @@
 
 import type { FactoryProductRow } from "./actions";
 import type { RecipeReviewStatus } from "@/server/db/schema";
-import { PIM_INPUT, statusClass, statusLabel } from "./factory-bom-ui";
+import {
+  PIM_INPUT,
+  card,
+  statusClass,
+  statusLabel,
+  tactileIdle,
+  tactilePressed,
+} from "./factory-bom-ui";
 
 type Props = {
   products: FactoryProductRow[];
@@ -25,8 +32,8 @@ export function FactoryProductSidebar({
   onSelectSku,
 }: Props) {
   return (
-    <aside className="flex w-80 shrink-0 flex-col border-r border-zinc-800 bg-zinc-950">
-      <div className="space-y-2 border-b border-zinc-800 p-3">
+    <aside className={`${card} flex w-80 shrink-0 flex-col overflow-hidden`}>
+      <div className="space-y-2 border-b border-slate-100 p-4">
         <input
           data-testid="factory-bom-search"
           value={query}
@@ -34,16 +41,14 @@ export function FactoryProductSidebar({
           placeholder="Search Phase 1 / 2 SKUs…"
           className={PIM_INPUT}
         />
-        <div className="flex gap-1">
+        <div className="flex gap-2">
           {(["all", "1", "2"] as const).map((value) => (
             <button
               key={value}
               type="button"
               onClick={() => onPhaseChange(value)}
-              className={`flex-1 rounded-md border px-2 py-1 text-xs ${
-                phase === value
-                  ? "border-emerald-500/50 text-emerald-300"
-                  : "border-zinc-800 text-zinc-500"
+              className={`flex-1 rounded-lg px-2 py-1.5 text-xs ${
+                phase === value ? tactilePressed : tactileIdle
               }`}
             >
               {value === "all" ? "All" : `P${value}`}
@@ -53,29 +58,29 @@ export function FactoryProductSidebar({
       </div>
       <ul className="flex-1 overflow-auto">
         {filtered.length === 0 ? (
-          <li className="px-4 py-6 text-sm text-zinc-500">
+          <li className="px-4 py-6 text-sm text-slate-500">
             No VividWorks hub SKUs yet. Run{" "}
-            <code className="font-mono text-zinc-300">
+            <code className="font-mono text-slate-800">
               npx tsx scripts/vividworks/07-generate-heuristic-boms.ts --live
             </code>
           </li>
         ) : (
           filtered.map((row) => (
-            <li key={row.sku}>
+            <li key={row.sku} className="border-b border-slate-100 last:border-b-0">
               <button
                 type="button"
                 data-testid={`factory-bom-product-${row.sku}`}
                 onClick={() => onSelectSku(row.sku)}
                 className={`flex w-full flex-col items-start gap-1 border-l-2 px-4 py-3 text-left ${
                   row.sku === selectedSku
-                    ? "border-emerald-500 bg-zinc-900"
-                    : "border-transparent hover:bg-zinc-900/60"
+                    ? "border-slate-800 bg-slate-50"
+                    : "border-transparent hover:bg-slate-50"
                 }`}
               >
-                <span className="text-sm font-medium text-zinc-100">{row.name}</span>
-                <span className="font-mono text-[11px] text-zinc-500">{row.sku}</span>
+                <span className="text-sm font-medium text-slate-800">{row.name}</span>
+                <span className="font-mono text-[11px] text-slate-500">{row.sku}</span>
                 <span
-                  className={`mt-1 rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${statusClass(
+                  className={`mt-1 ${statusClass(
                     row.reviewStatus as RecipeReviewStatus | "none",
                   )}`}
                 >
