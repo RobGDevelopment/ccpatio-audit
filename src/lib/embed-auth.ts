@@ -1,5 +1,6 @@
 export const EMBED_AUTH_COOKIE = "ccpatio-embed-auth";
 export const EMBED_AUTH_HEADER = "x-ccpatio-embed-auth";
+export const EMBED_KEY_HEADER = "x-ccpatio-embed-key";
 export const EMBED_CONTEXT_HEADER = "x-ccpatio-embed";
 
 const EMBED_COOKIE_PAYLOAD = "ccpatio-embed-v1";

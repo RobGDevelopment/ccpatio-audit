@@ -14,7 +14,7 @@ export default async function EmbedFactoryBomPage({
   if (!session) {
     return (
       <main className="flex h-full min-h-0 flex-1 items-center justify-center bg-zinc-950 px-6 text-sm text-zinc-400">
-        Sign in to open the factory BOM builder.
+        This embed link is missing a valid access key.
       </main>
     );
   }

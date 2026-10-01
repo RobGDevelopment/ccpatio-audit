@@ -18,11 +18,8 @@ import {
   EMBED_AUTH_COOKIE,
   EMBED_AUTH_HEADER,
   EMBED_CONTEXT_HEADER,
+  EMBED_KEY_HEADER,
   embedAuthCookieOptions,
-  embedAuthCookieValue,
-  embedCookieIsValid,
-  embedKeyIsValid,
-  getGhlEmbedSecret,
 } from "@/lib/embed-auth";
 
 const PUBLIC_PATHS = new Set(["/", "/api/health"]);
@@ -39,7 +36,7 @@ const PROTECTED_PREFIXES = [
 const SUPER_ADMIN_PREFIXES = ["/mission-control", "/admin/keys"];
 const BYPASS_PREFIXES = ["/api/inngest", "/api/webhooks"];
 const GHL_FRAME_ANCESTORS =
-  "frame-ancestors 'self' https://*.gohighlevel.com https://*.leadconnectorhq.com https://*.highlevel.com";
+  "frame-ancestors 'self' https://app.gohighlevel.com https://*.gohighlevel.com https://*.leadconnectorhq.com https://*.highlevel.com https://*.msgsndr.com";
 
 function isPublicAsset(pathname: string): boolean {
   return (
@@ -86,16 +83,23 @@ function applyFramePolicy(response: NextResponse, pathname: string): NextRespons
   return response;
 }
 
+function embedKeyFromRequest(request: NextRequest): string | null {
+  const key = request.nextUrl.searchParams.get("embedKey")?.trim() ?? "";
+  if (!key || key.length > 256 || /[\r\n]/.test(key)) return null;
+  return key;
+}
+
 function requestHeadersFor(
   request: NextRequest,
   pathname: string,
-  embedAuthed: boolean,
+  embedKey: string | null,
 ): Headers {
   const headers = new Headers(request.headers);
   headers.delete(EMBED_AUTH_HEADER);
+  headers.delete(EMBED_KEY_HEADER);
   if (isEmbedPath(pathname)) headers.set(EMBED_CONTEXT_HEADER, "1");
   else headers.delete(EMBED_CONTEXT_HEADER);
-  if (embedAuthed) headers.set(EMBED_AUTH_HEADER, "1");
+  if (embedKey) headers.set(EMBED_KEY_HEADER, embedKey);
   return headers;
 }
 
@@ -105,65 +109,38 @@ function continueWithRequest(requestHeaders: Headers): NextResponse {
   });
 }
 
-function embedDenied(pathname: string): NextResponse {
-  return applyFramePolicy(
-    new NextResponse("This embed link is missing a valid access key.", {
-      status: 401,
-      headers: { "content-type": "text/plain; charset=utf-8" },
-    }),
-    pathname,
-  );
-}
-
-async function embedGrantFromRequest(
-  request: NextRequest,
-): Promise<"key" | "cookie" | null> {
-  const secret = getGhlEmbedSecret();
-  if (!secret) return null;
-  if (embedKeyIsValid(request.nextUrl.searchParams.get("embedKey"), secret)) {
-    return "key";
-  }
-  if (await embedCookieIsValid(request.cookies.get(EMBED_AUTH_COOKIE)?.value, secret)) {
-    return "cookie";
-  }
-  return null;
-}
-
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isPublicAsset(pathname) || isBypassedPath(pathname)) {
-    return continueWithRequest(requestHeadersFor(request, pathname, false));
+    return continueWithRequest(requestHeadersFor(request, pathname, null));
   }
 
   if (pathname === STOCK_CHECKER_PATH) {
     return applyFramePolicy(
-      continueWithRequest(requestHeadersFor(request, pathname, false)),
+      continueWithRequest(requestHeadersFor(request, pathname, null)),
       pathname,
     );
   }
 
   if (PUBLIC_PATHS.has(pathname)) {
     return applyFramePolicy(
-      continueWithRequest(requestHeadersFor(request, pathname, false)),
+      continueWithRequest(requestHeadersFor(request, pathname, null)),
       pathname,
     );
   }
 
   if (!isProtectedPath(pathname)) {
-    return continueWithRequest(requestHeadersFor(request, pathname, false));
+    return continueWithRequest(requestHeadersFor(request, pathname, null));
   }
 
-  const embedGrant = isEmbedPath(pathname) ? await embedGrantFromRequest(request) : null;
-  const requestHeaders = requestHeadersFor(request, pathname, embedGrant !== null);
-  if (embedGrant) {
+  const embedKey = isEmbedPath(pathname) ? embedKeyFromRequest(request) : null;
+  const requestHeaders = requestHeadersFor(request, pathname, embedKey);
+  if (isEmbedPath(pathname)) {
     const response = continueWithRequest(requestHeaders);
-    const secret = getGhlEmbedSecret();
-    response.cookies.set(
-      EMBED_AUTH_COOKIE,
-      await embedAuthCookieValue(secret),
-      embedAuthCookieOptions(),
-    );
+    if (embedKey) {
+      response.cookies.set(EMBED_AUTH_COOKIE, embedKey, embedAuthCookieOptions());
+    }
     return applyFramePolicy(response, pathname);
   }
 
@@ -178,7 +155,6 @@ export async function proxy(request: NextRequest) {
   const supabaseUrl = getSupabaseUrl();
   const supabasePublishableKey = getSupabasePublishableKey();
   if (!supabaseUrl || !supabasePublishableKey) {
-    if (isEmbedPath(pathname)) return embedDenied(pathname);
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/";
     loginUrl.searchParams.set("next", pathname);
@@ -215,7 +191,6 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    if (isEmbedPath(pathname)) return embedDenied(pathname);
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/";
     loginUrl.searchParams.set("next", pathname);
