@@ -5,6 +5,7 @@ import { ImagePlus } from "lucide-react";
 import { formatQty, type StockRow } from "@/lib/stock-display";
 import { variantImagePublicUrl } from "@/lib/product-image-url";
 import { ImageUploadModal } from "./ImageUploadModal";
+import { PlaceHoldModal } from "./PlaceHoldModal";
 
 const floatCard =
   "group relative overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]";
@@ -28,10 +29,28 @@ function Swatch({ name }: { name: string }) {
   );
 }
 
-export function InventoryCard({ row }: { row: StockRow }) {
+export function InventoryCard({
+  row,
+  salesperson,
+  canHold,
+  holdDisabledReason,
+  ghlUserId,
+  ghlUserEmail,
+  onHoldPlaced,
+}: {
+  row: StockRow;
+  salesperson: string | null;
+  canHold: boolean;
+  holdDisabledReason: string | null;
+  ghlUserId?: string;
+  ghlUserEmail?: string;
+  onHoldPlaced: () => void;
+}) {
   const [imageExists, setImageExists] = useState(true);
   const [version, setVersion] = useState(0);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [holdOpen, setHoldOpen] = useState(false);
+  const holdDisabled = row.available <= 0 || !canHold || !salesperson;
   const imageUrl = variantImagePublicUrl(row.sku);
   const src = imageUrl && version > 0 ? `${imageUrl}?v=${version}` : imageUrl;
 
@@ -80,6 +99,9 @@ export function InventoryCard({ row }: { row: StockRow }) {
       <div className="space-y-2 p-3">
         <div>
           <h3 className="text-sm font-semibold tracking-tight text-slate-900">{row.name}</h3>
+          {row.variantLabel ? (
+            <p className="break-words line-clamp-3 text-xs text-slate-600">{row.variantLabel}</p>
+          ) : null}
           <p className="mt-0.5 font-mono text-xs text-slate-500">{row.sku}</p>
         </div>
         <dl className="grid grid-cols-3 gap-4 text-center">
@@ -114,13 +136,29 @@ export function InventoryCard({ row }: { row: StockRow }) {
         </dl>
         <button
           type="button"
-          disabled={row.available <= 0}
-          onClick={() => console.log("Hold modal triggered for", row.variantId)}
+          disabled={holdDisabled}
+          title={
+            holdDisabledReason ??
+            (!salesperson ? "Confirming salesperson…" : undefined) ??
+            (row.available <= 0 ? "Nothing available to hold." : undefined)
+          }
+          onClick={() => setHoldOpen(true)}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Place Hold
         </button>
       </div>
+      {salesperson ? (
+        <PlaceHoldModal
+          isOpen={holdOpen}
+          onClose={() => setHoldOpen(false)}
+          row={row}
+          salesperson={salesperson}
+          ghlUserId={ghlUserId}
+          ghlUserEmail={ghlUserEmail}
+          onPlaced={onHoldPlaced}
+        />
+      ) : null}
       <ImageUploadModal
         isOpen={uploadOpen}
         onClose={() => setUploadOpen(false)}

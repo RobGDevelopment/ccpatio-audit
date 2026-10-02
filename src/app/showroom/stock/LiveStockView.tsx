@@ -9,6 +9,7 @@ import type { StockRow } from "@/lib/stock-display";
 import {
   listShowroomCategoryItems,
   listShowroomCollections,
+  resolveShowroomHoldActor,
   searchShowroomStock,
 } from "../actions";
 import { eyebrow, softField } from "../showroom-ui";
@@ -54,9 +55,13 @@ function readViewMode(value: string | null): ViewMode | null {
 export function LiveStockView({
   defaultViewMode = "dropdown",
   persistViewMode = true,
+  ghlUserId,
+  ghlUserEmail,
 }: {
   defaultViewMode?: ViewMode;
   persistViewMode?: boolean;
+  ghlUserId?: string;
+  ghlUserEmail?: string;
 } = {}) {
   const [categoryItems, setCategoryItems] = useState<{ category: string }[]>([]);
   const [category, setCategory] = useState<string | null>(null);
@@ -70,6 +75,8 @@ export function LiveStockView({
   const [message, setMessage] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
   const [viewModeHydrated, setViewModeHydrated] = useState(false);
+  const [salesperson, setSalesperson] = useState<string | null>(null);
+  const [holdActorError, setHoldActorError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const request = useRef(0);
   const categories = useMemo(() => sellableCategoryTabs(categoryItems), [categoryItems]);
@@ -112,13 +119,21 @@ export function LiveStockView({
       }
       if (inStockOnly && row.available <= 0) return false;
       if (!needle) return true;
-      return fuzzyIncludes(row.sku, needle) || fuzzyIncludes(row.name, needle);
+      return (
+        fuzzyIncludes(row.sku, needle) ||
+        fuzzyIncludes(row.name, needle) ||
+        fuzzyIncludes(row.variantLabel ?? "", needle)
+      );
     });
     return [...filtered].sort((left, right) => {
       if (sortBy === "stock") {
         return right.available - left.available || left.name.localeCompare(right.name);
       }
-      return left.name.localeCompare(right.name) || left.sku.localeCompare(right.sku);
+      return (
+        left.name.localeCompare(right.name) ||
+        (left.variantLabel ?? "").localeCompare(right.variantLabel ?? "") ||
+        left.sku.localeCompare(right.sku)
+      );
     });
   }, [rows, collection, variant, query, inStockOnly, sortBy]);
   const showGrid = Boolean(category);
@@ -164,6 +179,40 @@ export function LiveStockView({
       }
     });
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setSalesperson(null);
+    setHoldActorError(null);
+    void resolveShowroomHoldActor({ ghlUserId, ghlUserEmail }).then((result) => {
+      if (!active) return;
+      if (result.ok) setSalesperson(result.name);
+      else setHoldActorError(result.error);
+    });
+    return () => {
+      active = false;
+    };
+  }, [ghlUserId, ghlUserEmail]);
+
+  const reloadRows = useCallback(async () => {
+    if (!category) return;
+    const id = ++request.current;
+    try {
+      const stock = await searchShowroomStock({ filter: category });
+      if (id !== request.current) return;
+      if (!stock.ok) {
+        setRows([]);
+        setMessage(stock.error);
+        return;
+      }
+      setRows(stock.rows);
+      setMessage(stock.rows.length === 0 ? "Nothing in this category." : null);
+    } catch (error: unknown) {
+      if (id !== request.current) return;
+      setRows([]);
+      setMessage(error instanceof Error ? error.message : "Could not read Katana.");
+    }
+  }, [category]);
 
   useEffect(() => {
     let active = true;
@@ -334,6 +383,9 @@ export function LiveStockView({
         </AnimatePresence>
 
         {pending ? <p className="text-sm text-slate-500">Reading Katana…</p> : null}
+        {holdActorError ? (
+          <p className="text-sm text-rose-700">Place Hold is unavailable. {holdActorError}</p>
+        ) : null}
         {message ? <p className="text-sm text-slate-500">{message}</p> : null}
         {showGrid && !pending && rows.length > 0 && visible.length === 0 ? (
           <p className="text-sm text-slate-500">No variants match these filters.</p>
@@ -351,7 +403,18 @@ export function LiveStockView({
               className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             >
               {visible.map((row) => (
-                <InventoryCard key={row.sku} row={row} />
+                <InventoryCard
+                  key={row.sku}
+                  row={row}
+                  salesperson={salesperson}
+                  canHold={Boolean(salesperson) && !holdActorError}
+                  holdDisabledReason={holdActorError}
+                  ghlUserId={ghlUserId}
+                  ghlUserEmail={ghlUserEmail}
+                  onHoldPlaced={() => {
+                    void reloadRows();
+                  }}
+                />
               ))}
             </motion.div>
           ) : null}

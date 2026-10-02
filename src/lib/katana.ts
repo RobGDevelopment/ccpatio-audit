@@ -156,6 +156,8 @@ export type KatanaSalesOrderRowInput = {
   sku: string;
   quantity: number;
   pricePerUnit: number;
+  /** When set, sent on the sales-order row so the line commits at this location. */
+  locationId?: number;
 };
 
 export type KatanaSalesOrderPayload = {
@@ -171,6 +173,9 @@ export type KatanaSalesOrderPayload = {
   addresses?: KatanaSalesOrderAddress[];
   source?: "woocommerce" | "ghl";
   externalId?: string;
+  /** CC Manufacturing is 98179. Omit to leave Katana's default location. */
+  locationId?: number;
+  idempotencyKey?: string;
 };
 
 export type KatanaSalesOrderCreateResult = {
@@ -1321,6 +1326,10 @@ export function mapGhlOpportunityToKatanaSalesOrder(
   };
 }
 
+export async function resolveKatanaVariantId(sku: string): Promise<number> {
+  return resolveVariantIdForSku(sku);
+}
+
 async function resolveVariantIdForSku(sku: string): Promise<number> {
   const needle = sku.trim().toUpperCase();
   if (!needle) {
@@ -1437,6 +1446,7 @@ export async function createKatanaSalesOrder(
     variant_id: number;
     quantity: number;
     price_per_unit: number;
+    location_id?: number;
     attributes?: Array<{ key: string; value: string }>;
   }> = [];
 
@@ -1453,6 +1463,7 @@ export async function createKatanaSalesOrder(
       variant_id: variantId,
       quantity: row.quantity,
       price_per_unit: row.pricePerUnit,
+      ...(row.locationId != null ? { location_id: row.locationId } : {}),
       attributes: [{ key: "global_sku", value: row.sku.trim().toUpperCase() }],
     });
   }
@@ -1477,10 +1488,14 @@ export async function createKatanaSalesOrder(
   if (orderPayload.addresses && orderPayload.addresses.length > 0) {
     salesOrderBody.addresses = orderPayload.addresses.map(katanaAddressPayload);
   }
+  if (orderPayload.locationId != null) {
+    salesOrderBody.location_id = orderPayload.locationId;
+  }
 
   const { data } = await katanaFetch<Record<string, unknown>>("/sales_orders", {
     method: "POST",
     body: salesOrderBody,
+    idempotencyKey: orderPayload.idempotencyKey,
   });
 
   const salesOrderId = Number(data.id);

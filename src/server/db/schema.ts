@@ -7,6 +7,8 @@
  */
 import {
   boolean,
+  check,
+  index,
   integer,
   jsonb,
   numeric,
@@ -19,7 +21,7 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 /** Manufacturing / BOM role — orthogonal to display `category`. */
 export const itemTypeEnum = pgEnum("item_type", [
@@ -520,6 +522,138 @@ export const product_intake = pgTable("product_intake", {
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
+
+/** GHL Produce Factory Order lifecycle (human SKU triage, then Katana). */
+export const orderIntakeStatusEnum = pgEnum("order_intake_status", [
+  "received",
+  "approved",
+  "pushed",
+  "failed",
+  "rejected",
+]);
+
+export type OrderIntakeStatus =
+  (typeof orderIntakeStatusEnum.enumValues)[number];
+
+export type OrderIntakeMappedLine = {
+  finSku: string;
+  fabricSku: string;
+  quantity: number;
+};
+
+/** Present only after Katana accepts the hold line change. `applied` blocks a second deduct. */
+export type OrderIntakeHoldRelief = {
+  fabricSku: string;
+  holdRowId: number;
+  yardsBefore: number;
+  yardsRelieved: number;
+  applied: boolean;
+};
+
+/**
+ * GHL opportunities waiting for a person to map FIN-* and FAB-* SKUs.
+ * Invalid payloads never insert — Zod rejects at the webhook gateway.
+ * Uniqueness is the GHL opportunity id.
+ */
+export const order_intake = pgTable(
+  "order_intake",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ghl_opportunity_id: text("ghl_opportunity_id").notNull().unique(),
+    status: orderIntakeStatusEnum("status").notNull().default("received"),
+    raw_payload: jsonb("raw_payload").notNull(),
+    zod_issues: jsonb("zod_issues").$type<unknown[] | null>(),
+    contact_name: text("contact_name"),
+    contact_email: text("contact_email"),
+    stage_name: text("stage_name"),
+    mapped_lines: jsonb("mapped_lines").$type<OrderIntakeMappedLine[] | null>(),
+    katana_customer_id: integer("katana_customer_id"),
+    katana_sales_order_id: integer("katana_sales_order_id"),
+    katana_order_no: text("katana_order_no"),
+    katana_mo_ids: jsonb("katana_mo_ids").$type<number[] | null>(),
+    hold_relief: jsonb("hold_relief").$type<OrderIntakeHoldRelief[] | null>(),
+    /** OCC token — bumped on every triage mutation. */
+    version: integer("version").notNull().default(1),
+    last_error: text("last_error"),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("order_intake_status_idx").on(table.status)],
+);
+
+/** Showroom soft hold. 72 hours, no extension. Terminals are released and converted. */
+export const inventoryHoldStatusEnum = pgEnum("inventory_hold_status", [
+  "active",
+  "releasing",
+  "released",
+  "converting",
+  "converted",
+]);
+
+export type InventoryHoldStatus =
+  (typeof inventoryHoldStatusEnum.enumValues)[number];
+
+/** Null while the row is active, converting, or converted. */
+export const inventoryHoldReleaseReasonEnum = pgEnum(
+  "inventory_hold_release_reason",
+  ["expired", "lost", "abandoned", "manual"],
+);
+
+export type InventoryHoldReleaseReason =
+  (typeof inventoryHoldReleaseReasonEnum.enumValues)[number];
+
+/**
+ * Reservation ledger for showroom holds. Katana has no temporary hold, so
+ * each row points at a HOLD- sales order. The browser never queries this table.
+ */
+export const inventory_holds = pgTable(
+  "inventory_holds",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    katana_variant_id: integer("katana_variant_id").notNull(),
+    sku: text("sku").notNull(),
+    qty: numeric("qty", { precision: 12, scale: 4 }).notNull(),
+    ghl_user_id: text("ghl_user_id").notNull(),
+    ghl_user_name: text("ghl_user_name").notNull(),
+    ghl_user_email: text("ghl_user_email"),
+    ghl_contact_id: text("ghl_contact_id").notNull(),
+    ghl_opportunity_id: text("ghl_opportunity_id").notNull(),
+    ghl_opportunity_name: text("ghl_opportunity_name").notNull(),
+    note: text("note").notNull(),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    status: inventoryHoldStatusEnum("status").notNull().default("active"),
+    release_reason: inventoryHoldReleaseReasonEnum("release_reason"),
+    released_by: text("released_by"),
+    released_at: timestamp("released_at", { withTimezone: true }),
+    katana_dummy_so_id: integer("katana_dummy_so_id").notNull().unique(),
+    katana_sales_order_row_id: integer("katana_sales_order_row_id"),
+    order_no: text("order_no").notNull().unique(),
+    conversion_order_intake_id: uuid("conversion_order_intake_id").references(
+      () => order_intake.id,
+    ),
+    converted_katana_so_id: integer("converted_katana_so_id"),
+    converted_order_no: text("converted_order_no"),
+    last_error: text("last_error"),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("inventory_holds_status_expires_idx").on(table.status, table.expires_at),
+    index("inventory_holds_opportunity_status_idx").on(
+      table.ghl_opportunity_id,
+      table.status,
+    ),
+    index("inventory_holds_variant_status_idx").on(
+      table.katana_variant_id,
+      table.status,
+    ),
+    check("inventory_holds_qty_positive", sql`${table.qty} > 0`),
+  ],
+);
 
 /** Outbound catalog fan-out status per hub SKU × spoke. */
 export const channelSyncStatusEnum = pgEnum("channel_sync_status", [

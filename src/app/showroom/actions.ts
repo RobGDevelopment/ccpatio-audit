@@ -12,6 +12,9 @@ import {
 } from "@/lib/supabase-storage";
 import { getDb } from "@/server/db/client";
 import { sku_mappings } from "@/server/db/schema";
+import { fetchHoldOpportunity, resolveHoldActor } from "@/server/ghl/hold-actor";
+import { searchHoldTargets, type HoldSearchHit } from "@/server/ghl/search-hold-targets";
+import { createHold } from "@/server/stock/create-hold";
 import {
   listShowroomCategoryItems as loadShowroomCategoryItems,
   listShowroomCollections as loadShowroomCollections,
@@ -35,6 +38,58 @@ export async function searchShowroomStock(input: {
   collection?: string;
 }) {
   return loadShowroomStock(input);
+}
+
+export type { HoldSearchHit };
+
+export async function searchGhlHoldTargets(
+  query: string,
+): Promise<{ ok: true; results: HoldSearchHit[] } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Sign in to search opportunities." };
+  return searchHoldTargets(query);
+}
+
+export async function resolveShowroomHoldActor(input: {
+  ghlUserId?: string;
+  ghlUserEmail?: string;
+}): Promise<{ ok: true; name: string } | { ok: false; error: string }> {
+  const actor = await resolveHoldActor(input);
+  if (!actor.ok) return actor;
+  return { ok: true, name: actor.ghlUserName };
+}
+
+export async function placeShowroomHold(input: {
+  variantId: number;
+  sku: string;
+  qty: number;
+  ghlOpportunityId: string;
+  note: string;
+  ghlUserId?: string;
+  ghlUserEmail?: string;
+}) {
+  const actor = await resolveHoldActor({
+    ghlUserId: input.ghlUserId,
+    ghlUserEmail: input.ghlUserEmail,
+  });
+  if (!actor.ok) return actor;
+
+  const opportunity = await fetchHoldOpportunity(input.ghlOpportunityId);
+  if (!opportunity.ok) return opportunity;
+
+  const result = await createHold({
+    variantId: input.variantId,
+    sku: input.sku,
+    qty: input.qty,
+    note: input.note,
+    actor,
+    opportunity,
+  });
+  if (result.ok) {
+    revalidatePath("/showroom");
+    revalidatePath("/embed/showroom");
+  }
+  return result;
 }
 
 const SHOWROOM_IMAGE_MAX_BYTES = 8 * 1024 * 1024;

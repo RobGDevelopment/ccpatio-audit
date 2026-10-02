@@ -10,6 +10,7 @@ import {
   filterStockCatalog,
   isStockPrefix,
   matchesStockFamily,
+  readSpecLabel,
   roundQty,
   type StockCatalogItem,
   type StockFamily,
@@ -114,6 +115,7 @@ function itemsFromParents(parents: Record<string, unknown>[]): StockCatalogItem[
         variantId,
         sku,
         name: name || sku,
+        variantLabel: readSpecLabel(record.config_attributes),
         imageUrl: imageFromRecord(record) ?? parentImage,
         category: katanaCategoryName(parent),
       });
@@ -322,6 +324,7 @@ export async function searchKatanaStock(input: {
       variantId: item.variantId,
       sku: item.sku,
       name: item.name,
+      variantLabel: item.variantLabel ?? null,
       imageUrl: item.imageUrl ?? null,
       inStock: qty.inStock,
       committed: qty.committed,

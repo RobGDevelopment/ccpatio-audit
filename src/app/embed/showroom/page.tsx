@@ -3,7 +3,11 @@ import { LiveStockView } from "@/app/showroom/stock/LiveStockView";
 
 export const dynamic = "force-dynamic";
 
-export default async function EmbedShowroomPage() {
+export default async function EmbedShowroomPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ghlUserId?: string; ghlUserEmail?: string }>;
+}) {
   const session = await getPimSession();
   if (!session) {
     return (
@@ -13,10 +17,17 @@ export default async function EmbedShowroomPage() {
     );
   }
 
+  const params = await searchParams;
+
   return (
     <div className="h-full min-h-0 flex-1 overflow-auto bg-[#FAFAFA] text-slate-900">
       <div className="mx-auto max-w-6xl px-4 py-6">
-        <LiveStockView defaultViewMode="dropdown" persistViewMode={false} />
+        <LiveStockView
+          defaultViewMode="dropdown"
+          persistViewMode={false}
+          ghlUserId={params.ghlUserId}
+          ghlUserEmail={params.ghlUserEmail}
+        />
       </div>
     </div>
   );

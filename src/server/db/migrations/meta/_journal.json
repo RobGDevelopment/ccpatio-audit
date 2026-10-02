@@ -141,6 +141,20 @@
       "when": 1789229200000,
       "tag": "0020_cad_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789747600000,
+      "tag": "0026_order_intake",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790953664222,
+      "tag": "0026_inventory_holds",
+      "breakpoints": true
     }
   ]
 }

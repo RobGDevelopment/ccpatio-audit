@@ -10,6 +10,8 @@
     "test:e2e:factory-bom": "npx dotenv -e .env.test.local -e .env.local -- playwright test tests/e2e/factory-bom-lifecycle.spec.ts --project=chromium",
     "qa:phase4-webhooks": "npx dotenv -e .env.test.local -e .env.local -- tsx scripts/qa/simulate-webhooks.ts",
     "qa:lifecycle": "npm run qa:phase1-build && npm run qa:phase2-db && npm run qa:phase4-webhooks && npm run qa:phase3-e2e",
+    "ops:import-3rd-party": "npx dotenv -e .env.local -- tsx scripts/ops/import-3rd-party-inventory.ts",
+    "ops:import-3rd-party:confirm": "npx dotenv -e .env.local -- tsx scripts/ops/import-3rd-party-inventory.ts --confirm",
     "dev:pim": "next dev -p 3000",
     "dev:sandbox": "npm run dev --prefix 3d-sandbox",
     "dev": "concurrently -c \"cyan,magenta\" -n \"PIM,3D\" \"npm run dev:pim\" \"npm run dev:sandbox\"",

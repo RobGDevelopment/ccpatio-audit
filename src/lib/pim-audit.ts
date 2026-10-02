@@ -16,6 +16,9 @@ import {
   getGhlEmbedSecret,
 } from "@/lib/embed-auth";
 
+/** Synthetic principal for a valid GHL iframe. It is not a salesperson name. */
+export const GHL_EMBED_PRINCIPAL_EMAIL = "ghl-embed@ccpatio.com";
+
 export type PimSession = {
   email: string;
   name: string;
@@ -36,7 +39,7 @@ export async function getPimSession(): Promise<PimSession | null> {
       const presented =
         hdrs.get(EMBED_KEY_HEADER) ?? jar.get(EMBED_AUTH_COOKIE)?.value ?? null;
       if (embedKeyIsValid(presented, getGhlEmbedSecret())) {
-        return { email: "ghl-embed@ccpatio.com", name: "GHL Embed" };
+        return { email: GHL_EMBED_PRINCIPAL_EMAIL, name: "GHL Embed" };
       }
     }
   } catch {

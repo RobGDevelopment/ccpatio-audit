@@ -2,6 +2,8 @@ export type StockRow = {
   variantId: number;
   sku: string;
   name: string;
+  /** Katana config attribute `Spec`. Empty when the variant has no Spec. */
+  variantLabel: string | null;
   inStock: number;
   committed: number;
   available: number;
@@ -32,10 +34,33 @@ export type StockCatalogItem = {
   variantId: number;
   sku: string;
   name: string;
+  variantLabel?: string | null;
   imageUrl?: string | null;
   /** Katana `category_name` on the parent material or product. */
   category?: string | null;
 };
+
+function configText(record: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+/** The variant's `Spec` config value, when Katana stored one. */
+export function readSpecLabel(attributes: unknown): string | null {
+  if (!Array.isArray(attributes)) return null;
+  for (const attribute of attributes) {
+    if (!attribute || typeof attribute !== "object") continue;
+    const record = attribute as Record<string, unknown>;
+    const name = configText(record, ["config_name", "name", "key"]).toLowerCase();
+    if (name !== "spec") continue;
+    const value = configText(record, ["config_value", "value"]);
+    if (value) return value;
+  }
+  return null;
+}
 
 export const STOCK_PREFIXES = ["FAB-", "STN-DKT-", "FRP-"] as const;
 export type StockPrefix = (typeof STOCK_PREFIXES)[number];
@@ -85,7 +110,8 @@ export function filterStockCatalog(
     .filter((item) => {
       const name = item.name.toLowerCase();
       const sku = item.sku.toLowerCase();
-      return name.includes(query) || sku.includes(query);
+      const spec = (item.variantLabel ?? "").toLowerCase();
+      return name.includes(query) || sku.includes(query) || spec.includes(query);
     })
     .sort(byName);
 }
@@ -93,5 +119,9 @@ export function filterStockCatalog(
 function byName(left: StockCatalogItem, right: StockCatalogItem): number {
   const name = left.name.localeCompare(right.name, undefined, { sensitivity: "base" });
   if (name !== 0) return name;
+  const spec = (left.variantLabel ?? "").localeCompare(right.variantLabel ?? "", undefined, {
+    sensitivity: "base",
+  });
+  if (spec !== 0) return spec;
   return left.sku.localeCompare(right.sku);
 }
