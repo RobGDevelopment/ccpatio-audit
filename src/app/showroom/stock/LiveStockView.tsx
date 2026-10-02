@@ -442,8 +442,26 @@ export function LiveStockView({
                   onHoldPlaced={() => {
                     void reloadRows();
                   }}
+                  onOptimisticRelease={(holdId) => {
+                    setHolds((current) => current.filter((hold) => hold.id !== holdId));
+                  }}
+                  onReleaseFailed={() => {
+                    const ids = [...new Set(rows.map((item) => item.variantId))].filter(
+                      (id) => id > 0,
+                    );
+                    void listActiveShowroomHolds(ids).then((result) => {
+                      if (result.ok) setHolds(result.holds);
+                    });
+                  }}
                   onHoldReleased={() => {
                     void reloadRows();
+                  }}
+                  onHoldExtended={(holdId, expiresAt) => {
+                    setHolds((current) =>
+                      current.map((hold) =>
+                        hold.id === holdId ? { ...hold, expiresAt } : hold,
+                      ),
+                    );
                   }}
                 />
               ))}

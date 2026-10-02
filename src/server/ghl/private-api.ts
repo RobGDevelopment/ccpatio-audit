@@ -21,20 +21,29 @@ export function asGhlRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-export async function ghlGet(
+export type GhlResult =
+  | { ok: true; body: unknown; locationId: string }
+  | { ok: false; error: string };
+
+async function ghlFetch(
+  method: "GET" | "POST",
   path: string,
-): Promise<{ ok: true; body: unknown; locationId: string } | { ok: false; error: string }> {
+  payload?: unknown,
+): Promise<GhlResult> {
   const config = readGhlConfig();
   if ("error" in config) return { ok: false, error: config.error };
 
   let response: Response;
   try {
     response = await fetch(`${GHL_API}${path}`, {
+      method,
       headers: {
         Authorization: `Bearer ${config.token}`,
         Version: GHL_VERSION,
         Accept: "application/json",
+        ...(payload !== undefined ? { "Content-Type": "application/json" } : {}),
       },
+      body: payload !== undefined ? JSON.stringify(payload) : undefined,
       signal: AbortSignal.timeout(15_000),
     });
   } catch (error: unknown) {
@@ -60,4 +69,12 @@ export async function ghlGet(
     return { ok: false, error: message };
   }
   return { ok: true, body, locationId: config.locationId };
+}
+
+export function ghlGet(path: string): Promise<GhlResult> {
+  return ghlFetch("GET", path);
+}
+
+export function ghlPost(path: string, body: unknown): Promise<GhlResult> {
+  return ghlFetch("POST", path, body);
 }

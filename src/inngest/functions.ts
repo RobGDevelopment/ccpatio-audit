@@ -3,6 +3,10 @@ import {
   ORDER_APPROVED_EVENT,
   runApprovedFactoryOrder,
 } from "@/server/ghl/push-factory-order";
+import {
+  autoReleaseExpiredHolds,
+  sendHoldExpirationWarnings,
+} from "@/server/inngest/inventory-holds";
 import { sweepExpiredInventoryHolds } from "@/server/stock/sweep-expired-holds";
 import {
   createKatanaSalesOrder,
@@ -683,6 +687,8 @@ export const inngestFunctions = [
   processCadUpload,
   pushApprovedFactoryOrder,
   sweepExpiredInventoryHolds,
+  sendHoldExpirationWarnings,
+  autoReleaseExpiredHolds,
 ];
 
 /**

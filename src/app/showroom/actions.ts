@@ -12,10 +12,9 @@ import {
 } from "@/lib/supabase-storage";
 import { getDb } from "@/server/db/client";
 import { inventory_holds, sku_mappings } from "@/server/db/schema";
-import { fetchHoldOpportunity, resolveHoldActor } from "@/server/ghl/hold-actor";
+import { resolveHoldActor } from "@/server/ghl/hold-actor";
 import { searchHoldTargets, type HoldSearchHit } from "@/server/ghl/search-hold-targets";
-import { createHold } from "@/server/stock/create-hold";
-import { releaseActiveHold } from "@/server/stock/release-hold";
+import { createHold, releaseHold } from "@/server/actions/inventory";
 import {
   listShowroomCategoryItems as loadShowroomCategoryItems,
   listShowroomCollections as loadShowroomCollections,
@@ -121,54 +120,10 @@ export async function releaseShowroomHold(input: {
   ghlUserId?: string;
   ghlUserEmail?: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const actor = await resolveHoldActor({
+  return releaseHold(input.holdId, {
     ghlUserId: input.ghlUserId,
     ghlUserEmail: input.ghlUserEmail,
   });
-  if (!actor.ok) return actor;
-
-  const holdId = input.holdId.trim();
-  if (!holdId) return { ok: false, error: "Hold id is required." };
-
-  const db = getDb();
-  const [row] = await db
-    .select({
-      id: inventory_holds.id,
-      status: inventory_holds.status,
-      orderNo: inventory_holds.order_no,
-      katanaDummySoId: inventory_holds.katana_dummy_so_id,
-    })
-    .from(inventory_holds)
-    .where(eq(inventory_holds.id, holdId))
-    .limit(1);
-  if (!row || row.status !== "active") {
-    return { ok: false, error: "That hold is no longer active." };
-  }
-
-  const outcome = await releaseActiveHold({
-    target: {
-      id: row.id,
-      orderNo: row.orderNo,
-      katanaDummySoId: row.katanaDummySoId,
-    },
-    reason: "manual",
-    releasedBy: actor.ghlUserEmail ?? actor.ghlUserId,
-  });
-  if (outcome === "released") {
-    revalidatePath("/showroom");
-    revalidatePath("/embed/showroom");
-    revalidatePath("/admin/order-triage");
-    return { ok: true };
-  }
-  if (outcome === "missed") {
-    return { ok: false, error: "That hold is no longer active." };
-  }
-  const [failed] = await db
-    .select({ lastError: inventory_holds.last_error })
-    .from(inventory_holds)
-    .where(eq(inventory_holds.id, holdId))
-    .limit(1);
-  return { ok: false, error: failed?.lastError ?? "Katana did not release that hold." };
 }
 
 export async function placeShowroomHold(input: {
@@ -180,28 +135,7 @@ export async function placeShowroomHold(input: {
   ghlUserId?: string;
   ghlUserEmail?: string;
 }) {
-  const actor = await resolveHoldActor({
-    ghlUserId: input.ghlUserId,
-    ghlUserEmail: input.ghlUserEmail,
-  });
-  if (!actor.ok) return actor;
-
-  const opportunity = await fetchHoldOpportunity(input.ghlOpportunityId);
-  if (!opportunity.ok) return opportunity;
-
-  const result = await createHold({
-    variantId: input.variantId,
-    sku: input.sku,
-    qty: input.qty,
-    note: input.note,
-    actor,
-    opportunity,
-  });
-  if (result.ok) {
-    revalidatePath("/showroom");
-    revalidatePath("/embed/showroom");
-  }
-  return result;
+  return createHold(input);
 }
 
 const SHOWROOM_IMAGE_MAX_BYTES = 8 * 1024 * 1024;

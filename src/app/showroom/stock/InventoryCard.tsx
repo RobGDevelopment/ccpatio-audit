@@ -6,6 +6,7 @@ import { formatQty, type StockRow } from "@/lib/stock-display";
 import { variantImagePublicUrl } from "@/lib/product-image-url";
 import { ImageUploadModal } from "./ImageUploadModal";
 import type { ActiveShowroomHold } from "../actions";
+import { HoldLifecycleControls } from "./HoldLifecycleControls";
 import { PlaceHoldModal } from "./PlaceHoldModal";
 import { ReleaseHoldModal } from "./ReleaseHoldModal";
 
@@ -40,7 +41,10 @@ export function InventoryCard({
   ghlUserEmail,
   holds,
   onHoldPlaced,
+  onOptimisticRelease,
+  onReleaseFailed,
   onHoldReleased,
+  onHoldExtended,
 }: {
   row: StockRow;
   salesperson: string | null;
@@ -50,7 +54,10 @@ export function InventoryCard({
   ghlUserEmail?: string;
   holds: ActiveShowroomHold[];
   onHoldPlaced: () => void;
+  onOptimisticRelease: (holdId: string) => void;
+  onReleaseFailed: () => void;
   onHoldReleased: () => void;
+  onHoldExtended: (holdId: string, expiresAt: string) => void;
 }) {
   const [imageExists, setImageExists] = useState(true);
   const [version, setVersion] = useState(0);
@@ -155,14 +162,34 @@ export function InventoryCard({
           Place Hold
         </button>
         {holds.length > 0 ? (
+          <ul className="space-y-2">
+            {holds.map((hold) => (
+              <li key={hold.id} className="rounded-xl border border-slate-200 p-2">
+                <p className="text-xs font-medium text-slate-900">{hold.opportunityName}</p>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  {hold.salesperson} · {formatQty(Number(hold.qty))}
+                </p>
+                <HoldLifecycleControls
+                  hold={hold}
+                  ghlUserId={ghlUserId}
+                  ghlUserEmail={ghlUserEmail}
+                  disabled={!canHold || !salesperson}
+                  onOptimisticRelease={() => onOptimisticRelease(hold.id)}
+                  onReleaseFailed={onReleaseFailed}
+                  onReleased={onHoldReleased}
+                  onExtended={(expiresAt) => onHoldExtended(hold.id, expiresAt)}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {holds.length > 0 ? (
           <button
             type="button"
-            disabled={!canHold || !salesperson}
-            title={holdDisabledReason ?? undefined}
             onClick={() => setReleaseOpen(true)}
-            className="w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
           >
-            Release Hold ({holds.length})
+            Hold details ({holds.length})
           </button>
         ) : null}
       </div>
@@ -184,7 +211,11 @@ export function InventoryCard({
         holds={holds}
         ghlUserId={ghlUserId}
         ghlUserEmail={ghlUserEmail}
+        disabled={!canHold || !salesperson}
+        onOptimisticRelease={onOptimisticRelease}
+        onReleaseFailed={onReleaseFailed}
         onReleased={onHoldReleased}
+        onExtended={onHoldExtended}
       />
       <ImageUploadModal
         isOpen={uploadOpen}

@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { isHoldId } from "@/lib/inventory-holds";
 import { getDb } from "@/server/db/client";
 import {
   inventory_holds,
@@ -131,6 +132,42 @@ export async function releaseHold(
   }
 
   return { released, alreadyTerminal, failed };
+}
+
+/**
+ * Manual release of one hold, including a designer swap in the factory BOM.
+ * Deletes the HOLD- sales order, then marks the row released.
+ * `releasedBy` is the actor id or email. Pass `factory-bom` when no browser session exists.
+ */
+export async function releaseHoldById(
+  holdId: string,
+  releasedBy: string,
+): Promise<"released" | "failed" | "missed"> {
+  const id = holdId.trim();
+  const actor = releasedBy.trim();
+  if (!isHoldId(id) || !actor) return "missed";
+
+  const db = getDb();
+  const [row] = await db
+    .select({
+      id: inventory_holds.id,
+      status: inventory_holds.status,
+      orderNo: inventory_holds.order_no,
+      katanaDummySoId: inventory_holds.katana_dummy_so_id,
+    })
+    .from(inventory_holds)
+    .where(eq(inventory_holds.id, id))
+    .limit(1);
+  if (!row) return "missed";
+
+  const target = {
+    id: row.id,
+    orderNo: row.orderNo,
+    katanaDummySoId: row.katanaDummySoId,
+  };
+  if (row.status === "releasing") return finishReleasingHold(target);
+  if (row.status !== "active") return "missed";
+  return releaseActiveHold({ target, reason: "manual", releasedBy: actor });
 }
 
 /** Sweeper and any later manual release. One active row. */

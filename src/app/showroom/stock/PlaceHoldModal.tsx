@@ -10,7 +10,7 @@ import {
   holdQuantityMath,
   holdQuantityWarning,
 } from "@/lib/hold-quantity";
-import { SHOWROOM_HOLD_TTL_HOURS } from "@/lib/inventory-holds";
+import { SHOWROOM_HOLD_TTL_DAYS } from "@/lib/inventory-holds";
 import { formatQty, type StockRow } from "@/lib/stock-display";
 import { placeShowroomHold, searchGhlHoldTargets, type HoldSearchHit } from "../actions";
 import { softField } from "../showroom-ui";
@@ -238,8 +238,8 @@ export function PlaceHoldModal({
               </div>
             </dl>
             <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950">
-              You are about to lock this inventory for 72 hours. This will immediately remove it
-              from the showroom floor&apos;s available stock.
+              You are about to lock this inventory for {SHOWROOM_HOLD_TTL_DAYS} days. This will
+              immediately remove it from the showroom floor&apos;s available stock.
             </p>
             {message ? <p className="mt-3 text-sm text-rose-700">{message}</p> : null}
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
@@ -276,8 +276,8 @@ export function PlaceHoldModal({
             }}
           >
             <p className="mt-4 text-sm text-slate-600">
-              This hold ends in {SHOWROOM_HOLD_TTL_HOURS} hours. It also ends if the opportunity is
-              marked Lost or Abandoned. There is no extension.
+              This hold ends in {SHOWROOM_HOLD_TTL_DAYS} days. It also ends if the opportunity is
+              marked Lost or Abandoned. You can extend it by 14 days before it expires.
             </p>
 
             <label className="mt-4 block text-xs uppercase tracking-widest text-slate-500">

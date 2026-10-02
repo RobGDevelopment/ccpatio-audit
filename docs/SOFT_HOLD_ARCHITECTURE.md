@@ -18,7 +18,7 @@ This path is a showroom promise. It is a different document from the legacy fabr
 
 | # | Decision | Plan |
 |---|---|---|
-| 1 | How long a hold lives | 72 hours from creation. No extension in the first slice. |
+| 1 | How long a hold lives | 14 days from creation. A rep can extend it by another 14 days, which clears `warning_sent_at`. |
 | 2 | What the rep must attach | An existing GHL **opportunity**. Contact search is how they find it. A contact with no opportunity cannot be submitted. |
 | 3 | Who the row blames | The GHL user returned by the Users API. The iframe may pass `ghlUserId`. The browser may not pass the display name that gets stored. |
 | 4 | Katana order number | `HOLD-` plus 8 hex characters from the hold id. The opportunity name is written on the order for the floor to read. It is not the order number. |
@@ -106,13 +106,13 @@ Place Hold opens a modal. The button stays disabled while available is 0 or the 
 | Quantity | Yes | Greater than 0. Decimals are allowed (`numeric(12, 4)`) because fabric and slab units are not always whole pieces. The server repeats the availability check. |
 | Note | Yes | Trimmed, 1–500 characters. Example: "Client deciding between Ash and Stone". |
 
-The modal states the two automatic endings: the hold ends at the displayed timestamp (72 hours), and it ends if the opportunity is marked Lost or Abandoned.
+The modal states the two automatic endings: the hold ends at the displayed timestamp (14 days), and it ends if the opportunity is marked Lost or Abandoned. A daily warning reaches the owning rep 48 hours before expiry.
 
 Submit calls the place-hold server action. The browser does not call Katana.
 
 After success, `revalidatePath` runs for `/showroom` and `/embed/showroom`. The grid keeps rows in client state, so the success path also refetches the current category. Otherwise Committed and Available stay stale until the next category change.
 
-Release Hold is the same card, second view: active holds for this variant, each with rep, opportunity name, quantity, note, and expiry. Release is one hold at a time and releases the full quantity on that row. Partial quantity edits and timer extensions are out of the first slice. A rep who needs a smaller hold releases and places a new one.
+Release Hold is the same card, second view: active holds for this variant, each with rep, opportunity name, quantity, note, and expiry. Release is one hold at a time and releases the full quantity on that row. Extend adds 14 days from the moment it is clicked and clears the 48-hour warning so it can fire again. Partial quantity edits stay out. A rep who needs a smaller hold releases and places a new one.
 
 Any showroom session may release, including a rep who did not place the hold. The original salesperson stays on the row. `released_by` records who cleared it. Restricting release to the original rep leaves stock locked when that person is out.
 
@@ -146,7 +146,8 @@ Drizzle definition goes in `src/server/db/schema.ts`. Apply later with `npm run 
 | `ghl_opportunity_id` | `text` not null | Required. This is the join key for Lost, Abandoned, and factory conversion. |
 | `ghl_opportunity_name` | `text` not null | Snapshot at submit time, for the floor and the modal. Renames in GHL do not rewrite Katana. |
 | `note` | `text` not null | The rep's reason. |
-| `expires_at` | `timestamptz` not null | `now()` plus 72 hours, set in the action. |
+| `expires_at` | `timestamptz` not null | `now()` plus 14 days, set in the action. Column default is the same interval. |
+| `warning_sent_at` | `timestamptz` | Null until the 48-hour warning task or note is created. Cleared on extend. |
 | `status` | `inventory_hold_status` not null, default `active` | |
 | `release_reason` | `inventory_hold_release_reason` | Set when status becomes `released`. |
 | `released_by` | `text` | User id or email for `manual`. `sweeper` or `ghl-webhook` for the automatic reasons. |
@@ -220,7 +221,7 @@ sequenceDiagram
 1. Reject a missing note, a non-finite variant id, a quantity that is not greater than 0, or a missing opportunity id.
 2. Re-fetch the opportunity. Persist `ghl_contact_id`, `ghl_opportunity_id`, and `ghl_opportunity_name` from that response. Reject lost and abandoned opportunities.
 3. Take a session-level Postgres advisory lock on the variant id for the rest of the create, including the Katana calls, and release it in a `finally`. Two reps submitting the last unit serialize here. Woo's native connector does not take this lock. That race is in §7.4.
-4. Mint `id`. `order_no` is `HOLD-` plus 8 hex characters. `expires_at` is now plus 72 hours.
+4. Mint `id`. `order_no` is `HOLD-` plus 8 hex characters. `expires_at` is now plus 14 days.
 5. Read available the way the card does: in-stock minus committed at location `98179` (`CC_MANUFACTURING_LOCATION_ID` in `src/server/ghl/hold-order.ts`). Reject when the requested quantity is greater than that available figure. Katana will accept a sales order that drives available negative. The card already shows negative available for other reasons. A hold must not be one of them.
 6. Under the same lock, if the sum of `active` and `converting` quantities for this variant is greater than Katana's committed quantity, treat the difference as commitments Katana has not reflected yet and subtract it as well. Once Katana's committed figure already includes those rows, the extra term is zero. This avoids both oversell during lag and a permanent double subtraction.
 7. Call `createKatanaSalesOrder` with the payload in §7.1. Idempotency key: `soft-hold:{id}`.
@@ -337,9 +338,11 @@ Runner: Inngest function `sweep-expired-inventory-holds` in `src/inngest/functio
 
 Scheduled work stays an Inngest function. No Vercel cron, `pg_cron`, or node-cron process. This function is not `syncGhlOpportunity` and is not registered beside it. `syncGhlOpportunity` stays in `unregisteredTransactionalFunctions`.
 
+Two more functions sit beside this sweeper. `sendHoldExpirationWarnings` runs daily at 08:00 (`0 8 * * *`) and creates a GoHighLevel task, or a contact note if tasks are refused, for active holds with `expires_at` between 24 and 48 hours out and `warning_sent_at` null. `autoReleaseExpiredHolds` runs hourly (`0 * * * *`) and calls the same sweep, so an expired hold still deletes its `HOLD-` sales order. Both are exported from `src/server/inngest/inventory-holds.ts` and registered in `inngestFunctions`.
+
 The batch is rows with `status = 'active'` and `expires_at <= now()`, oldest first, cap 50, plus rows already stuck in `releasing`. Fifteen minutes is the longest a hold stays committed after `expires_at`.
 
-Won does not move `expires_at`. A deal that sits in GHL for a week is not a reason to keep factory stock locked. When the 72 hours end, the piece is available again. The rep may place a new hold if the piece is still there and the opportunity is still open or won.
+Won does not move `expires_at`. A deal that sits in GHL does not keep factory stock locked past the hold clock. When the 14 days end, the piece is available again unless the rep extended it. The rep may place a new hold if the piece is still there and the opportunity is still open or won.
 
 ### 8.2 Lost and Abandoned
 
@@ -351,7 +354,7 @@ Rows already `converting` are left alone. The factory push owns them. A deal mar
 
 ### 8.3 Manual
 
-`releaseShowroomHold(holdId)` claims the row with reason `manual` and `released_by` set to the actor from §3.2. A row in `converting` returns a structured error: the factory push owns it. A row already `released` or `converted` returns success.
+`releaseShowroomHold(holdId)` and `releaseHold(holdId)` claim the row with reason `manual` and `released_by` set to the actor from §3.2. `extendHold(holdId)` sets `expires_at` to now plus 14 days and clears `warning_sent_at`. A row in `converting` returns a structured error: the factory push owns it. A row already `released` or `converted` is not extended. Factory code with no browser session calls `releaseHoldById(holdId, releasedBy)` in `src/server/stock/release-hold.ts`.
 
 ---
 
