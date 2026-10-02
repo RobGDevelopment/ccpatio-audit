@@ -1,6 +1,11 @@
 import { katanaFetch, resolveLiveKatanaApiBase } from "@/lib/katana";
 import { stockFacet, type StockCollection } from "@/lib/stock-facets";
-import { katanaCategoryName } from "@/lib/stock-categories";
+import {
+  isAllowlistedStockCategory,
+  isShowroomStockItem,
+  katanaCategoryName,
+  normalizeStockCategory,
+} from "@/lib/stock-categories";
 import {
   filterStockCatalog,
   isStockPrefix,
@@ -198,15 +203,24 @@ function familyMatches(
   if (!input.family && !category && prefix && !isStockPrefix(prefix)) {
     return { error: "Unknown stock filter." };
   }
-  const matches = filterStockCatalog(catalog, {
-    category: category || undefined,
-    family: category ? undefined : input.family,
-    prefix: input.family || category ? undefined : prefix || undefined,
-    query: input.family || category || prefix ? undefined : query,
-  });
+  const visible = catalog.filter((item) => isShowroomStockItem(item));
+  const wanted = category ? normalizeStockCategory(category) : "";
+  const scoped =
+    wanted && isAllowlistedStockCategory(wanted)
+      ? visible.filter((item) => normalizeStockCategory(item.category ?? "") === wanted)
+      : wanted
+        ? []
+        : visible;
+  const matches = wanted
+    ? scoped
+    : filterStockCatalog(scoped, {
+        family: input.family,
+        prefix: prefix || undefined,
+        query,
+      });
   console.log("[showroom-stock] filter", {
     family: input.family ?? null,
-    category: category || null,
+    category: wanted || null,
     prefix: prefix || null,
     query: query || null,
     rawVariants: catalog.length,
@@ -234,13 +248,14 @@ function groupCollections(items: StockCatalogItem[]): StockCollection[] {
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
-/** One row per distinct Katana category, including factory-only names. */
+/** One row per allowlisted Katana category, using the normalized label. */
 export async function listCatalogCategoryItems(): Promise<{ category: string }[]> {
   const catalog = await loadCatalog();
   const seen = new Set<string>();
   const items: { category: string }[] = [];
   for (const item of catalog) {
-    const category = (item.category ?? "").trim();
+    if (!isShowroomStockItem(item)) continue;
+    const category = normalizeStockCategory(item.category ?? "");
     const key = category.toLowerCase();
     if (!category || seen.has(key)) continue;
     seen.add(key);
