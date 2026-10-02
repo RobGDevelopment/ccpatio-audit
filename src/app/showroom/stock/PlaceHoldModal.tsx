@@ -4,8 +4,14 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, X } from "lucide-react";
 import { useToast } from "@/app/admin/shared/ToastProvider";
+import {
+  displayStockUom,
+  holdQuantityIssue,
+  holdQuantityMath,
+  holdQuantityWarning,
+} from "@/lib/hold-quantity";
 import { SHOWROOM_HOLD_TTL_HOURS } from "@/lib/inventory-holds";
-import type { StockRow } from "@/lib/stock-display";
+import { formatQty, type StockRow } from "@/lib/stock-display";
 import { placeShowroomHold, searchGhlHoldTargets, type HoldSearchHit } from "../actions";
 import { softField } from "../showroom-ui";
 
@@ -18,6 +24,8 @@ type PlaceHoldModalProps = {
   ghlUserEmail?: string;
   onPlaced: () => void;
 };
+
+type HoldStep = "edit" | "confirm";
 
 export function PlaceHoldModal({
   isOpen,
@@ -33,6 +41,7 @@ export function PlaceHoldModal({
   const onCloseRef = useRef(onClose);
   const pendingRef = useRef(false);
   const [pending, setPending] = useState(false);
+  const [step, setStep] = useState<HoldStep>("edit");
   const [opportunityQuery, setOpportunityQuery] = useState("");
   const [opportunity, setOpportunity] = useState<HoldSearchHit | null>(null);
   const [results, setResults] = useState<HoldSearchHit[]>([]);
@@ -41,11 +50,25 @@ export function PlaceHoldModal({
   const [note, setNote] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const searchRequest = useRef(0);
-  onCloseRef.current = onClose;
-  pendingRef.current = pending;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    pendingRef.current = pending;
+  }, [pending]);
+
+  const uom = row.uom?.trim() || displayStockUom(row.sku);
+  const availableLabel = `${formatQty(row.available)} ${uom}`;
+  const quantityIssue = holdQuantityIssue(qty, row.available);
+  const quantityWarning = holdQuantityWarning(qty, row.available);
+  const math = holdQuantityMath(qty, row.available);
+  const showingConfirm = step === "confirm" && math !== null;
 
   useEffect(() => {
     if (!isOpen) return;
+    setStep("edit");
     setOpportunityQuery("");
     setOpportunity(null);
     setResults([]);
@@ -92,21 +115,30 @@ export function PlaceHoldModal({
     return () => window.clearTimeout(timer);
   }, [isOpen, opportunity, opportunityQuery]);
 
-  async function submit(event: FormEvent) {
+  function review(event: FormEvent) {
     event.preventDefault();
-    if (pending) return;
-    const quantity = Number(qty);
+    if (pending || quantityIssue || !math) return;
     if (!opportunity) {
       setMessage("Select an opportunity from the list.");
       return;
     }
+    if (!note.trim()) {
+      setMessage("A note is required.");
+      return;
+    }
+    setMessage(null);
+    setStep("confirm");
+  }
+
+  async function confirm() {
+    if (pending || !opportunity || !math) return;
     setPending(true);
     setMessage(null);
     try {
       const result = await placeShowroomHold({
         variantId: row.variantId,
         sku: row.sku,
-        qty: quantity,
+        qty: math.quantity,
         ghlOpportunityId: opportunity.id,
         note: note.trim(),
         ghlUserId,
@@ -131,6 +163,13 @@ export function PlaceHoldModal({
 
   if (!isOpen || typeof document === "undefined") return null;
 
+  const qtyDescribedBy = [
+    `${titleId}-available`,
+    quantityWarning ? `${titleId}-qty-warning` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -140,20 +179,18 @@ export function PlaceHoldModal({
       }}
     >
       <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-md" aria-hidden="true" />
-      <form
+      <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         data-testid="place-hold-modal"
-        onSubmit={(event) => {
-          void submit(event);
-        }}
+        data-hold-step={showingConfirm ? "confirm" : "edit"}
         className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_24px_80px_-24px_rgba(15,23,42,0.45)]"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 id={titleId} className="text-lg font-semibold tracking-tight text-slate-900">
-              Place hold
+              {showingConfirm ? "Confirm hold" : "Place hold"}
             </h2>
             <p className="mt-1 text-sm text-slate-600">{row.name}</p>
             {row.variantLabel ? (
@@ -172,120 +209,205 @@ export function PlaceHoldModal({
           </button>
         </div>
 
-        <p className="mt-4 text-sm text-slate-600">
-          This hold ends in {SHOWROOM_HOLD_TTL_HOURS} hours. It also ends if the opportunity is
-          marked Lost or Abandoned. There is no extension.
-        </p>
-
-        <label className="mt-4 block text-xs uppercase tracking-widest text-slate-500">
-          Salesperson
-          <input
-            value={salesperson}
-            readOnly
-            className={`${softField} mt-1 bg-slate-50 text-slate-700`}
-          />
-        </label>
-
-        <div className="relative mt-3">
-          <label className="block text-xs uppercase tracking-widest text-slate-500" htmlFor={`${titleId}-opportunity`}>
-            Opportunity
-          </label>
-          <input
-            id={`${titleId}-opportunity`}
-            value={opportunity ? opportunity.name : opportunityQuery}
-            onChange={(event) => {
-              setOpportunity(null);
-              setOpportunityQuery(event.target.value);
-              setMessage(null);
-            }}
-            required
-            autoComplete="off"
-            role="combobox"
-            aria-expanded={!opportunity && results.length > 0}
-            aria-controls={`${titleId}-opportunities`}
-            aria-autocomplete="list"
-            placeholder="Search contacts or opportunities"
-            className={`${softField} mt-1`}
-          />
-          {opportunity ? (
-            <p className="mt-1 text-xs text-slate-500">
-              {opportunity.contactName} · {opportunity.status}
+        {showingConfirm && math ? (
+          <div data-testid="place-hold-confirm">
+            {opportunity ? (
+              <p className="mt-4 text-sm text-slate-600">
+                {opportunity.name}
+                <span className="text-slate-500"> · {opportunity.contactName}</span>
+              </p>
+            ) : null}
+            <dl className="mt-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="text-slate-600">Current Available</dt>
+                <dd className="font-medium tabular-nums text-slate-900" data-testid="hold-current-available">
+                  {formatQty(math.available)} {uom}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="text-slate-600">Hold Quantity</dt>
+                <dd className="font-medium tabular-nums text-rose-700" data-testid="hold-quantity-delta">
+                  -{formatQty(math.quantity)} {uom}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 border-t border-slate-200 pt-2">
+                <dt className="font-medium text-slate-900">Ending Available</dt>
+                <dd className="font-semibold tabular-nums text-slate-900" data-testid="hold-ending-available">
+                  {formatQty(math.ending)} {uom}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950">
+              You are about to lock this inventory for 72 hours. This will immediately remove it
+              from the showroom floor&apos;s available stock.
             </p>
-          ) : null}
-          {!opportunity && (searching || results.length > 0 || opportunityQuery.trim().length >= 2) ? (
-            <ul
-              id={`${titleId}-opportunities`}
-              role="listbox"
-              className="absolute z-10 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
-            >
-              {searching ? <li className="px-3 py-2 text-sm text-slate-500">Searching…</li> : null}
-              {!searching && results.length === 0 ? (
-                <li className="px-3 py-2 text-sm text-slate-500">No open or won opportunity matches.</li>
+            {message ? <p className="mt-3 text-sm text-rose-700">{message}</p> : null}
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                data-testid="hold-back"
+                disabled={pending}
+                onClick={() => {
+                  setMessage(null);
+                  setStep("edit");
+                }}
+                className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Back/Edit
+              </button>
+              <button
+                type="button"
+                data-testid="hold-confirm"
+                disabled={pending}
+                onClick={() => {
+                  void confirm();
+                }}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+                {pending ? "Locking inventory…" : "Confirm & Lock Inventory"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={(event) => {
+              review(event);
+            }}
+          >
+            <p className="mt-4 text-sm text-slate-600">
+              This hold ends in {SHOWROOM_HOLD_TTL_HOURS} hours. It also ends if the opportunity is
+              marked Lost or Abandoned. There is no extension.
+            </p>
+
+            <label className="mt-4 block text-xs uppercase tracking-widest text-slate-500">
+              Salesperson
+              <input
+                value={salesperson}
+                readOnly
+                className={`${softField} mt-1 bg-slate-50 text-slate-700`}
+              />
+            </label>
+
+            <div className="relative mt-3">
+              <label className="block text-xs uppercase tracking-widest text-slate-500" htmlFor={`${titleId}-opportunity`}>
+                Opportunity
+              </label>
+              <input
+                id={`${titleId}-opportunity`}
+                value={opportunity ? opportunity.name : opportunityQuery}
+                onChange={(event) => {
+                  setOpportunity(null);
+                  setOpportunityQuery(event.target.value);
+                  setMessage(null);
+                }}
+                required
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={!opportunity && results.length > 0}
+                aria-controls={`${titleId}-opportunities`}
+                aria-autocomplete="list"
+                placeholder="Search contacts or opportunities"
+                className={`${softField} mt-1`}
+              />
+              {opportunity ? (
+                <p className="mt-1 text-xs text-slate-500">
+                  {opportunity.contactName} · {opportunity.status}
+                </p>
               ) : null}
-              {results.map((hit) => (
-                <li key={hit.id} role="presentation">
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={false}
-                    className="flex w-full flex-col px-3 py-2 text-left hover:bg-slate-50"
-                    onClick={() => {
-                      setOpportunity(hit);
-                      setOpportunityQuery(hit.name);
-                      setResults([]);
-                      setMessage(null);
-                    }}
-                  >
-                    <span className="text-sm text-slate-900">{hit.name}</span>
-                    <span className="text-xs text-slate-500">
-                      {hit.contactName} · {hit.status}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
+              {!opportunity && (searching || results.length > 0 || opportunityQuery.trim().length >= 2) ? (
+                <ul
+                  id={`${titleId}-opportunities`}
+                  role="listbox"
+                  className="absolute z-10 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
+                >
+                  {searching ? <li className="px-3 py-2 text-sm text-slate-500">Searching…</li> : null}
+                  {!searching && results.length === 0 ? (
+                    <li className="px-3 py-2 text-sm text-slate-500">No open or won opportunity matches.</li>
+                  ) : null}
+                  {results.map((hit) => (
+                    <li key={hit.id} role="presentation">
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={false}
+                        className="flex w-full flex-col px-3 py-2 text-left hover:bg-slate-50"
+                        onClick={() => {
+                          setOpportunity(hit);
+                          setOpportunityQuery(hit.name);
+                          setResults([]);
+                          setMessage(null);
+                        }}
+                      >
+                        <span className="text-sm text-slate-900">{hit.name}</span>
+                        <span className="text-xs text-slate-500">
+                          {hit.contactName} · {hit.status}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
 
-        <label className="mt-3 block text-xs uppercase tracking-widest text-slate-500">
-          Quantity
-          <input
-            value={qty}
-            onChange={(event) => setQty(event.target.value)}
-            required
-            inputMode="decimal"
-            type="number"
-            min="0"
-            step="any"
-            className={`${softField} mt-1`}
-          />
-        </label>
+            <div className="mt-3">
+              <label className="block text-xs uppercase tracking-widest text-slate-500" htmlFor={`${titleId}-qty`}>
+                Quantity
+              </label>
+              <p id={`${titleId}-available`} data-testid="hold-available" className="mt-1 text-sm text-slate-700">
+                Available to Hold: {availableLabel}
+              </p>
+              <input
+                id={`${titleId}-qty`}
+                value={qty}
+                onChange={(event) => {
+                  setQty(event.target.value);
+                  setMessage(null);
+                }}
+                required
+                inputMode="decimal"
+                type="number"
+                min={1}
+                max={row.available}
+                step="any"
+                aria-invalid={quantityWarning !== null}
+                aria-describedby={qtyDescribedBy}
+                className={`${softField} mt-1`}
+              />
+              {quantityWarning ? (
+                <p id={`${titleId}-qty-warning`} data-testid="hold-qty-warning" role="alert" className="mt-1 text-sm text-rose-700">
+                  {quantityWarning}
+                </p>
+              ) : null}
+            </div>
 
-        <label className="mt-3 block text-xs uppercase tracking-widest text-slate-500">
-          Note
-          <textarea
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            required
-            minLength={1}
-            maxLength={500}
-            rows={3}
-            placeholder="Client deciding between Ash and Stone"
-            className={`${softField} mt-1 resize-none`}
-          />
-        </label>
+            <label className="mt-3 block text-xs uppercase tracking-widest text-slate-500">
+              Note
+              <textarea
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                required
+                minLength={1}
+                maxLength={500}
+                rows={3}
+                placeholder="Client deciding between Ash and Stone"
+                className={`${softField} mt-1 resize-none`}
+              />
+            </label>
 
-        {message ? <p className="mt-3 text-sm text-rose-700">{message}</p> : null}
+            {message ? <p className="mt-3 text-sm text-rose-700">{message}</p> : null}
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-wait disabled:opacity-60"
-        >
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-          {pending ? "Placing hold…" : "Place hold"}
-        </button>
-      </form>
+            <button
+              type="submit"
+              data-testid="hold-review"
+              disabled={pending || quantityIssue !== null}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Review Hold
+            </button>
+          </form>
+        )}
+      </div>
     </div>,
     document.body,
   );

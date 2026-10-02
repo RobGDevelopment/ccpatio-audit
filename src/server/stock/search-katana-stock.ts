@@ -16,6 +16,7 @@ import {
   type StockFamily,
   type StockRow,
 } from "@/lib/stock-display";
+import { displayStockUom } from "@/lib/hold-quantity";
 
 /** CC Manufacturing. Inventory at this location wins when Katana has a row there. */
 const FACTORY_LOCATION_ID = 98179;
@@ -96,6 +97,14 @@ function imageFromRecord(record: Record<string, unknown> | null): string | null 
   return null;
 }
 
+function rawUom(record: Record<string, unknown> | null): string | null {
+  if (!record) return null;
+  const value = record.uom;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
 function itemsFromParents(parents: Record<string, unknown>[]): StockCatalogItem[] {
   const items: StockCatalogItem[] = [];
   const seen = new Set<number>();
@@ -118,6 +127,7 @@ function itemsFromParents(parents: Record<string, unknown>[]): StockCatalogItem[
         variantLabel: readSpecLabel(record.config_attributes),
         imageUrl: imageFromRecord(record) ?? parentImage,
         category: katanaCategoryName(parent),
+        uom: displayStockUom(sku, rawUom(record) ?? rawUom(parent)),
       });
     }
   }
@@ -329,6 +339,7 @@ export async function searchKatanaStock(input: {
       inStock: qty.inStock,
       committed: qty.committed,
       available: roundQty(qty.inStock - qty.committed),
+      uom: item.uom?.trim() || displayStockUom(item.sku),
     };
   });
   return { ok: true, rows };

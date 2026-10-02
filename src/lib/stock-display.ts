@@ -7,6 +7,8 @@ export type StockRow = {
   inStock: number;
   committed: number;
   available: number;
+  /** Consume unit shown on the hold form, such as `yd` or `ea`. */
+  uom: string;
   imageUrl: string | null;
 };
 
@@ -38,6 +40,8 @@ export type StockCatalogItem = {
   imageUrl?: string | null;
   /** Katana `category_name` on the parent material or product. */
   category?: string | null;
+  /** Normalized consume unit. Falls back to the SKU rule when Katana omits one. */
+  uom?: string | null;
 };
 
 function configText(record: Record<string, unknown>, keys: string[]): string {
