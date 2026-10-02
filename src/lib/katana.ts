@@ -1839,3 +1839,58 @@ export async function applyMtoIngredientOverrides(
     inspectedMoIds: [...inspected],
   };
 }
+
+export async function findKatanaSalesOrderByOrderNo(
+  orderNo: string,
+): Promise<Record<string, unknown> | null> {
+  const needle = orderNo.trim();
+  if (!needle) return null;
+  const { data } = await katanaFetch<unknown>(
+    `/sales_orders?order_no=${encodeURIComponent(needle)}&limit=5`,
+  );
+  const rows = parseKatanaListPayload(data);
+  return rows.find((row) => String(row.order_no ?? "") === needle) ?? null;
+}
+
+async function manufacturingOrderHasVariant(
+  parentMoId: number,
+  variantId: number,
+): Promise<boolean> {
+  const seen = new Set<number>();
+  const queue = [parentMoId];
+  while (queue.length > 0) {
+    const id = queue.shift();
+    if (id == null || seen.has(id)) continue;
+    seen.add(id);
+    const rows = await listManufacturingOrderRecipeRows(id);
+    if (rows.some((row) => row.variant_id === variantId)) return true;
+    for (const childId of collectChildMoIdsFromRecipeRows(rows)) {
+      queue.push(childId);
+    }
+  }
+  return false;
+}
+
+/**
+ * Point the MTO recipe at the staff-selected FAB-* variant.
+ * Fails when neither the generic placeholder nor that fabric is on the MO.
+ */
+export async function bindMtoFabric(
+  parentMoId: number,
+  specificVariantId: number,
+  genericVariantId: number,
+): Promise<MtoIngredientOverrideResult> {
+  const result = await applyMtoIngredientOverrides(parentMoId, {
+    genericVariantId,
+    specificVariantId,
+  });
+  if (!result.skipped && result.patched.length > 0) return result;
+  if (await manufacturingOrderHasVariant(parentMoId, specificVariantId)) {
+    return result;
+  }
+  throw new KatanaApiError(
+    result.warning ??
+      `Manufacturing order ${parentMoId} has no fabric recipe row for variant ${specificVariantId}.`,
+    { status: 422 },
+  );
+}
