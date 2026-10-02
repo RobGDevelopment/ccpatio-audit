@@ -16,6 +16,7 @@ export type DraftBomNode = {
   itemType: ItemType;
   qty: number;
   uom: string;
+  notes: string | null;
   existsInHub: boolean;
   operations: DraftOperation[];
   children: DraftBomNode[];
@@ -124,6 +125,7 @@ function parseNode(
     itemType,
     qty: asNumber(row.qty, 1),
     uom: asString(row.uom) ?? "ea",
+    notes: asString(row.notes),
     existsInHub: hubSkus.has(sku),
     operations: parseOperations(row.operations),
     children,
@@ -193,12 +195,14 @@ export function collectDraftBomEdges(
   childSku: string;
   quantity: number;
   unitOfMeasure: string;
+  notes: string | null;
 }> {
   const edges: Array<{
     parentSku: string;
     childSku: string;
     quantity: number;
     unitOfMeasure: string;
+    notes: string | null;
   }> = [];
 
   const walk = (parentSku: string, list: DraftBomNode[]) => {
@@ -208,6 +212,7 @@ export function collectDraftBomEdges(
         childSku: node.sku,
         quantity: node.qty,
         unitOfMeasure: node.uom,
+        notes: node.notes,
       });
       walk(node.sku, node.children);
     }

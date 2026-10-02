@@ -459,7 +459,7 @@ describe("mirrorHandedCutLists", () => {
     ).toEqual([
       {
         itemSku: "SA-BRA-C-34X72-RS-FRAME",
-        workCenter: "Building & Welding",
+        workCenter: "FAB POD A",
         sequence: 10,
         runTimeMins: 30,
       },

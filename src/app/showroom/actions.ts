@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { getPimSession } from "@/lib/pim-audit";
 import { upsertCatalogImageUrl } from "@/lib/catalog-image";
 import { variantImageObjectName, VARIANT_IMAGE_MAX_BYTES } from "@/lib/product-image-url";
@@ -11,10 +11,11 @@ import {
   uploadMaterialImage,
 } from "@/lib/supabase-storage";
 import { getDb } from "@/server/db/client";
-import { sku_mappings } from "@/server/db/schema";
+import { inventory_holds, sku_mappings } from "@/server/db/schema";
 import { fetchHoldOpportunity, resolveHoldActor } from "@/server/ghl/hold-actor";
 import { searchHoldTargets, type HoldSearchHit } from "@/server/ghl/search-hold-targets";
 import { createHold } from "@/server/stock/create-hold";
+import { releaseActiveHold } from "@/server/stock/release-hold";
 import {
   listShowroomCategoryItems as loadShowroomCategoryItems,
   listShowroomCollections as loadShowroomCollections,
@@ -57,6 +58,117 @@ export async function resolveShowroomHoldActor(input: {
   const actor = await resolveHoldActor(input);
   if (!actor.ok) return actor;
   return { ok: true, name: actor.ghlUserName };
+}
+
+export type ActiveShowroomHold = {
+  id: string;
+  variantId: number;
+  sku: string;
+  qty: string;
+  salesperson: string;
+  opportunityName: string;
+  note: string;
+  expiresAt: string;
+  orderNo: string;
+};
+
+export async function listActiveShowroomHolds(
+  variantIds: number[],
+): Promise<{ ok: true; holds: ActiveShowroomHold[] } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Sign in to view holds." };
+
+  const ids = [...new Set(variantIds.filter((id) => Number.isFinite(id) && id > 0))];
+  if (ids.length === 0) return { ok: true, holds: [] };
+
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: inventory_holds.id,
+      variantId: inventory_holds.katana_variant_id,
+      sku: inventory_holds.sku,
+      qty: inventory_holds.qty,
+      salesperson: inventory_holds.ghl_user_name,
+      opportunityName: inventory_holds.ghl_opportunity_name,
+      note: inventory_holds.note,
+      expiresAt: inventory_holds.expires_at,
+      orderNo: inventory_holds.order_no,
+    })
+    .from(inventory_holds)
+    .where(
+      and(inArray(inventory_holds.katana_variant_id, ids), eq(inventory_holds.status, "active")),
+    )
+    .orderBy(asc(inventory_holds.expires_at));
+
+  return {
+    ok: true,
+    holds: rows.map((row) => ({
+      id: row.id,
+      variantId: row.variantId,
+      sku: row.sku,
+      qty: row.qty,
+      salesperson: row.salesperson,
+      opportunityName: row.opportunityName,
+      note: row.note,
+      expiresAt: row.expiresAt.toISOString(),
+      orderNo: row.orderNo,
+    })),
+  };
+}
+
+export async function releaseShowroomHold(input: {
+  holdId: string;
+  ghlUserId?: string;
+  ghlUserEmail?: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const actor = await resolveHoldActor({
+    ghlUserId: input.ghlUserId,
+    ghlUserEmail: input.ghlUserEmail,
+  });
+  if (!actor.ok) return actor;
+
+  const holdId = input.holdId.trim();
+  if (!holdId) return { ok: false, error: "Hold id is required." };
+
+  const db = getDb();
+  const [row] = await db
+    .select({
+      id: inventory_holds.id,
+      status: inventory_holds.status,
+      orderNo: inventory_holds.order_no,
+      katanaDummySoId: inventory_holds.katana_dummy_so_id,
+    })
+    .from(inventory_holds)
+    .where(eq(inventory_holds.id, holdId))
+    .limit(1);
+  if (!row || row.status !== "active") {
+    return { ok: false, error: "That hold is no longer active." };
+  }
+
+  const outcome = await releaseActiveHold({
+    target: {
+      id: row.id,
+      orderNo: row.orderNo,
+      katanaDummySoId: row.katanaDummySoId,
+    },
+    reason: "manual",
+    releasedBy: actor.ghlUserEmail ?? actor.ghlUserId,
+  });
+  if (outcome === "released") {
+    revalidatePath("/showroom");
+    revalidatePath("/embed/showroom");
+    revalidatePath("/admin/order-triage");
+    return { ok: true };
+  }
+  if (outcome === "missed") {
+    return { ok: false, error: "That hold is no longer active." };
+  }
+  const [failed] = await db
+    .select({ lastError: inventory_holds.last_error })
+    .from(inventory_holds)
+    .where(eq(inventory_holds.id, holdId))
+    .limit(1);
+  return { ok: false, error: failed?.lastError ?? "Katana did not release that hold." };
 }
 
 export async function placeShowroomHold(input: {

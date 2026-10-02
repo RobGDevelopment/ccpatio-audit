@@ -1,4 +1,5 @@
 import { getPimSession } from "@/lib/pim-audit";
+import { readActorFromSearchRecord } from "@/lib/embed-actor-params";
 import { LiveStockView } from "@/app/showroom/stock/LiveStockView";
 
 export const dynamic = "force-dynamic";
@@ -6,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function EmbedShowroomPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ghlUserId?: string; ghlUserEmail?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await getPimSession();
   if (!session) {
@@ -17,7 +18,7 @@ export default async function EmbedShowroomPage({
     );
   }
 
-  const params = await searchParams;
+  const actor = readActorFromSearchRecord(await searchParams);
 
   return (
     <div className="h-full min-h-0 flex-1 overflow-auto bg-[#FAFAFA] text-slate-900">
@@ -25,8 +26,8 @@ export default async function EmbedShowroomPage({
         <LiveStockView
           defaultViewMode="dropdown"
           persistViewMode={false}
-          ghlUserId={params.ghlUserId}
-          ghlUserEmail={params.ghlUserEmail}
+          ghlUserId={actor.ghlUserId}
+          ghlUserEmail={actor.ghlUserEmail}
         />
       </div>
     </div>

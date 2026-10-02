@@ -32,6 +32,15 @@ export const SMART_FIELD_CONFIG: Record<string, SmartFieldMeta> = {
   stock_length: { kind: "number", step: NUMERIC_STEP, min: "0" },
   cure_temp: { kind: "number", step: "1", min: "0" },
   cure_time: { kind: "number", step: "1", min: "0" },
+  item_type: {
+    kind: "select",
+    options: [
+      "raw_material",
+      "sub_assembly",
+      "finished_good",
+      "service",
+    ],
+  },
   grade: {
     kind: "select",
     options: ["A", "B", "C", "D", "E", "F"],

@@ -1,14 +1,21 @@
 /**
  * Katana MRP payload mapper — pure TypeScript, no HTTP.
- * Bottom-up: materials → sub-assemblies → finished good → recipes → operations.
+ * Foundation plan only: materials → products (SAs then FG).
+ * Recipes + product_operation_rows are owned by the unified hub writer
+ * (`syncBOMToKatana` / `publishHubManufacturingToKatana`) — PR-T2.0.
  * Caller (Phase 4) attaches `Idempotency-Key` from each request's idempotencyKey.
  *
- * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md Phase 3.
+ * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md Phase 3 / §5B Tier 2.0.
  */
 import {
   katanaIsSellableProduct,
   katanaProductSyncFlags,
 } from "@/lib/katana-product-flags";
+import { coerceHubItemType } from "@/lib/raw-material-sku";
+import {
+  normalizeKatanaResource,
+  resolveKatanaOperationName,
+} from "@/lib/factory-routing/resources";
 import { stageKatanaCatalogGraph } from "@/mappers/katana-catalog-guard";
 import type {
   HubBomEdge,
@@ -19,11 +26,11 @@ import { parseMoney } from "@/mappers/types";
 
 export type KatanaMappedRequest = {
   method: "POST";
-  path: "/materials" | "/products" | "/recipes" | "/product_operation_rows";
+  path: "/materials" | "/products";
   body: Record<string, unknown>;
   /** Attach as HTTP header `Idempotency-Key` on the mutating call. */
   idempotencyKey: string;
-  kind: "material" | "product" | "recipes" | "product_operation_rows";
+  kind: "material" | "product";
   sku?: string;
 };
 
@@ -187,14 +194,16 @@ export function formatKatanaOperationRowsForSku(
 
   const payload: Array<Record<string, unknown>> = [];
   for (const op of ops) {
+    const resourceName = normalizeKatanaResource(op.workCenter);
+    const operationName = resolveKatanaOperationName(op.workCenter);
     const setupSec = minsToSeconds(op.setupTimeMins ?? null);
     const runSec = minsToSeconds(op.runTimeMins ?? null);
     if (setupSec != null && setupSec > 0) {
       payload.push({
         product_variant_id: productVariantId,
         item_sku: itemSku.toUpperCase(),
-        operation_name: `${op.workCenter} Setup`,
-        resource_name: op.workCenter,
+        operation_name: `${operationName} Setup`,
+        resource_name: resourceName,
         type: "setup",
         planned_time_parameter: setupSec,
       });
@@ -203,8 +212,8 @@ export function formatKatanaOperationRowsForSku(
       payload.push({
         product_variant_id: productVariantId,
         item_sku: itemSku.toUpperCase(),
-        operation_name: op.workCenter,
-        resource_name: op.workCenter,
+        operation_name: operationName,
+        resource_name: resourceName,
         type: "process",
         planned_time_parameter: runSec,
       });
@@ -214,8 +223,9 @@ export function formatKatanaOperationRowsForSku(
 }
 
 /**
- * Full Katana publish plan for an approved hub graph.
- * Requests are ordered materials → products (SAs then FG) → recipes → operations.
+ * Foundation Katana publish plan for an approved hub graph.
+ * Materials → products only. Recipes/ops are posted by
+ * `publishHubManufacturingToKatana` from live hub tables (PR-T2.0).
  */
 export function buildKatanaPublishPlan(
   graph: HubProductGraph,
@@ -227,10 +237,10 @@ export function buildKatanaPublishPlan(
   const salesPrice = parseMoney(staged.commerce.msrp ?? null);
 
   const materials = order.filter(
-    (sku) => map.get(sku)?.itemType === "raw_material",
+    (sku) => coerceHubItemType(sku, map.get(sku)?.itemType) === "raw_material",
   );
   const products = order.filter((sku) => {
-    const t = map.get(sku)?.itemType;
+    const t = coerceHubItemType(sku, map.get(sku)?.itemType);
     return t === "sub_assembly" || t === "finished_good" || t === "service";
   });
 
@@ -268,45 +278,6 @@ export function buildKatanaPublishPlan(
       sku,
       idempotencyKey: `katana-product-${sku}`,
       body,
-    });
-  }
-
-  for (const sku of products) {
-    const recipe = formatKatanaRecipeRowsForParent(staged, sku);
-    if (recipe.rows.length === 0) continue;
-    requests.push({
-      method: "POST",
-      path: "/recipes",
-      kind: "recipes",
-      sku,
-      idempotencyKey: `katana-recipes-${sku}`,
-      body: {
-        keep_current_rows: false,
-        rows: recipe.rows.map((r) => ({
-          product_variant_id: r.product_variant_id,
-          ingredient_variant_id: r.ingredient_variant_id,
-          quantity: r.quantity,
-          notes: r.notes,
-          _parent_sku: r.parent_sku,
-          _child_sku: r.child_sku,
-        })),
-      },
-    });
-  }
-
-  for (const sku of products) {
-    const opRows = formatKatanaOperationRowsForSku(staged, sku);
-    if (opRows.length === 0) continue;
-    requests.push({
-      method: "POST",
-      path: "/product_operation_rows",
-      kind: "product_operation_rows",
-      sku,
-      idempotencyKey: `katana-ops-${sku}`,
-      body: {
-        keep_current_rows: false,
-        rows: opRows,
-      },
     });
   }
 

@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
+import { resourceLane } from "@/lib/factory-routing/resources";
+import { resolveDraftCutsAndNote } from "@/lib/sketchup-cutlist/notes-codec";
 import { getDb } from "@/server/db/client";
 import {
   finished_goods_catalog,
@@ -11,9 +13,9 @@ import {
 } from "@/server/db/schema";
 import { computeLabor, deriveGeometryDrivers } from "./labor";
 import { computePackaging } from "./packaging";
-import { parseCutListFromNotes } from "./parse-notes";
 import {
   CALC_VERSION,
+  type CutListPiece,
   type DraftLineInput,
   type PhysicsFactor,
 } from "./types";
@@ -68,14 +70,22 @@ async function collectDraftTree(rootSku: string): Promise<DraftLineInput[]> {
     .where(inArray(product_bom_draft.parent_sku, [...parents]));
 
   return rows.map((row) => {
-    const { cutList } = parseCutListFromNotes(row.notes);
+    const resolved = resolveDraftCutsAndNote({
+      notes: row.notes,
+      cutList: row.cut_list,
+    });
+    const cutList: CutListPiece[] = resolved.cutList.map((c) => ({
+      lengthIn: c.lengthIn,
+      qtyEa: c.qtyEa,
+      ...(c.profile !== "UNKNOWN" ? { profileCode: c.profile } : {}),
+    }));
     return {
       parentSku: row.parent_sku,
       childSku: row.child_sku,
       quantity: num(row.quantity),
       scrapFactor: num(row.scrap_factor, 1),
       unitOfMeasure: row.unit_of_measure,
-      notes: row.notes,
+      notes: resolved.managerNote || null,
       cutList,
     };
   });
@@ -256,12 +266,11 @@ export async function runSecondaryExtract(
   let opsUpdated = 0;
 
   for (const op of labor.ops) {
+    const lane = resourceLane(op.workCenter);
     const itemSku =
-      op.workCenter.startsWith("Fabric") ||
-      op.workCenter === "Cushion Stuffing"
+      lane === "cushion"
         ? targetSkus.find((s) => s.includes("-CUSH")) ?? rootSku
-        : op.workCenter.startsWith("Metal") ||
-            op.workCenter === "Building & Welding"
+        : lane === "frame" || lane === "dekton"
           ? targetSkus.find((s) => s.includes("-FRAME")) ?? rootSku
           : rootSku;
 

@@ -229,6 +229,12 @@ export function ProductDetailModal({
             mappingUpdatedBy = result.updatedBy ?? operator;
             if (field.patchField === "original_name") {
               mappingPatch.originalName = value;
+            } else if (field.patchField === "item_type") {
+              mappingPatch.itemType = value as SkuMappingRow["itemType"];
+              if (value === "raw_material") {
+                mappingPatch.katanaVariantId = null;
+                mappingPatch.katanaMaterialId = null;
+              }
             } else if (field.patchField === "uom_purchase") {
               mappingPatch.uomPurchase = value || null;
             } else if (field.patchField === "uom_consume") {

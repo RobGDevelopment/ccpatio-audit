@@ -15,6 +15,7 @@ import {
   InlineCatalogDimCell,
   InlineImageThumbCell,
   InlineTextCell,
+  ITEM_TYPE_OPTIONS,
   METAL_ALLOY_OPTIONS,
   METAL_PROFILE_OPTIONS,
   SHADE_MOUNT_OPTIONS,
@@ -264,6 +265,39 @@ function leanCoreColumns(
       cell: ({ row }) => (
         <span className="text-sm text-zinc-400">{row.original.category}</span>
       ),
+    }),
+    col.display({
+      id: "item_type",
+      header: "Type",
+      cell: ({ row, table }) => {
+        const m = table.options.meta as DictionaryTableMeta;
+        return (
+          <div onClick={(event) => event.stopPropagation()}>
+            <EditableSelectCell
+              globalSku={row.original.globalSku}
+              field="item_type"
+              value={row.original.itemType}
+              options={ITEM_TYPE_OPTIONS}
+              target="mapping"
+              expectedVersion={row.original.version}
+              allowEmpty={false}
+              compact
+              onSaved={({ value, updatedAt, updatedBy, version }) => {
+                const itemType = value as SkuMappingRow["itemType"];
+                m.onPatchSaved(row.original.globalSku, {
+                  itemType,
+                  version,
+                  mappingUpdatedAt: updatedAt,
+                  mappingUpdatedBy: updatedBy,
+                  ...(itemType === "raw_material"
+                    ? { katanaVariantId: null, katanaMaterialId: null }
+                    : {}),
+                });
+              }}
+            />
+          </div>
+        );
+      },
     }),
     col.display({
       id: "uom",

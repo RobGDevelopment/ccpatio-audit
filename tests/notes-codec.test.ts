@@ -3,6 +3,9 @@ import {
   composeBomNotes,
   formatFloorCutCard,
   formatKatanaIngredientNote,
+  parseFreeTextCutCards,
+  resolveDraftCutsAndNote,
+  resolveKatanaIngredientNotes,
   splitBomNotes,
   type CutLine,
 } from "@/lib/sketchup-cutlist";
@@ -88,5 +91,69 @@ describe("notes-codec (BOM cut-list trailer)", () => {
     const parts = splitBomNotes(withPlain);
     expect(parts.cutList[0]?.qtyEa).toBe(2);
     expect(parts.cutList[0]?.lengthIn).toBe(12);
+  });
+
+  it("resolveDraftCutsAndNote prefers cut_list column over trailer", () => {
+    const trailer = `legacy\n${JSON.stringify({ cut_list: [SAMPLE_CUT] })}`;
+    const columnCut: CutLine = { ...SAMPLE_CUT, qtyEa: 9, lengthIn: 12 };
+    const resolved = resolveDraftCutsAndNote({
+      notes: trailer,
+      cutList: [columnCut],
+    });
+    expect(resolved.managerNote).toBe("legacy");
+    expect(resolved.cutList[0]?.qtyEa).toBe(9);
+    expect(resolved.cutList[0]?.lengthIn).toBe(12);
+  });
+
+  it("resolveKatanaIngredientNotes formats from cuts when manager note empty", () => {
+    expect(
+      resolveKatanaIngredientNotes({
+        notes: "",
+        cutList: [SAMPLE_CUT],
+      }),
+    ).toBe("4 pcs @ 34.0 in · 45°/45° mitre");
+  });
+});
+
+describe("parseFreeTextCutCards (PR-T2.4)", () => {
+  it("converts Katana tablet dialect into structured cards", () => {
+    const parsed = parseFreeTextCutCards("4 pcs @ 34.0 in · 45°/45° mitre");
+    expect(parsed.cutList).toHaveLength(1);
+    expect(parsed.cutList[0]?.qtyEa).toBe(4);
+    expect(parsed.cutList[0]?.lengthIn).toBe(34);
+    expect(parsed.cutList[0]?.endA).toBe(45);
+    expect(parsed.cutList[0]?.endB).toBe(45);
+    expect(parsed.remainder).toBe("");
+  });
+
+  it("converts floor cards and formatCutNote strings", () => {
+    const parsed = parseFreeTextCutCards(
+      "2 pcs | 12.0 in | 90°/90°; 3ea 18.0in 45/90 LP",
+    );
+    expect(parsed.cutList.length).toBeGreaterThanOrEqual(2);
+    expect(parsed.cutList.some((c) => c.qtyEa === 2 && c.lengthIn === 12)).toBe(
+      true,
+    );
+    expect(parsed.cutList.some((c) => c.qtyEa === 3 && c.lengthIn === 18)).toBe(
+      true,
+    );
+  });
+
+  it("converts the legacy placeholder Cut Nx inches 45/45", () => {
+    const parsed = parseFreeTextCutCards("Cut 2x 34 inches 45/45");
+    expect(parsed.cutList).toHaveLength(1);
+    expect(parsed.cutList[0]?.qtyEa).toBe(2);
+    expect(parsed.cutList[0]?.lengthIn).toBe(34);
+    expect(parsed.cutList[0]?.endA).toBe(45);
+    expect(parsed.cutList[0]?.drawingPartNumber).toBeTruthy();
+  });
+
+  it("leaves unrelated manager text as remainder", () => {
+    const parsed = parseFreeTextCutCards(
+      "Check long-point before weld. Cut 2x 34 inches 45/45",
+    );
+    expect(parsed.cutList).toHaveLength(1);
+    expect(parsed.remainder).toMatch(/Check long-point/i);
+    expect(parsed.remainder).not.toMatch(/Cut 2x/i);
   });
 });

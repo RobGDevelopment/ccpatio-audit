@@ -9,7 +9,9 @@ import {
   PIM_INPUT,
   UNIT_OPTIONS,
   assemblyBadge,
+  card,
   statusClass,
+  tactileButton,
 } from "./factory-bom-ui";
 
 type AddFormState = {
@@ -41,6 +43,7 @@ type Props = {
       scrapFactor: string;
       unitOfMeasure: string;
       notes: string;
+      cutList: import("@/lib/sketchup-cutlist/types").CutLine[];
     },
   ) => void;
   onRemoveLine: (id: string) => void;
@@ -58,7 +61,16 @@ type Props = {
     setupTimeMins: string;
     runTimeMins: string;
   }) => void;
+  onUpdateOp: (data: {
+    id: string;
+    itemSku: string;
+    workCenter: string;
+    sequence: number;
+    setupTimeMins: string;
+    runTimeMins: string;
+  }) => void;
   onRemoveOp: (id: string) => void;
+  onApplyTrack: (itemSku: string, trackId: import("@/lib/factory-routing/resources").StandardTrackId) => void;
 };
 
 export function BomAssemblyCard({
@@ -76,7 +88,9 @@ export function BomAssemblyCard({
   onRemoveLine,
   onAddLine,
   onAddOp,
+  onUpdateOp,
   onRemoveOp,
+  onApplyTrack,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
   const [addForm, setAddForm] = useState<AddFormState>({
@@ -89,8 +103,8 @@ export function BomAssemblyCard({
   const badge = assemblyBadge(node.sku, node.itemType);
   const shellClass =
     level === 1
-      ? "pim-glass overflow-hidden rounded-xl border border-zinc-800"
-      : "overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50";
+      ? `${card} overflow-hidden`
+      : "overflow-hidden rounded-xl border border-slate-100 bg-slate-50";
 
   function handleAdd(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -114,22 +128,21 @@ export function BomAssemblyCard({
         onToggle={() => setOpen((prev) => !prev)}
         onActivate={onActivate}
         buttonTestId={`factory-bom-parent-${node.sku}`}
+        tone="soft"
         title={
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
               {badge}
             </span>
-            <span className="text-sm font-semibold text-zinc-100">{node.name}</span>
+            <span className="text-sm font-semibold text-slate-800">{node.name}</span>
           </div>
         }
         subtitle={
-          <p className="font-mono text-[11px] text-zinc-500">{node.sku}</p>
+          <p className="font-mono text-[11px] text-slate-500">{node.sku}</p>
         }
         badge={
           <span
-            className={`rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${statusClass(
-              materialLines[0]?.status ?? "none",
-            )}`}
+            className={statusClass(materialLines[0]?.status ?? "none")}
           >
             {materialLines.length} materials
           </span>
@@ -137,7 +150,7 @@ export function BomAssemblyCard({
       >
         <div className="space-y-3">
           {materialLines.length === 0 ? (
-            <p className="py-2 text-sm text-zinc-500">
+            <p className="py-2 text-sm text-slate-500">
               No draft materials on this node. Add a raw material below.
             </p>
           ) : (
@@ -154,7 +167,7 @@ export function BomAssemblyCard({
 
           <form
             onSubmit={handleAdd}
-            className="grid grid-cols-1 gap-2 rounded-lg border border-dashed border-zinc-800 bg-zinc-950/40 p-3 md:grid-cols-12"
+            className="grid grid-cols-1 gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 md:grid-cols-12"
           >
             <div className="md:col-span-5">
               {materialCombobox({
@@ -203,7 +216,7 @@ export function BomAssemblyCard({
               type="submit"
               data-testid={isActiveAddTarget ? "factory-bom-add-line" : undefined}
               disabled={isPending || !addForm.childSku}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 disabled:opacity-40 md:col-span-1"
+              className={`${tactileButton} px-4 py-2 text-sm disabled:opacity-40 md:col-span-1`}
             >
               Add
             </button>
@@ -219,13 +232,20 @@ export function BomAssemblyCard({
                 ...draft,
               })
             }
+            onUpdate={(draft) =>
+              onUpdateOp({
+                itemSku: node.sku,
+                ...draft,
+              })
+            }
             onRemove={onRemoveOp}
+            onApplyTrack={(trackId) => onApplyTrack(node.sku, trackId)}
           />
         </div>
       </PimDisclosure>
 
       {nestedCards ? (
-        <div className="space-y-3 border-l border-zinc-800 pl-3 pt-2">
+        <div className="space-y-3 border-l border-slate-100 pl-3 pt-2">
           {nestedCards}
         </div>
       ) : null}

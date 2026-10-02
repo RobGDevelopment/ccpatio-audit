@@ -145,6 +145,8 @@ describe("ocean BOM routing", () => {
     expect(plan.operations).toEqual([
       {
         itemSku: "SA-OCE-S-96-FRAME",
+        // Metal Cutting is a first-class feeder cell, not a FAB POD alias
+        // (docs/FACTORY_FLOOR_TOPOLOGY.md owner lock).
         workCenter: "Metal Cutting",
         sequence: 10,
         runTimeMins: 25,
@@ -157,7 +159,7 @@ describe("ocean BOM routing", () => {
       },
       {
         itemSku: "FIN-OCN-SOF-96X38",
-        workCenter: "Quality Check",
+        workCenter: "Quality Control",
         sequence: 10,
         runTimeMins: 10,
       },

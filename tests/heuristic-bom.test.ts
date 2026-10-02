@@ -34,16 +34,16 @@ describe("heuristic BOM volumes", () => {
     });
 
     expect(plan.family).toBe("seating");
-    expect(plan.frameSku).toBe("SA-BRV-SOF-72X34-FRAME");
-    expect(plan.cushSku).toBe("SA-BRV-SOF-72X34-CUSH");
+    expect(plan.frameSku).toBe("ASM-BRV-SOF-72X34-FRAME");
+    expect(plan.cushSku).toBe("ASM-BRV-SOF-72X34-CUSH");
     expect(plan.lines.map((row) => `${row.parentSku}->${row.childSku}`)).toEqual(
       expect.arrayContaining([
-        "FIN-BRV-SOF-72X34->SA-BRV-SOF-72X34-FRAME",
-        "FIN-BRV-SOF-72X34->SA-BRV-SOF-72X34-CUSH",
-        "SA-BRV-SOF-72X34-FRAME->RM-MET-2X2-TUBING",
-        "SA-BRV-SOF-72X34-FRAME->RM-PWD-GENERIC",
-        "SA-BRV-SOF-72X34-CUSH->RM-FAB-GENERIC",
-        "SA-BRV-SOF-72X34-CUSH->RM-RAW-FOAM",
+        "FIN-BRV-SOF-72X34->ASM-BRV-SOF-72X34-FRAME",
+        "FIN-BRV-SOF-72X34->ASM-BRV-SOF-72X34-CUSH",
+        "ASM-BRV-SOF-72X34-FRAME->RM-MET-2X2-TUBING",
+        "ASM-BRV-SOF-72X34-FRAME->RM-PWD-GENERIC",
+        "ASM-BRV-SOF-72X34-CUSH->RM-FAB-GENERIC",
+        "ASM-BRV-SOF-72X34-CUSH->RM-RAW-FOAM",
       ]),
     );
     expect(plan.lines.some((row) => row.childSku.startsWith("FAB-"))).toBe(false);
@@ -86,9 +86,12 @@ describe("heuristic BOM volumes", () => {
     expect(plan.lines).toEqual([]);
   });
 
-  it("mints SA SKUs from the FIN stem", () => {
+  it("mints ASM SKUs from the FIN stem", () => {
     expect(subAssemblySku("FIN-BRV-ARM-SOF-72X34", "FRAME")).toBe(
-      "SA-BRV-ARM-SOF-72X34-FRAME",
+      "ASM-BRV-ARM-SOF-72X34-FRAME",
+    );
+    expect(subAssemblySku("FIN-BRV-SOF-72X34", "CUSH")).toBe(
+      "ASM-BRV-SOF-72X34-CUSH",
     );
   });
 

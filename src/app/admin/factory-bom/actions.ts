@@ -14,10 +14,23 @@ import {
 } from "@/app/admin/dictionary/actions";
 import { CAD_UPLOADED_EVENT } from "@/lib/cad-upload";
 import { processCadUploadJob } from "@/lib/cad-upload/process-job";
+import {
+  getStandardTrack,
+  isKatanaResource,
+  normalizeKatanaResource,
+  type StandardTrackId,
+} from "@/lib/factory-routing/resources";
 import { getPimSession, logPimAudit } from "@/lib/pim-audit";
+import { subAssemblySku } from "@/lib/heuristic-bom";
 import { syncBOMToKatana } from "@/lib/katana";
+import { hashChannelPayload, upsertChannelSync } from "@/server/mdm/channel-sync";
 import { runSecondaryExtract } from "@/lib/secondary-extraction";
-import { splitBomNotes } from "@/lib/sketchup-cutlist";
+import {
+  coerceCutListColumn,
+  formatKatanaIngredientNote,
+  resolveDraftCutsAndNote,
+  type CutLine,
+} from "@/lib/sketchup-cutlist";
 import { inngest } from "@/inngest/client";
 import {
   CAD_MAX_BYTES,
@@ -83,7 +96,10 @@ export type DraftBomLine = {
   unitOfMeasure: string;
   status: RecipeReviewStatus;
   source: string;
+  /** Manager note only (never JSON trailer). */
   notes: string | null;
+  /** Structured cut cards; empty when none. */
+  cutList: CutLine[];
 };
 
 const BOM_UNITS = new Set([
@@ -116,6 +132,13 @@ function revalidateFactory(): void {
 function parseQuantity(raw: string): string | null {
   const n = Number(String(raw).trim());
   if (!Number.isFinite(n) || n <= 0) return null;
+  return n.toFixed(4);
+}
+
+/** Setup/run minutes — zero allowed (QC often has 0 setup). */
+function parseTimeMins(raw: string): string | null {
+  const n = Number(String(raw).trim());
+  if (!Number.isFinite(n) || n < 0) return null;
   return n.toFixed(4);
 }
 
@@ -204,19 +227,26 @@ export async function listDraftLinesForParent(
     .where(eq(product_bom_draft.parent_sku, sku))
     .orderBy(asc(product_bom_draft.child_sku));
 
-  return rows.map((row) => ({
-    id: row.line.id,
-    parentSku: row.line.parent_sku,
-    childSku: row.line.child_sku,
-    childName: row.childName ?? row.line.child_sku,
-    childItemType: row.childType ?? "raw_material",
-    quantity: row.line.quantity,
-    scrapFactor: row.line.scrap_factor,
-    unitOfMeasure: row.line.unit_of_measure,
-    status: row.line.status,
-    source: row.line.source,
-    notes: row.line.notes,
-  }));
+  return rows.map((row) => {
+    const resolved = resolveDraftCutsAndNote({
+      notes: row.line.notes,
+      cutList: row.line.cut_list,
+    });
+    return {
+      id: row.line.id,
+      parentSku: row.line.parent_sku,
+      childSku: row.line.child_sku,
+      childName: row.childName ?? row.line.child_sku,
+      childItemType: row.childType ?? "raw_material",
+      quantity: row.line.quantity,
+      scrapFactor: row.line.scrap_factor,
+      unitOfMeasure: row.line.unit_of_measure,
+      status: row.line.status,
+      source: row.line.source,
+      notes: resolved.managerNote || null,
+      cutList: resolved.cutList,
+    };
+  });
 }
 
 export async function searchFactoryMaterials(
@@ -255,6 +285,7 @@ export async function upsertDraftBomLine(data: {
   scrapFactor?: string;
   unitOfMeasure: string;
   notes?: string | null;
+  cutList?: CutLine[] | null;
 }): Promise<BomMutationResult> {
   const session = await requireSession();
   if ("error" in session) return { ok: false, error: session.error };
@@ -265,12 +296,17 @@ export async function upsertDraftBomLine(data: {
     const quantity = parseQuantity(data.quantity);
     const scrapFactor = parseQuantity(data.scrapFactor ?? "1") ?? "1.0000";
     const unitOfMeasure = data.unitOfMeasure.trim().toLowerCase();
+    // Manager note only — strip any accidental trailer a client might send.
     const notes =
       data.notes === undefined
         ? undefined
         : data.notes === null
           ? null
-          : data.notes.trim() || null;
+          : resolveDraftCutsAndNote({ notes: data.notes }).managerNote || null;
+    const cutList =
+      data.cutList === undefined
+        ? undefined
+        : coerceCutListColumn(data.cutList ?? []);
 
     if (!parentSku || !childSku) {
       return { ok: false, error: "parent_sku and child_sku are required" };
@@ -313,6 +349,7 @@ export async function upsertDraftBomLine(data: {
           scrap_factor: scrapFactor,
           unit_of_measure: unitOfMeasure,
           ...(notes !== undefined ? { notes } : {}),
+          ...(cutList !== undefined ? { cut_list: cutList } : {}),
           status: "edited",
           source: "manager",
           updated_at: now,
@@ -328,6 +365,7 @@ export async function upsertDraftBomLine(data: {
         scrap_factor: scrapFactor,
         unit_of_measure: unitOfMeasure,
         notes: notes ?? null,
+        cut_list: cutList ?? [],
         status: "edited",
         source: "manager",
         updated_at: now,
@@ -432,13 +470,13 @@ export async function upsertDraftOperation(
 
   try {
     const itemSku = data.itemSku.trim().toUpperCase();
-    const workCenter = data.workCenter.trim();
+    const workCenter = normalizeKatanaResource(data.workCenter.trim());
     const sequence = Number(data.sequence);
     const setup = data.setupTimeMins?.trim()
-      ? parseQuantity(data.setupTimeMins)
+      ? parseTimeMins(data.setupTimeMins)
       : null;
     const run = data.runTimeMins?.trim()
-      ? parseQuantity(data.runTimeMins)
+      ? parseTimeMins(data.runTimeMins)
       : null;
 
     if (!itemSku) return { ok: false, error: "item_sku is required" };
@@ -446,11 +484,11 @@ export async function upsertDraftOperation(
     if (!Number.isFinite(sequence) || sequence < 0) {
       return { ok: false, error: "sequence must be a non-negative integer" };
     }
-    if (data.setupTimeMins?.trim() && !setup) {
-      return { ok: false, error: "setup_time_mins must be a positive number" };
+    if (data.setupTimeMins?.trim() && setup === null) {
+      return { ok: false, error: "setup_time_mins must be a non-negative number" };
     }
-    if (data.runTimeMins?.trim() && !run) {
-      return { ok: false, error: "run_time_mins must be a positive number" };
+    if (data.runTimeMins?.trim() && run === null) {
+      return { ok: false, error: "run_time_mins must be a non-negative number" };
     }
 
     const db = getDb();
@@ -557,6 +595,114 @@ export async function deleteDraftOperation(
   }
 }
 
+export type ApplyStandardTrackInput = {
+  itemSku: string;
+  trackId: StandardTrackId;
+  mode?: "fill_gaps" | "replace";
+};
+
+export async function applyStandardTrack(
+  data: ApplyStandardTrackInput,
+): Promise<
+  | { ok: true; inserted: number; skipped: number; removed: number }
+  | { ok: false; error: string }
+> {
+  const session = await requireSession();
+  if ("error" in session) return { ok: false, error: session.error };
+
+  try {
+    const itemSku = data.itemSku.trim().toUpperCase();
+    const mode = data.mode ?? "fill_gaps";
+    const track = getStandardTrack(data.trackId);
+    if (!itemSku) return { ok: false, error: "item_sku is required" };
+    if (!track?.length) {
+      return { ok: false, error: `Unknown track: ${data.trackId}` };
+    }
+
+    const db = getDb();
+    const [parent] = await db
+      .select({ item_type: sku_mappings.item_type })
+      .from(sku_mappings)
+      .where(eq(sku_mappings.global_sku, itemSku))
+      .limit(1);
+    if (!parent) return { ok: false, error: `SKU not found: ${itemSku}` };
+    if (!PRODUCIBLE.includes(parent.item_type)) {
+      return {
+        ok: false,
+        error: "Routings only apply to finished_good or sub_assembly",
+      };
+    }
+
+    const now = new Date();
+    let removed = 0;
+    if (mode === "replace") {
+      const deleted = await db
+        .delete(item_operations_draft)
+        .where(eq(item_operations_draft.item_sku, itemSku))
+        .returning({ id: item_operations_draft.id });
+      removed = deleted.length;
+    }
+
+    const existing = await db
+      .select({
+        workCenter: item_operations_draft.work_center,
+        sequence: item_operations_draft.sequence,
+      })
+      .from(item_operations_draft)
+      .where(eq(item_operations_draft.item_sku, itemSku));
+
+    const existingKeys = new Set(
+      existing.map((row) => `${row.workCenter}::${row.sequence}`),
+    );
+
+    let inserted = 0;
+    let skipped = 0;
+    for (const step of track) {
+      if (!isKatanaResource(step.resource)) {
+        return {
+          ok: false,
+          error: `Track step uses unknown Resource: ${step.resource}`,
+        };
+      }
+      const key = `${step.resource}::${step.sequence}`;
+      if (existingKeys.has(key)) {
+        skipped += 1;
+        continue;
+      }
+      await db.insert(item_operations_draft).values({
+        item_sku: itemSku,
+        work_center: step.resource,
+        sequence: step.sequence,
+        setup_time_mins:
+          step.setupTimeMins > 0 ? step.setupTimeMins.toFixed(4) : "0.0000",
+        run_time_mins: step.runTimeMins.toFixed(4),
+        status: "edited",
+        source: "manager",
+        notes: step.floorLabel,
+        updated_at: now,
+      });
+      existingKeys.add(key);
+      inserted += 1;
+    }
+
+    await logPimAudit({
+      operatorEmail: session.email,
+      globalSku: itemSku,
+      action: "factory_bom_apply_standard_track",
+      field: data.trackId,
+      newValue: `${mode}:${inserted}`,
+    });
+    revalidateFactory();
+    return { ok: true, inserted, skipped, removed };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown standard track apply failure";
+    return { ok: false, error: message };
+  }
+}
+
 async function collectDraftParents(rootSku: string): Promise<string[]> {
   const db = getDb();
   const found = new Set<string>([rootSku]);
@@ -617,8 +763,15 @@ export async function approveDraftRecipe(
 
   const now = new Date();
   for (const line of lines) {
-    const { managerNote, cutList } = splitBomNotes(line.notes);
-    const notesText = managerNote || null;
+    const { managerNote, cutList } = resolveDraftCutsAndNote({
+      notes: line.notes,
+      cutList: line.cut_list,
+    });
+    // Tablet-ready: manager text, else formatKatanaIngredientNote from structure.
+    const notesText =
+      managerNote.trim() ||
+      (cutList.length > 0 ? formatKatanaIngredientNote(cutList) : null) ||
+      null;
 
     await db
       .insert(product_bom)
@@ -650,26 +803,28 @@ export async function approveDraftRecipe(
     .from(item_operations_draft)
     .where(inArray(item_operations_draft.item_sku, parents));
   for (const op of ops) {
-    const [exists] = await db
-      .select({ id: item_operations.id })
-      .from(item_operations)
-      .where(
-        and(
-          eq(item_operations.item_sku, op.item_sku),
-          eq(item_operations.work_center, op.work_center),
-          eq(item_operations.sequence, op.sequence),
-        ),
-      )
-      .limit(1);
-    if (exists) continue;
-    await db.insert(item_operations).values({
-      item_sku: op.item_sku,
-      work_center: op.work_center,
-      sequence: op.sequence,
-      setup_time_mins: op.setup_time_mins,
-      run_time_mins: op.run_time_mins,
-      updated_at: now,
-    });
+    await db
+      .insert(item_operations)
+      .values({
+        item_sku: op.item_sku,
+        work_center: op.work_center,
+        sequence: op.sequence,
+        setup_time_mins: op.setup_time_mins,
+        run_time_mins: op.run_time_mins,
+        updated_at: now,
+      })
+      .onConflictDoUpdate({
+        target: [
+          item_operations.item_sku,
+          item_operations.work_center,
+          item_operations.sequence,
+        ],
+        set: {
+          setup_time_mins: sql`excluded.setup_time_mins`,
+          run_time_mins: sql`excluded.run_time_mins`,
+          updated_at: sql`now()`,
+        },
+      });
   }
 
   if (applyWeight && estimate) {
@@ -691,8 +846,7 @@ export async function approveDraftRecipe(
     const pack = estimate.packaging_bom as {
       lines?: Array<{ sku: string; qty: number; uom: string }>;
     };
-    const stem = sku.replace(/^FIN-/, "");
-    const packSku = `SA-${stem}-PACK`;
+    const packSku = subAssemblySku(sku, "PACK");
     const [hub] = await db
       .select({ sku: sku_mappings.global_sku })
       .from(sku_mappings)
@@ -809,8 +963,8 @@ export async function approveDraftRecipe(
 
 /**
  * Catalog recipe fan-out (POST /recipes), not sales-order MTO.
- * No-ops mutations unless ORDER_PIPELINE_MODE=live or KATANA_E2E_MIRROR=true.
- * Unchanged by secondary extraction unless packaging was copied into live BOM on Approve.
+ * Mutations gated by CATALOG_PUBLISH_MODE (or KATANA_E2E_MIRROR / legacy ORDER_PIPELINE_MODE=live).
+ * Writes channel_sync so Factory Publish shares the MDM spoke ledger.
  */
 export async function publishApprovedRecipeToKatana(
   rootSku: string,
@@ -823,6 +977,26 @@ export async function publishApprovedRecipeToKatana(
 
   const result = await syncBOMToKatana(sku);
   if (!result.ok) return { ok: false, error: result.error };
+
+  const payloadHash = hashChannelPayload({
+    channel: "katana",
+    path: "factory_publish",
+    sku,
+    recipeRows: result.recipeRows ?? 0,
+    operationRows: result.operationRows ?? 0,
+    nodesSynced: result.nodesSynced ?? 0,
+    dryRun: result.dryRun ?? false,
+  });
+
+  await upsertChannelSync({
+    globalSku: sku,
+    channel: "katana",
+    status: result.dryRun ? "pending" : "success",
+    externalId:
+      result.productVariantId != null ? String(result.productVariantId) : null,
+    lastError: null,
+    payloadHash,
+  });
 
   await logPimAudit({
     operatorEmail: session.email,

@@ -142,8 +142,12 @@ describe("secondary extraction labor", () => {
     const drivers = deriveGeometryDrivers({ lines, factors });
     expect(drivers.nCuts).toBe(12);
     expect(drivers.tubeFt).toBe(24);
-    const labor = computeLabor({ drivers, estWeightLbs: 35 });
-    const cutting = labor.ops.find((o) => o.workCenter === "Metal Cutting");
-    expect(cutting?.runTimeMins).toBeCloseTo(5 + 12 * 0.35, 2);
+    const labor = computeLabor({ drivers, estWeightLbs: 35, includeCushion: false });
+    const fab = labor.ops.find((o) => o.workCenter === "FAB POD A");
+    expect(fab?.setupTimeMins).toBe(15);
+    // run = nCuts*0.35 + nJoints*1.8 + tubeFt*0.15
+    const expectedRun =
+      drivers.nCuts * 0.35 + drivers.nJoints * 1.8 + drivers.tubeFt * 0.15;
+    expect(fab?.runTimeMins).toBeCloseTo(15 + expectedRun, 2);
   });
 });

@@ -54,6 +54,46 @@ export async function GET(
     return NextResponse.json({ ok: true, captures });
   }
 
+  if (path[0] === "bom_rows" && path.length === 1) {
+    const url = new URL(request.url);
+    const variantId = Number(url.searchParams.get("product_variant_id"));
+    const matching = captures.filter(
+      (c) =>
+        c.method === "POST" &&
+        (String(c.path).includes("bom_rows") || String(c.path).includes("recipes")),
+    );
+    const rows: unknown[] = [];
+    for (const item of matching) {
+      const body = item.body;
+      if (!body || typeof body !== "object") continue;
+      const record = body as Record<string, unknown>;
+      const list = Array.isArray(record.data)
+        ? record.data
+        : Array.isArray(record.rows)
+          ? record.rows
+          : [];
+      for (const row of list) {
+        const r = row as Record<string, unknown>;
+        const pvid = Number(r.product_variant_id);
+        if (!Number.isFinite(variantId) || pvid === variantId || !pvid) {
+          rows.push({ id: r.id ?? `mirror-${pvid}-${rows.length}`, ...r });
+        }
+      }
+    }
+    return NextResponse.json({ data: rows });
+  }
+
+  if (path[0] === "variants" && path.length === 2 && /^\d+$/.test(path[1] ?? "")) {
+    const id = Number(path[1]);
+    return NextResponse.json({
+      id,
+      sku: `MIRROR-${id}`,
+      type: "product",
+      product_id: id,
+      material_id: null,
+    });
+  }
+
   // Return last captured recipe POST for a product_sku / variant lookup
   if (path.includes("recipes")) {
     const url = new URL(request.url);
@@ -149,7 +189,12 @@ async function captureMutation(
     at: new Date().toISOString(),
   });
 
-  if (path.includes("recipes") || joined.endsWith("recipes")) {
+  if (
+    path.includes("recipes") ||
+    joined.endsWith("recipes") ||
+    path.includes("bom_rows") ||
+    joined.includes("bom_rows")
+  ) {
     return NextResponse.json({ ok: true, captured: true }, { status: 201 });
   }
 
@@ -221,10 +266,17 @@ export async function PUT(
   return captureMutation("PUT", request, path);
 }
 
-export async function DELETE() {
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ path?: string[] }> },
+) {
   if (!mirrorEnabled()) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
-  captures.length = 0;
-  return NextResponse.json({ ok: true });
+  const { path = [] } = await context.params;
+  if (path.length === 0 || (path[0] === "captures" && path.length === 1)) {
+    captures.length = 0;
+    return NextResponse.json({ ok: true });
+  }
+  return captureMutation("DELETE", request, path);
 }

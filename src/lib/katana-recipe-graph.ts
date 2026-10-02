@@ -8,6 +8,7 @@
  * variant IDs.
  */
 import { eq } from "drizzle-orm";
+import { resolveKatanaIngredientNotes } from "@/lib/sketchup-cutlist/notes-codec";
 import { getDb } from "@/server/db/client";
 import { product_bom, sku_mappings, type ItemType } from "@/server/db/schema";
 
@@ -72,6 +73,7 @@ export async function loadLiveHubRecipeLines(
         scrap: product_bom.scrap_factor,
         uom: product_bom.unit_of_measure,
         notes: product_bom.notes,
+        cutList: product_bom.cut_list,
         childType: sku_mappings.item_type,
       })
       .from(product_bom)
@@ -89,7 +91,10 @@ export async function loadLiveHubRecipeLines(
         scrapFactor: safeScrap,
         effectiveQuantity: quantity * safeScrap,
         unitOfMeasure: row.uom,
-        notes: (row.notes ?? "").trim(),
+        notes: resolveKatanaIngredientNotes({
+          notes: row.notes,
+          cutList: row.cutList,
+        }),
       });
     }
   }

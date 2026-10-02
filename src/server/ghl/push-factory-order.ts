@@ -11,20 +11,16 @@ import {
 } from "@/lib/katana";
 import { KATANA_GENERIC_FABRIC_VARIANT_ID } from "@/lib/katana-bulk-materials";
 import { parseKatanaListPayload, parseMoTreeNode } from "@/lib/katana-mto";
-import { explodeBomTree } from "@/server/db/queries/bom";
 import { getDb } from "@/server/db/client";
 import {
   order_intake,
   sku_mappings,
-  type OrderIntakeHoldRelief,
   type OrderIntakeMappedLine,
 } from "@/server/db/schema";
-import { fabricYardsFromEdges, type YardageEdge } from "@/server/ghl/fabric-yardage";
 import {
   CC_MANUFACTURING_LOCATION_ID,
   ghlFactoryOrderNo,
 } from "@/server/ghl/hold-order";
-import { relieveFabricHold } from "@/server/ghl/relieve-hold";
 import { canPushGhlFactoryOrders } from "@/server/pipeline/ghl-factory-mode";
 import {
   claimShowroomHolds,
@@ -186,7 +182,6 @@ export async function runApprovedFactoryOrder(input: {
       ensureManufacturingOrders(loaded.id, sales.salesOrderId, sales.salesOrderRowIds),
     );
     await runStep(input.step, "bind-fabric", () => bindFabrics(lines, moIds));
-    await runStep(input.step, "relieve-hold", () => relieveHold(loaded.id, lines));
     await runStep(input.step, "mark-pushed", async () => {
       const db = getDb();
       await db
@@ -334,47 +329,3 @@ async function bindFabrics(lines: OrderIntakeMappedLine[], moIds: number[]): Pro
   }
 }
 
-async function relieveHold(intakeId: string, lines: OrderIntakeMappedLine[]): Promise<void> {
-  const edges: YardageEdge[] = [];
-  const seenRoots = new Set<string>();
-  for (const line of lines) {
-    const root = line.finSku.trim().toUpperCase();
-    if (seenRoots.has(root)) continue;
-    seenRoots.add(root);
-    const tree = await explodeBomTree(root);
-    for (const row of tree) {
-      edges.push({
-        parentSku: row.parent_sku,
-        childSku: row.child_sku,
-        quantity: Number(row.quantity),
-        scrapFactor: Number(row.scrap_factor),
-      });
-    }
-  }
-
-  const yards = fabricYardsFromEdges(lines, edges);
-  if (!yards.ok) {
-    throw new KatanaApiError(yards.error, { status: 422 });
-  }
-
-  const requests = [];
-  for (const [fabricSku, yardage] of yards.byFabric) {
-    requests.push({
-      fabricSku,
-      yards: yardage,
-      variantId: await variantIdForSku(fabricSku),
-    });
-  }
-
-  const current = await loadIntake(intakeId);
-  const holdRelief: OrderIntakeHoldRelief[] = await relieveFabricHold({
-    intakeId,
-    existing: current?.hold_relief ?? null,
-    requests,
-  });
-  const db = getDb();
-  await db
-    .update(order_intake)
-    .set({ hold_relief: holdRelief, updated_at: new Date() })
-    .where(eq(order_intake.id, intakeId));
-}

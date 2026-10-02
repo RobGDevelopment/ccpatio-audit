@@ -112,6 +112,7 @@ Configure and monitor these **in the vendor products themselves**. This middlewa
 |-------------|---------|-----------|
 | **Katana ↔ WooCommerce** (native) | Live **orders** and **inventory** sync | Enable/verify in Katana + Woo apps; do not re-build in this repo |
 | **Katana ↔ QuickBooks Online** (native) | **COGS** / accounting | Enable/verify Katana↔QBO connector; invoice/COGS issues are not MDM bugs |
+| **GoHighLevel Won → Katana SO** (native / Zapier / Make) | Showroom deals → factory sales orders | Map `FIN-*` only; never recipes/ops/master data. Hub `/api/webhooks/ghl` stays **410** — see §9 |
 | Clover payments / deposits | Storefront / POS money movement | Clover + accounting tools — not Approve fan-out |
 
 If a customer paid and the factory never saw the order, debug **native order connectors**, not `/admin/quarantine`.
@@ -144,9 +145,102 @@ If a customer paid and the factory never saw the order, debug **native order con
 | Path | Use |
 |------|-----|
 | `/admin/quarantine` | Review drafts, Approve / Reject |
-| `/admin/dictionary` | Edit approved catalog attributes |
+| `/admin/dictionary` | Edit approved catalog attributes (**Type** column = `item_type`) |
 | `/api/health` | Liveness JSON: `{ status, db, inngest }` — **no secrets** |
 | Inngest Cloud | Failed publishes, Retry, `system.health.ping` history |
+
+---
+
+## 7. Option A — Targeted Katana purge (preserve legacy BOMs)
+
+**Goal:** Remove sandbox / Hub-sync ghosts without touching historically accurate BRA/OCE recipes.
+
+### Protect list (never delete, never rewrite recipes)
+
+| Prefix | Collection | Action |
+|--------|------------|--------|
+| `BRA-*` | Bravada | Preserve products + recipes |
+| `OCE-*` / `OCN-*` | Ocean | Preserve |
+| `BRO-*` | Legacy Katana | Preserve |
+| `DBT-*` | Daybeds | Preserve |
+
+Also preserve any SKU that is a **BOM / recipe child of a protected parent** (especially legacy `D-*` Dekton slabs consumed by Bravada). Default = **keep** `D-*`.
+
+Do **not** bulk-wipe `FIN-*` / `SA-*` Hub finished goods.
+
+### UI fallback (if API delete rejects Done orders)
+
+1. **Sell** — delete only sandbox / QA sales orders (customer “Sandbox MTO Tester”, notes/SKUs with `QA-TEST` / `SANDBOX`). Do not mass-delete BRA history.
+2. **Make** — same filter for manufacturing orders.
+3. **Contacts** — delete test profiles only (`Sandbox MTO Tester`).
+4. **Items → Products** — bulk-select only miscategorized Hub raw materials (`RM-*` metals / powder / Dekton) and `QA-TEST-*` / `SANDBOX-*` that sit in Products. Never select BRA/OCE/BRO/DBT.
+
+### Script (preferred inventory + gated delete)
+
+```bash
+# Dry-run inventory CSV under tmp/
+npm run katana:purge:targeted
+
+# After reviewing CSV — sandbox SO/MO/customers only
+npm run katana:purge:targeted:txns
+
+# After reviewing CSV — miscategorized Products only
+npm run katana:purge:targeted:products
+```
+
+Requires `KATANA_PERSONAL_ACCESS_TOKEN` (or `KATANA_API_KEY`). Optional Hub ID cleanup needs `POSTGRES_URL`.
+
+### Hub reclassify + resync
+
+1. Run DB migration `0025_rm_item_type_backfill` (forces `RM-*` → `raw_material`, clears stale product IDs).
+2. In `/admin/dictionary`, confirm **Type** = `raw_material` for metals, powders, Dekton (`RM-MET-*`, `RM-PWD-*`, `RM-DKT-*`). Changing type to `raw_material` clears Hub Katana IDs so the next publish can `POST /materials`.
+3. Re-approve / republish those SKUs. The unified writer maps `raw_material` → Katana **Materials** tab.
+
+---
+
+## 8. Katana labor rates (job costing)
+
+Katana COGS formula: **(Setup Time + Run Time) × Resource Hourly Rate**.
+
+Rates are set in **Katana → Settings → Resources**, not in this hub.
+
+### Locked physical cells (do not invent new names)
+
+Assign fully burdened $/hr (labor + overhead) on each cell that matches the Hub lock list:
+
+| Resource | $/hr set? |
+|----------|-----------|
+| FAB POD A | ☐ |
+| Sandblasting | ☐ |
+| Powder Coating Booth | ☐ |
+| Curing Oven | ☐ |
+| Quality Control | ☐ |
+| Assembly & Packaging | ☐ |
+| Fabric Cutting | ☐ |
+| Fabric Sewing | ☐ |
+| Cushion Stuffing | ☐ |
+| Dekton Fabrication | ☐ |
+
+### Hub baseline times (not a single 15/45)
+
+“Apply Aluminum Frame Routing” injects the lean **FAB POD A** track (Fabrication & Welding → Sandblast → Powder → Cure → QC → Pack). Shop Floor **Start/Stop** on the tablet overrides estimates with actual times for live job cost. No Hub code change required for rates or clocking.
+
+---
+
+## 9. GoHighLevel → Katana sales orders (native only)
+
+After Katana is clean and Hub `RM-*` live under **Materials**:
+
+| Rule | Detail |
+|------|--------|
+| Trigger | GHL Deal / Opportunity marked **Won** |
+| Action | Native GHL automation / Zapier / Make → Katana `POST /sales_orders` |
+| Line items | Map to locked Hub **`FIN-*`** SKUs only |
+| Ban list | GHL must **never** call `/recipes`, `/bom_rows`, `/operations`, `/products`, or `/materials` |
+
+**This MDM hub does not process GHL order webhooks.** `/api/webhooks/ghl` returns **410**. Do not re-register Inngest `syncGhlOpportunity`.
+
+Suggested SO payload fields: customer identity, idempotency key, `sales_order_rows[]` with Katana `variant_id` (or resolvable `FIN-*` SKU). Prefer Katana’s native connector docs for the exact schema version you run.
 
 ---
 

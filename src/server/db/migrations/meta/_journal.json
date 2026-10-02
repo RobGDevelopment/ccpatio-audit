@@ -145,12 +145,47 @@
     {
       "idx": 20,
       "version": "7",
+      "when": 1789315600000,
+      "tag": "0021_product_bom_draft_cut_list",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789402000000,
+      "tag": "0022_item_operations_sku_wc_seq_uidx",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1789488400000,
+      "tag": "0023_channel_sync_payload_hash",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1789574800000,
+      "tag": "0024_hub_tables_rls_lockdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1789661200000,
+      "tag": "0025_rm_item_type_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
       "when": 1789747600000,
       "tag": "0026_order_intake",
       "breakpoints": true
     },
     {
-      "idx": 21,
+      "idx": 26,
       "version": "7",
       "when": 1790953664222,
       "tag": "0026_inventory_holds",

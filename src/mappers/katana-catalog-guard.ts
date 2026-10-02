@@ -1,8 +1,8 @@
 /**
- * Catalog publish guard — one FIN-* sellable variant, nested SA recipe,
+ * Catalog publish guard — one FIN-* sellable variant, nested ASM/SA recipe,
  * no fabric/powder cartesian explosion.
  *
- * Binding: docs/CAPITAL_STACK_VENDOR_HANDOFF.md + MDM Phase 3/4.
+ * Binding: docs/BOM_Examples (ASM-/CUT- SoT) + MDM Phase 3/4.
  */
 import type { HubBomEdge, HubProductGraph, HubSkuNode } from "@/mappers/types";
 
@@ -53,14 +53,18 @@ export function isColorwaySku(sku: string): boolean {
   );
 }
 
+function isWeldmentPrefix(value: string): boolean {
+  return value.startsWith("ASM-") || value.startsWith("SA-");
+}
+
 export function isFrameSubAssemblySku(sku: string): boolean {
   const value = sku.trim().toUpperCase();
-  return value.startsWith("SA-") && value.endsWith("-FRAME");
+  return isWeldmentPrefix(value) && value.endsWith("-FRAME");
 }
 
 export function isCushSubAssemblySku(sku: string): boolean {
   const value = sku.trim().toUpperCase();
-  return value.startsWith("SA-") && value.endsWith("-CUSH");
+  return isWeldmentPrefix(value) && value.endsWith("-CUSH");
 }
 
 function bySku(graph: HubProductGraph): Map<string, HubSkuNode> {
@@ -138,7 +142,7 @@ export function assertKatanaCatalogIdentity(graph: HubProductGraph): void {
   if (illegalFinChildren.length > 0) {
     throw new KatanaCatalogPublishError(
       "RECIPE",
-      `${root} may only consume SA-*-FRAME / SA-*-CUSH. Illegal children: ${illegalFinChildren
+      `${root} may only consume ASM-|SA-*-FRAME / ASM-|SA-*-CUSH. Illegal children: ${illegalFinChildren}
         .map((edge) => edge.childSku)
         .join(", ")}.`,
     );
@@ -216,7 +220,7 @@ export function assertDefaultKatanaRecipe(graph: HubProductGraph): string[] {
   if (frames.length !== 1) {
     throw new KatanaCatalogPublishError(
       "RECIPE",
-      `${root} must consume exactly one SA-*-FRAME (found ${frames.length}).`,
+      `${root} must consume exactly one ASM-|SA-*-FRAME (found ${frames.length}).`,
     );
   }
   if (other.length > 0) {
@@ -253,7 +257,7 @@ export function assertDefaultKatanaRecipe(graph: HubProductGraph): string[] {
   if (cushes.length > 1) {
     throw new KatanaCatalogPublishError(
       "RECIPE",
-      `${root} must consume at most one SA-*-CUSH (found ${cushes.length}).`,
+      `${root} must consume at most one ASM-|SA-*-CUSH (found ${cushes.length}).`,
     );
   }
 
@@ -307,8 +311,8 @@ export type KatanaDefaultRecipeDraft = {
 };
 
 /**
- * Exact recipe shape vendors' MTO swap expects: FIN → SA-FRAME + SA-CUSH;
- * FRAME → tube (+ optional generic powder); CUSH → RM-FAB-GENERIC.
+ * Exact recipe shape vendors' MTO swap expects: FIN → ASM-FRAME + ASM-CUSH
+ * (legacy SA-* goldens still accepted); FRAME → tube; CUSH → RM-FAB-GENERIC.
  */
 export function draftDefaultKatanaRecipe(graph: HubProductGraph): KatanaDefaultRecipeDraft {
   const staged = stageKatanaCatalogGraph(graph).graph;

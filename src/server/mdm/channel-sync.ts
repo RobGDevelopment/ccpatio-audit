@@ -1,7 +1,8 @@
 /**
  * channel_sync idempotency helpers for catalog fan-out.
- * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md Phase 4.
+ * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md Phase 4 / §5B Tier 1.3.
  */
+import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import {
@@ -9,6 +10,12 @@ import {
   type ChannelSyncChannel,
   type ChannelSyncStatus,
 } from "@/server/db/schema";
+
+export function hashChannelPayload(value: unknown): string {
+  return createHash("sha256")
+    .update(JSON.stringify(value))
+    .digest("hex");
+}
 
 export async function getChannelSyncRow(
   globalSku: string,
@@ -34,6 +41,7 @@ export async function upsertChannelSync(input: {
   status: ChannelSyncStatus;
   externalId?: string | null;
   lastError?: string | null;
+  payloadHash?: string | null;
 }): Promise<void> {
   const db = getDb();
   const now = new Date();
@@ -45,6 +53,7 @@ export async function upsertChannelSync(input: {
       status: input.status,
       external_id: input.externalId ?? null,
       last_error: input.lastError ?? null,
+      payload_hash: input.payloadHash ?? null,
       updated_at: now,
     })
     .onConflictDoUpdate({
@@ -53,7 +62,20 @@ export async function upsertChannelSync(input: {
         status: input.status,
         external_id: input.externalId ?? null,
         last_error: input.lastError ?? null,
+        payload_hash: input.payloadHash ?? null,
         updated_at: now,
       },
     });
+}
+
+/** True when a prior success exists for the same payload identity. */
+export function channelSyncIsCurrent(
+  row: { status: string; payload_hash: string | null } | null | undefined,
+  payloadHash: string,
+): boolean {
+  return (
+    row?.status === "success" &&
+    row.payload_hash != null &&
+    row.payload_hash === payloadHash
+  );
 }

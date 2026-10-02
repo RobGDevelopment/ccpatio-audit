@@ -4,12 +4,15 @@
  * Auth: KATANA_PERSONAL_ACCESS_TOKEN (preferred) or legacy KATANA_API_KEY.
  * Materials → POST /materials (type "material")
  * Products  → POST /products  (type "product", is_material: false in ERP terms)
- * BOM       → POST /recipes   (keep_current_rows: false replaces existing lines)
+ * BOM       → POST /bom_rows/batch/create (PR-T2.3; /recipes fallback)
  * Ops       → POST /product_operation_rows (minutes stored locally → seconds)
  * Orders    → POST /sales_orders
  * MTO       → POST /manufacturing_order_make_to_order (create_subassemblies defaults false)
  * MTO swap  → PATCH /manufacturing_order_recipe_rows/{id} via applyMtoIngredientOverrides
- * Recipe/ops sync respects ORDER_PIPELINE_MODE (live only for mutations)
+ * Recipe/ops sync is owned by syncBOMToKatana / publishHubManufacturingToKatana
+ * (single manufacturing writer — PR-T2.0). Respects CATALOG_PUBLISH_MODE (live)
+ * or KATANA_E2E_MIRROR; falls back to ORDER_PIPELINE_MODE=live for backward
+ * compatibility. Does not reintroduce transactional sales-order POSTs.
  */
 
 import { asc, eq } from "drizzle-orm";
@@ -22,16 +25,30 @@ import {
   sku_mappings,
   type ItemType,
 } from "@/server/db/schema";
+import { coerceHubItemType } from "@/lib/raw-material-sku";
 import {
-  canMutateKatanaOrders,
-  getOrderPipelineMode,
-  pipelineModeLabel,
-} from "@/server/pipeline/mode";
+  canMutateKatanaCatalog,
+  catalogPublishModeLabel,
+  getCatalogPublishMode,
+} from "@/server/pipeline/catalog-mode";
 import type { WooOrderWebhook } from "@/server/woocommerce/ingress.schema";
 import {
   katanaIsSellableProduct,
   katanaProductSyncFlags,
 } from "@/lib/katana-product-flags";
+import { resolveKatanaIngredientNotes } from "@/lib/sketchup-cutlist/notes-codec";
+import {
+  normalizeKatanaResource,
+  resolveKatanaOperationName,
+} from "@/lib/factory-routing/resources";
+import {
+  chunkKatanaBomRows,
+  isKatanaBomRowsEnabled,
+  KATANA_BOM_ROWS_BATCH_PATH,
+  KATANA_RECIPES_PATH,
+  shouldFallbackKatanaBomRows,
+  toKatanaBomRowBody,
+} from "@/lib/katana-bom-rows";
 import {
   collectChildMoIdsFromRecipeRows,
   collectNestedManufacturingOrderIds,
@@ -281,15 +298,22 @@ function readRateLimitReset(headers: Headers): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function katanaValidationDetails(body: unknown): unknown {
+  const record = asRecord(body);
+  if (!record) return body;
+  if (record.details != null) return record.details;
+  const nested = asRecord(record.error);
+  if (nested?.details != null) return nested.details;
+  return record;
+}
+
 function formatKatanaError(status: number, body: unknown): string {
   const record = asRecord(body);
   const message =
     typeof record?.message === "string" ? record.message : `HTTP ${status}`;
-  const details = record?.details;
-  if (Array.isArray(details) && details.length > 0) {
-    return `${message} — ${JSON.stringify(details.slice(0, 3))}`;
-  }
-  return message;
+  const details = katanaValidationDetails(body);
+  if (details == null || details === record) return message;
+  return `${message} — ${JSON.stringify(details)}`;
 }
 
 let katanaRequestPacer: (() => Promise<void>) | null = null;
@@ -353,7 +377,7 @@ export async function katanaFetch<T = unknown>(
     const resetAt = readRateLimitReset(response.headers);
     const waitMs = resetAt
       ? Math.max(0, resetAt * 1000 - Date.now()) + 250
-      : 1500 * (retryCount + 1);
+      : 65000;
 
     console.error("[katana] rate limit (429)", {
       path: pathname,
@@ -382,16 +406,16 @@ export async function katanaFetch<T = unknown>(
 
   if (!response.ok) {
     if (response.status === 422) {
-      console.error("[katana] payload rejected (422)", {
-        path: pathname,
-        body: parsed,
-      });
+      console.error(`[katana] payload rejected (422) ${pathname}`);
+      console.error(JSON.stringify(katanaValidationDetails(parsed), null, 2));
     }
 
+    const record = asRecord(parsed);
+    const nested = asRecord(record?.error);
     throw new KatanaApiError(formatKatanaError(response.status, parsed), {
       status: response.status,
-      code: asRecord(parsed)?.code as string | undefined,
-      details: asRecord(parsed)?.details,
+      code: (record?.code ?? nested?.code) as string | undefined,
+      details: record?.details ?? nested?.details,
       rateLimitReset: readRateLimitReset(response.headers),
     });
   }
@@ -470,6 +494,184 @@ export async function findVariantById(
   } catch {
     return null;
   }
+}
+
+function unwrapKatanaList<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  const record = asRecord(payload);
+  const data = record?.data;
+  if (Array.isArray(data)) return data as T[];
+  return [];
+}
+
+type KatanaListedBomRow = {
+  id: string | number;
+  product_variant_id: number;
+};
+
+async function listKatanaBomRowsForVariant(
+  productVariantId: number,
+): Promise<KatanaListedBomRow[]> {
+  const all: KatanaListedBomRow[] = [];
+  const pageSize = 250;
+  for (let page = 1; page <= 40; page += 1) {
+    const { data } = await katanaFetch(
+      `/bom_rows?product_variant_id=${productVariantId}&limit=${pageSize}&page=${page}`,
+    );
+    const rows = unwrapKatanaList<Record<string, unknown>>(data)
+      .map((row) => ({
+        id: (row.id as string | number) ?? "",
+        product_variant_id: Number(row.product_variant_id),
+      }))
+      .filter(
+        (row) =>
+          row.id !== "" &&
+          Number.isFinite(row.product_variant_id) &&
+          row.product_variant_id === productVariantId,
+      );
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+  return all;
+}
+
+async function deleteKatanaBomRows(rows: KatanaListedBomRow[]): Promise<void> {
+  for (const row of rows) {
+    await katanaFetch(`/bom_rows/${row.id}`, { method: "DELETE" });
+  }
+}
+
+async function postKatanaBomRowsBatch(
+  bodies: Record<string, unknown>[],
+  idempotencyKey?: string,
+): Promise<void> {
+  for (const chunk of chunkKatanaBomRows(bodies)) {
+    try {
+      await katanaFetch(KATANA_BOM_ROWS_BATCH_PATH, {
+        method: "POST",
+        idempotencyKey,
+        body: { data: chunk },
+      });
+    } catch (error: unknown) {
+      if (!(error instanceof KatanaApiError) || error.status !== 422) {
+        throw error;
+      }
+      // OpenAPI lists required "rows" while documenting property "data".
+      await katanaFetch(KATANA_BOM_ROWS_BATCH_PATH, {
+        method: "POST",
+        idempotencyKey,
+        body: { rows: chunk },
+      });
+    }
+  }
+}
+
+async function postKatanaRecipesReplace(
+  rows: Array<{
+    product_variant_id: number;
+    ingredient_variant_id: number;
+    quantity: number;
+    notes?: string;
+    product_sku?: string;
+    ingredient_sku?: string;
+  }>,
+  idempotencyKey?: string,
+): Promise<void> {
+  await katanaFetch(KATANA_RECIPES_PATH, {
+    method: "POST",
+    idempotencyKey,
+    body: {
+      keep_current_rows: false,
+      rows,
+    },
+  });
+}
+
+/**
+ * PR-T2.3 — prefer /bom_rows/batch/create (replace = delete existing + create).
+ * Fall back to deprecated POST /recipes when the flag is off or the new
+ * contract is unsupported (404/405/410/422/501). Never fall back on 401/403.
+ */
+async function postKatanaManufacturingBom(
+  recipeRows: Array<{
+    product_variant_id: number;
+    ingredient_variant_id: number;
+    quantity: number;
+    notes?: string;
+    product_sku?: string;
+    ingredient_sku?: string;
+  }>,
+  productVariantId: number,
+  idempotencyKey?: string,
+): Promise<"bom_rows" | "recipes"> {
+  if (!isKatanaBomRowsEnabled()) {
+    await postKatanaRecipesReplace(recipeRows, idempotencyKey);
+    return "recipes";
+  }
+
+  try {
+    const parentVariant = await findVariantById(productVariantId);
+    const productItemId = parentVariant?.product_id ?? null;
+    if (productItemId == null || productItemId <= 0) {
+      throw new KatanaApiError(
+        "Katana product_item_id is required for /bom_rows; falling back to /recipes.",
+        { status: 422 },
+      );
+    }
+
+    try {
+      const existing = await listKatanaBomRowsForVariant(productVariantId);
+      await deleteKatanaBomRows(existing);
+    } catch (error: unknown) {
+      if (error instanceof KatanaApiError && !shouldFallbackKatanaBomRows(error.status)) {
+        throw error;
+      }
+      if (error instanceof KatanaApiError && error.status !== 404) {
+        throw error;
+      }
+      // 404 on GET: treat as empty existing set and still attempt create.
+    }
+
+    const bodies = recipeRows.map((row) =>
+      toKatanaBomRowBody({
+        productItemId,
+        productVariantId: row.product_variant_id,
+        ingredientVariantId: row.ingredient_variant_id,
+        quantity: row.quantity,
+        notes: row.notes,
+      }),
+    );
+    await postKatanaBomRowsBatch(bodies, idempotencyKey);
+    return "bom_rows";
+  } catch (error: unknown) {
+    if (error instanceof KatanaApiError && !shouldFallbackKatanaBomRows(error.status)) {
+      throw error;
+    }
+    console.warn("[katana] /bom_rows failed; falling back to /recipes", {
+      status: error instanceof KatanaApiError ? error.status : undefined,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    await postKatanaRecipesReplace(recipeRows, idempotencyKey);
+    return "recipes";
+  }
+}
+
+/** Delete the variant's recipe rows and create the supplied set. */
+export async function replaceKatanaVariantRecipe(
+  productVariantId: number,
+  rows: Array<{ ingredientVariantId: number; quantity: number; notes?: string }>,
+  idempotencyKey?: string,
+): Promise<"bom_rows" | "recipes"> {
+  return postKatanaManufacturingBom(
+    rows.map((row) => ({
+      product_variant_id: productVariantId,
+      ingredient_variant_id: row.ingredientVariantId,
+      quantity: row.quantity,
+      notes: row.notes,
+    })),
+    productVariantId,
+    idempotencyKey,
+  );
 }
 
 async function resolveIngredientVariant(
@@ -789,8 +991,9 @@ export async function syncFinishedGoodToKatana(
 /**
  * Ensure a sku_mappings row has a Katana variant (product or material).
  * Sub-assemblies and finished goods sync as producible products.
+ * Exported for ops bulk-approval scripts.
  */
-async function ensureKatanaVariantForSku(
+export async function ensureKatanaVariantForSku(
   sku: string,
 ): Promise<KatanaSyncResult> {
   const needle = sku.trim().toUpperCase();
@@ -805,18 +1008,83 @@ async function ensureKatanaVariantForSku(
     return { ok: false, error: `SKU ${needle} not found in sku_mappings.` };
   }
 
-  if (mapping.katana_variant_id != null) {
-    return {
-      ok: true,
-      action: "unchanged",
-      sku: needle,
-      variantId: mapping.katana_variant_id,
-      materialId: mapping.katana_material_id,
-      message: `Variant already mapped for ${needle}.`,
-    };
+  const effectiveType = coerceHubItemType(needle, mapping.item_type);
+  if (effectiveType !== mapping.item_type) {
+    await db
+      .update(sku_mappings)
+      .set({
+        item_type: effectiveType,
+        katana_variant_id: null,
+        katana_material_id: null,
+        updated_at: new Date(),
+        version: mapping.version + 1,
+      })
+      .where(eq(sku_mappings.global_sku, needle));
+    mapping.item_type = effectiveType;
+    mapping.katana_variant_id = null;
+    mapping.katana_material_id = null;
   }
 
-  if (mapping.item_type === "raw_material") {
+  if (mapping.katana_variant_id != null) {
+    let materialId = mapping.katana_material_id;
+    if (effectiveType === "raw_material" && materialId == null) {
+      const live =
+        (await findVariantById(mapping.katana_variant_id)) ??
+        (await findVariantBySku(needle));
+      if (live?.material_id != null) {
+        materialId = live.material_id;
+        await db
+          .update(sku_mappings)
+          .set({
+            katana_variant_id: live.id,
+            katana_material_id: live.material_id,
+          })
+          .where(eq(sku_mappings.global_sku, needle));
+        return {
+          ok: true,
+          action: "updated",
+          sku: needle,
+          variantId: live.id,
+          materialId: live.material_id,
+          message: `Backfilled katana_material_id for ${needle} from live variant.`,
+        };
+      }
+      if (live?.product_id != null) {
+        // Cannot convert Product → Material in place; clear Hub IDs and fall through.
+        await db
+          .update(sku_mappings)
+          .set({
+            katana_variant_id: null,
+            katana_material_id: null,
+            updated_at: new Date(),
+            version: mapping.version + 1,
+          })
+          .where(eq(sku_mappings.global_sku, needle));
+        mapping.katana_variant_id = null;
+        mapping.katana_material_id = null;
+      } else {
+        return {
+          ok: true,
+          action: "unchanged",
+          sku: needle,
+          variantId: mapping.katana_variant_id,
+          materialId,
+          message: `Variant already mapped for ${needle}.`,
+        };
+      }
+    } else {
+      return {
+        ok: true,
+        action: "unchanged",
+        sku: needle,
+        variantId: mapping.katana_variant_id,
+        materialId,
+        message: `Variant already mapped for ${needle}.`,
+      };
+    }
+  }
+
+  if (effectiveType === "raw_material") {
     const materialSync = await syncRawMaterialToKatana(needle);
     if (materialSync.ok) return materialSync;
 
@@ -852,22 +1120,27 @@ function minsToSeconds(raw: string | null | undefined): number | null {
 }
 
 /**
- * Bottom-up recursive BOM + routing sync.
+ * Unified hub manufacturing writer (PR-T2.0 + PR-T2.3).
+ * Bottom-up recursive BOM + routing sync from live hub tables.
  * 1. Walk children; sync sub_assembly recipes/ops first
- * 2. POST /recipes with quantity * scrap_factor
+ * 2. POST /bom_rows/batch/create (KATANA_USE_BOM_ROWS, default on) with
+ *    quantity * scrap_factor; fall back to POST /recipes if unsupported
  * 3. POST /product_operation_rows (minutes → seconds)
- * Gated by ORDER_PIPELINE_MODE === live (same as order mutations).
+ * Gated by CATALOG_PUBLISH_MODE === live (or KATANA_E2E_MIRROR / legacy ORDER_PIPELINE_MODE=live).
+ * Does not POST sales orders / MTO.
  */
 export async function syncBOMToKatana(
   parentSku: string,
+  options: { allowEmpty?: boolean } = {},
 ): Promise<KatanaBomSyncResult> {
   const needle = parentSku.trim().toUpperCase();
   if (!needle) {
     return { ok: false, error: "Parent SKU is required" };
   }
 
-  const mode = getOrderPipelineMode();
-  const allowMutate = canMutateKatanaOrders(mode) || isKatanaE2eMirror();
+  const catalogMode = getCatalogPublishMode();
+  const allowMutate = canMutateKatanaCatalog(catalogMode);
+  const allowEmpty = options.allowEmpty === true;
 
   try {
     const db = getDb();
@@ -907,7 +1180,10 @@ export async function syncBOMToKatana(
           .where(eq(sku_mappings.global_sku, childSku))
           .limit(1);
 
-        const childType: ItemType = childMapping?.item_type ?? "raw_material";
+        const childType: ItemType = coerceHubItemType(
+          childSku,
+          childMapping?.item_type ?? "raw_material",
+        );
         if (childType === "sub_assembly") {
           const nested = await syncNode(childSku);
           if (!nested.ok) return nested;
@@ -974,19 +1250,17 @@ export async function syncBOMToKatana(
             product_variant_id: productVariantId,
             ingredient_variant_id: ingredientVariant.id,
             quantity: effectiveQty,
-            notes: (line.notes ?? "").trim() || line.unit_of_measure,
+            notes:
+              resolveKatanaIngredientNotes({
+                notes: line.notes,
+                cutList: line.cut_list,
+              }) || line.unit_of_measure,
             product_sku: sku,
             ingredient_sku: childSku,
           });
         }
 
-        await katanaFetch("/recipes", {
-          method: "POST",
-          body: {
-            keep_current_rows: false,
-            rows: recipeRows,
-          },
-        });
+        await postKatanaManufacturingBom(recipeRows, productVariantId);
       } else if (bomLines.length > 0) {
         // Dry-run: count planned recipe rows
         recipeRows.push(
@@ -1008,13 +1282,15 @@ export async function syncBOMToKatana(
 
       const operationPayload: Array<Record<string, unknown>> = [];
       for (const op of ops) {
+        const resourceName = normalizeKatanaResource(op.work_center);
+        const operationName = resolveKatanaOperationName(op.work_center);
         const setupSec = minsToSeconds(op.setup_time_mins);
         const runSec = minsToSeconds(op.run_time_mins);
         if (setupSec != null && setupSec > 0) {
           operationPayload.push({
             product_variant_id: productVariantId,
-            operation_name: `${op.work_center} Setup`,
-            resource_name: op.work_center,
+            operation_name: `${operationName} Setup`,
+            resource_name: resourceName,
             type: "setup",
             planned_time_parameter: setupSec,
           });
@@ -1022,8 +1298,8 @@ export async function syncBOMToKatana(
         if (runSec != null && runSec > 0) {
           operationPayload.push({
             product_variant_id: productVariantId,
-            operation_name: op.work_center,
-            resource_name: op.work_center,
+            operation_name: operationName,
+            resource_name: resourceName,
             type: "process",
             planned_time_parameter: runSec,
           });
@@ -1052,6 +1328,20 @@ export async function syncBOMToKatana(
     }
 
     if (totalRecipeRows === 0 && totalOperationRows === 0) {
+      if (allowEmpty) {
+        return {
+          ok: true,
+          finishedGoodSku: needle,
+          productVariantId: rootVariantId,
+          recipeRows: 0,
+          operationRows: 0,
+          nodesSynced,
+          dryRun: !allowMutate,
+          message: allowMutate
+            ? `No BOM lines or operations for ${needle}; foundation items only.`
+            : `[${catalogPublishModeLabel(catalogMode)}] Dry-run: no BOM/ops for ${needle}.`,
+        };
+      }
       return {
         ok: false,
         error: `No BOM lines or operations defined for ${needle} (or its sub-assemblies).`,
@@ -1067,7 +1357,7 @@ export async function syncBOMToKatana(
         operationRows: totalOperationRows,
         nodesSynced,
         dryRun: true,
-        message: `[${pipelineModeLabel(mode)}] Dry-run: would sync ${nodesSynced} node(s), ${totalRecipeRows} recipe row(s), ${totalOperationRows} operation row(s) for ${needle}. Set ORDER_PIPELINE_MODE=live to push.`,
+        message: `[${catalogPublishModeLabel(catalogMode)}] Dry-run: would sync ${nodesSynced} node(s), ${totalRecipeRows} recipe row(s), ${totalOperationRows} operation row(s) for ${needle}. Set CATALOG_PUBLISH_MODE=live (or ORDER_PIPELINE_MODE=live) to push.`,
       };
     }
 
@@ -1079,7 +1369,7 @@ export async function syncBOMToKatana(
       operationRows: totalOperationRows,
       nodesSynced,
       dryRun: false,
-      message: `Synced ${nodesSynced} node(s): ${totalRecipeRows} recipe row(s), ${totalOperationRows} operation row(s) for ${needle}.`,
+      message: `Synced ${nodesSynced} node(s): ${totalRecipeRows} BOM row(s), ${totalOperationRows} operation row(s) for ${needle} via ${isKatanaBomRowsEnabled() ? "/bom_rows (recipes fallback armed)" : "/recipes"}.`,
     };
   } catch (error: unknown) {
     if (error instanceof KatanaApiError) {
@@ -1093,6 +1383,12 @@ export async function syncBOMToKatana(
 
 /** Alias matching task naming. */
 export const syncBomToKatana = syncBOMToKatana;
+
+/**
+ * Canonical name for the single manufacturing writer used by MDM Path A
+ * and Factory Path B (PR-T2.0).
+ */
+export const publishHubManufacturingToKatana = syncBOMToKatana;
 
 function parseUnitPrice(value: string | number | undefined | null): number {
   if (typeof value === "number" && Number.isFinite(value)) {

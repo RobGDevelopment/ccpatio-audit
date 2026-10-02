@@ -63,9 +63,8 @@ async function writeDrafts(plan: InstantiatedPlan): Promise<number> {
       .limit(1);
     if (!child) continue;
 
-    const notesPayload = line.cutList.length
-      ? `${line.notes}\n${JSON.stringify({ cut_list: line.cutList })}`
-      : line.notes;
+    const notesPayload = line.notes;
+    const cutListPayload = line.cutList;
 
     await db
       .insert(product_bom_draft)
@@ -78,6 +77,7 @@ async function writeDrafts(plan: InstantiatedPlan): Promise<number> {
         status: "draft_pending_review",
         source: "sketchup_geometry",
         notes: notesPayload,
+        cut_list: cutListPayload,
       })
       .onConflictDoUpdate({
         target: [product_bom_draft.parent_sku, product_bom_draft.child_sku],
@@ -88,6 +88,7 @@ async function writeDrafts(plan: InstantiatedPlan): Promise<number> {
           status: "draft_pending_review",
           source: "sketchup_geometry",
           notes: notesPayload,
+          cut_list: cutListPayload,
           updated_at: new Date(),
         },
       });
@@ -106,7 +107,7 @@ async function writeDrafts(plan: InstantiatedPlan): Promise<number> {
     if (exists) continue;
     await db.insert(item_operations_draft).values({
       item_sku: sku,
-      work_center: "Building & Welding",
+      work_center: "FAB POD A",
       sequence: 20,
       run_time_mins: "15",
       status: "draft_pending_review",

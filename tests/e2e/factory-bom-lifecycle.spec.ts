@@ -93,9 +93,13 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
     const browserKatanaPosts: unknown[] = [];
     await page.route("https://api.katanamrp.com/v1/**", async (route) => {
       const request = route.request();
-      if (request.method() === "POST" && request.url().includes("/recipes")) {
+      const url = request.url();
+      if (
+        request.method() === "POST" &&
+        (url.includes("/recipes") || url.includes("/bom_rows"))
+      ) {
         const raw = request.postData();
-        expect(raw, "Katana recipe POST must not be a bare string body").not.toBeNull();
+        expect(raw, "Katana BOM POST must not be a bare string body").not.toBeNull();
         const parsed = request.postDataJSON() as unknown;
         expect(typeof parsed).toBe("object");
         expect(Array.isArray(parsed)).toBeFalsy();
@@ -210,18 +214,26 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
     expect(frameKids).toContain(E2E_POWDER_SKU);
     expect(frameKids).not.toContain(E2E_CAP_SKU);
 
+    const livePowder = liveByParent(E2E_FRAME_SKU).find(
+      (row) => row.child_sku === E2E_POWDER_SKU,
+    );
+    expect(livePowder?.notes).toBe("4 pcs @ 34.0 in · 45°/45° mitre");
+    expect(livePowder?.notes).not.toContain("{");
+    expect(Array.isArray(livePowder?.cut_list)).toBeTruthy();
+    expect((livePowder?.cut_list as unknown[]).length).toBe(1);
+
     // --------------------------------------------------------------------------
     // PHASE 4 — catalog recipe payload (relational rows, not a flat string).
     // --------------------------------------------------------------------------
     await page.getByRole("button", { name: "Publish recipes to Katana" }).click();
     await expect(
-      page.getByText(/Catalog recipes posted|Dry-run|Synced/i),
+      page.getByText(/Catalog BOM posted|Catalog recipes posted|Dry-run|Synced/i),
     ).toBeVisible({ timeout: 30_000 });
 
     const preview = await fetchRecipePreview(page, E2E_FG_SKU);
     expect(preview.ok).toBeTruthy();
     expect(preview.finishedGoodSku).toBe(E2E_FG_SKU);
-    expect(preview.path).toBe("/recipes");
+    expect(preview.path === "/recipes" || preview.path === "/bom_rows/batch/create").toBeTruthy();
     expect(preview.method).toBe("POST");
     expect(Array.isArray(preview.katanaRecipePosts)).toBeTruthy();
     expect(preview.katanaRecipePosts.length).toBeGreaterThan(0);
@@ -264,14 +276,19 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
       const payload = (await captured.json()) as {
         captures: Array<{ path: string; body: unknown }>;
       };
-      const recipeCaptures = payload.captures.filter((item) =>
-        item.path.includes("recipes"),
+      const recipeCaptures = payload.captures.filter(
+        (item) =>
+          item.path.includes("recipes") || item.path.includes("bom_rows"),
       );
       for (const item of recipeCaptures) {
+        if (!item.body) continue;
         expect(typeof item.body).toBe("object");
         expect(typeof item.body).not.toBe("string");
-        const body = item.body as { rows?: unknown };
-        expect(Array.isArray(body.rows)).toBeTruthy();
+        const body = item.body as { rows?: unknown; data?: unknown };
+        expect(
+          Array.isArray(body.rows) || Array.isArray(body.data),
+          "Katana BOM POST must be a row/data array envelope",
+        ).toBeTruthy();
       }
     }
 

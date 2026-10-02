@@ -9,6 +9,10 @@
  * factory can fill the cut-list later.
  */
 import {
+  normalizeKatanaResource,
+  resourceLane,
+} from "@/lib/factory-routing/resources";
+import {
   KATANA_BULK_MATERIALS,
   type KatanaBulkMaterialSeed,
 } from "@/lib/katana-bulk-materials";
@@ -73,20 +77,37 @@ export type CollectionBomPlan = {
 const CUSHION_MATERIALS = new Set(["RM-FAB-GENERIC", "RM-RAW-FOAM"]);
 
 const FRAME_OPS = new Set([
-  "Metal Cutting",
+  "FAB POD A",
+  "Sandblasting",
+  "Powder Coating Booth",
+  "Curing Oven",
+  // Legacy aliases still accepted for imported Katana history (normalized upstream)
   "Building & Welding",
+  "Fabrication & Welding",
+  "Welding Station",
+  "Metal Cutting",
+  "Material Handling",
   "Metal Grinding",
+  "Grinding Station",
   "Metal Sandblasting",
   "Metal Powder Coating",
+  "Dekton Fabrication",
   "Dekton Cutting",
   "Dekton Grinding",
   "Dekton Polishing",
-  "Material Handling",
 ]);
 
-const CUSH_OPS = new Set(["Fabric Cutting", "Fabric Sewing", "Cushion Stuffing"]);
+const CUSH_OPS = new Set([
+  "Fabric Cutting",
+  "Fabric Sewing",
+  "Cushion Stuffing",
+]);
 
-const FG_OPS = new Set(["Quality Check"]);
+const FG_OPS = new Set([
+  "Quality Control",
+  "Quality Check",
+  "Assembly & Packaging",
+]);
 
 const materialByVariantId = new Map<number, KatanaBulkMaterialSeed>(
   KATANA_BULK_MATERIALS.map((row) => [row.katanaVariantId, row]),
@@ -104,9 +125,13 @@ export function ingredientBucket(
 export function operationBucket(
   operationName: string,
 ): "frame" | "cushion" | "fg" | "unknown" {
-  if (FRAME_OPS.has(operationName)) return "frame";
-  if (CUSH_OPS.has(operationName)) return "cushion";
-  if (FG_OPS.has(operationName)) return "fg";
+  const lane = resourceLane(operationName);
+  if (lane === "dekton") return "frame";
+  if (lane === "frame" || lane === "cushion" || lane === "fg") return lane;
+  const name = normalizeKatanaResource(operationName);
+  if (FRAME_OPS.has(operationName) || FRAME_OPS.has(name)) return "frame";
+  if (CUSH_OPS.has(operationName) || CUSH_OPS.has(name)) return "cushion";
+  if (FG_OPS.has(operationName) || FG_OPS.has(name)) return "fg";
   return "unknown";
 }
 
@@ -362,7 +387,7 @@ export function buildCollectionBomPlan(input: {
         }
         operations.push({
           itemSku,
-          workCenter: row.operation_name,
+          workCenter: normalizeKatanaResource(row.operation_name),
           sequence,
           runTimeMins: secondsToMins(row.planned_time_per_unit),
         });

@@ -30,10 +30,12 @@ import {
   fabricYards,
   foamBoardFeet,
   powderPounds,
+  subAssemblySku,
 } from "@/lib/heuristic-bom";
 
 export const BRAVADA_CLUB_CHAIR_FIN = "FIN-BRV-CLB-CHA-34X34";
-export const BRAVADA_SHARED_ARM_SKU = "SA-BRV-ARM";
+/** Shared collection arm — SOW `ASM-BRV-ARM` (not handed). */
+export const BRAVADA_SHARED_ARM_SKU = "ASM-BRV-ARM";
 
 const TUBE_SCRAP = DEFAULT_TUBE_SCRAP_FACTOR;
 
@@ -42,15 +44,15 @@ function round4(n: number): number {
 }
 
 function seatSku(finSku: string): string {
-  return `SA-${finSku.replace(/^FIN-/, "")}-SEAT`;
+  return subAssemblySku(finSku, "SEAT");
 }
 
 function backSku(finSku: string): string {
-  return `SA-${finSku.replace(/^FIN-/, "")}-BACK`;
+  return subAssemblySku(finSku, "BACK");
 }
 
 function cushSku(finSku: string): string {
-  return `SA-${finSku.replace(/^FIN-/, "")}-CUSH`;
+  return subAssemblySku(finSku, "CUSH");
 }
 
 function assignWeldment(stick: WalkerStick): "SEAT" | "ARM" | "BACK" | null {
@@ -499,7 +501,7 @@ export function instantiateBravadaClubChair(
 export const WATERFALL_DINING_TABLE_FIN = "FIN-WFT-DIN-TAB-72X28";
 
 function baseSkuFor(finSku: string): string {
-  return `SA-${finSku.replace(/^FIN-/, "")}-BASE`;
+  return subAssemblySku(finSku, "BASE");
 }
 
 /**

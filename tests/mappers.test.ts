@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   bottomUpSkuOrder,
   buildKatanaPublishPlan,
+  formatKatanaOperationRowsForSku,
   formatKatanaRecipeRowsForParent,
   formatSingleBomEdgeRecipe,
 } from "@/mappers/katana";
@@ -34,7 +35,7 @@ describe("Katana mapper (Ocean Sofa fixture)", () => {
     expect(frame.rows[0].child_sku).toBe("RM-MET-EXT-2X2");
   });
 
-  it("builds a publish plan with Idempotency-Key hooks and no HTTP side effects", () => {
+  it("builds a foundation-only publish plan (materials + products; no recipes/ops)", () => {
     const plan = buildKatanaPublishPlan(OCEAN_SOFA_GRAPH);
 
     expect(plan.map((r) => r.kind)).toEqual([
@@ -43,12 +44,13 @@ describe("Katana mapper (Ocean Sofa fixture)", () => {
       "product",
       "product",
       "product",
-      "recipes",
-      "recipes",
-      "recipes",
-      "product_operation_rows",
-      "product_operation_rows",
     ]);
+    expect(plan.every((r) => r.kind === "material" || r.kind === "product")).toBe(
+      true,
+    );
+    expect(plan.some((r) => (r as { kind: string }).kind === "recipes")).toBe(
+      false,
+    );
 
     const materials = plan.filter((r) => r.kind === "material");
     expect(materials[0].path).toBe("/materials");
@@ -67,26 +69,30 @@ describe("Katana mapper (Ocean Sofa fixture)", () => {
       variants: [{ sku: "FIN-OCN-SOF-96X38", sales_price: 4850 }],
     });
 
-    const frameRecipes = plan.find(
-      (r) => r.kind === "recipes" && r.sku === "SA-OCN-SOF-FRAME",
-    );
-    expect(frameRecipes?.body).toMatchObject({
-      keep_current_rows: false,
-      rows: [
-        expect.objectContaining({
-          quantity: 24 * 1.05,
-          product_variant_id: 2001,
-          ingredient_variant_id: 1001,
-        }),
-      ],
-    });
+    for (const req of plan) {
+      expect(req.idempotencyKey.length).toBeGreaterThan(0);
+      expect(req.method).toBe("POST");
+    }
+  });
 
-    const frameOps = plan.find(
-      (r) =>
-        r.kind === "product_operation_rows" && r.sku === "SA-OCN-SOF-FRAME",
+  it("formats recipe rows and operations for hub-writer consumers (not in plan)", () => {
+    const frameRecipes = formatKatanaRecipeRowsForParent(
+      OCEAN_SOFA_GRAPH,
+      "SA-OCN-SOF-FRAME",
     );
-    expect(frameOps?.path).toBe("/product_operation_rows");
-    expect(frameOps?.body.rows).toEqual(
+    expect(frameRecipes.rows).toEqual([
+      expect.objectContaining({
+        quantity: 24 * 1.05,
+        product_variant_id: 2001,
+        ingredient_variant_id: 1001,
+      }),
+    ]);
+
+    const frameOps = formatKatanaOperationRowsForSku(
+      OCEAN_SOFA_GRAPH,
+      "SA-OCN-SOF-FRAME",
+    );
+    expect(frameOps).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           type: "setup",
@@ -100,11 +106,6 @@ describe("Katana mapper (Ocean Sofa fixture)", () => {
         }),
       ]),
     );
-
-    for (const req of plan) {
-      expect(req.idempotencyKey.length).toBeGreaterThan(0);
-      expect(req.method).toBe("POST");
-    }
   });
 
   it("formats a single edge recipe with scrap (orchestrator merge)", () => {

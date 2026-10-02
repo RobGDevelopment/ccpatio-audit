@@ -5,7 +5,9 @@ import { ImagePlus } from "lucide-react";
 import { formatQty, type StockRow } from "@/lib/stock-display";
 import { variantImagePublicUrl } from "@/lib/product-image-url";
 import { ImageUploadModal } from "./ImageUploadModal";
+import type { ActiveShowroomHold } from "../actions";
 import { PlaceHoldModal } from "./PlaceHoldModal";
+import { ReleaseHoldModal } from "./ReleaseHoldModal";
 
 const floatCard =
   "group relative overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]";
@@ -36,7 +38,9 @@ export function InventoryCard({
   holdDisabledReason,
   ghlUserId,
   ghlUserEmail,
+  holds,
   onHoldPlaced,
+  onHoldReleased,
 }: {
   row: StockRow;
   salesperson: string | null;
@@ -44,12 +48,15 @@ export function InventoryCard({
   holdDisabledReason: string | null;
   ghlUserId?: string;
   ghlUserEmail?: string;
+  holds: ActiveShowroomHold[];
   onHoldPlaced: () => void;
+  onHoldReleased: () => void;
 }) {
   const [imageExists, setImageExists] = useState(true);
   const [version, setVersion] = useState(0);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [holdOpen, setHoldOpen] = useState(false);
+  const [releaseOpen, setReleaseOpen] = useState(false);
   const holdDisabled = row.available <= 0 || !canHold || !salesperson;
   const imageUrl = variantImagePublicUrl(row.sku);
   const src = imageUrl && version > 0 ? `${imageUrl}?v=${version}` : imageUrl;
@@ -147,6 +154,17 @@ export function InventoryCard({
         >
           Place Hold
         </button>
+        {holds.length > 0 ? (
+          <button
+            type="button"
+            disabled={!canHold || !salesperson}
+            title={holdDisabledReason ?? undefined}
+            onClick={() => setReleaseOpen(true)}
+            className="w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Release Hold ({holds.length})
+          </button>
+        ) : null}
       </div>
       {salesperson ? (
         <PlaceHoldModal
@@ -159,6 +177,15 @@ export function InventoryCard({
           onPlaced={onHoldPlaced}
         />
       ) : null}
+      <ReleaseHoldModal
+        isOpen={releaseOpen}
+        onClose={() => setReleaseOpen(false)}
+        row={row}
+        holds={holds}
+        ghlUserId={ghlUserId}
+        ghlUserEmail={ghlUserEmail}
+        onReleased={onHoldReleased}
+      />
       <ImageUploadModal
         isOpen={uploadOpen}
         onClose={() => setUploadOpen(false)}

@@ -1,0 +1,5871 @@
+{
+  "generatedAt": "2026-10-01T13:35:18.176Z",
+  "dryRun": false,
+  "counts": {
+    "products": 74,
+    "matched": 10,
+    "updated": 6,
+    "skippedSupabase": 4,
+    "unmatched": 63,
+    "ambiguous": 1
+  },
+  "products": [
+    {
+      "wooId": 29163,
+      "wooSku": null,
+      "name": "Cabana w/ Sunbrella Top & Curtains",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/58-Cabana-with-Sunbrella-Top-Curtains-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 29165,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29164,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28343,
+      "wooSku": null,
+      "name": "Cantilever Umbrella w/Base",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/cantilever-umbrella-render-1.png",
+      "imageWrite": "ambiguous",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28342,
+      "wooSku": null,
+      "name": "Cantilever Umbrella Cover",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": null,
+      "imageWrite": "skipped-no-match",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28339,
+      "wooSku": null,
+      "name": "Occasional Table",
+      "matchedGlobalSku": "FIN-OCC-TAB-56X14",
+      "matchReason": "exact-name",
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/72-OCCASIONAL-TABLE-EDITED.png",
+      "imageWrite": "skipped-supabase",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28337,
+      "wooSku": null,
+      "name": "Lido Umbrella (No Base)",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/lido-umbrella-render-edited-img-1.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28335,
+      "wooSku": null,
+      "name": "Ripple Table",
+      "matchedGlobalSku": "FIN-TJM-TAB",
+      "matchReason": "exact-name",
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/ripple-table-render-edited.png",
+      "imageWrite": "updated",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28334,
+      "wooSku": null,
+      "name": "Two Woosah Chairs",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/woosah-chair-render-edit.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28333,
+      "wooSku": null,
+      "name": "Mibster Chair w/Cup Holders",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/Mibster-chair-render-edited.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28332,
+      "wooSku": null,
+      "name": "Moon Chair w/Cup Holders",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/moonchair-render-edited.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28326,
+      "wooSku": null,
+      "name": "Two Shayz Loungers",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/two-shays-lounger-render-img-2.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28325,
+      "wooSku": null,
+      "name": "Freelo Chair Splash",
+      "matchedGlobalSku": "FIN-TJM-CHA",
+      "matchReason": "exact-name",
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/Freelo-chair-splash-render-edited.png",
+      "imageWrite": "updated",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28316,
+      "wooSku": null,
+      "name": "Laylo Lounger",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/laylo-lounger-render-1.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28315,
+      "wooSku": null,
+      "name": "Kindle Living Lamp (Allison)",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/sleek_black_ribbed_floor_lamp_600x600_50px.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28311,
+      "wooSku": null,
+      "name": "Kindle Living Heater (Allison)",
+      "matchedGlobalSku": "FIN-KIN-MIS",
+      "matchReason": "exact-name",
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/sleek_black_ribbed_floor_lamp_600x600_50px.png",
+      "imageWrite": "updated",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28305,
+      "wooSku": null,
+      "name": "Flexy Zen Shade System (No Base)",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/flexy-zen-render-edited.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28302,
+      "wooSku": null,
+      "name": "Flexy Twin (No Base)",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/flexy-twin-render-edited-2.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28296,
+      "wooSku": null,
+      "name": "Pillow",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/pillow-render-edited.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28288,
+      "wooSku": null,
+      "name": "Bravada Cabana Daybed",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/57-BRAVADA-CABANA-DAYBED-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28291,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28290,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28276,
+      "wooSku": null,
+      "name": "Bravada Swing",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/56-BRAVADA-SWING-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28997,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28996,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28995,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28994,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28993,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28992,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28991,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28990,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28500,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28499,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28438,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28437,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28284,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28283,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28282,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28281,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28280,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28279,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28278,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28277,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28270,
+      "wooSku": null,
+      "name": "Custom Storage Ottoman",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/55-CUSTOM-STORAGE-OTTOMAN-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28481,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28480,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28272,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28271,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28262,
+      "wooSku": null,
+      "name": "Cube Ottoman",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/54-CUBE-OTTOMAN-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28264,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28263,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28248,
+      "wooSku": null,
+      "name": "Ocean Ottoman",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/53-OCEAN-OTTOMAN-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28256,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28255,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28254,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28253,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28252,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28251,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28250,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28249,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28227,
+      "wooSku": null,
+      "name": "Brooklyn Ottoman",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/52-BROOKLYN-OTTOMAN-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28243,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28242,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28241,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28240,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28239,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28238,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28237,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28236,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28235,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28234,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28233,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28232,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28231,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28230,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28229,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28228,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28206,
+      "wooSku": null,
+      "name": "Bravada Ottoman",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/51-BRAVADA-OTTOMAN-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28222,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28221,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28220,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28219,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28218,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28217,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28216,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28215,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28214,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28213,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28212,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28211,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28210,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28209,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28208,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28207,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28202,
+      "wooSku": null,
+      "name": "Bravada Rounded Bench",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/50-BRAVADA-ROUNDED-BENCH-WITH-BACK-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [],
+      "variations": []
+    },
+    {
+      "wooId": 28199,
+      "wooSku": null,
+      "name": "Taylor Chair w/ Arms",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/taylor-chair-image-1.jpg",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28201,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28200,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28191,
+      "wooSku": null,
+      "name": "Taylor Dining Chair",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/49-TAYLOR-DINING-CHAIR-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28193,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28192,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28174,
+      "wooSku": null,
+      "name": "Taylor Bench",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/48-TAYLOR-BENCH-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28186,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28185,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28184,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28183,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28182,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28181,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28180,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28179,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28178,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28177,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28176,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28175,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28164,
+      "wooSku": null,
+      "name": "Taylor Barstool",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/47-TAYLOR-BARSTOOL-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28494,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28493,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28492,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28491,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28168,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28167,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28166,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28165,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28157,
+      "wooSku": null,
+      "name": "Half Back Barstool",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/46-HALF-BACK-BARSTOOL-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28163,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28162,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28161,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28160,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28159,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28158,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28147,
+      "wooSku": null,
+      "name": "Fly Leg Bench",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/45-FLY-LEG-BENCH-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28455,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28454,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28153,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28152,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28151,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28150,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28149,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28148,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28141,
+      "wooSku": null,
+      "name": "Fly Leg Barstool",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/44-FLY-LEG-BARSTOOL-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28145,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28144,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28143,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28142,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28136,
+      "wooSku": null,
+      "name": "Dining Bench w/ No Arms",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/43-DINING-BENCH-ARMLESS-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28140,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28139,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28138,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28137,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28127,
+      "wooSku": null,
+      "name": "Waterfall Fire Pit Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/42-WATERFALL-FIRE-PIT-TABLE-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 29219,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29218,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29217,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29216,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28131,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28130,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28129,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28128,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28122,
+      "wooSku": null,
+      "name": "Propane Fire Pit Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/41-PROPANE-FIRE-PIT-TABLE-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28126,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28125,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28124,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28123,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28110,
+      "wooSku": null,
+      "name": "Daisy Base Fire Pit Dining Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/40-DAISY-BASE-FIRE-PIT-DINING-TABLE-EDIT.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28121,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28120,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28119,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28118,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28069,
+      "wooSku": null,
+      "name": "Waterfall Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/39-WATERFALL-TABLE-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28105,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28104,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28103,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28102,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28101,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28100,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28099,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28098,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28097,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28096,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28095,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28094,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28093,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28092,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28091,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28090,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28089,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28088,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28087,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28086,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28085,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28084,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28083,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28082,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28081,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28080,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28079,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28078,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28077,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28076,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28075,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28074,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28073,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28072,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28071,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28070,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28049,
+      "wooSku": null,
+      "name": "Star Leg Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/38-STAR-LEG-TABLE-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28067,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28066,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28065,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28064,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28063,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28062,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28061,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28060,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28059,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28058,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28057,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28056,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28055,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28054,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28053,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28052,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28051,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28050,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 28011,
+      "wooSku": null,
+      "name": "Brooklyn Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": null,
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28047,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28046,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28045,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28044,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28043,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28042,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28041,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28040,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28039,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28038,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28037,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28036,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28035,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28034,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28033,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28032,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28031,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28030,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28029,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28028,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28027,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28026,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28025,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28024,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28023,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28022,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28021,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28020,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28019,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28018,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28017,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28016,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28015,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28014,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28013,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28012,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27966,
+      "wooSku": null,
+      "name": "Daisy Base Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/36-DAISY-BASE-TABLE-EDIT.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28008,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28007,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28006,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28005,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28004,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28003,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28002,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28001,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28000,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27999,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27998,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27997,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27996,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27995,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27994,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27993,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27992,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27991,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27990,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27989,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27988,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27987,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27986,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27985,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27984,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27983,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27982,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27981,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27980,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27979,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27978,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27977,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27976,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27975,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27974,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27973,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27972,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27971,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27970,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27969,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27968,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27967,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27959,
+      "wooSku": null,
+      "name": "Daisy Base Round Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/35-Daisy-Base-Round-TableEDIT.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28434,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27963,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27962,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27961,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27960,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27956,
+      "wooSku": null,
+      "name": "Waterfall Side Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/34-Waterfall-side-tableEDIT.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27958,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27957,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27953,
+      "wooSku": null,
+      "name": "U Side Table",
+      "matchedGlobalSku": "FIN-MIS-SID-TAB-13X30",
+      "matchReason": "exact-name",
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/33-U-side-tableEDIT.png",
+      "imageWrite": "skipped-supabase",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27955,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27954,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27948,
+      "wooSku": null,
+      "name": "T Table",
+      "matchedGlobalSku": "FIN-MIS-TAB-13X30",
+      "matchReason": "exact-name",
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/32-T-tableEDIT.png",
+      "imageWrite": "skipped-supabase",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27950,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27949,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27945,
+      "wooSku": null,
+      "name": "Triangle Side Table",
+      "matchedGlobalSku": "FIN-TRI-SID-TAB-32X32",
+      "matchReason": "exact-name",
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/30-Triangle-side-tableEDIT.png",
+      "imageWrite": "skipped-supabase",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27947,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27946,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27930,
+      "wooSku": null,
+      "name": "Fly Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/31-Flying-tableEDIT.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27940,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27939,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27938,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27937,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27936,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27935,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27934,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27933,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27932,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27931,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27927,
+      "wooSku": null,
+      "name": "Angular Side Table",
+      "matchedGlobalSku": "FIN-OCN-SID-TAB-12",
+      "matchReason": "exact-name",
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/29-Angular-side-tableEDIT.png",
+      "imageWrite": "updated",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27929,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27928,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27902,
+      "wooSku": null,
+      "name": "Ocean Coffee Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/28-OCEAN-coffee-tableEDIT.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27922,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27921,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27920,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27919,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27918,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27917,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27916,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27915,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27914,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27913,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27912,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27911,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27910,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27909,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27908,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27907,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27906,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27905,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27904,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27903,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27865,
+      "wooSku": null,
+      "name": "Bravada Coffee Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/27-BRAVADA-coffee-table-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27883,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27882,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27881,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27880,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27879,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27878,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27877,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27876,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27875,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27874,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27873,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27872,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27871,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27870,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27869,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27868,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27867,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27866,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27862,
+      "wooSku": null,
+      "name": "Ocean Side Table",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/26-OCEAN-round-side-table-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28451,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28450,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27864,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27863,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27849,
+      "wooSku": null,
+      "name": "Milan Double-Sided Sofa",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/25-MILAN-T-shaped-sofa-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28386,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28385,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27851,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27850,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27836,
+      "wooSku": null,
+      "name": "Milan One-Sided Sofa",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/24-MILAN-one-sided-sofa-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27844,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27843,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27842,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27841,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27840,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27839,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27838,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27837,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27830,
+      "wooSku": null,
+      "name": "Milan Ottoman",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/23-MILAN-ottoman-edited.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 29147,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29146,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29145,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29144,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29143,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29142,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29141,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29140,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29139,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29138,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29137,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29136,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27832,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27831,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27824,
+      "wooSku": null,
+      "name": "Milan Club Chair",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/22-MILAN-club-chair-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27826,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27825,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27816,
+      "wooSku": null,
+      "name": "Ocean Chaise Lounge",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/21-OCEAN-single-chaise-lounge-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28935,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28934,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27818,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27817,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27813,
+      "wooSku": null,
+      "name": "Ocean Loveseat",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/20-OCEAN-loveseat-60in-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28933,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28932,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27815,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27814,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27796,
+      "wooSku": null,
+      "name": "Ocean Sofa",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/19-OCEAN-sofa-72in-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27804,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27803,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27802,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27801,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27800,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27799,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27787,
+      "wooSku": null,
+      "name": "Ocean Club Chair",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/17-OCEAN-club-chair-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27789,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27788,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27780,
+      "wooSku": null,
+      "name": "Brooklyn Corner Chaise",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/16-BROOKLYN-corner-chaise-72in-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27782,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27781,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27767,
+      "wooSku": null,
+      "name": "Brooklyn Corner Sofa",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/15-BROOKLYN-corner-sofa-72in.-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27773,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27772,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27771,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27770,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27769,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27768,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27754,
+      "wooSku": null,
+      "name": "Brooklyn Sofa",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/14-BROOKLYN-sofa-72in-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27762,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27761,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27760,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27759,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27758,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27757,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27756,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27755,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27748,
+      "wooSku": null,
+      "name": "Brooklyn Transitional Chaise Lounge",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/12-BROOKLYN-transitional-double-chaise-48in-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28931,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28930,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27750,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27749,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27719,
+      "wooSku": null,
+      "name": "Bravada Daybed",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/10-BRAVADA-daybed-72in-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27725,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27724,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27723,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27722,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27721,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27720,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27715,
+      "wooSku": null,
+      "name": "Bravada Round Daybed",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/9-BRAVADA-round-daybed-84in-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27717,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27716,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27703,
+      "wooSku": null,
+      "name": "Bravada Chaise Lounge",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/8-BRAVADA-single-chaise-lounge-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28929,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28928,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27705,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27704,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27687,
+      "wooSku": null,
+      "name": "Bravada Corner Chaise",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/7-BRAVADA-corner-chaise-72-x-34in-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28926,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28925,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28924,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28923,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27691,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27690,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27689,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27688,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27674,
+      "wooSku": null,
+      "name": "Bravada Corner Sofa",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/6-BRAVADA-corner-sofa-72in-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27686,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27685,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27684,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27683,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27682,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27681,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27660,
+      "wooSku": null,
+      "name": "Bravada Armless Sofa",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/5-BRAVADA-armless-sofa-72in-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28436,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28435,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27670,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27669,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27668,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27667,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27666,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27665,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27664,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27663,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27662,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27661,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27650,
+      "wooSku": null,
+      "name": "Bravada Sofa",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/4-BRAVADA-sofa-72in-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27656,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27655,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27654,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27653,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27652,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27651,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 27630,
+      "wooSku": null,
+      "name": "Bravada Swivel Chair",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/05/2-BRAVADA-swivel-chair-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27632,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27631,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 26791,
+      "wooSku": null,
+      "name": "Ocean Swivel Chair",
+      "matchedGlobalSku": "FIN-OCN-SWV-CHA",
+      "matchReason": "exact-name",
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2026/04/18-OCEAN-swivel-chair-EDITED.png",
+      "imageWrite": "updated",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27600,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27599,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 9455,
+      "wooSku": null,
+      "name": "Bravada Loveseat",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2023/09/3-BRAVADA-loveseat-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 28922,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 28921,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27640,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27639,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 9449,
+      "wooSku": null,
+      "name": "Bravada Club Chair",
+      "matchedGlobalSku": "FIN-BRV-CLB-CHA",
+      "matchReason": "exact-name",
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2023/09/1-BRAVADA-club-chair-EDITED.png",
+      "imageWrite": "updated",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 27604,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 27603,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "wooId": 8598,
+      "wooSku": null,
+      "name": "Brooklyn Chaise Lounge",
+      "matchedGlobalSku": null,
+      "matchReason": null,
+      "imageSrc": "https://www.ccpatio.com/wp-content/uploads/2023/09/12-BROOKLYN-single-chaise-lounge-EDITED.png",
+      "imageWrite": "skipped-no-match",
+      "attributes": [
+        {
+          "name": "Select Frame Type",
+          "options": [
+            "Steel Frame",
+            "Aluminum Frame"
+          ]
+        }
+      ],
+      "variations": [
+        {
+          "variationId": 29019,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29018,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29017,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Steel Frame"
+            }
+          ]
+        },
+        {
+          "variationId": 29016,
+          "sku": null,
+          "attributes": [
+            {
+              "name": "Select Frame Type",
+              "option": "Aluminum Frame"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

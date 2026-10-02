@@ -100,27 +100,15 @@ export function computeLabor(input: {
 
   const ops: LaborResult["ops"] = [];
 
-  if (d.nCuts > 0 || d.tubeFt > 0) {
-    const setup = 5;
-    const run = d.nCuts * 0.35;
+  if (d.nCuts > 0 || d.nJoints > 0 || d.tubeFt > 0) {
+    const setup = 15;
+    const run = d.nCuts * 0.35 + d.nJoints * 1.8 + d.tubeFt * 0.15;
     ops.push({
-      workCenter: "Metal Cutting",
+      workCenter: "FAB POD A",
       sequence: 10,
       setupTimeMins: setup,
       runTimeMins: round4(setup + run),
-      drivers: { n_cuts: d.nCuts },
-    });
-  }
-
-  if (d.nJoints > 0 || d.tubeFt > 0) {
-    const setup = 10;
-    const run = d.nJoints * 1.8 + d.tubeFt * 0.15;
-    ops.push({
-      workCenter: "Building & Welding",
-      sequence: 20,
-      setupTimeMins: setup,
-      runTimeMins: round4(setup + run),
-      drivers: { n_joints: d.nJoints, tube_ft: d.tubeFt },
+      drivers: { n_cuts: d.nCuts, n_joints: d.nJoints, tube_ft: d.tubeFt },
     });
   }
 
@@ -128,7 +116,7 @@ export function computeLabor(input: {
     const setup = 8;
     const run = d.metalAreaFt2 / 12;
     ops.push({
-      workCenter: "Metal Powder Coating",
+      workCenter: "Powder Coating Booth",
       sequence: 30,
       setupTimeMins: setup,
       runTimeMins: round4(setup + run),
@@ -165,7 +153,7 @@ export function computeLabor(input: {
 
   const qcRun = Math.max(5, input.estWeightLbs * 0.05);
   ops.push({
-    workCenter: "Quality Check",
+    workCenter: "Quality Control",
     sequence: 90,
     setupTimeMins: 0,
     runTimeMins: round4(qcRun),

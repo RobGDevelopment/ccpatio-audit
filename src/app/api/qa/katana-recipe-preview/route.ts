@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPimSession } from "@/lib/pim-audit";
+import { katanaManufacturingBomPath } from "@/lib/katana-bom-rows";
 import {
   loadLiveHubRecipeLines,
   toKatanaRecipePosts,
@@ -9,9 +10,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Authenticated preview of the Katana `POST /recipes` bodies that would be
- * emitted from live `product_bom` (SKU-keyed). Used by E2E because server
- * actions cannot be intercepted with Playwright `page.route()`.
+ * Authenticated preview of the Katana manufacturing BOM bodies that would be
+ * emitted from live `product_bom` (SKU-keyed). Path is `/bom_rows/batch/create`
+ * when KATANA_USE_BOM_ROWS is on (PR-T2.3), else deprecated `/recipes`.
+ * Used by E2E because server actions cannot be intercepted with Playwright
+ * `page.route()`.
  */
 export async function GET(request: Request) {
   const session = await getPimSession();
@@ -30,7 +33,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: true,
     finishedGoodSku: sku,
-    path: "/recipes",
+    path: katanaManufacturingBomPath(),
     method: "POST",
     hubLines: lines,
     katanaRecipePosts: posts,

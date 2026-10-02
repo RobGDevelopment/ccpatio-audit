@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { generateFinishedGoodSku } from "@/lib/sku-engine";
 import {
   buildRawMaterialSkuBase,
+  coerceHubItemType,
+  isHubRawMaterialSku,
   nextAvailableSku,
 } from "@/lib/raw-material-sku";
 import { isNaToken } from "./pim-catalog-utils";
@@ -1409,7 +1411,7 @@ export async function patchMappingField(input: {
       }
       patch.category = category;
     } else if (field === "item_type") {
-      const itemType = String(input.value).trim();
+      let itemType = String(input.value).trim();
       const allowed = new Set([
         "raw_material",
         "sub_assembly",
@@ -1423,7 +1425,24 @@ export async function patchMappingField(input: {
             "item_type must be raw_material, sub_assembly, finished_good, or service",
         };
       }
+      if (
+        isHubRawMaterialSku(globalSku) &&
+        itemType !== "raw_material"
+      ) {
+        return {
+          ok: false,
+          error:
+            "Material-prefix SKUs (RM-/FAB-/PWD-/…) must remain raw_material (Katana Materials). Change the SKU prefix if this is not a material.",
+        };
+      }
+      itemType = coerceHubItemType(globalSku, itemType);
       patch.item_type = itemType;
+      // Katana cannot convert Product → Material in place. Clearing Hub IDs
+      // forces the next publish through POST /materials (or /products).
+      if (itemType === "raw_material") {
+        patch.katana_variant_id = null;
+        patch.katana_material_id = null;
+      }
     } else if (field === "base_cost") {
       const raw = String(input.value).trim().replace(/[$,\s]/g, "");
       patch.base_cost = raw.length > 0 ? raw : null;
@@ -1636,7 +1655,7 @@ export async function proposeSku(input: {
   } else if (input.itemType === "raw_material") {
     base = buildRawMaterialSkuBase(category, name);
   } else if (input.itemType === "sub_assembly") {
-    base = `SA-${slugifySkuToken(name)}`;
+    base = `ASM-${slugifySkuToken(name)}`;
   } else {
     base = `SVC-${slugifySkuToken(name)}`;
   }
@@ -1788,10 +1807,11 @@ export async function createSkuMapping(
     }
 
     await db.transaction(async (tx) => {
+      const itemType = coerceHubItemType(sku, data.itemType);
       await tx.insert(sku_mappings).values({
         global_sku: sku,
         category,
-        item_type: data.itemType,
+        item_type: itemType,
         original_name: name,
         source_file: "sku-dictionary",
         is_active: true,

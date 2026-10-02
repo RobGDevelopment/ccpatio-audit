@@ -1,4 +1,5 @@
 import { and, asc, eq, like } from "drizzle-orm";
+import { subAssemblySku } from "@/lib/heuristic-bom";
 import { getDb } from "@/server/db/client";
 import {
   finished_goods_catalog,
@@ -33,7 +34,11 @@ function rollupStatus(statuses: RecipeReviewStatus[]): RecipeReviewStatus | "non
 }
 
 function subAsm(finSku: string, role: "FRAME" | "CUSH"): string {
-  return `SA-${finSku.replace(/^FIN-/, "")}-${role}`;
+  return subAssemblySku(finSku, role);
+}
+
+function legacySubAsm(finSku: string, role: "FRAME" | "CUSH"): string {
+  return `SA-${finSku.replace(/^FIN-/i, "").toUpperCase()}-${role}`;
 }
 
 export async function listFactoryProducts(): Promise<FactoryProductRow[]> {
@@ -89,12 +94,16 @@ export async function listFactoryProducts(): Promise<FactoryProductRow[]> {
     const relatedStatuses = [
       ...(statusByParent.get(row.sku) ?? []),
       ...(statusByParent.get(subAsm(row.sku, "FRAME")) ?? []),
+      ...(statusByParent.get(legacySubAsm(row.sku, "FRAME")) ?? []),
       ...(statusByParent.get(subAsm(row.sku, "CUSH")) ?? []),
+      ...(statusByParent.get(legacySubAsm(row.sku, "CUSH")) ?? []),
     ];
     const draftCount =
       (countByParent.get(row.sku) ?? 0) +
       (countByParent.get(subAsm(row.sku, "FRAME")) ?? 0) +
-      (countByParent.get(subAsm(row.sku, "CUSH")) ?? 0);
+      (countByParent.get(legacySubAsm(row.sku, "FRAME")) ?? 0) +
+      (countByParent.get(subAsm(row.sku, "CUSH")) ?? 0) +
+      (countByParent.get(legacySubAsm(row.sku, "CUSH")) ?? 0);
 
     return {
       sku: row.sku,

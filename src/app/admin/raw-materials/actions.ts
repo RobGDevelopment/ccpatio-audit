@@ -79,7 +79,8 @@ const RAW_ITEM_TYPES: ItemType[] = ["raw_material"];
 /** Strict gate: master ingredient DB — never FIN-* / SA-* / finished goods. */
 function isDisplayableRawMaterial(row: RawMaterialRow): boolean {
   const sku = row.sku.toUpperCase();
-  if (sku.startsWith("FIN-") || sku.startsWith("SA-")) return false;
+  if (sku.startsWith("FIN-") || sku.startsWith("SA-") || sku.startsWith("ASM-"))
+    return false;
   if (
     row.itemType === "finished_good" ||
     row.itemType === "sub_assembly" ||

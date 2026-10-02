@@ -1,6 +1,10 @@
 /**
  * Per-channel publish executors for product.approved saga.
- * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md Phase 4.
+ * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md Phase 4 / PR-T2.0.
+ *
+ * Katana Path A: foundation materials/products via mapper plan, then
+ * unified manufacturing writer (`publishHubManufacturingToKatana`) for
+ * /bom_rows (or /recipes fallback) + /product_operation_rows from live hub tables.
  */
 import { NonRetriableError } from "inngest";
 import { eq } from "drizzle-orm";
@@ -9,6 +13,7 @@ import {
   findVariantBySku,
   katanaFetch,
   KatanaApiError,
+  publishHubManufacturingToKatana,
 } from "@/lib/katana";
 import { upsertWooCommerceProduct, WooCommerceApiError } from "@/lib/woocommerce-catalog";
 import {
@@ -22,9 +27,15 @@ import type { HubProductGraph } from "@/mappers/types";
 import { getDb } from "@/server/db/client";
 import { sku_mappings } from "@/server/db/schema";
 import {
+  channelSyncIsCurrent,
   getChannelSyncRow,
+  hashChannelPayload,
   upsertChannelSync,
 } from "@/server/mdm/channel-sync";
+import {
+  canMutateKatanaCatalog,
+  getCatalogPublishMode,
+} from "@/server/pipeline/catalog-mode";
 
 function httpStatus(error: unknown): number | null {
   if (error instanceof KatanaApiError) return error.status;
@@ -94,7 +105,10 @@ function extractCreatedIds(data: unknown): {
 }
 
 /**
- * Katana spoke: mapper plan → HTTP with Idempotency-Key → channel_sync.
+ * Katana spoke (PR-T2.0):
+ * 1. Foundation mapper plan → POST /materials + /products (Idempotency-Key)
+ * 2. Unified hub writer → POST /recipes + /product_operation_rows
+ * Both steps respect CATALOG_PUBLISH_MODE (no transactional order POSTs).
  */
 export async function publishToKatana(
   graph: HubProductGraph,
@@ -110,11 +124,22 @@ export async function publishToKatana(
   }
 
   const globalSku = stagedGraph.rootSku.toUpperCase();
+  const foundationPlan = buildKatanaPublishPlan(stagedGraph);
+  const payloadHash = hashChannelPayload({
+    channel: "katana",
+    rootSku: globalSku,
+    foundationPlan,
+    manufacturingWriter: "publishHubManufacturingToKatana",
+    // Invalidate skip when live-graph manufacturing shape changes
+    edges: stagedGraph.edges,
+    operations: stagedGraph.operations,
+  });
   const existing = await getChannelSyncRow(globalSku, "katana");
-  if (existing?.status === "success") {
-    return { skipped: true, externalId: existing.external_id };
+  if (channelSyncIsCurrent(existing, payloadHash)) {
+    return { skipped: true, externalId: existing?.external_id ?? null };
   }
 
+  const allowMutate = canMutateKatanaCatalog(getCatalogPublishMode());
   const variantIds = new Map<string, number>();
   for (const node of stagedGraph.skus) {
     if (node.katanaVariantId != null) {
@@ -123,160 +148,93 @@ export async function publishToKatana(
   }
 
   try {
-    const plan = buildKatanaPublishPlan(stagedGraph);
     let rootExternalId: string | null = null;
 
-    for (const request of plan) {
-      if (request.kind === "material" || request.kind === "product") {
-        const sku = (request.sku ?? "").toUpperCase();
-        if (!sku) continue;
+    for (const request of foundationPlan) {
+      const sku = (request.sku ?? "").toUpperCase();
+      if (!sku) continue;
 
-        const already = await findVariantBySku(sku);
-        if (already) {
-          variantIds.set(sku, already.id);
-          await persistKatanaIds({
-            sku,
-            variantId: already.id,
-            materialId: already.material_id ?? null,
-          });
-          if (sku === globalSku) {
-            rootExternalId = String(already.id);
-          }
-          continue;
-        }
-
-        const { data } = await katanaFetch<Record<string, unknown>>(
-          request.path,
-          {
-            method: "POST",
-            body: request.body,
-            idempotencyKey: request.idempotencyKey,
-          },
-        );
-        const created = extractCreatedIds(data);
-        if (created.variantId == null) {
-          throw new Error(
-            `Katana ${request.kind} ${sku} returned no variant id`,
-          );
-        }
-        variantIds.set(sku, created.variantId);
+      const already = await findVariantBySku(sku);
+      if (already) {
+        variantIds.set(sku, already.id);
         await persistKatanaIds({
           sku,
-          variantId: created.variantId,
-          materialId:
-            request.kind === "material" ? created.id : null,
+          variantId: already.id,
+          materialId: already.material_id ?? null,
         });
         if (sku === globalSku) {
-          rootExternalId = String(created.variantId);
+          rootExternalId = String(already.id);
         }
         continue;
       }
 
-      if (request.kind === "recipes") {
-        const rawRows = Array.isArray(request.body.rows)
-          ? (request.body.rows as Array<Record<string, unknown>>)
-          : [];
-        const rows = rawRows.map((row) => {
-          const parentSku = String(row._parent_sku ?? "").toUpperCase();
-          const childSku = String(row._child_sku ?? "").toUpperCase();
-          const productVariantId =
-            (parentSku ? variantIds.get(parentSku) : undefined) ??
-            (row.product_variant_id != null
-              ? Number(row.product_variant_id)
-              : NaN);
-          const ingredientVariantId =
-            (childSku ? variantIds.get(childSku) : undefined) ??
-            (row.ingredient_variant_id != null
-              ? Number(row.ingredient_variant_id)
-              : NaN);
-          if (
-            !Number.isFinite(productVariantId) ||
-            !Number.isFinite(ingredientVariantId)
-          ) {
-            throw new Error(
-              `Katana recipe missing variant ids for ${parentSku} → ${childSku}`,
-            );
-          }
-          return {
-            product_variant_id: productVariantId,
-            ingredient_variant_id: ingredientVariantId,
-            quantity: row.quantity,
-            ...(typeof row.notes === "string" ? { notes: row.notes } : {}),
-          };
-        });
-
-        if (rows.length === 0) continue;
-
-        await katanaFetch("/recipes", {
-          method: "POST",
-          body: {
-            keep_current_rows: false,
-            rows,
-          },
-          idempotencyKey: request.idempotencyKey,
-        });
+      if (!allowMutate) {
+        // Dry-run: do not POST materials/products; manufacturing writer also dry-runs.
         continue;
       }
 
-      if (request.kind === "product_operation_rows") {
-        const rawRows = Array.isArray(request.body.rows)
-          ? (request.body.rows as Array<Record<string, unknown>>)
-          : [];
-        const rows = rawRows.map((row) => {
-          const itemSku = String(row.item_sku ?? "").toUpperCase();
-          const productVariantId =
-            (itemSku ? variantIds.get(itemSku) : undefined) ??
-            (row.product_variant_id != null
-              ? Number(row.product_variant_id)
-              : NaN);
-          if (!Number.isFinite(productVariantId)) {
-            throw new Error(
-              `Katana operation missing product_variant_id for ${itemSku || "unknown"}`,
-            );
-          }
-          const cleaned = { ...row };
-          delete cleaned.item_sku;
-          return {
-            ...cleaned,
-            product_variant_id: productVariantId,
-          };
-        });
-
-        if (rows.length === 0) continue;
-
-        await katanaFetch("/product_operation_rows", {
+      const { data } = await katanaFetch<Record<string, unknown>>(
+        request.path,
+        {
           method: "POST",
-          body: {
-            keep_current_rows: false,
-            rows,
-          },
+          body: request.body,
           idempotencyKey: request.idempotencyKey,
-        });
+        },
+      );
+      const created = extractCreatedIds(data);
+      if (created.variantId == null) {
+        throw new Error(
+          `Katana ${request.kind} ${sku} returned no variant id`,
+        );
       }
+      variantIds.set(sku, created.variantId);
+      await persistKatanaIds({
+        sku,
+        variantId: created.variantId,
+        materialId: request.kind === "material" ? created.id : null,
+      });
+      if (sku === globalSku) {
+        rootExternalId = String(created.variantId);
+      }
+    }
+
+    // Single manufacturing writer — recipes/ops from live hub (not mapper plan).
+    const manufacturing = await publishHubManufacturingToKatana(globalSku, {
+      allowEmpty: true,
+    });
+    if (!manufacturing.ok) {
+      throw new Error(manufacturing.error);
     }
 
     if (!rootExternalId) {
       rootExternalId =
-        variantIds.get(globalSku) != null
-          ? String(variantIds.get(globalSku))
-          : null;
+        manufacturing.productVariantId > 0
+          ? String(manufacturing.productVariantId)
+          : variantIds.get(globalSku) != null
+            ? String(variantIds.get(globalSku))
+            : null;
     }
 
     await upsertChannelSync({
       globalSku,
       channel: "katana",
-      status: "success",
+      status: manufacturing.dryRun ? "pending" : "success",
       externalId: rootExternalId,
       lastError: null,
+      payloadHash,
     });
 
-    return { skipped: false, externalId: rootExternalId };
+    return {
+      skipped: manufacturing.dryRun,
+      externalId: rootExternalId,
+    };
   } catch (error) {
     await upsertChannelSync({
       globalSku,
       channel: "katana",
       status: "failed",
       lastError: error instanceof Error ? error.message : String(error),
+      payloadHash,
     });
     throwProviderAuthOrRethrow("Katana", error);
   }
@@ -286,12 +244,17 @@ export async function publishToWooCommerce(
   graph: HubProductGraph,
 ): Promise<{ skipped: boolean; externalId: string | null }> {
   const globalSku = graph.rootSku.toUpperCase();
+  const mapped = mapFinishedGoodToWooCommerce(graph.commerce);
+  const payloadHash = hashChannelPayload({
+    channel: "woocommerce",
+    rootSku: globalSku,
+    mapped,
+  });
   const existing = await getChannelSyncRow(globalSku, "woocommerce");
-  if (existing?.status === "success") {
-    return { skipped: true, externalId: existing.external_id };
+  if (channelSyncIsCurrent(existing, payloadHash)) {
+    return { skipped: true, externalId: existing?.external_id ?? null };
   }
 
-  const mapped = mapFinishedGoodToWooCommerce(graph.commerce);
   if (mapped.skip) {
     await upsertChannelSync({
       globalSku,
@@ -299,6 +262,7 @@ export async function publishToWooCommerce(
       status: "success",
       externalId: "skipped",
       lastError: null,
+      payloadHash,
     });
     return { skipped: true, externalId: "skipped" };
   }
@@ -311,6 +275,7 @@ export async function publishToWooCommerce(
       status: "success",
       externalId,
       lastError: null,
+      payloadHash,
     });
     return { skipped: false, externalId };
   } catch (error) {
@@ -319,6 +284,7 @@ export async function publishToWooCommerce(
       channel: "woocommerce",
       status: "failed",
       lastError: error instanceof Error ? error.message : String(error),
+      payloadHash,
     });
     throwProviderAuthOrRethrow("WooCommerce", error);
   }
@@ -328,12 +294,17 @@ export async function publishToClover(
   graph: HubProductGraph,
 ): Promise<{ skipped: boolean; externalId: string | null }> {
   const globalSku = graph.rootSku.toUpperCase();
+  const mapped = mapFinishedGoodToClover(graph.commerce);
+  const payloadHash = hashChannelPayload({
+    channel: "clover",
+    rootSku: globalSku,
+    mapped,
+  });
   const existing = await getChannelSyncRow(globalSku, "clover");
-  if (existing?.status === "success") {
-    return { skipped: true, externalId: existing.external_id };
+  if (channelSyncIsCurrent(existing, payloadHash)) {
+    return { skipped: true, externalId: existing?.external_id ?? null };
   }
 
-  const mapped = mapFinishedGoodToClover(graph.commerce);
   if (mapped.skip) {
     await upsertChannelSync({
       globalSku,
@@ -341,6 +312,7 @@ export async function publishToClover(
       status: "success",
       externalId: "skipped",
       lastError: null,
+      payloadHash,
     });
     return { skipped: true, externalId: "skipped" };
   }
@@ -353,6 +325,7 @@ export async function publishToClover(
       status: "success",
       externalId,
       lastError: null,
+      payloadHash,
     });
     return { skipped: false, externalId };
   } catch (error) {
@@ -361,6 +334,7 @@ export async function publishToClover(
       channel: "clover",
       status: "failed",
       lastError: error instanceof Error ? error.message : String(error),
+      payloadHash,
     });
     throwProviderAuthOrRethrow("Clover", error);
   }

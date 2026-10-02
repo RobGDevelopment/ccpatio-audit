@@ -1,6 +1,8 @@
 /**
  * Write the corrected manufacturer style numbers for fabrics the sheet
- * listed under more than one SKU. Internal fabric SKUs are not changed.
+ * listed under more than one SKU. Internal fabric SKUs of existing
+ * variants are not changed. A name with no Fabric variant is created as
+ * a Katana material (category Fabric, uom yd) and then patched.
  * Katana purchase orders read supplier_item_codes.
  *
  *   npx dotenv -e .env.local -- tsx scripts/ops/resolve-fabric-sku-conflicts.ts
@@ -11,6 +13,7 @@ import {
   KatanaApiError,
   createIntervalPacer,
   katanaFetch,
+  resolveLiveKatanaApiBase,
   setKatanaRequestPacer,
 } from "../../src/lib/katana";
 import { normalizeStockCategory } from "../../src/lib/stock-categories";
@@ -56,6 +59,8 @@ const MAX_PAGES = 40;
 
 setKatanaRequestPacer(createIntervalPacer(350));
 
+const liveBase = resolveLiveKatanaApiBase();
+
 type FabricVariant = {
   id: number;
   sku: string;
@@ -96,7 +101,9 @@ async function paginate(path: string): Promise<Record<string, unknown>[]> {
   const rows: Record<string, unknown>[] = [];
   for (let page = 1; page <= MAX_PAGES; page += 1) {
     const sep = path.includes("?") ? "&" : "?";
-    const { data } = await katanaFetch(`${path}${sep}limit=${PAGE_SIZE}&page=${page}`);
+    const { data } = await katanaFetch(`${path}${sep}limit=${PAGE_SIZE}&page=${page}`, {
+      baseUrl: liveBase,
+    });
     const pageRows = unwrapList<Record<string, unknown>>(data);
     rows.push(...pageRows);
     if (pageRows.length < PAGE_SIZE) return rows;
@@ -140,6 +147,101 @@ function sameCode(current: string[], vendorSku: string): boolean {
   return current.length === 1 && current[0]!.toLowerCase() === vendorSku.toLowerCase();
 }
 
+function abbreviate(word: string): string {
+  const letters = word.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return letters.slice(0, 3);
+}
+
+function proposeFabricSku(name: string, taken: Set<string>): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const head = abbreviate(words[0] ?? "FAB") || "FAB";
+  const tail = words.slice(1).map(abbreviate).join("") || "MAT";
+  const base = `FAB-${head}-${tail}`.slice(0, 40);
+  if (!taken.has(base)) return base;
+  for (let n = 2; n < 1000; n += 1) {
+    const candidate = `${base}-${n}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  throw new Error(`No free SKU for ${name}.`);
+}
+
+function takenSkus(materials: Record<string, unknown>[]): Set<string> {
+  const taken = new Set<string>();
+  for (const material of materials) {
+    const variants = Array.isArray(material.variants) ? material.variants : [];
+    for (const variant of variants) {
+      const record = asRecord(variant);
+      const sku = String(record?.sku ?? "").trim().toUpperCase();
+      if (sku) taken.add(sku);
+    }
+  }
+  return taken;
+}
+
+function createdVariant(data: unknown): { id: number; sku: string } | null {
+  const record = asRecord(data) ?? {};
+  const body = asRecord(record.data) ?? record;
+  const variants = Array.isArray(body.variants) ? body.variants : [];
+  const variant = asRecord(variants[0]);
+  const id = Number(variant?.id);
+  const sku = String(variant?.sku ?? "").trim().toUpperCase();
+  if (!Number.isFinite(id) || id <= 0 || !sku) return null;
+  return { id, sku };
+}
+
+async function postMaterial(body: Record<string, unknown>): Promise<unknown> {
+  const created = await katanaFetch("/materials", {
+    method: "POST",
+    baseUrl: liveBase,
+    body,
+  });
+  return created.data;
+}
+
+async function createFabricMaterial(
+  name: string,
+  vendorSku: string,
+  taken: Set<string>,
+): Promise<FabricVariant> {
+  const sku = proposeFabricSku(name, taken);
+  // POST /materials creates a material. Katana rejects an is_material field.
+  let data: unknown;
+  try {
+    data = await postMaterial({
+      name,
+      uom: "yd",
+      category_name: "Fabric",
+      is_sellable: false,
+      variants: [{ sku, supplier_item_codes: [vendorSku] }],
+    });
+  } catch (error: unknown) {
+    if (!(error instanceof KatanaApiError) || error.status !== 422) throw error;
+    data = await postMaterial({
+      name,
+      uom: "yd",
+      category_name: "Fabric",
+      is_sellable: false,
+      variants: [{ sku }],
+    });
+  }
+  const variant = createdVariant(data);
+  if (!variant) {
+    throw new Error(`Katana created ${name} but returned no variant id.`);
+  }
+  taken.add(variant.sku);
+  await katanaFetch(`/variants/${variant.id}`, {
+    method: "PATCH",
+    baseUrl: liveBase,
+    body: { supplier_item_codes: [vendorSku] },
+  });
+  return {
+    id: variant.id,
+    sku: variant.sku,
+    materialName: name,
+    codes: [vendorSku],
+  };
+}
+
 async function main(): Promise<void> {
   const entries = Object.entries(CORRECTED_SKUS);
   console.log("Resolve fabric SKU conflicts");
@@ -148,21 +250,33 @@ async function main(): Promise<void> {
 
   const materials = await paginate("/materials");
   const fabrics = indexFabrics(materials);
+  const taken = takenSkus(materials);
   console.log(
     `  katana fabric variants indexed: ${[...fabrics.values()].reduce((sum, list) => sum + list.length, 0)}`,
   );
 
   let patched = 0;
+  let created = 0;
   let unchanged = 0;
-  let unmatched = 0;
   let ambiguous = 0;
   let failed = 0;
 
   for (const [fabric, vendorSku] of entries) {
     const hits = fabrics.get(fabric.toLowerCase()) ?? [];
     if (hits.length === 0) {
-      unmatched += 1;
-      console.log(`  no Fabric variant named "${fabric}" for ${vendorSku}`);
+      console.log(`  create Fabric material "${fabric}" supplier_item_codes ${vendorSku}`);
+      if (!confirm) {
+        created += 1;
+        continue;
+      }
+      try {
+        const variant = await createFabricMaterial(fabric, vendorSku, taken);
+        created += 1;
+        console.log(`  created ${variant.sku} variant ${variant.id} ${fabric}`);
+      } catch (error: unknown) {
+        failed += 1;
+        console.error(`  failed to create ${fabric} (${vendorSku}): ${katanaError(error)}`);
+      }
       continue;
     }
     if (hits.length > 1) {
@@ -189,6 +303,7 @@ async function main(): Promise<void> {
     try {
       await katanaFetch(`/variants/${variant.id}`, {
         method: "PATCH",
+        baseUrl: liveBase,
         body: { supplier_item_codes: [vendorSku] },
       });
       patched += 1;
@@ -200,12 +315,14 @@ async function main(): Promise<void> {
 
   console.log("\n=== Summary ===");
   console.log(`  ${confirm ? "patched" : "would patch"}: ${patched}`);
+  console.log(`  ${confirm ? "created" : "would create"}: ${created}`);
   console.log(`  already set:    ${unchanged}`);
-  console.log(`  unmatched:      ${unmatched}`);
   console.log(`  ambiguous:      ${ambiguous}`);
   console.log(`  failed:         ${failed}`);
-  if (!confirm) console.log("  Re-run with --confirm to PATCH Katana. Internal SKUs are not changed.");
-  if (failed > 0 || unmatched > 0 || ambiguous > 0) process.exitCode = 1;
+  if (!confirm) {
+    console.log("  Re-run with --confirm to PATCH or create Katana materials.");
+  }
+  if (failed > 0 || ambiguous > 0) process.exitCode = 1;
 }
 
 main().catch((error: unknown) => {

@@ -31,6 +31,7 @@ type SubassemblyInput = {
   item_type?: "raw_material" | "sub_assembly" | "finished_good" | "service";
   qty: number;
   uom: string;
+  notes?: string;
   children?: SubassemblyInput[];
   operations?: z.infer<typeof operationSchema>[];
 };
@@ -45,6 +46,7 @@ function createSubassemblySchema(depth: number): z.ZodType<SubassemblyInput> {
           .optional(),
         qty: z.number().positive(),
         uom: z.string().trim().min(1),
+        notes: z.string().trim().max(2000).optional(),
         children: z
           .array(z.never())
           .max(0, `BOM nesting exceeds max depth of ${SKETCHUP_MAX_BOM_DEPTH}`)
@@ -63,6 +65,7 @@ function createSubassemblySchema(depth: number): z.ZodType<SubassemblyInput> {
         .optional(),
       qty: z.number().positive(),
       uom: z.string().trim().min(1),
+      notes: z.string().trim().max(2000).optional(),
       children: z
         .array(z.lazy(() => createSubassemblySchema(depth + 1)))
         .optional()

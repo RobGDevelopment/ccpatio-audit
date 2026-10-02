@@ -24,6 +24,7 @@ import {
   searchFactoryMaterials,
   updateEstimateOverridesAction,
   upsertDraftBomLine,
+  applyStandardTrack,
   upsertDraftOperation,
   type BomComponentCandidate,
   type BomTreeNode,
@@ -37,7 +38,7 @@ import { BomAssemblyCard } from "./BomAssemblyCard";
 import { CadUploadDropzone } from "./CadUploadDropzone";
 import { FactoryProductSidebar } from "./FactoryProductSidebar";
 import { RecipeHeader } from "./RecipeHeader";
-import { PIM_INPUT } from "./factory-bom-ui";
+import { PIM_INPUT, card } from "./factory-bom-ui";
 
 function flattenTree(node: BomTreeNode): BomTreeNode[] {
   return [node, ...node.children.flatMap(flattenTree)];
@@ -153,12 +154,12 @@ function MaterialCombobox({
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute z-20 mt-2 max-h-64 w-full overflow-auto rounded-lg border border-zinc-700 bg-zinc-800/95"
+          className="absolute z-20 mt-2 max-h-64 w-full overflow-auto rounded-lg border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
         >
           {loading ? (
-            <li className="px-3 py-2 text-xs text-zinc-500">Searching…</li>
+            <li className="px-3 py-2 text-xs text-slate-500">Searching…</li>
           ) : visible.length === 0 ? (
-            <li className="px-3 py-2 text-xs text-zinc-500">No matches</li>
+            <li className="px-3 py-2 text-xs text-slate-500">No matches</li>
           ) : (
             visible.map((hit, idx) => {
               const prev = idx > 0 ? visible[idx - 1] : null;
@@ -167,7 +168,7 @@ function MaterialCombobox({
               return (
                 <Fragment key={hit.sku}>
                   {showHeader ? (
-                    <li className="bg-zinc-900 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+                    <li className="bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
                       {cat}
                     </li>
                   ) : null}
@@ -177,14 +178,14 @@ function MaterialCombobox({
                       role="option"
                       aria-selected={idx === highlightIndex}
                       className={`flex w-full items-center justify-between px-4 py-3 text-left text-xs ${
-                        idx === highlightIndex ? "bg-zinc-700/80" : "hover:bg-zinc-700/80"
+                        idx === highlightIndex ? "bg-slate-50" : "hover:bg-slate-50"
                       }`}
                       onMouseEnter={() => setHighlightIndex(idx)}
                       onClick={() => select(hit)}
                       data-testid={`factory-bom-material-option-${hit.sku}`}
                     >
-                      <span className="font-semibold text-zinc-100">{hit.name}</span>
-                      <span className="font-mono text-zinc-500">{hit.sku}</span>
+                      <span className="font-semibold text-slate-800">{hit.name}</span>
+                      <span className="font-mono text-slate-500">{hit.sku}</span>
                     </button>
                   </li>
                 </Fragment>
@@ -328,6 +329,7 @@ export function FactoryBomWorkbench({
       scrapFactor: string;
       unitOfMeasure: string;
       notes: string;
+      cutList: import("@/lib/sketchup-cutlist/types").CutLine[];
     },
   ): void {
     setError(null);
@@ -340,6 +342,7 @@ export function FactoryBomWorkbench({
         scrapFactor: next.scrapFactor,
         unitOfMeasure: next.unitOfMeasure,
         notes: next.notes,
+        cutList: next.cutList,
       });
       if (!result.ok) {
         setError(result.error);
@@ -414,6 +417,35 @@ export function FactoryBomWorkbench({
     });
   }
 
+  function onUpdateOp(data: {
+    id: string;
+    itemSku: string;
+    workCenter: string;
+    sequence: number;
+    setupTimeMins: string;
+    runTimeMins: string;
+  }): void {
+    setError(null);
+    startTransition(async () => {
+      const result = await upsertDraftOperation({
+        id: data.id,
+        itemSku: data.itemSku,
+        workCenter: data.workCenter,
+        sequence: data.sequence,
+        setupTimeMins: data.setupTimeMins,
+        runTimeMins: data.runTimeMins,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Operation updated");
+      setBannerStatus("edited");
+      await reload(selectedSku);
+    });
+  }
+
   function onRemoveOp(id: string): void {
     setError(null);
     startTransition(async () => {
@@ -423,6 +455,40 @@ export function FactoryBomWorkbench({
         toast.error(result.error);
         return;
       }
+      await reload(selectedSku);
+    });
+  }
+
+  function onApplyTrack(
+    itemSku: string,
+    trackId:
+      | "aluminum_frame"
+      | "cushion"
+      | "final_assembly"
+      | "dekton_top",
+  ): void {
+    setError(null);
+    startTransition(async () => {
+      const result = await applyStandardTrack({
+        itemSku,
+        trackId,
+        mode: "replace",
+      });
+      if (!result.ok) {
+        setError(result.error);
+        toast.error(result.error);
+        return;
+      }
+      const labels = {
+        aluminum_frame: "Aluminum Frame",
+        cushion: "Cushion",
+        final_assembly: "Final Assembly",
+        dekton_top: "Dekton",
+      } as const;
+      toast.success(
+        `${labels[trackId]} Routing applied (${result.inserted} steps)`,
+      );
+      setBannerStatus("edited");
       await reload(selectedSku);
     });
   }
@@ -501,8 +567,8 @@ export function FactoryBomWorkbench({
     <div
       className={
         embedded
-          ? "flex h-full min-h-0 w-full flex-1"
-          : "flex h-[calc(100vh-3.5rem)] min-h-0"
+          ? "flex h-full min-h-0 w-full flex-1 gap-4 p-4 sm:p-6"
+          : "flex h-[calc(100vh-3.5rem)] min-h-0 gap-4 p-4 sm:p-6"
       }
     >
       <FactoryProductSidebar
@@ -516,9 +582,9 @@ export function FactoryBomWorkbench({
         onSelectSku={setSelectedSku}
       />
 
-      <section className="flex min-w-0 flex-1 flex-col">
+      <section className={`${card} flex min-w-0 flex-1 flex-col overflow-hidden p-6 sm:p-8`}>
         {!selected ? (
-          <div className="p-8 text-zinc-500">Select a finished good.</div>
+          <div className="text-slate-500">Select a finished good.</div>
         ) : (
           <>
             <RecipeHeader
@@ -536,16 +602,16 @@ export function FactoryBomWorkbench({
                 return {
                   ok: true,
                   message:
-                    "Catalog recipes posted (or dry-run) via POST /recipes",
+                    "Catalog BOM posted (or dry-run) via POST /bom_rows (recipes fallback)",
                 };
               }}
             />
 
             {error ? (
-              <p className="px-6 py-2 text-sm text-rose-300">{error}</p>
+              <p className="py-2 text-sm text-rose-600">{error}</p>
             ) : null}
 
-            <div className="border-b border-zinc-800 px-6 pb-3">
+            <div className="border-b border-slate-100 pb-6">
               <CadUploadDropzone
                 globalSku={selected.sku}
                 isPending={isPending}
@@ -558,9 +624,9 @@ export function FactoryBomWorkbench({
               />
             </div>
 
-            <div className="flex-1 space-y-4 overflow-auto px-6 py-4">
+            <div className="flex-1 space-y-4 overflow-auto pt-6">
               {!tree || !rootBundle ? (
-                <p className="text-sm text-zinc-500">
+                <p className="text-sm text-slate-500">
                   No draft recipe tree yet. Drop a .dae CAD file above, run the
                   heuristic seed, or add lines after selecting a finished good.
                 </p>
@@ -593,7 +659,9 @@ export function FactoryBomWorkbench({
                     onAddLine(data);
                   }}
                   onAddOp={onAddOp}
+                  onUpdateOp={onUpdateOp}
                   onRemoveOp={onRemoveOp}
+                  onApplyTrack={onApplyTrack}
                   nestedCards={childBundles.map((bundle) => (
                     <BomAssemblyCard
                       key={bundle.node.sku}
@@ -627,7 +695,9 @@ export function FactoryBomWorkbench({
                         onAddLine(data);
                       }}
                       onAddOp={onAddOp}
+                      onUpdateOp={onUpdateOp}
                       onRemoveOp={onRemoveOp}
+                      onApplyTrack={onApplyTrack}
                     />
                   ))}
                 />

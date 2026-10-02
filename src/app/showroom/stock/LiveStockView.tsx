@@ -3,14 +3,17 @@
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { readActorFromHref } from "@/lib/embed-actor-params";
 import { sellableCategoryTabs } from "@/lib/stock-categories";
 import { stockFacet, type StockCollection } from "@/lib/stock-facets";
 import type { StockRow } from "@/lib/stock-display";
 import {
+  listActiveShowroomHolds,
   listShowroomCategoryItems,
   listShowroomCollections,
   resolveShowroomHoldActor,
   searchShowroomStock,
+  type ActiveShowroomHold,
 } from "../actions";
 import { eyebrow, softField } from "../showroom-ui";
 import { FacetPicker } from "./FacetPicker";
@@ -77,6 +80,9 @@ export function LiveStockView({
   const [viewModeHydrated, setViewModeHydrated] = useState(false);
   const [salesperson, setSalesperson] = useState<string | null>(null);
   const [holdActorError, setHoldActorError] = useState<string | null>(null);
+  const [actorUserId, setActorUserId] = useState(ghlUserId);
+  const [actorUserEmail, setActorUserEmail] = useState(ghlUserEmail);
+  const [holds, setHolds] = useState<ActiveShowroomHold[]>([]);
   const [pending, startTransition] = useTransition();
   const request = useRef(0);
   const categories = useMemo(() => sellableCategoryTabs(categoryItems), [categoryItems]);
@@ -182,9 +188,14 @@ export function LiveStockView({
 
   useEffect(() => {
     let active = true;
+    const fromUrl = readActorFromHref(window.location.href);
+    const userId = ghlUserId?.trim() || fromUrl.ghlUserId;
+    const email = ghlUserEmail?.trim() || fromUrl.ghlUserEmail;
+    setActorUserId(userId);
+    setActorUserEmail(email);
     setSalesperson(null);
     setHoldActorError(null);
-    void resolveShowroomHoldActor({ ghlUserId, ghlUserEmail }).then((result) => {
+    void resolveShowroomHoldActor({ ghlUserId: userId, ghlUserEmail: email }).then((result) => {
       if (!active) return;
       if (result.ok) setSalesperson(result.name);
       else setHoldActorError(result.error);
@@ -213,6 +224,22 @@ export function LiveStockView({
       setMessage(error instanceof Error ? error.message : "Could not read Katana.");
     }
   }, [category]);
+
+  useEffect(() => {
+    const ids = [...new Set(rows.map((row) => row.variantId))].filter((id) => id > 0);
+    if (ids.length === 0) {
+      setHolds([]);
+      return;
+    }
+    let active = true;
+    void listActiveShowroomHolds(ids).then((result) => {
+      if (!active) return;
+      setHolds(result.ok ? result.holds : []);
+    });
+    return () => {
+      active = false;
+    };
+  }, [rows]);
 
   useEffect(() => {
     let active = true;
@@ -409,9 +436,13 @@ export function LiveStockView({
                   salesperson={salesperson}
                   canHold={Boolean(salesperson) && !holdActorError}
                   holdDisabledReason={holdActorError}
-                  ghlUserId={ghlUserId}
-                  ghlUserEmail={ghlUserEmail}
+                  ghlUserId={actorUserId}
+                  ghlUserEmail={actorUserEmail}
+                  holds={holds.filter((hold) => hold.variantId === row.variantId)}
                   onHoldPlaced={() => {
+                    void reloadRows();
+                  }}
+                  onHoldReleased={() => {
                     void reloadRows();
                   }}
                 />

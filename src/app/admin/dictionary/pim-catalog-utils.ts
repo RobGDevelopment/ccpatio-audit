@@ -365,6 +365,17 @@ export function buildAllProductFieldDescriptors(
   });
 
   descriptors.push({
+    key: "item_type",
+    label: "Item type",
+    target: "mapping",
+    patchField: "item_type",
+    allowNa: false,
+    section: "core",
+    initialValue: input.itemType ?? "",
+    isMissing: !input.itemType?.trim(),
+  });
+
+  descriptors.push({
     key: "uom_purchase",
     label: "UOM (buy)",
     target: "mapping",

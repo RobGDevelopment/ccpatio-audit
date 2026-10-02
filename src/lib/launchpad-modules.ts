@@ -20,6 +20,15 @@ export const LAUNCHPAD_MODULES: LaunchpadModule[] = [
     requiresAuth: true,
   },
   {
+    id: "order-triage",
+    title: "Factory Order Triage",
+    description:
+      "Map a GHL Produce Factory Order to FIN-* and FAB-* SKUs, then Approve & Push to Katana.",
+    href: "/admin/order-triage",
+    status: "Live",
+    requiresAuth: true,
+  },
+  {
     id: "quarantine",
     title: "Product Quarantine",
     description:

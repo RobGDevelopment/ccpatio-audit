@@ -1,4 +1,63 @@
+import type { ItemType } from "@/server/db/schema";
 import { normalizePimCategory } from "@/server/pim/attributes/schemas";
+
+/**
+ * Known Hub / legacy raw-material SKU prefixes.
+ * Writers must treat these as Katana materials (`POST /materials`), never
+ * products — regardless of a drifted `sku_mappings.item_type`.
+ *
+ * `RM-*` is the Hub Global E2E namespace; `FAB-` / `PWD-` / `STN-` / etc. are
+ * legacy colorway & ingredient namespaces still live in the dictionary.
+ */
+export const HUB_RAW_MATERIAL_PREFIXES = [
+  "RM-",
+  "FAB-",
+  "PWD-",
+  "STN-",
+  "MET-",
+  "DKT-",
+  "HRD-",
+  "ALU-",
+  "PWR-",
+] as const;
+
+/**
+ * Hub / legacy raw-material namespaces. Writers must treat these as
+ * Katana materials (`POST /materials`), never products — regardless of
+ * a drifted `sku_mappings.item_type`.
+ */
+export function isHubRawMaterialSku(sku: string): boolean {
+  const s = sku.trim().toUpperCase();
+  return HUB_RAW_MATERIAL_PREFIXES.some((p) => s.startsWith(p));
+}
+
+/** Hub-controlled weldments (`ASM-*`) plus legacy `SA-*` shells. */
+export function isHubSubAssemblySku(sku: string): boolean {
+  const s = sku.trim().toUpperCase();
+  return s.startsWith("ASM-") || s.startsWith("SA-");
+}
+
+/**
+ * Coerce PIM item_type for publish / ingest.
+ * `RM-*` is always raw_material. `ASM-*` / legacy `SA-*` are always sub_assembly.
+ */
+export function coerceHubItemType(
+  sku: string,
+  itemType: ItemType | string | null | undefined,
+): ItemType {
+  if (isHubRawMaterialSku(sku)) return "raw_material";
+  if (isHubSubAssemblySku(sku)) return "sub_assembly";
+  const t = String(itemType ?? "raw_material").trim();
+  if (
+    t === "raw_material" ||
+    t === "sub_assembly" ||
+    t === "finished_good" ||
+    t === "service"
+  ) {
+    return t;
+  }
+  return "raw_material";
+}
 
 /** Category prefix tokens for raw-material SKUs (RM-{CODE}-{slug}). */
 const CATEGORY_CODES: Record<string, string> = {

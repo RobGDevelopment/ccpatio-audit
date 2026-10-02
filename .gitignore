@@ -53,3 +53,13 @@ _ARCHIVE_TO_REMOVE_/
 
 # Generated cut-list diagnostics (regenerate via npm run diag:skp-audit)
 scripts/diagnostics/cutlist-exports/
+
+# Generated e-commerce catalog worksheet (npm run ecom:worksheet)
+docs/Vividworks/Handoff/ecommerce_catalog_worksheet.xlsx
+docs/Vividworks/Handoff/CC_Patio_Vendor_Handoff_Workbook.xlsx
+docs/Vividworks/Handoff/web-fabrics/
+docs/Vividworks/Handoff/_research_inventory.json
+docs/Vividworks/Handoff/_research_user_paste.md
+docs/Vividworks/Handoff/_research_merged.json
+docs/Vividworks/Handoff/_research_locked_full.json
+docs/Vividworks/Handoff/_research_locked_full.json.html

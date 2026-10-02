@@ -52,10 +52,15 @@ export {
 export {
   CUT_LIST_TRAILER_RE,
   coerceCutLine,
+  coerceCutListColumn,
   composeBomNotes,
   endsLabel,
   formatFloorCutCard,
   formatKatanaIngredientNote,
+  noteLooksLikeLegacyCutList,
+  parseFreeTextCutCards,
+  resolveDraftCutsAndNote,
+  resolveKatanaIngredientNotes,
   splitBomNotes,
   type BomNotesParts,
 } from "./notes-codec";

@@ -101,12 +101,35 @@ export function parseNamedDimensions(name: string): {
   return empty;
 }
 
+/** Hub-controlled weldment / sub-assembly prefix (SOW ASM-/CUT- standard). */
+export const HUB_SUB_ASSEMBLY_PREFIX = "ASM-";
+
+/** Legacy Katana/Hub SA-* shells kept for golden recipes until reminted. */
+export const LEGACY_SUB_ASSEMBLY_PREFIX = "SA-";
+
+export type SubAssemblyRole =
+  | "FRAME"
+  | "CUSH"
+  | "SEAT"
+  | "BACK"
+  | "BASE"
+  | "PACK"
+  | "ARM";
+
+/**
+ * Mint a Hub-owned sub-assembly SKU from a finished-good stem.
+ * `FIN-BRV-SOF-72X34` + FRAME → `ASM-BRV-SOF-72X34-FRAME`.
+ * CUT-* remains drawing identity only — never minted here.
+ */
 export function subAssemblySku(
   finSku: string,
-  role: "FRAME" | "CUSH",
+  role: SubAssemblyRole,
 ): string {
-  const stem = finSku.replace(/^FIN-/, "");
-  return `SA-${stem}-${role}`;
+  const stem = finSku
+    .trim()
+    .toUpperCase()
+    .replace(/^(FIN|ASM|SA)-/, "");
+  return `${HUB_SUB_ASSEMBLY_PREFIX}${stem}-${role}`;
 }
 
 export function classifyFamily(
@@ -164,9 +187,8 @@ function line(
 }
 
 const FRAME_OPS = [
-  { workCenter: "Metal Cutting", sequence: 10, runTimeMins: 12 },
-  { workCenter: "Building & Welding", sequence: 20, runTimeMins: 25 },
-  { workCenter: "Metal Powder Coating", sequence: 30, runTimeMins: 18 },
+  { workCenter: "FAB POD A", sequence: 10, runTimeMins: 60 },
+  { workCenter: "Powder Coating Booth", sequence: 30, runTimeMins: 18 },
 ];
 
 const CUSH_OPS = [
@@ -176,7 +198,7 @@ const CUSH_OPS = [
 ];
 
 const FG_OPS = [
-  { workCenter: "Quality Check", sequence: 10, runTimeMins: 8 },
+  { workCenter: "Quality Control", sequence: 10, runTimeMins: 8 },
 ];
 
 export function buildHeuristicPlan(input: HeuristicInput): HeuristicPlan {
@@ -325,7 +347,7 @@ export function buildHeuristicPlan(input: HeuristicInput): HeuristicPlan {
   if (input.slots.dekton) {
     operations.push({
       itemSku: frameSku,
-      workCenter: "Dekton Cutting",
+      workCenter: "Dekton Fabrication",
       sequence: 40,
       runTimeMins: 20,
     });

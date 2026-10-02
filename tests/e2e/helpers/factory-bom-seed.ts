@@ -1,6 +1,7 @@
 import path from "path";
 import * as dotenv from "dotenv";
 import { eq, inArray, or } from "drizzle-orm";
+import { subAssemblySku } from "../../../src/lib/heuristic-bom";
 import { getDb, closeDb } from "../../../src/server/db/client";
 import {
   finished_goods_catalog,
@@ -26,8 +27,17 @@ export const E2E_POWDER_SKU = "RM-PWD-GENERIC";
 export const E2E_CAP_SKU = "RM-HRD-2X2-CAP";
 export const E2E_SOURCE_FILE = "vividworks_phase1_e2e";
 
+const ASM_FRAME_SKU = subAssemblySku(E2E_FG_SKU, "FRAME");
+const ASM_CUSH_SKU = subAssemblySku(E2E_FG_SKU, "CUSH");
+
 const OWNED_SKUS = [E2E_FG_SKU, E2E_FRAME_SKU, E2E_CUSH_SKU, E2E_CAP_SKU] as const;
-const GRAPH_PARENTS = [E2E_FG_SKU, E2E_FRAME_SKU, E2E_CUSH_SKU] as const;
+const GRAPH_PARENTS = [
+  E2E_FG_SKU,
+  E2E_FRAME_SKU,
+  E2E_CUSH_SKU,
+  ASM_FRAME_SKU,
+  ASM_CUSH_SKU,
+] as const;
 
 async function upsertMapping(input: {
   sku: string;
@@ -224,22 +234,21 @@ export async function seedFactoryBomE2eDraft(): Promise<void> {
       unit_of_measure: "lb",
       status: "draft_pending_review",
       source: "sketchup_geometry",
-      notes: `4ea 34.0in 45/45C LP CUT-SQ2-16-34.0-4545C\n${JSON.stringify({
-        cut_list: [
-          {
-            role: "apron",
-            profile: "SQ2-16",
-            lengthIn: 34,
-            endA: 45,
-            endB: 45,
-            qtyEa: 4,
-            lengthConvention: "long_point",
-            sourceName: "apron",
-            confidence: "stated",
-            drawingPartNumber: "CUT-SQ2-16-34.0-4545C",
-          },
-        ],
-      })}`,
+      notes: null,
+      cut_list: [
+        {
+          role: "apron",
+          profile: "SQ2-16",
+          lengthIn: 34,
+          endA: 45,
+          endB: 45,
+          qtyEa: 4,
+          lengthConvention: "long_point",
+          sourceName: "apron",
+          confidence: "stated",
+          drawingPartNumber: "CUT-SQ2-16-34.0-4545C",
+        },
+      ],
     },
     {
       parent_sku: E2E_CUSH_SKU,
@@ -256,7 +265,7 @@ export async function seedFactoryBomE2eDraft(): Promise<void> {
   await db.insert(item_operations_draft).values([
     {
       item_sku: E2E_FG_SKU,
-      work_center: "Quality Check",
+      work_center: "Quality Control",
       sequence: 10,
       run_time_mins: "8",
       status: "draft_pending_review",
@@ -264,7 +273,7 @@ export async function seedFactoryBomE2eDraft(): Promise<void> {
     },
     {
       item_sku: E2E_FRAME_SKU,
-      work_center: "Building & Welding",
+      work_center: "FAB POD A",
       sequence: 20,
       run_time_mins: "25",
       status: "draft_pending_review",

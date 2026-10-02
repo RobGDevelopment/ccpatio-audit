@@ -1,35 +1,37 @@
-import { randomUUID } from 'crypto';
-
+/**
+ * QA Phase 4 — prove retired Katana ingress returns HTTP 410 Gone.
+ * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md (PR-T2.1).
+ */
 async function simulateKatanaWebhook() {
-  console.log('[QA PHASE 4] Simulating Incoming Katana Webhook...');
-  
-  // Minimal payload representing a Katana webhook
-  const payload = {
-    webhook_id: randomUUID(),
-    action: 'item_created',
-    data: {
-      item_id: 123456,
-      sku: 'TEST-WEBHOOK-1',
-      name: 'Test Webhook Item',
-      category: 'Raw Material'
-    }
-  };
+  console.log("[QA PHASE 4] Simulating Incoming Katana Webhook (expect 410 Gone)...");
 
   try {
-    const res = await fetch('http://localhost:3000/api/webhooks/katana', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    const res = await fetch("http://localhost:3000/api/webhooks/katana", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "item_created",
+        data: { sku: "TEST-WEBHOOK-1" },
+      }),
     });
 
-    if (!res.ok) {
-      throw new Error(`Webhook simulation failed with status ${res.status}: ${await res.text()}`);
+    if (res.status !== 410) {
+      throw new Error(
+        `Expected 410 Gone, got ${res.status}: ${await res.text()}`,
+      );
     }
 
-    console.log('[SUCCESS] Webhook Simulation Passed');
+    const body = (await res.json()) as { error?: string };
+    if (body.error !== "transactional_ingress_retired") {
+      throw new Error(
+        `Expected error transactional_ingress_retired, got: ${JSON.stringify(body)}`,
+      );
+    }
+
+    console.log("[SUCCESS] Webhook Simulation Passed (410 Gone)");
     process.exit(0);
   } catch (err) {
-    console.error('[QA PHASE 4 FAILED]', err);
+    console.error("[QA PHASE 4 FAILED]", err);
     process.exit(1);
   }
 }

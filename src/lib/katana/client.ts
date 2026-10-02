@@ -10,10 +10,14 @@ const KATANA_BASE_URL = "https://api.katanamrp.com/v1";
  * Automatically attaches authentication and headers.
  * Throws structured errors on non-200 responses to trigger QA guardrails.
  */
-async function fetchKatana(endpoint: string, options: RequestInit = {}) {
-  const token = process.env.KATANA_API_KEY;
+export async function fetchKatana(endpoint: string, options: RequestInit = {}) {
+  const token =
+    process.env.KATANA_PERSONAL_ACCESS_TOKEN?.trim() ??
+    process.env.KATANA_API_KEY?.trim();
   if (!token) {
-    throw new Error("KATANA_API_KEY is not configured in environment variables.");
+    throw new Error(
+      "KATANA_PERSONAL_ACCESS_TOKEN (or KATANA_API_KEY) is not configured in environment variables.",
+    );
   }
 
   const headers = {
@@ -22,7 +26,11 @@ async function fetchKatana(endpoint: string, options: RequestInit = {}) {
     ...options.headers,
   };
 
-  const url = `${KATANA_BASE_URL}${endpoint}`;
+  const base = (process.env.KATANA_API_BASE?.trim() || KATANA_BASE_URL).replace(
+    /\/$/,
+    "",
+  );
+  const url = `${base}${endpoint}`;
   
   try {
     const response = await fetch(url, {
@@ -150,5 +158,151 @@ export async function archiveKatanaVariant(variantId: number): Promise<void> {
     method: "PATCH",
     body: JSON.stringify({ is_active: false }),
   });
+}
+
+function unwrapList<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  if (payload && typeof payload === "object" && "data" in payload) {
+    const data = (payload as { data?: unknown }).data;
+    if (Array.isArray(data)) return data as T[];
+  }
+  return [];
+}
+
+export type KatanaVariantHit = {
+  id: number;
+  sku: string;
+  type: string;
+  product_id: number | null;
+  material_id: number | null;
+};
+
+export async function getKatanaVariantBySku(
+  sku: string,
+): Promise<KatanaVariantHit | null> {
+  const needle = sku.trim().toUpperCase();
+  const res = await fetchKatana(
+    `/variants?sku=${encodeURIComponent(needle)}&limit=5`,
+  );
+  const rows = unwrapList<Record<string, unknown>>(res);
+  for (const row of rows) {
+    const hitSku = String(row.sku ?? "").toUpperCase();
+    if (hitSku !== needle) continue;
+    return {
+      id: Number(row.id),
+      sku: String(row.sku ?? ""),
+      type: String(row.type ?? ""),
+      product_id: row.product_id == null ? null : Number(row.product_id),
+      material_id: row.material_id == null ? null : Number(row.material_id),
+    };
+  }
+  return null;
+}
+
+export type KatanaBomRowHit = {
+  id: string | number | null;
+  product_variant_id: number | null;
+  ingredient_variant_id: number | null;
+  quantity: number | null;
+  notes: string | null;
+  ingredient_sku?: string | null;
+};
+
+export async function listKatanaBomRows(
+  productVariantId: number,
+): Promise<KatanaBomRowHit[]> {
+  const all: KatanaBomRowHit[] = [];
+  for (let page = 1; page <= 20; page += 1) {
+    const res = await fetchKatana(
+      `/bom_rows?product_variant_id=${productVariantId}&limit=250&page=${page}`,
+    );
+    const rows = unwrapList<Record<string, unknown>>(res);
+    const mapped = rows
+      .map((row) => ({
+        id: (row.id as string | number | null) ?? null,
+        product_variant_id:
+          row.product_variant_id == null ? null : Number(row.product_variant_id),
+        ingredient_variant_id:
+          row.ingredient_variant_id == null
+            ? null
+            : Number(row.ingredient_variant_id),
+        quantity: row.quantity == null ? null : Number(row.quantity),
+        notes: typeof row.notes === "string" ? row.notes : null,
+        ingredient_sku:
+          typeof row.ingredient_sku === "string" ? row.ingredient_sku : null,
+      }))
+      .filter((row) => row.product_variant_id === productVariantId);
+    all.push(...mapped);
+    if (rows.length < 250) break;
+  }
+  return all;
+}
+
+export async function listKatanaRecipeRows(
+  productVariantId: number,
+): Promise<KatanaBomRowHit[]> {
+  const res = await fetchKatana(
+    `/recipes?product_variant_id=${productVariantId}&limit=250&page=1`,
+  );
+  const rows = unwrapList<Record<string, unknown>>(res);
+  return rows
+    .map((row) => ({
+      id: (row.id as string | number | null) ?? null,
+      product_variant_id:
+        row.product_variant_id == null ? null : Number(row.product_variant_id),
+      ingredient_variant_id:
+        row.ingredient_variant_id == null
+          ? null
+          : Number(row.ingredient_variant_id),
+      quantity: row.quantity == null ? null : Number(row.quantity),
+      notes: typeof row.notes === "string" ? row.notes : null,
+      ingredient_sku:
+        typeof row.ingredient_sku === "string" ? row.ingredient_sku : null,
+    }))
+    .filter((row) => row.product_variant_id === productVariantId);
+}
+
+export type KatanaOperationHit = {
+  id: number | null;
+  product_variant_id: number | null;
+  operation_name: string;
+  resource_name: string;
+  type: string | null;
+};
+
+export async function listKatanaOperations(
+  productVariantId: number,
+): Promise<KatanaOperationHit[]> {
+  const all: KatanaOperationHit[] = [];
+  for (let page = 1; page <= 20; page += 1) {
+    const res = await fetchKatana(
+      `/product_operation_rows?product_variant_id=${productVariantId}&limit=250&page=${page}`,
+    );
+    const rows = unwrapList<Record<string, unknown>>(res);
+    const mapped = rows
+      .map((row) => ({
+        id: row.id == null ? null : Number(row.id),
+        product_variant_id:
+          row.product_variant_id == null ? null : Number(row.product_variant_id),
+        operation_name: String(row.operation_name ?? row.name ?? ""),
+        resource_name: String(row.resource_name ?? row.resource ?? ""),
+        type: typeof row.type === "string" ? row.type : null,
+      }))
+      .filter(
+        (row) =>
+          row.product_variant_id == null ||
+          row.product_variant_id === productVariantId,
+      );
+    all.push(...mapped);
+    if (rows.length < 250) break;
+  }
+  if (all.length > 0) {
+    return all.filter(
+      (row) =>
+        row.product_variant_id == null ||
+        row.product_variant_id === productVariantId,
+    );
+  }
+  return all;
 }
 

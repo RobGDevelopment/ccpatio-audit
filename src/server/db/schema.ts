@@ -188,22 +188,33 @@ export const product_bom = pgTable(
 /**
  * Manufacturing routings for a producible SKU (finished_good | sub_assembly).
  * Times stored in minutes; Katana sync converts to seconds.
+ * Unique (item_sku, work_center, sequence) enables Approve upsert of times.
  */
-export const item_operations = pgTable("item_operations", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  item_sku: text("item_sku")
-    .notNull()
-    .references(() => sku_mappings.global_sku, {
-      onUpdate: "cascade",
-      onDelete: "cascade",
-    }),
-  work_center: varchar("work_center", { length: 120 }).notNull(),
-  sequence: integer("sequence").notNull().default(10),
-  setup_time_mins: numeric("setup_time_mins", { precision: 12, scale: 4 }),
-  run_time_mins: numeric("run_time_mins", { precision: 12, scale: 4 }),
-  created_at: timestamp("created_at").defaultNow().notNull(),
-  updated_at: timestamp("updated_at").defaultNow().notNull(),
-});
+export const item_operations = pgTable(
+  "item_operations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    item_sku: text("item_sku")
+      .notNull()
+      .references(() => sku_mappings.global_sku, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
+    work_center: varchar("work_center", { length: 120 }).notNull(),
+    sequence: integer("sequence").notNull().default(10),
+    setup_time_mins: numeric("setup_time_mins", { precision: 12, scale: 4 }),
+    run_time_mins: numeric("run_time_mins", { precision: 12, scale: 4 }),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("item_operations_sku_wc_seq_uidx").on(
+      table.item_sku,
+      table.work_center,
+      table.sequence,
+    ),
+  ],
+);
 
 /** Factory recipe review — drafts never feed explodeBomTree / Katana. */
 export const recipeReviewStatusEnum = pgEnum("recipe_review_status", [
@@ -385,6 +396,24 @@ export const product_bom_draft = pgTable(
       .default("draft_pending_review"),
     source: recipeSourceEnum("source").notNull().default("heuristic"),
     notes: text("notes"),
+    /** Structured cut pieces — mirrors live product_bom.cut_list (no JSON trailer). */
+    cut_list: jsonb("cut_list")
+      .$type<
+        Array<{
+          role: string;
+          profile: string;
+          lengthIn: number;
+          endA: number | null;
+          endB: number | null;
+          qtyEa: number;
+          lengthConvention: string;
+          sourceName: string;
+          confidence: string;
+          drawingPartNumber: string | null;
+        }>
+      >()
+      .notNull()
+      .default([]),
     reviewed_by: text("reviewed_by"),
     reviewed_at: timestamp("reviewed_at"),
     created_at: timestamp("created_at").defaultNow().notNull(),
@@ -688,6 +717,8 @@ export const channel_sync = pgTable(
     external_id: varchar("external_id", { length: 255 }),
     status: channelSyncStatusEnum("status").notNull().default("pending"),
     last_error: text("last_error"),
+    /** SHA-256 of spoke payload; success + matching hash → Inngest step no-op. */
+    payload_hash: varchar("payload_hash", { length: 64 }),
     created_at: timestamp("created_at").defaultNow().notNull(),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
   },

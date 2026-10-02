@@ -13,8 +13,9 @@
  *
  * Dry-run is the default and always prints the WIP-1769 payload. It does not
  * write. --confirm-fields only creates the migration-owned definitions.
- * Type, Delivery Date, Production Deadline, and PU/Drop already exist in
- * Katana and are never created here. --confirm patches allowlisted orders.
+ * Type, Delivery Date, Production Deadline, PU/Drop, Delivery Confirmed,
+ * and PU/Drop Confirmed already exist in Katana and are never created here.
+ * --confirm patches allowlisted orders.
  *
  * Live Katana types, not the sheet labels:
  * - Type is singleSelect and is sent as the Katana option id.
@@ -22,6 +23,15 @@
  * - Delivery Date, Production Deadline, and PU/Drop are date fields.
  *   Sheet dates are sent as YYYY-MM-DD. HOLD and blank cells are omitted.
  *   The sheet column for PU/Drop is "PU / DROP".
+ * - Delivery Confirmed and PU/Drop Confirmed are boolean fields.
+ *   YES/NO become true/false. NA, N/A, HOLD, and blank cells are omitted.
+ *   Sheet columns are "Delivery Conf." and "PU / DROP Confirmed".
+ *
+ * Sources (the Columns copies are the 2026-10-02 extracts):
+ * - data_migration/Columns/Standard Report 2026 CCPatio - NEW.csv
+ * - data_migration/Columns/OpenSalesOrders-2026-10-02-07_46.csv
+ *   The open-order export is a gate: every allowlisted WIP- number must
+ *   appear there before any PATCH. Values come from the standard report.
  */
 import { loadEnvConfig } from "@next/env";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -43,7 +53,14 @@ const DRY_RUN_LEGACY = "1769";
 const STANDARD_PATH = join(
   process.cwd(),
   "data_migration",
+  "Columns",
   "Standard Report 2026 CCPatio - NEW.csv",
+);
+const OPEN_SALES_ORDERS_PATH = join(
+  process.cwd(),
+  "data_migration",
+  "Columns",
+  "OpenSalesOrders-2026-10-02-07_46.csv",
 );
 const LEDGER_PATH = join(
   process.cwd(),
@@ -61,8 +78,8 @@ const CONFIRM_REPORT_PATH = join(
   "so-field-migration-confirm.json",
 );
 
-type ValueKind = "text" | "number" | "date" | "singleSelect";
-type FieldType = "shortText" | "number" | "date" | "singleSelect";
+type ValueKind = "text" | "number" | "date" | "boolean" | "singleSelect";
+type FieldType = "shortText" | "number" | "date" | "boolean" | "singleSelect";
 
 type FieldSpec = {
   label: string;
@@ -184,6 +201,22 @@ const TARGET_FIELDS: readonly FieldSpec[] = [
     description: "Existing Katana PU/Drop date. Sheet column is PU / DROP.",
     create: false,
   },
+  {
+    label: "Delivery Confirmed",
+    field_type: "boolean",
+    column: "Delivery Conf.",
+    valueKind: "boolean",
+    description: "Existing Katana delivery-confirmed flag. Sheet column is Delivery Conf.",
+    create: false,
+  },
+  {
+    label: "PU/Drop Confirmed",
+    field_type: "boolean",
+    column: "PU / DROP Confirmed",
+    valueKind: "boolean",
+    description: "Existing Katana PU/Drop-confirmed flag. Sheet column is PU / DROP Confirmed.",
+    create: false,
+  },
 ];
 
 type CustomFieldChoice = { id: number; label: string };
@@ -208,7 +241,7 @@ type FieldLegendEntry = {
   column: string;
   sheetValue: string | null;
   sent: boolean;
-  value: string | number | null;
+  value: string | number | boolean | null;
 };
 
 type DryRunPayload = {
@@ -295,6 +328,18 @@ const MONTHS: Record<string, number> = {
   dec: 12,
 };
 
+/**
+ * YES/NO from the sheet. NA, N/A, and HOLD are not booleans (caller omits them).
+ * Returns null for those sentinels and undefined when the cell is not a flag.
+ */
+function parseSheetBoolean(raw: string): boolean | null | undefined {
+  const value = raw.trim().toUpperCase();
+  if (!value || value === "NA" || value === "N/A" || value === "HOLD") return null;
+  if (value === "YES" || value === "Y" || value === "TRUE") return true;
+  if (value === "NO" || value === "N" || value === "FALSE") return false;
+  return undefined;
+}
+
 /** Calendar date from the sheet, as YYYY-MM-DD. HOLD and blank are not dates. */
 function parseSheetCalendarDate(raw: string): string | null {
   const value = raw.trim();
@@ -347,6 +392,32 @@ function matchChoice(raw: string, choices: readonly CustomFieldChoice[]): number
   const wanted = aliases[compact(raw)] ?? compact(raw);
   const hit = choices.find((choice) => compact(choice.label) === wanted);
   return hit?.id ?? null;
+}
+
+function loadOpenSalesOrderNumbers(): Set<string> {
+  const numbers = new Set<string>();
+  for (const row of readCsvRecords(OPEN_SALES_ORDERS_PATH)) {
+    const orderNo = col(row, "SO #");
+    if (orderNo) numbers.add(orderNo);
+  }
+  if (numbers.size === 0) {
+    throw new Error(`${OPEN_SALES_ORDERS_PATH} has no SO # values.`);
+  }
+  return numbers;
+}
+
+function assertAllowlistIsOpen(
+  allowlist: readonly AllowOrder[],
+  openOrderNumbers: ReadonlySet<string>,
+): void {
+  const missing = allowlist
+    .filter((order) => !openOrderNumbers.has(order.katanaOrderNo))
+    .map((order) => order.katanaOrderNo);
+  if (missing.length > 0) {
+    throw new Error(
+      `Allowlisted orders missing from ${OPEN_SALES_ORDERS_PATH}: ${missing.join(", ")}. No PATCH was sent.`,
+    );
+  }
 }
 
 function loadAllowlist(): AllowOrder[] {
@@ -469,7 +540,7 @@ function readExistingCustomFields(
 
 function mergeCustomFields(
   existing: unknown,
-  updates: Record<string, string | number>,
+  updates: Record<string, string | number | boolean>,
 ): Record<string, string | number | boolean> {
   return { ...readExistingCustomFields(existing), ...updates };
 }
@@ -582,11 +653,11 @@ function buildFieldPayload(
   row: Record<string, string>,
   fields: Map<string, CustomFieldHit>,
 ): {
-  customFields: Record<string, string | number>;
+  customFields: Record<string, string | number | boolean>;
   legend: FieldLegendEntry[];
   warnings: string[];
 } {
-  const customFields: Record<string, string | number> = {};
+  const customFields: Record<string, string | number | boolean> = {};
   const legend: FieldLegendEntry[] = [];
   const warnings: string[] = [];
 
@@ -608,7 +679,7 @@ function buildFieldPayload(
       continue;
     }
 
-    let value: string | number;
+    let value: string | number | boolean;
     if (spec.valueKind === "number") {
       const parsed = parseProjectedHours(raw);
       if (parsed == null) {
@@ -634,6 +705,25 @@ function buildFieldPayload(
         throw new Error(
           `Order ${col(row, "Order Number") || "?"} column "${spec.column}" is not a date: ${raw}`,
         );
+      }
+      value = parsed;
+    } else if (spec.valueKind === "boolean") {
+      const parsed = parseSheetBoolean(raw);
+      if (parsed === undefined) {
+        throw new Error(
+          `Order ${col(row, "Order Number") || "?"} column "${spec.column}" is not YES or NO: ${raw}`,
+        );
+      }
+      if (parsed === null) {
+        legend.push({
+          label: spec.label,
+          id: field.id,
+          column: spec.column,
+          sheetValue: raw,
+          sent: false,
+          value: null,
+        });
+        continue;
       }
       value = parsed;
     } else if (spec.valueKind === "singleSelect") {
@@ -907,7 +997,12 @@ async function main(): Promise<void> {
 
   const dryRun = !confirm;
   const allowlist = loadAllowlist();
+  const openOrderNumbers = loadOpenSalesOrderNumbers();
+  assertAllowlistIsOpen(allowlist, openOrderNumbers);
   console.log(`Allowlist: ${allowlist.length} WIP- sales orders`);
+  console.log(
+    `Open sales order export: ${openOrderNumbers.size} order numbers, allowlist covered`,
+  );
   const sheet = indexSheetRows(allowlist);
   console.log(`Sheet rows matched to allowlist: ${sheet.size}`);
   console.log(`Source: ${STANDARD_PATH}`);

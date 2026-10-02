@@ -8,6 +8,8 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { inngest } from "@/inngest/client";
 import { logPimAudit, resolvePimOperator } from "@/lib/pim-audit";
+import { coerceHubItemType } from "@/lib/raw-material-sku";
+import { parseFreeTextCutCards } from "@/lib/sketchup-cutlist/notes-codec";
 import { getDb } from "@/server/db/client";
 import {
   finished_goods_catalog,
@@ -268,8 +270,10 @@ export async function approveIntake(
         });
 
       for (const node of flatNodes) {
-        const itemType: ItemType =
-          node.itemType === "finished_good" ? "sub_assembly" : node.itemType;
+        const itemType: ItemType = coerceHubItemType(
+          node.sku,
+          node.itemType === "finished_good" ? "sub_assembly" : node.itemType,
+        );
         await tx
           .insert(sku_mappings)
           .values({
@@ -297,6 +301,7 @@ export async function approveIntake(
       }
 
       for (const edge of edges) {
+        const parsedCuts = parseFreeTextCutCards(edge.notes);
         await tx
           .insert(product_bom)
           .values({
@@ -305,6 +310,8 @@ export async function approveIntake(
             quantity: String(edge.quantity),
             scrap_factor: "1.0000",
             unit_of_measure: edge.unitOfMeasure,
+            notes: edge.notes,
+            cut_list: parsedCuts.cutList,
             updated_at: new Date(),
           })
           .onConflictDoUpdate({
@@ -312,6 +319,8 @@ export async function approveIntake(
             set: {
               quantity: String(edge.quantity),
               unit_of_measure: edge.unitOfMeasure,
+              notes: edge.notes,
+              cut_list: parsedCuts.cutList,
               updated_at: new Date(),
             },
           });
