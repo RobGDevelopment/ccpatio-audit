@@ -12,7 +12,7 @@ export default async function EmbedDispatchPage({
   const session = await getPimSession();
   if (!session) {
     return (
-      <main className="flex h-full min-h-0 flex-1 items-center justify-center bg-zinc-100 px-6">
+      <main className="flex h-full min-h-0 flex-1 items-center justify-center bg-[#FAFAFA] px-6">
         <p
           role="alert"
           data-testid="dispatch-unauthorized"
@@ -25,7 +25,7 @@ export default async function EmbedDispatchPage({
   }
 
   return (
-    <div className="h-full min-h-0 flex-1 overflow-auto bg-zinc-100 text-zinc-900">
+    <div className="h-full min-h-0 flex-1 overflow-auto bg-[#FAFAFA] text-slate-900">
       <div className="mx-auto max-w-3xl px-4 py-6">
         <DispatchPortal />
       </div>

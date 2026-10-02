@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { Trash2 } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { card, eyebrow, softField } from "@/app/showroom/showroom-ui";
 import { LTL_FREIGHT_CLASSES } from "@/lib/logistics-profile";
 import {
@@ -9,6 +10,10 @@ import {
   type GhlDispatchOpportunity,
 } from "@/server/actions/dispatch";
 import { calculateFulfillmentOptions } from "@/server/actions/freight";
+import {
+  getQuotingProducts,
+  type QuotingProduct,
+} from "@/server/actions/logistics";
 import type {
   FreightSkid,
   FulfillmentMethod,
@@ -20,13 +25,19 @@ import type {
 const MOCK_SKID_LENGTH_IN = 90;
 const MOCK_SKID_WIDTH_IN = 40;
 const MOCK_SKID_HEIGHT_IN = 40;
+const PRODUCT_MATCH_LIMIT = 40;
+
+const floatCard = `${card} relative overflow-hidden border border-slate-100`;
 
 type QuoteMode = "quick" | "opportunity";
 
-type SkidDraft = {
+type ProductDraft = {
   key: string;
+  variantSku: string;
+  name: string;
   weightLb: string;
   freightClass: string;
+  query: string;
 };
 
 type QuoteState =
@@ -46,8 +57,15 @@ function money(amount: number): string {
   }).format(amount);
 }
 
-function freshSkid(key: string): SkidDraft {
-  return { key, weightLb: "", freightClass: "70" };
+function freshProduct(key: string): ProductDraft {
+  return {
+    key,
+    variantSku: "",
+    name: "",
+    weightLb: "",
+    freightClass: "",
+    query: "",
+  };
 }
 
 function optionFor(
@@ -62,11 +80,29 @@ function carrierLabel(option: FulfillmentOption): string {
   return name || "Shadow Pricing Matrix";
 }
 
+function specLabel(weightLb: string, freightClass: string): string {
+  const weight = Number(weightLb);
+  const lbs = Number.isFinite(weight)
+    ? `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(weight)} lbs`
+    : "";
+  const freight = freightClass ? `Class ${freightClass}` : "";
+  return [lbs, freight].filter(Boolean).join(" • ");
+}
+
+function matchesProduct(product: QuotingProduct, needle: string): boolean {
+  const query = needle.trim().toLowerCase();
+  if (!query) return true;
+  return (
+    product.variantSku.toLowerCase().includes(query) ||
+    product.name.toLowerCase().includes(query)
+  );
+}
+
 /**
  * Products share one pallet. Packed height stays inside the 36–45 in band
  * the freight rater requires, matching the ready-to-ship queue.
  */
-function toFreightSkid(rows: SkidDraft[]): FreightSkid {
+function toFreightSkid(rows: ProductDraft[]): FreightSkid {
   const count = rows.length;
   const height =
     count <= 1
@@ -85,21 +121,32 @@ function toFreightSkid(rows: SkidDraft[]): FreightSkid {
   };
 }
 
-function quoteIssue(destZip: string, rows: SkidDraft[]): string | null {
+function quoteIssue(destZip: string, rows: ProductDraft[]): string | null {
   if (!/^\d{5}$/.test(destZip.trim())) {
     return "Enter a 5-digit ZIP code.";
   }
-  if (rows.length === 0) return "Add at least one skid item.";
+  if (rows.length === 0) return "Add at least one product.";
   for (const [index, row] of rows.entries()) {
     const weight = Number(row.weightLb);
-    if (!Number.isFinite(weight) || weight <= 0) {
-      return `Skid item ${index + 1} needs a weight greater than 0.`;
+    if (!row.variantSku || !Number.isFinite(weight) || weight <= 0) {
+      return `Choose a product for line ${index + 1}.`;
     }
     if (!(LTL_FREIGHT_CLASSES as readonly string[]).includes(row.freightClass)) {
-      return `Skid item ${index + 1} needs a standard NMFC class.`;
+      return `Choose a product for line ${index + 1}.`;
     }
   }
   return null;
+}
+
+function GoldBeam() {
+  return (
+    <span
+      className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[2px] overflow-hidden"
+      aria-hidden="true"
+    >
+      <span className="animate-beam-glide-lux absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-[#C5A059] to-transparent" />
+    </span>
+  );
 }
 
 function RouteButton({
@@ -136,7 +183,7 @@ function RouteButton({
 export function DispatchPortal() {
   const titleId = useId();
   const searchRequest = useRef(0);
-  const nextSkid = useRef(2);
+  const nextProduct = useRef(2);
   const [mode, setMode] = useState<QuoteMode>("quick");
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -144,9 +191,33 @@ export function DispatchPortal() {
   const [results, setResults] = useState<GhlDispatchOpportunity[]>([]);
   const [opportunity, setOpportunity] = useState<GhlDispatchOpportunity | null>(null);
   const [destZip, setDestZip] = useState("");
-  const [skids, setSkids] = useState<SkidDraft[]>([freshSkid("skid-1")]);
+  const [products, setProducts] = useState<QuotingProduct[]>([]);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [catalogReady, setCatalogReady] = useState(false);
+  const [lines, setLines] = useState<ProductDraft[]>([freshProduct("product-1")]);
+  const [openKey, setOpenKey] = useState<string | null>(null);
   const [quote, setQuote] = useState<QuoteState>({ status: "idle" });
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    let active = true;
+    void getQuotingProducts()
+      .then((rows) => {
+        if (!active) return;
+        setProducts(rows);
+        setCatalogError(null);
+        setCatalogReady(true);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setProducts([]);
+        setCatalogReady(true);
+        setCatalogError(error instanceof Error ? error.message : "Could not load products.");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (mode !== "opportunity" || opportunity) return;
@@ -167,15 +238,11 @@ export function DispatchPortal() {
           setSettledQuery(needle);
           setResults(hits);
         })
-        .catch((error: unknown) => {
+        .catch(() => {
           if (requestId !== searchRequest.current) return;
           setSearching(false);
           setSettledQuery(needle);
           setResults([]);
-          setQuote({
-            status: "error",
-            message: error instanceof Error ? error.message : "Opportunity search failed.",
-          });
         });
     }, 300);
     return () => window.clearTimeout(timer);
@@ -186,33 +253,73 @@ export function DispatchPortal() {
     setQuote({ status: "idle" });
   }
 
-  function updateSkid(key: string, patch: Partial<Pick<SkidDraft, "weightLb" | "freightClass">>) {
-    setSkids((current) =>
-      current.map((row) => (row.key === key ? { ...row, ...patch } : row)),
+  function chooseOpportunity(hit: GhlDispatchOpportunity) {
+    setOpportunity(hit);
+    setQuery(hit.contactName);
+    setDestZip(hit.destZip);
+    setResults([]);
+    setQuote({ status: "idle" });
+  }
+
+  function updateQuery(key: string, value: string) {
+    setOpenKey(key);
+    setLines((current) =>
+      current.map((row) => {
+        if (row.key !== key) return row;
+        const stillSelected =
+          row.variantSku && value.trim().toLowerCase() === row.name.trim().toLowerCase();
+        if (stillSelected) return { ...row, query: value };
+        return {
+          ...row,
+          query: value,
+          variantSku: "",
+          name: "",
+          weightLb: "",
+          freightClass: "",
+        };
+      }),
     );
   }
 
-  function addSkid() {
-    const key = `skid-${nextSkid.current}`;
-    nextSkid.current += 1;
-    setSkids((current) => [...current, freshSkid(key)]);
+  function chooseProduct(key: string, product: QuotingProduct) {
+    setLines((current) =>
+      current.map((row) =>
+        row.key === key
+          ? {
+              ...row,
+              variantSku: product.variantSku,
+              name: product.name,
+              weightLb: String(product.weightLb),
+              freightClass: product.ltlClass,
+              query: product.name,
+            }
+          : row,
+      ),
+    );
+    setOpenKey(null);
+    setQuote({ status: "idle" });
   }
 
-  function removeSkid(key: string) {
-    setSkids((current) => {
-      if (current.length <= 1) return current;
-      return current.filter((row) => row.key !== key);
-    });
+  function addProduct() {
+    const key = `product-${nextProduct.current}`;
+    nextProduct.current += 1;
+    setLines((current) => [...current, freshProduct(key)]);
+    setOpenKey(key);
+  }
+
+  function removeProduct(key: string) {
+    setLines((current) => current.filter((row) => row.key !== key));
+    setOpenKey((current) => (current === key ? null : current));
   }
 
   function runQuote() {
-    const issue = quoteIssue(destZip, skids);
+    const issue = quoteIssue(destZip, lines);
     if (issue) {
       setQuote({ status: "error", message: issue });
       return;
     }
     const zip = destZip.trim();
-    const skid = toFreightSkid(skids);
+    const skid = toFreightSkid(lines);
     setQuote({ status: "idle" });
     startTransition(async () => {
       try {
@@ -241,268 +348,379 @@ export function DispatchPortal() {
   const chosen = quote.status === "quoted" ? quote.route : null;
   const showPair = Boolean(fleet && ltl && !local);
   const showLtlOnly = Boolean(ltl && !local && !fleet);
+  const showOpportunityList =
+    !opportunity && query.trim().length >= 2 && (searching || settledQuery === query.trim());
 
   return (
-    <section className="space-y-6" data-testid="dispatch-portal">
-      <header>
-        <p className={eyebrow}>Logistics</p>
-        <h1 id={titleId} className="mt-2 text-2xl font-medium tracking-tight text-zinc-900">
-          Logistics & Dispatch
-        </h1>
-        <p className="mt-2 max-w-xl text-sm text-zinc-500">
-          Quote a delivery from a ZIP code, or pull the destination from an opportunity.
-        </p>
-      </header>
+    <section
+      className="relative overflow-hidden rounded-3xl bg-[#F8F9FA] text-slate-900"
+      data-testid="dispatch-portal"
+    >
+      <GoldBeam />
+      <div className="space-y-6 p-6 sm:p-8">
+        <header>
+          <p className={eyebrow}>Logistics</p>
+          <h1 id={titleId} className="mt-2 text-2xl font-medium tracking-tight text-slate-900">
+            Shipping Quote
+          </h1>
+          <p className="mt-2 max-w-xl text-sm text-slate-500">
+            Pick a product from the catalog and a destination. Weight and freight class come from the product.
+          </p>
+        </header>
 
-      <div className="inline-flex rounded-full bg-white p-1 shadow-[0_8px_30px_rgb(0,0,0,0.04)]" role="tablist" aria-label="Quote source">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "quick"}
-          data-testid="dispatch-mode-quick"
-          onClick={() => chooseMode("quick")}
-          className={`rounded-full px-4 py-2 text-sm transition ${
-            mode === "quick" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:text-zinc-900"
-          }`}
+        <div
+          className="inline-flex rounded-full bg-white p-1 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+          role="tablist"
+          aria-label="Quote source"
         >
-          Quick Quote
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "opportunity"}
-          data-testid="dispatch-mode-opportunity"
-          onClick={() => chooseMode("opportunity")}
-          className={`rounded-full px-4 py-2 text-sm transition ${
-            mode === "opportunity" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:text-zinc-900"
-          }`}
-        >
-          Opportunity Quote
-        </button>
-      </div>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "quick"}
+            data-testid="dispatch-mode-quick"
+            onClick={() => chooseMode("quick")}
+            className={`rounded-full px-4 py-2 text-sm transition ${
+              mode === "quick" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Quick Quote
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "opportunity"}
+            data-testid="dispatch-mode-opportunity"
+            onClick={() => chooseMode("opportunity")}
+            className={`rounded-full px-4 py-2 text-sm transition ${
+              mode === "opportunity" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Opportunity Quote
+          </button>
+        </div>
 
-      <form
-        className={`${card} space-y-5 p-6`}
-        onSubmit={(event) => {
-          event.preventDefault();
-          runQuote();
-        }}
-      >
-        {mode === "opportunity" ? (
-          <div className="relative">
-            <label className="block text-xs uppercase tracking-widest text-zinc-500" htmlFor={`${titleId}-opp`}>
-              Opportunity
+        <form
+          className={`${floatCard} space-y-5 p-6`}
+          onSubmit={(event) => {
+            event.preventDefault();
+            runQuote();
+          }}
+        >
+          <GoldBeam />
+          {mode === "opportunity" ? (
+            <div className="relative">
+              <label className="block text-xs uppercase tracking-widest text-slate-500" htmlFor={`${titleId}-opp`}>
+                Opportunity
+              </label>
+              <input
+                id={`${titleId}-opp`}
+                data-testid="dispatch-opportunity-search"
+                value={opportunity ? opportunity.contactName : query}
+                onChange={(event) => {
+                  setOpportunity(null);
+                  setQuery(event.target.value);
+                }}
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={showOpportunityList}
+                aria-controls={`${titleId}-opps`}
+                aria-autocomplete="list"
+                placeholder="Search contacts"
+                className={`${softField} mt-1`}
+              />
+              {opportunity ? (
+                <p className="mt-2 text-xs text-slate-500" data-testid="dispatch-opportunity-selected">
+                  {opportunity.contactName}
+                  {opportunity.destZip ? ` · ${opportunity.destZip}` : " · No ZIP on file"}
+                  {opportunity.totalValue ? ` · ${money(opportunity.totalValue)}` : ""}
+                </p>
+              ) : null}
+              {showOpportunityList ? (
+                <ul
+                  id={`${titleId}-opps`}
+                  role="listbox"
+                  className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
+                >
+                  {searching ? <li className="px-3 py-2 text-sm text-slate-500">Searching…</li> : null}
+                  {!searching && results.length === 0 ? (
+                    <li className="px-3 py-2 text-sm text-slate-500">No matching opportunities.</li>
+                  ) : null}
+                  {results.map((hit) => (
+                    <li key={hit.id} role="presentation">
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={false}
+                        data-testid={`dispatch-opportunity-${hit.id}`}
+                        className="flex w-full flex-col px-3 py-2 text-left hover:bg-slate-50"
+                        onClick={() => chooseOpportunity(hit)}
+                      >
+                        <span className="text-sm text-slate-900">{hit.contactName}</span>
+                        <span className="text-xs text-slate-500">
+                          {hit.destZip || "No ZIP on file"}
+                          {hit.totalValue ? ` · ${money(hit.totalValue)}` : ""}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-slate-500" htmlFor={`${titleId}-zip`}>
+              Destination ZIP Code
             </label>
             <input
-              id={`${titleId}-opp`}
-              data-testid="dispatch-opportunity-search"
-              value={opportunity ? opportunity.contactName : query}
-              onChange={(event) => {
-                setOpportunity(null);
-                setQuery(event.target.value);
-              }}
-              autoComplete="off"
-              role="combobox"
-              aria-expanded={!opportunity && results.length > 0}
-              aria-controls={`${titleId}-opps`}
-              aria-autocomplete="list"
-              placeholder="Search contacts or ZIP codes"
-              className={`${softField} mt-1`}
+              id={`${titleId}-zip`}
+              data-testid="dispatch-zip"
+              value={destZip}
+              onChange={(event) => setDestZip(event.target.value)}
+              inputMode="numeric"
+              autoComplete="postal-code"
+              maxLength={5}
+              placeholder="85255"
+              className={`${softField} mt-1 max-w-xs`}
             />
-            {opportunity ? (
-              <p className="mt-2 text-xs text-zinc-500" data-testid="dispatch-opportunity-selected">
-                {opportunity.contactName} · {opportunity.destZip} · {money(opportunity.totalValue)}
+          </div>
+
+          <fieldset className="space-y-3">
+            <legend className="text-xs uppercase tracking-widest text-slate-500">Products</legend>
+            <p className="text-xs text-slate-500">Rated together as one pallet.</p>
+            {catalogError ? (
+              <p className="text-sm text-rose-700" role="alert">
+                {catalogError}
               </p>
             ) : null}
-            {!opportunity &&
-            query.trim().length >= 2 &&
-            (searching || settledQuery === query.trim()) ? (
+            {catalogReady && !catalogError && products.length === 0 ? (
+              <p className="text-sm text-slate-500">No quoteable products are in the logistics catalog yet.</p>
+            ) : null}
+            {lines.map((row, index) => (
+              <ProductLine
+                key={row.key}
+                row={row}
+                index={index}
+                titleId={titleId}
+                products={products}
+                open={openKey === row.key}
+                catalogReady={catalogReady}
+                onQuery={(value) => updateQuery(row.key, value)}
+                onOpen={() => setOpenKey(row.key)}
+                onClose={() => setOpenKey((current) => (current === row.key ? null : current))}
+                onSelect={(product) => chooseProduct(row.key, product)}
+                onRemove={() => removeProduct(row.key)}
+              />
+            ))}
+            <button
+              type="button"
+              data-testid="dispatch-add-skid"
+              onClick={addProduct}
+              className="rounded-xl border border-slate-100 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:bg-slate-50"
+            >
+              + Add Product
+            </button>
+          </fieldset>
+
+          {quote.status === "error" ? (
+            <p className="text-sm text-rose-700" role="alert" data-testid="dispatch-error">
+              {quote.message}
+            </p>
+          ) : null}
+
+          <button
+            type="submit"
+            data-testid="dispatch-run-quote"
+            disabled={pending}
+            className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition hover:bg-blue-500 disabled:cursor-wait disabled:opacity-60"
+          >
+            {pending ? "Quoting…" : "Run Freight Quote"}
+          </button>
+        </form>
+
+        {plan && quote.status === "quoted" ? (
+          <div className={`${floatCard} space-y-4 p-6`} data-testid="dispatch-results" aria-live="polite">
+            <GoldBeam />
+            <div>
+              <p className={eyebrow}>Quote</p>
+              <h2 className="mt-2 text-lg font-medium text-slate-900">
+                {plan.destinationZip} · {quote.miles.toLocaleString("en-US")} miles
+              </h2>
+            </div>
+            <ul className="space-y-1 text-sm text-slate-600">
+              {plan.options.map((option) => (
+                <li key={option.method}>{option.summary}</li>
+              ))}
+            </ul>
+
+            {local && local.priceUsd != null ? (
+              <RouteButton
+                testId="dispatch-local"
+                pressed={chosen === "LOCAL_WHITE_GLOVE"}
+                onClick={() => chooseRoute("LOCAL_WHITE_GLOVE")}
+                className="w-full bg-emerald-600 text-white ring-emerald-800 hover:bg-emerald-500"
+                title={`Dispatch CC Patio Fleet - ${money(local.priceUsd)}`}
+              />
+            ) : null}
+
+            {showPair && fleet && ltl && ltl.priceUsd != null ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <RouteButton
+                  testId="dispatch-fleet"
+                  pressed={chosen === "INTERNAL_FLEET"}
+                  onClick={() => chooseRoute("INTERNAL_FLEET")}
+                  className="bg-white text-slate-900 ring-slate-900 ring-1 ring-slate-100 hover:bg-slate-50"
+                  title="Route to CC Patio Fleet"
+                  detail="Company truck"
+                />
+                <RouteButton
+                  testId="dispatch-ltl"
+                  pressed={chosen === "PRIORITY1_LTL"}
+                  onClick={() => chooseRoute("PRIORITY1_LTL")}
+                  className="bg-sky-700 text-white ring-sky-900 hover:bg-sky-600"
+                  title={`Book Priority1 LTL - ${money(ltl.priceUsd)}`}
+                  detail={carrierLabel(ltl)}
+                />
+              </div>
+            ) : null}
+
+            {showLtlOnly && ltl && ltl.priceUsd != null ? (
+              <RouteButton
+                testId="dispatch-ltl-only"
+                pressed={chosen === "PRIORITY1_LTL"}
+                onClick={() => chooseRoute("PRIORITY1_LTL")}
+                className="w-full bg-slate-800 text-sky-100 ring-sky-400 hover:bg-slate-700"
+                title={`Book Priority1 LTL - ${money(ltl.priceUsd)}`}
+                detail={carrierLabel(ltl)}
+              />
+            ) : null}
+
+            {chosen ? (
+              <p className="text-sm text-slate-700" data-testid="dispatch-route-chosen">
+                Route selected.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function ProductLine({
+  row,
+  index,
+  titleId,
+  products,
+  open,
+  catalogReady,
+  onQuery,
+  onOpen,
+  onClose,
+  onSelect,
+  onRemove,
+}: {
+  row: ProductDraft;
+  index: number;
+  titleId: string;
+  products: QuotingProduct[];
+  open: boolean;
+  catalogReady: boolean;
+  onQuery: (value: string) => void;
+  onOpen: () => void;
+  onClose: () => void;
+  onSelect: (product: QuotingProduct) => void;
+  onRemove: () => void;
+}) {
+  const listId = `${titleId}-products-${row.key}`;
+  const locked = Boolean(row.variantSku) && !open;
+  const matches = useMemo(() => {
+    return products.filter((product) => matchesProduct(product, row.query)).slice(0, PRODUCT_MATCH_LIMIT);
+  }, [products, row.query]);
+  const spec = specLabel(row.weightLb, row.freightClass);
+
+  return (
+    <div className="flex items-start gap-2">
+      <div className="relative min-w-0 flex-1">
+        {locked ? (
+          <div className="rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+            <button
+              type="button"
+              className="block w-full text-left"
+              data-testid={`dispatch-product-${index}`}
+              onClick={onOpen}
+            >
+              <span className="block text-sm font-medium text-slate-900">{row.name}</span>
+              {spec ? (
+                <span className="mt-0.5 block text-xs text-slate-500" data-testid={`dispatch-product-spec-${index}`}>
+                  {spec}
+                </span>
+              ) : null}
+            </button>
+          </div>
+        ) : (
+          <>
+            <input
+              data-testid={`dispatch-product-${index}`}
+              value={row.query}
+              onChange={(event) => onQuery(event.target.value)}
+              onFocus={onOpen}
+              onBlur={() => window.setTimeout(onClose, 150)}
+              role="combobox"
+              aria-expanded={open}
+              aria-controls={listId}
+              aria-autocomplete="list"
+              autoComplete="off"
+              placeholder={catalogReady ? "Search products" : "Loading products…"}
+              className={softField}
+            />
+            {open && row.variantSku && spec ? (
+              <p className="mt-1 text-xs text-slate-500" data-testid={`dispatch-product-spec-${index}`}>
+                {spec}
+              </p>
+            ) : null}
+            {open ? (
               <ul
-                id={`${titleId}-opps`}
+                id={listId}
                 role="listbox"
-                className="absolute z-10 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-zinc-100 bg-white py-1 shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
+                className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
               >
-                {searching ? <li className="px-3 py-2 text-sm text-zinc-500">Searching…</li> : null}
-                {!searching && results.length === 0 ? (
-                  <li className="px-3 py-2 text-sm text-zinc-500">No matching opportunities.</li>
+                {!catalogReady ? <li className="px-3 py-2 text-sm text-slate-500">Loading products…</li> : null}
+                {catalogReady && matches.length === 0 ? (
+                  <li className="px-3 py-2 text-sm text-slate-500">No matching products.</li>
                 ) : null}
-                {results.map((hit) => (
-                  <li key={hit.id} role="presentation">
+                {matches.map((product) => (
+                  <li key={product.variantSku} role="presentation">
                     <button
                       type="button"
                       role="option"
-                      aria-selected={false}
-                      data-testid={`dispatch-opportunity-${hit.id}`}
-                      className="flex w-full flex-col px-3 py-2 text-left hover:bg-zinc-50"
-                      onClick={() => {
-                        setOpportunity(hit);
-                        setQuery(hit.contactName);
-                        setDestZip(hit.destZip);
-                        setResults([]);
-                        setQuote({ status: "idle" });
-                      }}
+                      aria-selected={product.variantSku === row.variantSku}
+                      data-testid={`dispatch-product-option-${product.variantSku}`}
+                      className="flex w-full flex-col px-3 py-2 text-left hover:bg-slate-50"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => onSelect(product)}
                     >
-                      <span className="text-sm text-zinc-900">{hit.contactName}</span>
-                      <span className="text-xs text-zinc-500">
-                        {hit.destZip} · {money(hit.totalValue)}
+                      <span className="text-sm text-slate-900">{product.name}</span>
+                      <span className="text-xs text-slate-500">
+                        {specLabel(String(product.weightLb), product.ltlClass)}
                       </span>
                     </button>
                   </li>
                 ))}
               </ul>
             ) : null}
-          </div>
-        ) : null}
-
-        <div>
-          <label className="block text-xs uppercase tracking-widest text-zinc-500" htmlFor={`${titleId}-zip`}>
-            Destination ZIP Code
-          </label>
-          <input
-            id={`${titleId}-zip`}
-            data-testid="dispatch-zip"
-            value={destZip}
-            onChange={(event) => setDestZip(event.target.value)}
-            inputMode="numeric"
-            autoComplete="postal-code"
-            maxLength={5}
-            placeholder="85255"
-            className={`${softField} mt-1 max-w-xs`}
-          />
-        </div>
-
-        <fieldset className="space-y-3">
-          <legend className="text-xs uppercase tracking-widest text-zinc-500">Skid Items</legend>
-          <p className="text-xs text-zinc-500">Rated together as one pallet.</p>
-          {skids.map((row, index) => (
-            <div key={row.key} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
-              <label className="block text-xs text-zinc-500">
-                Weight (lbs)
-                <input
-                  data-testid={`dispatch-weight-${index}`}
-                  value={row.weightLb}
-                  onChange={(event) => updateSkid(row.key, { weightLb: event.target.value })}
-                  inputMode="decimal"
-                  type="number"
-                  min="0"
-                  step="any"
-                  className={`${softField} mt-1`}
-                />
-              </label>
-              <label className="block text-xs text-zinc-500">
-                NMFC Class
-                <select
-                  data-testid={`dispatch-class-${index}`}
-                  value={row.freightClass}
-                  onChange={(event) => updateSkid(row.key, { freightClass: event.target.value })}
-                  className={`${softField} mt-1`}
-                >
-                  {LTL_FREIGHT_CLASSES.map((freightClass) => (
-                    <option key={freightClass} value={freightClass}>
-                      {freightClass}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                disabled={skids.length <= 1}
-                onClick={() => removeSkid(row.key)}
-                className="rounded-xl px-3 py-3 text-xs font-medium text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 disabled:invisible"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            data-testid="dispatch-add-skid"
-            onClick={addSkid}
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:bg-zinc-50"
-          >
-            + Add Skid Item
-          </button>
-        </fieldset>
-
-        {quote.status === "error" ? (
-          <p className="text-sm text-rose-700" role="alert" data-testid="dispatch-error">
-            {quote.message}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          data-testid="dispatch-run-quote"
-          disabled={pending}
-          className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition hover:bg-emerald-500 disabled:cursor-wait disabled:opacity-60"
-        >
-          {pending ? "Quoting…" : "Run Freight Quote"}
-        </button>
-      </form>
-
-      {plan && quote.status === "quoted" ? (
-        <div className={`${card} space-y-4 p-6`} data-testid="dispatch-results" aria-live="polite">
-          <div>
-            <p className={eyebrow}>Quote</p>
-            <h2 className="mt-2 text-lg font-medium text-zinc-900">
-              {plan.destinationZip} · {quote.miles.toLocaleString("en-US")} miles
-            </h2>
-          </div>
-          <ul className="space-y-1 text-sm text-zinc-600">
-            {plan.options.map((option) => (
-              <li key={option.method}>{option.summary}</li>
-            ))}
-          </ul>
-
-          {local && local.priceUsd != null ? (
-            <RouteButton
-              testId="dispatch-local"
-              pressed={chosen === "LOCAL_WHITE_GLOVE"}
-              onClick={() => chooseRoute("LOCAL_WHITE_GLOVE")}
-              className="w-full bg-emerald-600 text-white ring-emerald-800 hover:bg-emerald-500"
-              title={`Dispatch CC Patio Fleet - ${money(local.priceUsd)}`}
-            />
-          ) : null}
-
-          {showPair && fleet && ltl && ltl.priceUsd != null ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <RouteButton
-                testId="dispatch-fleet"
-                pressed={chosen === "INTERNAL_FLEET"}
-                onClick={() => chooseRoute("INTERNAL_FLEET")}
-                className="bg-white text-zinc-900 ring-zinc-900 ring-1 ring-zinc-100 hover:bg-zinc-50"
-                title="Route to CC Patio Fleet"
-                detail="Company truck"
-              />
-              <RouteButton
-                testId="dispatch-ltl"
-                pressed={chosen === "PRIORITY1_LTL"}
-                onClick={() => chooseRoute("PRIORITY1_LTL")}
-                className="bg-sky-700 text-white ring-sky-900 hover:bg-sky-600"
-                title={`Book Priority1 LTL - ${money(ltl.priceUsd)}`}
-                detail={carrierLabel(ltl)}
-              />
-            </div>
-          ) : null}
-
-          {showLtlOnly && ltl && ltl.priceUsd != null ? (
-            <RouteButton
-              testId="dispatch-ltl-only"
-              pressed={chosen === "PRIORITY1_LTL"}
-              onClick={() => chooseRoute("PRIORITY1_LTL")}
-              className="w-full bg-zinc-800 text-sky-100 ring-sky-400 hover:bg-zinc-700"
-              title={`Book Priority1 LTL - ${money(ltl.priceUsd)}`}
-              detail={carrierLabel(ltl)}
-            />
-          ) : null}
-
-          {chosen ? (
-            <p className="text-sm text-zinc-700" data-testid="dispatch-route-chosen">
-              Route selected.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-    </section>
+          </>
+        )}
+      </div>
+      <button
+        type="button"
+        aria-label={`Remove product ${index + 1}`}
+        data-testid={`dispatch-remove-product-${index}`}
+        onClick={onRemove}
+        className="rounded-xl p-3 text-slate-400 hover:bg-white hover:text-rose-600"
+      >
+        <Trash2 className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </div>
   );
 }

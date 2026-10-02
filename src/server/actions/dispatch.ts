@@ -1,6 +1,7 @@
 "use server";
 
 import { getPimSession } from "@/lib/pim-audit";
+import { asGhlRecord, ghlGet, readGhlConfig } from "@/server/ghl/private-api";
 
 /** Weight and NMFC class for one product on a shared skid. */
 export type ReadyToShipSkidItem = {
@@ -61,27 +62,6 @@ export type GhlDispatchOpportunity = {
   totalValue: number;
 };
 
-const MOCK_OPPORTUNITIES: GhlDispatchOpportunity[] = [
-  {
-    id: "opp-85255",
-    contactName: "John Doe",
-    destZip: "85255",
-    totalValue: 4200,
-  },
-  {
-    id: "opp-90210",
-    contactName: "Jane Smith",
-    destZip: "90210",
-    totalValue: 8600,
-  },
-  {
-    id: "opp-10001",
-    contactName: "Bob Vance",
-    destZip: "10001",
-    totalValue: 3100,
-  },
-];
-
 async function requireDispatchSession(): Promise<void> {
   const session = await getPimSession();
   if (!session) {
@@ -101,18 +81,162 @@ export async function getEstimatedDistance(destZip: string): Promise<number> {
   return 1200;
 }
 
-/** Mock opportunity search. The live GoHighLevel client replaces this later. */
+type OpportunityDraft = GhlDispatchOpportunity & { contactId: string };
+
+function text(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+
+function zip5(raw: string): string {
+  const match = raw.match(/\b(\d{5})(?:-\d{4})?\b/);
+  return match?.[1] ?? "";
+}
+
+function postalZip(record: Record<string, unknown> | null): string {
+  if (!record) return "";
+  const direct = [
+    record.postalCode,
+    record.postal_code,
+    record.zipCode,
+    record.zip_code,
+    record.zip,
+  ];
+  for (const value of direct) {
+    const zip = zip5(text(value));
+    if (zip) return zip;
+  }
+  const address = asGhlRecord(record.address);
+  if (!address) return "";
+  return (
+    zip5(text(address.postalCode)) ||
+    zip5(text(address.postal_code)) ||
+    zip5(text(address.zip)) ||
+    ""
+  );
+}
+
+function personName(record: Record<string, unknown> | null): string {
+  if (!record) return "";
+  const direct = text(record.name) || text(record.contactName) || text(record.contact_name);
+  if (direct) return direct;
+  return `${text(record.firstName) || text(record.first_name)} ${text(record.lastName) || text(record.last_name)}`.trim();
+}
+
+function moneyValue(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
+function records(body: unknown, key: string): Record<string, unknown>[] {
+  const root = asGhlRecord(body);
+  const data = asGhlRecord(root?.data);
+  const lists = [root?.[key], data?.[key], root?.data];
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    return list
+      .map((item) => asGhlRecord(item))
+      .filter((item): item is Record<string, unknown> => item !== null);
+  }
+  return [];
+}
+
+function unwrapContact(body: unknown): Record<string, unknown> | null {
+  const root = asGhlRecord(body);
+  if (!root) return null;
+  return asGhlRecord(root.contact) ?? root;
+}
+
+function mapOpportunity(record: Record<string, unknown>): OpportunityDraft | null {
+  const id = text(record.id);
+  if (!id) return null;
+  const contact = asGhlRecord(record.contact);
+  const contactId = text(record.contactId) || text(record.contact_id) || text(contact?.id);
+  const contactName =
+    personName(contact) ||
+    text(record.contactName) ||
+    text(record.contact_name) ||
+    text(record.name) ||
+    "Contact";
+  return {
+    id,
+    contactId,
+    contactName,
+    destZip: postalZip(contact) || postalZip(record),
+    totalValue: moneyValue(record.monetaryValue ?? record.monetary_value),
+  };
+}
+
+async function fillMissingZips(hits: OpportunityDraft[]): Promise<void> {
+  const pending = hits.filter((hit) => hit.contactId && !hit.destZip);
+  await Promise.all(
+    pending.map(async (hit) => {
+      try {
+        const loaded = await ghlGet(`/contacts/${encodeURIComponent(hit.contactId)}`);
+        if (!loaded.ok) return;
+        const contact = unwrapContact(loaded.body);
+        const zip = postalZip(contact);
+        if (zip) hit.destZip = zip;
+        const name = personName(contact);
+        if (name) hit.contactName = name;
+      } catch {
+        // A single contact lookup must not drop the rest of the search.
+      }
+    }),
+  );
+}
+
+/**
+ * Live GoHighLevel opportunity search for the shipping quote form.
+ * Network and API failures return an empty list so the embed stays up.
+ */
 export async function searchGhlOpportunities(
   query: string,
 ): Promise<GhlDispatchOpportunity[]> {
   await requireDispatchSession();
-  const needle = query.trim().toLowerCase();
+  const needle = query.trim();
   if (needle.length < 2) return [];
-  return MOCK_OPPORTUNITIES.filter((opportunity) => {
-    return (
-      opportunity.contactName.toLowerCase().includes(needle) ||
-      opportunity.destZip.includes(needle) ||
-      opportunity.id.toLowerCase().includes(needle)
-    );
-  });
+
+  try {
+    const config = readGhlConfig();
+    if ("error" in config) return [];
+
+    const location = encodeURIComponent(config.locationId);
+    const encoded = encodeURIComponent(needle);
+    const [open, won] = await Promise.all([
+      ghlGet(
+        `/opportunities/search?location_id=${location}&q=${encoded}&status=open&limit=20`,
+      ),
+      ghlGet(
+        `/opportunities/search?location_id=${location}&q=${encoded}&status=won&limit=20`,
+      ),
+    ]);
+    if (!open.ok && !won.ok) return [];
+
+    const merged = new Map<string, OpportunityDraft>();
+    for (const row of [
+      ...(open.ok ? records(open.body, "opportunities") : []),
+      ...(won.ok ? records(won.body, "opportunities") : []),
+    ]) {
+      const hit = mapOpportunity(row);
+      if (hit && !merged.has(hit.id)) merged.set(hit.id, hit);
+    }
+
+    const hits = [...merged.values()].slice(0, 20);
+    await fillMissingZips(hits);
+    return hits.map((hit) => ({
+      id: hit.id,
+      contactName: hit.contactName,
+      destZip: hit.destZip,
+      totalValue: hit.totalValue,
+    }));
+  } catch {
+    // GoHighLevel timeouts and unexpected payload shapes stay off the sales floor.
+    return [];
+  }
 }

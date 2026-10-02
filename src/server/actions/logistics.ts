@@ -1,6 +1,6 @@
 "use server";
 
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNotNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import {
   indexLiveKatanaVariants,
@@ -8,6 +8,7 @@ import {
 } from "@/lib/hub-katana-sync";
 import { KatanaApiError, katanaFetch } from "@/lib/katana";
 import {
+  LTL_FREIGHT_CLASSES,
   normalizeLogisticsProfile,
   type LogisticsProfileInput,
 } from "@/lib/logistics-profile";
@@ -133,6 +134,65 @@ export async function getLogisticsProfiles(): Promise<LogisticsProfileRow[]> {
     .from(logistics_profiles)
     .orderBy(asc(logistics_profiles.variant_sku));
   return rows.map(mapRow);
+}
+
+/** Catalog row a sales rep can quote without typing weight or NMFC class. */
+export type QuotingProduct = {
+  variantSku: string;
+  /** logistics_profiles has no descriptive name column, so this is the SKU. */
+  name: string;
+  weightLb: number;
+  ltlClass: string;
+};
+
+const QUOTEABLE_CLASSES = new Set<string>(LTL_FREIGHT_CLASSES);
+
+function quoteableWeight(raw: string | null): number | null {
+  if (!raw) return null;
+  const weight = Number(raw);
+  if (!Number.isFinite(weight) || weight <= 0) return null;
+  return weight;
+}
+
+/**
+ * Products the shipping quote form can lock in. Incomplete profiles
+ * (missing weight or a known freight class) are omitted.
+ */
+export async function getQuotingProducts(): Promise<QuotingProduct[]> {
+  const session = await getPimSession();
+  if (!session) {
+    throw new Error("Sign in required");
+  }
+
+  const db = getDb();
+  const rows = await db
+    .select({
+      variantSku: logistics_profiles.variant_sku,
+      weightLb: logistics_profiles.weight_lb,
+      ltlClass: logistics_profiles.ltl_class,
+    })
+    .from(logistics_profiles)
+    .where(
+      and(
+        isNotNull(logistics_profiles.weight_lb),
+        isNotNull(logistics_profiles.ltl_class),
+      ),
+    )
+    .orderBy(asc(logistics_profiles.variant_sku));
+
+  const products: QuotingProduct[] = [];
+  for (const row of rows) {
+    const weightLb = quoteableWeight(row.weightLb);
+    const ltlClass = row.ltlClass?.trim() ?? "";
+    if (weightLb == null || !QUOTEABLE_CLASSES.has(ltlClass)) continue;
+    products.push({
+      variantSku: row.variantSku,
+      name: row.variantSku,
+      weightLb,
+      ltlClass,
+    });
+  }
+  return products;
 }
 
 export async function upsertLogisticsProfile(
