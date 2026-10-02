@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { ImagePlus } from "lucide-react";
 import { formatQty, type StockRow } from "@/lib/stock-display";
 import { variantImagePublicUrl } from "@/lib/product-image-url";
-import { eyebrow } from "../showroom-ui";
 import { ImageUploadModal } from "./ImageUploadModal";
 
 const floatCard =
@@ -83,18 +82,28 @@ export function InventoryCard({ row }: { row: StockRow }) {
           <h3 className="text-sm font-semibold tracking-tight text-slate-900">{row.name}</h3>
           <p className="mt-0.5 font-mono text-xs text-slate-500">{row.sku}</p>
         </div>
-        <dl className="grid grid-cols-3 gap-2 text-xs">
-          <div>
-            <dt className={eyebrow}>In stock</dt>
-            <dd className="mt-1 text-slate-900">{formatQty(row.inStock)}</dd>
+        <dl className="grid grid-cols-3 gap-4 text-center">
+          <div className="min-w-0">
+            <dt className="whitespace-nowrap text-xs font-medium uppercase leading-none tracking-normal text-slate-500">
+              In stock
+            </dt>
+            <dd className="mt-1 flex min-h-6 items-center justify-center text-sm tabular-nums text-slate-900">
+              {formatQty(row.inStock)}
+            </dd>
           </div>
-          <div>
-            <dt className={eyebrow}>Committed</dt>
-            <dd className="mt-1 text-slate-900">{formatQty(row.committed)}</dd>
+          <div className="min-w-0">
+            <dt className="whitespace-nowrap text-xs font-medium uppercase leading-none tracking-normal text-slate-500">
+              Committed
+            </dt>
+            <dd className="mt-1 flex min-h-6 items-center justify-center text-sm tabular-nums text-slate-900">
+              {formatQty(row.committed)}
+            </dd>
           </div>
-          <div>
-            <dt className={eyebrow}>Available</dt>
-            <dd className="mt-1">
+          <div className="min-w-0">
+            <dt className="whitespace-nowrap text-xs font-medium uppercase leading-none tracking-normal text-slate-500">
+              Available
+            </dt>
+            <dd className="mt-1 flex min-h-6 items-center justify-center">
               <span
                 className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium tabular-nums ${availableBadgeClass(row.available)}`}
               >
@@ -103,6 +112,14 @@ export function InventoryCard({ row }: { row: StockRow }) {
             </dd>
           </div>
         </dl>
+        <button
+          type="button"
+          disabled={row.available <= 0}
+          onClick={() => console.log("Hold modal triggered for", row.variantId)}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Place Hold
+        </button>
       </div>
       <ImageUploadModal
         isOpen={uploadOpen}

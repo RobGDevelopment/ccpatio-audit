@@ -1,4 +1,5 @@
 export type StockRow = {
+  variantId: number;
   sku: string;
   name: string;
   inStock: number;

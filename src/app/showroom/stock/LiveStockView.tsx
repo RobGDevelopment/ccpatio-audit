@@ -348,7 +348,7 @@ export function LiveStockView({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 16 }}
               transition={{ duration: 0.22 }}
-              className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4"
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             >
               {visible.map((row) => (
                 <InventoryCard key={row.sku} row={row} />

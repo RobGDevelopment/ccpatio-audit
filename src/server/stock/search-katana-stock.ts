@@ -319,6 +319,7 @@ export async function searchKatanaStock(input: {
   const rows: StockRow[] = matches.map((item) => {
     const qty = quantities.get(item.variantId) ?? { inStock: 0, committed: 0 };
     return {
+      variantId: item.variantId,
       sku: item.sku,
       name: item.name,
       imageUrl: item.imageUrl ?? null,

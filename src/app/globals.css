@@ -291,3 +291,12 @@ body {
   border-color: rgba(15, 23, 42, 0.98);
 }
 
+/* Showroom live-stock carousel: one row, swipe to pan, scrollbar hidden. */
+.showroom-carousel {
+  scrollbar-width: none;
+}
+
+.showroom-carousel::-webkit-scrollbar {
+  display: none;
+}
+
