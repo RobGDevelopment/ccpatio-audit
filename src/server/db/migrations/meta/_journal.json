@@ -190,6 +190,27 @@
       "when": 1790953664222,
       "tag": "0026_inventory_holds",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790974061299,
+      "tag": "0027_logistics_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790974288101,
+      "tag": "0028_restore_draft_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790976241111,
+      "tag": "0029_logistics_settings",
+      "breakpoints": true
     }
   ]
 }

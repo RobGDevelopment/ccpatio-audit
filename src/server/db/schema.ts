@@ -288,12 +288,12 @@ export const recipe_estimates_draft = pgTable("recipe_estimates_draft", {
     .notNull()
     .default({}),
   est_dim_weight_lbs: numeric("est_dim_weight_lbs", { precision: 12, scale: 4 }),
-  carton_lwh_in: jsonb("carton_lwh_in")
-    .$type<{ l: number; w: number; h: number } | null>()
-    .default(null),
-  packaging_bom: jsonb("packaging_bom")
-    .$type<Record<string, unknown> | null>()
-    .default(null),
+  carton_lwh_in: jsonb("carton_lwh_in").$type<{
+    l: number;
+    w: number;
+    h: number;
+  } | null>(),
+  packaging_bom: jsonb("packaging_bom").$type<Record<string, unknown> | null>(),
   est_labor_minutes: numeric("est_labor_minutes", { precision: 12, scale: 4 }),
   labor_breakdown: jsonb("labor_breakdown")
     .$type<Record<string, unknown>>()
@@ -368,7 +368,10 @@ export const cad_uploads = pgTable("cad_uploads", {
   uploaded_by: text("uploaded_by"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("cad_uploads_global_sku_idx").on(table.global_sku),
+  index("cad_uploads_status_idx").on(table.status),
+]);
 
 export const product_bom_draft = pgTable(
   "product_bom_draft",
@@ -424,6 +427,8 @@ export const product_bom_draft = pgTable(
       table.parent_sku,
       table.child_sku,
     ),
+    index("product_bom_draft_parent_sku_idx").on(table.parent_sku),
+    index("product_bom_draft_status_idx").on(table.status),
   ],
 );
 
@@ -448,7 +453,9 @@ export const item_operations_draft = pgTable("item_operations_draft", {
   reviewed_at: timestamp("reviewed_at"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("item_operations_draft_item_sku_idx").on(table.item_sku),
+]);
 
 export const skuMappingsRelations = relations(sku_mappings, ({ many }) => ({
   bomAsParent: many(product_bom, { relationName: "bom_parent" }),
@@ -610,7 +617,7 @@ export const order_intake = pgTable(
   (table) => [index("order_intake_status_idx").on(table.status)],
 );
 
-/** Showroom soft hold. 72 hours, no extension. Terminals are released and converted. */
+/** Showroom smart hold. 14 days from creation, extendable. Terminals are released and converted. */
 export const inventoryHoldStatusEnum = pgEnum("inventory_hold_status", [
   "active",
   "releasing",
@@ -642,14 +649,19 @@ export const inventory_holds = pgTable(
     katana_variant_id: integer("katana_variant_id").notNull(),
     sku: text("sku").notNull(),
     qty: numeric("qty", { precision: 12, scale: 4 }).notNull(),
-    ghl_user_id: text("ghl_user_id").notNull(),
+    /** Rep who owns the hold. GHL user id, or the Supabase user id for a direct login. */
+    ghl_user_id: varchar("ghl_user_id", { length: 128 }).notNull(),
     ghl_user_name: text("ghl_user_name").notNull(),
     ghl_user_email: text("ghl_user_email"),
     ghl_contact_id: text("ghl_contact_id").notNull(),
     ghl_opportunity_id: text("ghl_opportunity_id").notNull(),
     ghl_opportunity_name: text("ghl_opportunity_name").notNull(),
     note: text("note").notNull(),
-    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    expires_at: timestamp("expires_at", { withTimezone: true })
+      .notNull()
+      .default(sql`(now() + interval '14 days')`),
+    /** Set when the 48-hour warning is delivered. Cleared on extend. */
+    warning_sent_at: timestamp("warning_sent_at", { withTimezone: true }),
     status: inventoryHoldStatusEnum("status").notNull().default("active"),
     release_reason: inventoryHoldReleaseReasonEnum("release_reason"),
     released_by: text("released_by"),
@@ -818,6 +830,98 @@ export const user_roles = pgTable("user_roles", {
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
+
+/**
+ * Headless CPQ logistics for a Katana variant: packaged dims, NMFC class,
+ * and the PrimeView glTF used by the agency configurator.
+ * App access is POSTGRES_URL. Data API roles are revoked in the migration.
+ */
+export const logistics_profiles = pgTable(
+  "logistics_profiles",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    katana_variant_id: integer("katana_variant_id").notNull().unique(),
+    variant_sku: varchar("variant_sku", { length: 128 }).notNull().unique(),
+    length_in: numeric("length_in", { precision: 12, scale: 4 }),
+    width_in: numeric("width_in", { precision: 12, scale: 4 }),
+    height_in: numeric("height_in", { precision: 12, scale: 4 }),
+    weight_lb: numeric("weight_lb", { precision: 12, scale: 4 }),
+    ltl_class: varchar("ltl_class", { length: 8 }),
+    asset_3d_url: text("asset_3d_url"),
+    is_modular_component: boolean("is_modular_component")
+      .notNull()
+      .default(false),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "logistics_profiles_dims_positive",
+      sql`(
+        (${table.length_in} is null or ${table.length_in} > 0) and
+        (${table.width_in} is null or ${table.width_in} > 0) and
+        (${table.height_in} is null or ${table.height_in} > 0) and
+        (${table.weight_lb} is null or ${table.weight_lb} > 0)
+      )`,
+    ),
+    check(
+      "logistics_profiles_ltl_class_known",
+      sql`${table.ltl_class} is null or ${table.ltl_class} in ('50', '55', '60', '65', '70', '77.5', '85', '92.5', '100', '110', '125', '150', '175', '200', '250', '300', '400', '500')`,
+    ),
+  ],
+);
+
+export type LogisticsProfile = typeof logistics_profiles.$inferSelect;
+export type NewLogisticsProfile = typeof logistics_profiles.$inferInsert;
+
+/**
+ * Singleton delivery-fee controls for hybrid fulfillment.
+ * id is always 1. App access is POSTGRES_URL.
+ * Data API roles are revoked in the migration.
+ */
+export const logistics_settings = pgTable(
+  "logistics_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    local_white_glove_fee: numeric("local_white_glove_fee", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("150.00"),
+    local_radius_miles: integer("local_radius_miles").notNull().default(50),
+    fleet_max_radius_miles: integer("fleet_max_radius_miles")
+      .notNull()
+      .default(500),
+    ltl_handling_markup_pct: numeric("ltl_handling_markup_pct", {
+      precision: 6,
+      scale: 2,
+    })
+      .notNull()
+      .default("15.00"),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check("logistics_settings_singleton", sql`${table.id} = 1`),
+    check(
+      "logistics_settings_fees_nonnegative",
+      sql`${table.local_white_glove_fee} >= 0 and ${table.ltl_handling_markup_pct} >= 0`,
+    ),
+    check(
+      "logistics_settings_radii_ordered",
+      sql`${table.local_radius_miles} > 0 and ${table.fleet_max_radius_miles} >= ${table.local_radius_miles}`,
+    ),
+  ],
+);
+
+export type LogisticsSettingsRow = typeof logistics_settings.$inferSelect;
+export type NewLogisticsSettingsRow = typeof logistics_settings.$inferInsert;
 
 /** Mission Control Vault — encrypted API keys for vendors. */
 export const vendor_credentials = pgTable("vendor_credentials", {
