@@ -16,12 +16,10 @@ import { roundQty } from "@/lib/stock-display";
 import { withAdvisoryLock } from "@/server/db/advisory-lock";
 import { getDb } from "@/server/db/client";
 import { inventory_holds } from "@/server/db/schema";
-import {
-  CC_MANUFACTURING_LOCATION_ID,
-  FABRIC_HOLD_ORDER_ID,
-} from "@/server/ghl/hold-order";
+import { CC_MANUFACTURING_LOCATION_ID } from "@/server/ghl/hold-order";
 import type { HoldActor, HoldOpportunity } from "@/server/ghl/hold-actor";
 import { readCardInventory, readFactoryCommitted } from "@/server/stock/factory-inventory";
+import { deleteHoldSalesOrder } from "@/server/stock/delete-hold-order";
 
 const NOTE_MAX = 500;
 const CUSTOMER_REF_MAX = 200;
@@ -96,46 +94,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
-}
-
-function holdDeleteBlocker(
-  data: Record<string, unknown>,
-  salesOrderId: number,
-  orderNo: string,
-): string | null {
-  const liveNo = typeof data.order_no === "string" ? data.order_no : "";
-  if (salesOrderId === FABRIC_HOLD_ORDER_ID) {
-    return "Refusing to delete the legacy fabric freeze.";
-  }
-  if (liveNo !== orderNo || !liveNo.startsWith("HOLD-")) {
-    return `Refusing to delete sales order ${salesOrderId} (${liveNo || "no order number"}).`;
-  }
-  const status = typeof data.status === "string" ? data.status : "";
-  if (status && status !== "NOT_SHIPPED") {
-    return `Hold ${orderNo} is ${status}.`;
-  }
-  const invoicing = typeof data.invoicing_status === "string" ? data.invoicing_status : "";
-  if (invoicing && invoicing !== "notInvoiced") {
-    return `Hold ${orderNo} is already invoiced.`;
-  }
-  const rows = Array.isArray(data.sales_order_rows) ? data.sales_order_rows : [];
-  for (const row of rows) {
-    const record = asRecord(row);
-    const linked = Number(record?.linked_manufacturing_order_id);
-    if (Number.isFinite(linked) && linked > 0) {
-      return `Hold ${orderNo} has a manufacturing order.`;
-    }
-  }
-  return null;
-}
-
-async function deleteHoldSalesOrder(salesOrderId: number, orderNo: string): Promise<void> {
-  const { data } = await katanaFetch<Record<string, unknown>>(`/sales_orders/${salesOrderId}`);
-  const blocker = holdDeleteBlocker(data, salesOrderId, orderNo);
-  if (blocker) {
-    throw new Error(blocker);
-  }
-  await katanaFetch(`/sales_orders/${salesOrderId}`, { method: "DELETE" });
 }
 
 async function compensate(

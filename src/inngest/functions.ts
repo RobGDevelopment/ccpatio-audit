@@ -1,5 +1,10 @@
 import { inngest } from "@/inngest/client";
 import {
+  ORDER_APPROVED_EVENT,
+  runApprovedFactoryOrder,
+} from "@/server/ghl/push-factory-order";
+import { sweepExpiredInventoryHolds } from "@/server/stock/sweep-expired-holds";
+import {
   createKatanaSalesOrder,
   createMakeToOrderManufacturingOrders,
   KatanaApiError,
@@ -643,9 +648,32 @@ export const processCadUpload = inngest.createFunction(
   },
 );
 
+export const pushApprovedFactoryOrder = inngest.createFunction(
+  {
+    id: "push-approved-factory-order",
+    name: "Push approved GHL factory order to Katana",
+    triggers: [{ event: ORDER_APPROVED_EVENT }],
+    retries: 3,
+  },
+  async ({ event, step }) => {
+    const data = event.data as { orderIntakeId?: string; version?: number };
+    if (!data.orderIntakeId || !Number.isFinite(data.version)) {
+      const { NonRetriableError } = await import("inngest");
+      throw new NonRetriableError("order.approved requires orderIntakeId and version.");
+    }
+    return runApprovedFactoryOrder({
+      orderIntakeId: data.orderIntakeId,
+      version: data.version as number,
+      step: {
+        run: (id, fn) => step.run(id, fn),
+      },
+    });
+  },
+);
+
 /**
- * Served by `/api/inngest`. Transactional Woo/GHL order consumers are
- * intentionally absent — see `docs/MDM_MASTER_BLUEPRINT.md` Phase 0.
+ * Served by `/api/inngest`. Woo and the legacy GHL Won auto-push stay
+ * unregistered. `order.approved` is the only GHL factory writer (§2.4).
  */
 export const inngestFunctions = [
   sendStaffFeedbackDigest,
@@ -653,6 +681,8 @@ export const inngestFunctions = [
   publishApprovedProduct,
   systemHealthPing,
   processCadUpload,
+  pushApprovedFactoryOrder,
+  sweepExpiredInventoryHolds,
 ];
 
 /**
