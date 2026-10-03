@@ -18,30 +18,27 @@ export function displayStockUom(sku: string, raw?: string | null): string {
 }
 
 /** Why this quantity cannot be held. Empty input is invalid but has no warning yet. */
-export function holdQuantityIssue(raw: string, available: number): string | null {
+export function holdQuantityIssue(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return "Enter a quantity of at least 1.";
   const quantity = Number(trimmed);
   if (!Number.isFinite(quantity) || quantity < 1) {
     return "Quantity must be at least 1.";
   }
-  if (roundQty(quantity) > roundQty(available)) {
-    return "Quantity cannot exceed available stock.";
-  }
   return null;
 }
 
 /** Red warning after the rep has typed a quantity that cannot be held. */
-export function holdQuantityWarning(raw: string, available: number): string | null {
+export function holdQuantityWarning(raw: string): string | null {
   if (!raw.trim()) return null;
-  return holdQuantityIssue(raw, available);
+  return holdQuantityIssue(raw);
 }
 
 export function holdQuantityMath(
   raw: string,
   available: number,
 ): { quantity: number; available: number; ending: number } | null {
-  if (holdQuantityIssue(raw, available)) return null;
+  if (holdQuantityIssue(raw)) return null;
   const quantity = roundQty(Number(raw));
   const current = roundQty(available);
   return {

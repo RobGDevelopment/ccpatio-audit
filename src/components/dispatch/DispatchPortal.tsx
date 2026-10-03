@@ -7,6 +7,7 @@ import { LTL_FREIGHT_CLASSES } from "@/lib/logistics-profile";
 import {
   lookupDockMiles,
   searchGhlOpportunities,
+  freezeDispatchOpportunity,
   type GhlDispatchOpportunity,
 } from "@/server/actions/dispatch";
 import { rateProductsFromLogisticsProfiles } from "@/server/actions/freight";
@@ -180,6 +181,7 @@ export function DispatchPortal() {
   const [productQuery, setProductQuery] = useState("");
   const [productMenuOpen, setProductMenuOpen] = useState(false);
   const [quote, setQuote] = useState<QuoteState>({ status: "idle" });
+  const [selectedLtlCarrierId, setSelectedLtlCarrierId] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -293,6 +295,12 @@ export function DispatchPortal() {
           distanceMiles: miles,
           variantSkus: lines.map((row) => row.variantSku),
         });
+        const ltlOpt = optionFor(plan, "PRIORITY1_LTL");
+        if (ltlOpt?.carriers?.length) {
+          setSelectedLtlCarrierId(ltlOpt.carriers[0].id);
+        } else {
+          setSelectedLtlCarrierId(null);
+        }
         setQuote({ status: "quoted", plan, miles, route: null });
       } catch (error) {
         setQuote({
@@ -303,9 +311,26 @@ export function DispatchPortal() {
     });
   }
 
-  function chooseRoute(method: FulfillmentMethod) {
+  function chooseRoute(method: FulfillmentMethod, selectedCarrierUsd?: number, selectedCarrierName?: string) {
     if (method === "INTERNAL_FLEET" || method === "PRIORITY1_LTL") {
       if (!window.confirm(FREIGHT_LOCK_CONFIRM)) return;
+      
+      if (opportunity?.id && selectedCarrierUsd != null && selectedCarrierName) {
+        startTransition(async () => {
+          try {
+            await freezeDispatchOpportunity(opportunity.id, selectedCarrierUsd, selectedCarrierName);
+            setQuote((current) =>
+              current.status === "quoted" ? { ...current, route: method } : current,
+            );
+          } catch (error) {
+            setQuote({
+              status: "error",
+              message: error instanceof Error ? error.message : "GoHighLevel update failed.",
+            });
+          }
+        });
+        return;
+      }
     }
     setQuote((current) =>
       current.status === "quoted" ? { ...current, route: method } : current,
@@ -582,37 +607,59 @@ export function DispatchPortal() {
             ) : null}
 
             {showPair && fleet && ltl && ltl.priceUsd != null ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <RouteButton
-                  testId="dispatch-fleet"
-                  pressed={chosen === "INTERNAL_FLEET"}
-                  onClick={() => chooseRoute("INTERNAL_FLEET")}
-                  className="bg-white text-slate-900 ring-slate-900 ring-1 ring-slate-100 hover:bg-slate-50"
-                  title="Route to CC Patio Fleet"
-                  detail={
-                    fleet.priceUsd != null ? money(fleet.priceUsd) : "Company truck"
-                  }
-                />
-                <RouteButton
-                  testId="dispatch-ltl"
-                  pressed={chosen === "PRIORITY1_LTL"}
-                  onClick={() => chooseRoute("PRIORITY1_LTL")}
-                  className="bg-sky-700 text-white ring-sky-900 hover:bg-sky-600"
-                  title={`Book Priority1 LTL - ${money(ltl.priceUsd)}`}
-                  detail={carrierLabel(ltl)}
-                />
-              </div>
+              <RouteButton
+                testId="dispatch-fleet"
+                pressed={chosen === "INTERNAL_FLEET"}
+                onClick={() => chooseRoute("INTERNAL_FLEET")}
+                className="w-full bg-white text-slate-900 ring-slate-900 ring-1 ring-slate-100 hover:bg-slate-50"
+                title="Route to CC Patio Fleet"
+                detail={
+                  fleet.priceUsd != null ? money(fleet.priceUsd) : "Company truck"
+                }
+              />
             ) : null}
 
-            {showLtlOnly && ltl && ltl.priceUsd != null ? (
-              <RouteButton
-                testId="dispatch-ltl-only"
-                pressed={chosen === "PRIORITY1_LTL"}
-                onClick={() => chooseRoute("PRIORITY1_LTL")}
-                className="w-full bg-slate-800 text-sky-100 ring-sky-400 hover:bg-slate-700"
-                title={`Book Priority1 LTL - ${money(ltl.priceUsd)}`}
-                detail={carrierLabel(ltl)}
-              />
+            {(showPair || showLtlOnly) && ltl && ltl.carriers && ltl.carriers.length > 0 ? (
+              <div className="space-y-3 pt-4 border-t border-slate-100">
+                <p className="text-sm font-medium text-slate-900">Multi-Carrier LTL Options</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {ltl.carriers.map((carrier) => (
+                    <button
+                      key={carrier.id}
+                      type="button"
+                      onClick={() => setSelectedLtlCarrierId(carrier.id)}
+                      className={`rounded-xl border p-4 text-left shadow-sm transition-all ${
+                        selectedLtlCarrierId === carrier.id 
+                          ? "border-sky-600 bg-sky-50 ring-1 ring-sky-600" 
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-900">{carrier.carrierName}</span>
+                        <span className="font-medium text-slate-900">{money(carrier.customerTotalUsd)}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {carrier.transitDays ? `${carrier.transitDays} Days Transit` : "Standard Transit"}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                
+                {selectedLtlCarrierId ? (() => {
+                   const selected = ltl.carriers?.find(c => c.id === selectedLtlCarrierId);
+                   if (!selected) return null;
+                   return (
+                     <RouteButton
+                       testId="dispatch-ltl-book"
+                       pressed={chosen === "PRIORITY1_LTL"}
+                       onClick={() => chooseRoute("PRIORITY1_LTL", selected.customerTotalUsd, selected.carrierName)}
+                       className="w-full bg-sky-700 text-white ring-sky-900 hover:bg-sky-600"
+                       title={`Book LTL - ${selected.carrierName}`}
+                       detail={money(selected.customerTotalUsd)}
+                     />
+                   );
+                })() : null}
+              </div>
             ) : null}
 
             {chosen ? (

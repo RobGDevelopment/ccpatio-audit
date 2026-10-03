@@ -1,0 +1,25 @@
+#
+## Alias OBJ Material File
+# Exported from SketchUp, (c) 2000-2012 Trimble Navigation Limited
+
+newmtl M04_Stone_Frost
+Ka 0.000000 0.000000 0.000000
+Kd 0.556863 0.556863 0.556863
+Ks 0.330000 0.330000 0.330000
+
+newmtl A04_Scarlet_Glow1
+Ka 0.000000 0.000000 0.000000
+Kd 0.545098 0.513725 0.486275
+Ks 0.330000 0.330000 0.330000
+map_Kd 67  Cantilever umbrella with base/A04_Scarlet_Glow1.png
+
+newmtl M08_Obsidian_Black
+Ka 0.000000 0.000000 0.000000
+Kd 0.117647 0.117647 0.117647
+Ks 0.330000 0.330000 0.330000
+
+newmtl M00_Soft_Cloud
+Ka 0.000000 0.000000 0.000000
+Kd 0.964706 0.960784 0.949020
+Ks 0.330000 0.330000 0.330000
+

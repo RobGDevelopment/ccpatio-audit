@@ -52,6 +52,21 @@ export const CONVENTION_OPTIONS = [
   { value: "unknown", label: "?" },
 ] as const;
 
+/** Open-recipe badge. A draft line wins over an approved sibling. */
+export function rollupReviewStatus(
+  statuses: readonly RecipeReviewStatus[],
+): RecipeReviewStatus | "none" {
+  if (statuses.length === 0) return "none";
+  if (statuses.some((status) => status === "edited")) return "edited";
+  if (statuses.some((status) => status === "draft_pending_review")) {
+    return "draft_pending_review";
+  }
+  if (statuses.every((status) => status === "factory_approved")) {
+    return "factory_approved";
+  }
+  return statuses[0] ?? "none";
+}
+
 export function statusLabel(status: RecipeReviewStatus | "none"): string {
   if (status === "draft_pending_review") return "Auto-generated";
   if (status === "edited") return "Edited";

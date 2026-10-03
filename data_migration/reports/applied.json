@@ -1,0 +1,50 @@
+{
+  "updatedAt": "2026-09-30T22:21:05.078Z",
+  "locationId": 98179,
+  "stocktakes": [
+    {
+      "stocktakeNumber": "MIG-STK-FABRIC-20260811-1",
+      "id": 235978,
+      "status": "COMPLETED",
+      "rowCount": 113
+    },
+    {
+      "stocktakeNumber": "MIG-STK-FABRIC-20260811-2",
+      "id": 235979,
+      "status": "COMPLETED",
+      "rowCount": 120
+    },
+    {
+      "stocktakeNumber": "MIG-STK-FABRIC-20260811-3",
+      "id": 235980,
+      "status": "COMPLETED",
+      "rowCount": 126
+    },
+    {
+      "stocktakeNumber": "MIG-STK-FABRIC-20260811-4",
+      "id": 235981,
+      "status": "COMPLETED",
+      "rowCount": 34
+    },
+    {
+      "stocktakeNumber": "MIG-STK-DEKTON-20260723-1",
+      "id": 235982,
+      "status": "COMPLETED",
+      "rowCount": 70
+    },
+    {
+      "stocktakeNumber": "MIG-STK-FIREPIT-1",
+      "id": 235983,
+      "status": "COMPLETED",
+      "rowCount": 27
+    }
+  ],
+  "holdOrder": {
+    "orderNo": "MIG-HOLD-FABRIC-20260811",
+    "id": 52594042,
+    "status": "COMPLETED",
+    "customerId": 113541043,
+    "skuCount": 99,
+    "yards": 2846.7
+  }
+}

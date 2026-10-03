@@ -1,0 +1,1253 @@
+{
+  "meta": {
+    "base": "https://www.ccpatio.com",
+    "sleep_sec": 4.0,
+    "timeout_sec": 90.0,
+    "user_agent": "CCPatio-ExternalStabilityProbe/1.0 (+sequential; black-box audit; contact: internal-architecture)",
+    "probed_at_utc": "2026-09-18T19:09:03.816194+00:00",
+    "parsed_host": "www.ccpatio.com"
+  },
+  "summary": {
+    "probed_at_utc": "2026-09-18T19:09:03.805389+00:00",
+    "result_count": 17,
+    "http_5xx_or_522": 0,
+    "ttfb_ms_min": 77.0,
+    "ttfb_ms_max": 930.1,
+    "ttfb_ms_avg": 365.3,
+    "cf_cache_status_values": [
+      "DYNAMIC"
+    ],
+    "nitropack_signal_on_responses": 13,
+    "unique_plugins_seen_across_html": 11,
+    "top_plugins": [
+      [
+        "*",
+        12
+      ],
+      [
+        "astra-addon",
+        12
+      ],
+      [
+        "emcp-pro",
+        12
+      ],
+      [
+        "favorites",
+        12
+      ],
+      [
+        "woocommerce",
+        12
+      ],
+      [
+        "elementor",
+        11
+      ],
+      [
+        "elementor-pro",
+        11
+      ],
+      [
+        "filter-everything",
+        9
+      ],
+      [
+        "pdf-embedder",
+        8
+      ],
+      [
+        "yith-woocommerce-catalog-mode",
+        8
+      ],
+      [
+        "variation-swatches-woo",
+        2
+      ]
+    ],
+    "interpretation_hints": [
+      "HIT vs MISS/BYPASS/DYNAMIC/EXPIRED in cf-cache-status shows Cloudflare HTML/asset caching behavior.",
+      "Large TTFB gap between homepage and ?cache-buster / wp-json paths suggests edge HIT vs origin compile cost.",
+      "Plugin path count in DOM understates active plugins (not all enqueue assets on every URL) but proves frontend bloat.",
+      "OPcache FULL cannot be read externally; catastrophic TTFB on bypass paths is the external proxy evidence.",
+      "Catalog mode means this lag exists BEFORE checkout concurrency \u2014 enabling transactions increases origin risk."
+    ]
+  },
+  "results": [
+    {
+      "label": "homepage_warm",
+      "url": "https://www.ccpatio.com/",
+      "ok": true,
+      "status_code": 200,
+      "ttfb_ms": 162.2,
+      "total_ms": 240.2,
+      "error": null,
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:07:47 GMT",
+        "Content-Type": "text/html; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a2b7faac1dc3-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache",
+        "Link": "<https://cdn-ilehbbj.nitrocdn.com>; rel=preconnect, <https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\",<https://www.ccpatio.com/wp-json/wp/v2/pages/21974>; rel=\"alternate\"; title=\"JSON\"; type=\"application/json\",<https://www.ccpatio.com/>; rel=shortlink",
+        "Server": "cloudflare",
+        "Vary": "sec-ch-ua-mobile,Accept-Encoding, user-agent",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-cache-ctime": "1789754635",
+        "x-litespeed-cache": "hit",
+        "x-nitro-cache": "HIT",
+        "x-nitro-cache-from": "drop-in",
+        "x-nitro-rev": "1b24268",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=64,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=e79utWugxiNO7y7A7Q2hxcTOWZ9taNCtP%2F6drhSIAfN0o02Q2rRj4VfuZOcXa7kFMuoXiXqWGPxwggjJM03cjjmtyZZGaFmx%2FAso977kt6p7P0ns56jHv1131NEVUOAXAw%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a2b7faac1dc3-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache",
+        "x_cache": null,
+        "x_nitro_cache": "HIT",
+        "nitro_headers": {
+          "x-nitro-cache": "HIT",
+          "x-nitro-cache-from": "drop-in",
+          "x-nitro-rev": "1b24268"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache",
+          "x-nitro-cache-from",
+          "x-nitro-rev"
+        ]
+      },
+      "plugins_found": [
+        "*",
+        "astra-addon",
+        "elementor",
+        "elementor-pro",
+        "emcp-pro",
+        "favorites",
+        "woocommerce"
+      ],
+      "plugin_count_unique": 7,
+      "body_bytes": 2918829,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "NitroPack fingerprint found in HTML body",
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=HIT"
+      ]
+    },
+    {
+      "label": "homepage_cache_buster",
+      "url": "https://www.ccpatio.com/?ccp_probe=pl6l9czz14hq&t=1789758468",
+      "ok": true,
+      "status_code": 200,
+      "ttfb_ms": 930.1,
+      "total_ms": 1013.1,
+      "error": null,
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:07:53 GMT",
+        "Content-Type": "text/html; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a2d458c3c5f2-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache",
+        "Link": "<https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\", <https://www.ccpatio.com/wp-json/wp/v2/pages/21974>; rel=\"alternate\"; title=\"JSON\"; type=\"application/json\", <https://www.ccpatio.com/>; rel=shortlink",
+        "Server": "cloudflare",
+        "Vary": "Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-litespeed-cache": "miss",
+        "x-litespeed-cache-control": "public,max-age=3600",
+        "x-litespeed-tag": "uri=e48e0e2dc267f5782c1bcf722ef6d7d8",
+        "x-litespeed-vary": "cookie=np_wc_currency,cookie=np_wc_currency_language,cookie=_icl_current_language, value=nitrodesktop",
+        "x-nitro-cache": "MISS",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=867,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=orvHDOiMmKa2c%2FHmJiKoChbQA6sOXFYD3hWpYN6ezUxLsxrUjuzfcG5aTXSiA9hqhBVBLLqp4iOm8%2FsuPE%2BQa%2Bkc07USpQhwL6%2BiQWugSGplL295Oqxa2nBr9tmzZopM0g%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a2d458c3c5f2-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache",
+        "x_cache": null,
+        "x_nitro_cache": "MISS",
+        "nitro_headers": {
+          "x-nitro-cache": "MISS"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache"
+        ]
+      },
+      "plugins_found": [
+        "*",
+        "astra-addon",
+        "elementor",
+        "elementor-pro",
+        "emcp-pro",
+        "favorites",
+        "filter-everything",
+        "pdf-embedder",
+        "woocommerce",
+        "yith-woocommerce-catalog-mode"
+      ],
+      "plugin_count_unique": 10,
+      "body_bytes": 2365270,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "NitroPack fingerprint found in HTML body",
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=MISS"
+      ]
+    },
+    {
+      "label": "wp_json_index",
+      "url": "https://www.ccpatio.com/wp-json/",
+      "ok": true,
+      "status_code": 200,
+      "ttfb_ms": 345.6,
+      "total_ms": 421.0,
+      "error": null,
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:07:58 GMT",
+        "Content-Type": "application/json; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a2f5fd15b66b-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Allow": "GET",
+        "Cache-Control": "no-cache",
+        "ETag": "W/\"13620-1789758478;br\"",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "Link": "<https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\"",
+        "Server": "cloudflare",
+        "Vary": "Origin,Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "access-control-allow-headers": "Authorization, X-WP-Nonce, Content-Disposition, Content-MD5, Content-Type",
+        "access-control-expose-headers": "X-WP-Total, X-WP-TotalPages, Link",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-content-type-options": "nosniff",
+        "x-litespeed-cache": "miss",
+        "x-litespeed-cache-control": "public,max-age=3600",
+        "x-litespeed-tag": "uri=d8dff98b17a89008eefbc4a43179fa80",
+        "x-litespeed-vary": "cookie=np_wc_currency,cookie=np_wc_currency_language,cookie=_icl_current_language, value=nitrodesktop",
+        "x-robots-tag": "noindex",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=272,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=MKVyT8btEpfziSjlfGXKDcCyWOQQ5vvwRRvXb7CxGZA%2FewMenIBhMcXNcttbVaCChLWPCPmb0FOSy%2BR%2BKXAWVuLCoZcKS8FjlIoEE%2Bzkzhb3h2Z1rlAJuSrcCkw6rpmoSA%3D%3D\"}]}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a2f5fd15b66b-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache",
+        "x_cache": null,
+        "x_nitro_cache": null,
+        "nitro_headers": {},
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": []
+      },
+      "plugins_found": [],
+      "plugin_count_unique": 0,
+      "body_bytes": 1774006,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "cf-cache-status=DYNAMIC"
+      ]
+    },
+    {
+      "label": "wp_json_wc_v3",
+      "url": "https://www.ccpatio.com/wp-json/wc/v3/",
+      "ok": true,
+      "status_code": 200,
+      "ttfb_ms": 77.0,
+      "total_ms": 115.5,
+      "error": null,
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:02 GMT",
+        "Content-Type": "application/json; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a311cf2e5529-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Allow": "GET",
+        "Cache-Control": "no-cache",
+        "ETag": "W/\"13507-1789757095;br\"",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "Link": "<https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\"",
+        "Server": "cloudflare",
+        "Vary": "Origin,Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "access-control-allow-headers": "Authorization, X-WP-Nonce, Content-Disposition, Content-MD5, Content-Type",
+        "access-control-expose-headers": "X-WP-Total, X-WP-TotalPages, Link",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-content-type-options": "nosniff",
+        "x-litespeed-cache": "hit",
+        "x-robots-tag": "noindex",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=25,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=9aEJ88NT%2FEyFqFSa5UFmF%2B%2FO0nUEaZcLAQI%2BJNsL%2FS4zAJSqfgfDqv5aD4FGk8CQnvEQ%2Fc4Nqjv%2FZQjtfmPLvgNLeLvFvmozo8vkgGcT%2Fs0cRM%2B80lAXtv0TIWVuOw3iyg%3D%3D\"}]}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a311cf2e5529-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache",
+        "x_cache": null,
+        "x_nitro_cache": null,
+        "nitro_headers": {},
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": []
+      },
+      "plugins_found": [],
+      "plugin_count_unique": 0,
+      "body_bytes": 253600,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "cf-cache-status=DYNAMIC"
+      ]
+    },
+    {
+      "label": "wp_json_wp_v2_posts",
+      "url": "https://www.ccpatio.com/wp-json/wp/v2/posts?per_page=1&ccp_probe=pl6l9czz14hq",
+      "ok": true,
+      "status_code": 200,
+      "ttfb_ms": 405.3,
+      "total_ms": 410.9,
+      "error": null,
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:06 GMT",
+        "Content-Type": "application/json; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a32bce71720e-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Allow": "GET",
+        "Cache-Control": "no-cache",
+        "ETag": "W/\"13622-1789758486;br\"",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "Link": "<https://www.ccpatio.com/wp-json/wp/v2/posts?per_page=1&ccp_probe=pl6l9czz14hq&page=2>; rel=\"next\"",
+        "Server": "cloudflare",
+        "Vary": "Origin,Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "access-control-allow-headers": "Authorization, X-WP-Nonce, Content-Disposition, Content-MD5, Content-Type",
+        "access-control-expose-headers": "X-WP-Total, X-WP-TotalPages, Link",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-content-type-options": "nosniff",
+        "x-litespeed-cache": "miss",
+        "x-litespeed-cache-control": "public,max-age=3600",
+        "x-litespeed-tag": "uri=8c0183ee9a1e87e7cf0b8c7b3aca4f61",
+        "x-litespeed-vary": "cookie=np_wc_currency,cookie=np_wc_currency_language,cookie=_icl_current_language, value=nitrodesktop",
+        "x-robots-tag": "noindex",
+        "x-turbo-charged-by": "LiteSpeed",
+        "x-wp-total": "25",
+        "x-wp-totalpages": "25",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=349,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=bsLJ5h6pYnz6m9B5dmiBAED8IINnVMhXpDKbk8AkNI%2FQrdDDALxpuxsHoxHtpvzBbmgXXD9DlsG%2BZtLyzbiOBg4HXIttd4qHQTwkCOq%2BBpUiQ75Xzo%2B44E%2F0f5%2BEnsX%2BUA%3D%3D\"}]}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a32bce71720e-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache",
+        "x_cache": null,
+        "x_nitro_cache": null,
+        "nitro_headers": {},
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": []
+      },
+      "plugins_found": [],
+      "plugin_count_unique": 0,
+      "body_bytes": 20726,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "cf-cache-status=DYNAMIC"
+      ]
+    },
+    {
+      "label": "wp_login_default",
+      "url": "https://www.ccpatio.com/wp-login.php",
+      "ok": false,
+      "status_code": 404,
+      "ttfb_ms": 454.4,
+      "total_ms": 496.4,
+      "error": "HTTPError 404: Not Found",
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:11 GMT",
+        "Content-Type": "text/html; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a347ac796cfc-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache, must-revalidate, max-age=0, no-store, private",
+        "Expires": "Wed, 11 Jan 1984 05:00:00 GMT",
+        "Link": "<https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\"",
+        "Server": "cloudflare",
+        "Vary": "Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-litespeed-cache-control": "no-cache",
+        "x-litespeed-tag": "uri=f2b612210e4d513cafa271ce158f3577",
+        "x-litespeed-vary": "cookie=np_wc_currency,cookie=np_wc_currency_language,cookie=_icl_current_language, value=nitrodesktop",
+        "x-nitro-cache": "MISS",
+        "x-nitro-disabled": "1",
+        "x-nitro-disabled-reason": "404",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=393,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=%2FAC1Km1sVASZqEJtKETPsXvYwDvsG0muKeCKgdU%2B0%2F%2FJ%2Fc%2BjOI9W4QegSinWDFxjeiM9YHJFqYh%2BffvzsI7OD%2FiwLzq5lSbG1u3uQmX4wQ5qb3JY5Z6uPPSngRjuafLsXA%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a347ac796cfc-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache, must-revalidate, max-age=0, no-store, private",
+        "x_cache": null,
+        "x_nitro_cache": "MISS",
+        "nitro_headers": {
+          "x-nitro-cache": "MISS",
+          "x-nitro-disabled": "1",
+          "x-nitro-disabled-reason": "404"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache",
+          "x-nitro-disabled",
+          "x-nitro-disabled-reason"
+        ]
+      },
+      "plugins_found": [
+        "*",
+        "astra-addon",
+        "emcp-pro",
+        "favorites",
+        "filter-everything",
+        "pdf-embedder",
+        "woocommerce",
+        "yith-woocommerce-catalog-mode"
+      ],
+      "plugin_count_unique": 8,
+      "body_bytes": 271805,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "NitroPack fingerprint found in HTML body",
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=MISS"
+      ]
+    },
+    {
+      "label": "xmlrpc",
+      "url": "https://www.ccpatio.com/xmlrpc.php",
+      "ok": false,
+      "status_code": 403,
+      "ttfb_ms": 209.6,
+      "total_ms": 209.9,
+      "error": "HTTPError 403: Forbidden",
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:15 GMT",
+        "Content-Type": "text/html",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a36418380724-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "private, no-cache, no-store, must-revalidate, max-age=0",
+        "Server": "cloudflare",
+        "Pragma": "no-cache",
+        "Cf-Apo-Via": "origin,no-cache",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Vary": "accept-encoding",
+        "Server-Timing": "cfEdge;dur=116,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=wTXiHW0A92oY96nCrBpUHT7Eg0iilPNL1ORd%2BHRhwjYWQrR9na0wjbzVcylpwZy7nxRgk3ao5bvUxj8l6rjnqgxasDpK049mEnel3ZHSk5oBACEv0J6CuIR5FTpWsQiUvA%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a36418380724-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "private, no-cache, no-store, must-revalidate, max-age=0",
+        "x_cache": null,
+        "x_nitro_cache": null,
+        "nitro_headers": {},
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": []
+      },
+      "plugins_found": [],
+      "plugin_count_unique": 0,
+      "body_bytes": 3789,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "cf-cache-status=DYNAMIC"
+      ]
+    },
+    {
+      "label": "feed_rss",
+      "url": "https://www.ccpatio.com/feed/",
+      "ok": true,
+      "status_code": 200,
+      "ttfb_ms": 116.3,
+      "total_ms": 146.4,
+      "error": null,
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:19 GMT",
+        "Content-Type": "application/rss+xml; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a37eda8b1a78-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache",
+        "ETag": "W/\"9ed302be65b9cbf5bf8e0d8e7551efa2\"",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "Last-Modified": "Thu, 17 Sep 2026 20:47:28 GMT",
+        "Link": "<https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\"",
+        "Server": "cloudflare",
+        "Vary": "Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-litespeed-cache": "hit",
+        "x-nitro-cache": "MISS",
+        "x-nitro-disabled": "1",
+        "x-nitro-disabled-reason": "feed",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=41,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=nlbqnZ%2FA3Q6PLq1ieeDjcCBRziIAYLr%2BS4PLyu21J489bN9I2j15%2F97nK8SLFW021Z3jVPqsdzwhuwIrYcKBhXKf6rNqxVVmI%2F%2Ft9C0FjKvpwVUed%2FEPSw3JZa47XS7Oqw%3D%3D\"}]}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a37eda8b1a78-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache",
+        "x_cache": null,
+        "x_nitro_cache": "MISS",
+        "nitro_headers": {
+          "x-nitro-cache": "MISS",
+          "x-nitro-disabled": "1",
+          "x-nitro-disabled-reason": "feed"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache",
+          "x-nitro-disabled",
+          "x-nitro-disabled-reason"
+        ]
+      },
+      "plugins_found": [],
+      "plugin_count_unique": 0,
+      "body_bytes": 168916,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=MISS"
+      ]
+    },
+    {
+      "label": "cart_path",
+      "url": "https://www.ccpatio.com/cart/",
+      "ok": false,
+      "status_code": 404,
+      "ttfb_ms": 479.6,
+      "total_ms": 576.4,
+      "error": "HTTPError 404: Not Found",
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:24 GMT",
+        "Content-Type": "text/html; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a398ecacce80-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache, must-revalidate, max-age=0, no-store, private",
+        "Expires": "Wed, 11 Jan 1984 05:00:00 GMT",
+        "Link": "<https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\"",
+        "Server": "cloudflare",
+        "Vary": "Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-litespeed-cache-control": "no-cache",
+        "x-litespeed-tag": "uri=a6e70b027d696f1d3afe13fa71f85b8e",
+        "x-litespeed-vary": "cookie=np_wc_currency,cookie=np_wc_currency_language,cookie=_icl_current_language, value=nitrodesktop",
+        "x-nitro-cache": "MISS",
+        "x-nitro-disabled": "1",
+        "x-nitro-disabled-reason": "404",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=419,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=9G17EEaHDTfC5wUea9y%2FopUZVbatPxbWd%2FNORtByCQ2g09dbQc%2FkfsEpou%2FC2G4%2B95heOiEJJJMeNOAnbB271qH7jtwG%2Bde%2F37SMwc0g0GxdfKPOObGEodxkJEOUJYnFqw%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a398ecacce80-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache, must-revalidate, max-age=0, no-store, private",
+        "x_cache": null,
+        "x_nitro_cache": "MISS",
+        "nitro_headers": {
+          "x-nitro-cache": "MISS",
+          "x-nitro-disabled": "1",
+          "x-nitro-disabled-reason": "404"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache",
+          "x-nitro-disabled",
+          "x-nitro-disabled-reason"
+        ]
+      },
+      "plugins_found": [
+        "*",
+        "astra-addon",
+        "elementor",
+        "elementor-pro",
+        "emcp-pro",
+        "favorites",
+        "filter-everything",
+        "pdf-embedder",
+        "woocommerce",
+        "yith-woocommerce-catalog-mode"
+      ],
+      "plugin_count_unique": 10,
+      "body_bytes": 2327895,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "NitroPack fingerprint found in HTML body",
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=MISS"
+      ]
+    },
+    {
+      "label": "checkout_path",
+      "url": "https://www.ccpatio.com/checkout/",
+      "ok": false,
+      "status_code": 404,
+      "ttfb_ms": 507.8,
+      "total_ms": 602.5,
+      "error": "HTTPError 404: Not Found",
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:29 GMT",
+        "Content-Type": "text/html; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a3b7aac3572b-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache, must-revalidate, max-age=0, no-store, private",
+        "Expires": "Wed, 11 Jan 1984 05:00:00 GMT",
+        "Link": "<https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\"",
+        "Server": "cloudflare",
+        "Vary": "Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-litespeed-cache-control": "no-cache",
+        "x-litespeed-tag": "uri=87048ed82f1b6ea5412fa328836f0c1c",
+        "x-litespeed-vary": "cookie=np_wc_currency,cookie=np_wc_currency_language,cookie=_icl_current_language, value=nitrodesktop",
+        "x-nitro-cache": "MISS",
+        "x-nitro-disabled": "1",
+        "x-nitro-disabled-reason": "404",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=458,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=3OJ%2B6BIfi1lik5eW5aA4g2TqZBLmi3MBuh2muzF1O8uzq5%2FI6Nj2HKLk4rII%2BgFIEsh1Bm6tensVQkn%2B91Km39HYFEu0xcMwY0mUgwLMkYIX75riBvrDCnbgEGKIDAaotg%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a3b7aac3572b-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache, must-revalidate, max-age=0, no-store, private",
+        "x_cache": null,
+        "x_nitro_cache": "MISS",
+        "nitro_headers": {
+          "x-nitro-cache": "MISS",
+          "x-nitro-disabled": "1",
+          "x-nitro-disabled-reason": "404"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache",
+          "x-nitro-disabled",
+          "x-nitro-disabled-reason"
+        ]
+      },
+      "plugins_found": [
+        "*",
+        "astra-addon",
+        "elementor",
+        "elementor-pro",
+        "emcp-pro",
+        "favorites",
+        "filter-everything",
+        "pdf-embedder",
+        "woocommerce",
+        "yith-woocommerce-catalog-mode"
+      ],
+      "plugin_count_unique": 10,
+      "body_bytes": 2327895,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "NitroPack fingerprint found in HTML body",
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=MISS"
+      ]
+    },
+    {
+      "label": "my_account",
+      "url": "https://www.ccpatio.com/my-account/",
+      "ok": false,
+      "status_code": 404,
+      "ttfb_ms": 477.1,
+      "total_ms": 567.3,
+      "error": "HTTPError 404: Not Found",
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:34 GMT",
+        "Content-Type": "text/html; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a3d699c83759-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache, must-revalidate, max-age=0, no-store, private",
+        "Expires": "Wed, 11 Jan 1984 05:00:00 GMT",
+        "Link": "<https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\"",
+        "Server": "cloudflare",
+        "Vary": "Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-litespeed-cache-control": "no-cache",
+        "x-litespeed-tag": "uri=c21bb8dbd9613bf3f4467ba03b63b1e1",
+        "x-litespeed-vary": "cookie=np_wc_currency,cookie=np_wc_currency_language,cookie=_icl_current_language, value=nitrodesktop",
+        "x-nitro-cache": "MISS",
+        "x-nitro-disabled": "1",
+        "x-nitro-disabled-reason": "404",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=426,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=BNX%2FOvEdIJ4KmU9T4AyuI423WUK0yaDze6UAYylRVLG3VqSIgNaTsnir0tjzYe6CaTF916RvyI2S4FdiBjYMfratMkzks5HFM3ITk38Wd3ArcEDZOr7TvMsyisydNyFjPA%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a3d699c83759-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache, must-revalidate, max-age=0, no-store, private",
+        "x_cache": null,
+        "x_nitro_cache": "MISS",
+        "nitro_headers": {
+          "x-nitro-cache": "MISS",
+          "x-nitro-disabled": "1",
+          "x-nitro-disabled-reason": "404"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache",
+          "x-nitro-disabled",
+          "x-nitro-disabled-reason"
+        ]
+      },
+      "plugins_found": [
+        "*",
+        "astra-addon",
+        "elementor",
+        "elementor-pro",
+        "emcp-pro",
+        "favorites",
+        "filter-everything",
+        "pdf-embedder",
+        "woocommerce",
+        "yith-woocommerce-catalog-mode"
+      ],
+      "plugin_count_unique": 10,
+      "body_bytes": 2327895,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "NitroPack fingerprint found in HTML body",
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=MISS"
+      ]
+    },
+    {
+      "label": "nitro_ignore_hint",
+      "url": "https://www.ccpatio.com/?nitro=ignore&ccp_probe=pl6l9czz14hq",
+      "ok": true,
+      "status_code": 200,
+      "ttfb_ms": 551.0,
+      "total_ms": 650.7,
+      "error": null,
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:39 GMT",
+        "Content-Type": "text/html; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a3f54ce0e1fa-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache",
+        "Link": "<https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\", <https://www.ccpatio.com/wp-json/wp/v2/pages/21974>; rel=\"alternate\"; title=\"JSON\"; type=\"application/json\", <https://www.ccpatio.com/>; rel=shortlink",
+        "Server": "cloudflare",
+        "Vary": "Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-litespeed-cache": "miss",
+        "x-litespeed-cache-control": "public,max-age=3600",
+        "x-litespeed-tag": "uri=a72de043a251e88117b9cc485de2249b",
+        "x-litespeed-vary": "cookie=np_wc_currency,cookie=np_wc_currency_language,cookie=_icl_current_language, value=nitrodesktop",
+        "x-nitro-cache": "MISS",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=499,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=AiP1Krikh5Y5FQ4vQcl549HwI6RUG7NDv8s9bGr5Yiqi8cAjANlQvfy0WjQHTMHAxF8HvS1C57GtgqEjsH45gE3%2F2Cp8sAwlhFk5fPGp82%2BhPV04QdIbi9pcSKqF97whxA%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a3f54ce0e1fa-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache",
+        "x_cache": null,
+        "x_nitro_cache": "MISS",
+        "nitro_headers": {
+          "x-nitro-cache": "MISS"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache"
+        ]
+      },
+      "plugins_found": [
+        "*",
+        "astra-addon",
+        "elementor",
+        "elementor-pro",
+        "emcp-pro",
+        "favorites",
+        "filter-everything",
+        "pdf-embedder",
+        "woocommerce",
+        "yith-woocommerce-catalog-mode"
+      ],
+      "plugin_count_unique": 10,
+      "body_bytes": 2365270,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "NitroPack fingerprint found in HTML body",
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=MISS"
+      ]
+    },
+    {
+      "label": "nocache_hint",
+      "url": "https://www.ccpatio.com/?nocache=pl6l9czz14hq",
+      "ok": true,
+      "status_code": 200,
+      "ttfb_ms": 546.7,
+      "total_ms": 627.1,
+      "error": null,
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:44 GMT",
+        "Content-Type": "text/html; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a4148d1488a8-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache",
+        "Link": "<https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\", <https://www.ccpatio.com/wp-json/wp/v2/pages/21974>; rel=\"alternate\"; title=\"JSON\"; type=\"application/json\", <https://www.ccpatio.com/>; rel=shortlink",
+        "Server": "cloudflare",
+        "Vary": "Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-litespeed-cache": "miss",
+        "x-litespeed-cache-control": "public,max-age=3600",
+        "x-litespeed-tag": "uri=1e9a3eee18743c0237b7e40872a5b746",
+        "x-litespeed-vary": "cookie=np_wc_currency,cookie=np_wc_currency_language,cookie=_icl_current_language, value=nitrodesktop",
+        "x-nitro-cache": "MISS",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=486,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=HBXJ8DwOql8cDuJYpsKgecJ4XdtD0EC%2Bm%2BZZz3JrLgXb4oHNfrS%2BSLE0dyxRYO3BIgvIlVSKx5Z3%2F7MTNpwi1boMkfafxH3OOoOfPmcAVK1U7aQVyqQGnfL1bWrCWJEycg%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a4148d1488a8-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache",
+        "x_cache": null,
+        "x_nitro_cache": "MISS",
+        "nitro_headers": {
+          "x-nitro-cache": "MISS"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache"
+        ]
+      },
+      "plugins_found": [
+        "*",
+        "astra-addon",
+        "elementor",
+        "elementor-pro",
+        "emcp-pro",
+        "favorites",
+        "filter-everything",
+        "pdf-embedder",
+        "woocommerce",
+        "yith-woocommerce-catalog-mode"
+      ],
+      "plugin_count_unique": 10,
+      "body_bytes": 2365230,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "NitroPack fingerprint found in HTML body",
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=MISS"
+      ]
+    },
+    {
+      "label": "random_qs",
+      "url": "https://www.ccpatio.com/?pl6l9czz14hq=1789758468",
+      "ok": true,
+      "status_code": 200,
+      "ttfb_ms": 559.9,
+      "total_ms": 636.4,
+      "error": null,
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:49 GMT",
+        "Content-Type": "text/html; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a4339abdd967-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache",
+        "Link": "<https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\", <https://www.ccpatio.com/wp-json/wp/v2/pages/21974>; rel=\"alternate\"; title=\"JSON\"; type=\"application/json\", <https://www.ccpatio.com/>; rel=shortlink",
+        "Server": "cloudflare",
+        "Vary": "Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-litespeed-cache": "miss",
+        "x-litespeed-cache-control": "public,max-age=3600",
+        "x-litespeed-tag": "uri=9317eaa5e3188b37879bdce117b5a379",
+        "x-litespeed-vary": "cookie=np_wc_currency,cookie=np_wc_currency_language,cookie=_icl_current_language, value=nitrodesktop",
+        "x-nitro-cache": "MISS",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=504,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=kPlN5jlUfel1LAz47CG5qNjny0FE%2BWsKl2fVLGo4wTfSx5QNQHNXnfppgv%2FAq6upg2CHi%2BuHKEpoftUBa8x8kKuOaoJZ2stZscA5b16XVSeabzOJCjpVrqNSFhnKoJJIcw%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a4339abdd967-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache",
+        "x_cache": null,
+        "x_nitro_cache": "MISS",
+        "nitro_headers": {
+          "x-nitro-cache": "MISS"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache"
+        ]
+      },
+      "plugins_found": [
+        "*",
+        "astra-addon",
+        "elementor",
+        "elementor-pro",
+        "emcp-pro",
+        "favorites",
+        "filter-everything",
+        "pdf-embedder",
+        "woocommerce",
+        "yith-woocommerce-catalog-mode"
+      ],
+      "plugin_count_unique": 10,
+      "body_bytes": 2365238,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "NitroPack fingerprint found in HTML body",
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=MISS"
+      ]
+    },
+    {
+      "label": "extra_0",
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/",
+      "ok": true,
+      "status_code": 200,
+      "ttfb_ms": 145.3,
+      "total_ms": 250.7,
+      "error": null,
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:53 GMT",
+        "Content-Type": "text/html; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a452bf9668d9-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache",
+        "Link": "<https://cdn-ilehbbj.nitrocdn.com>; rel=preconnect, <https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\",<https://www.ccpatio.com/wp-json/wp/v2/product/27767>; rel=\"alternate\"; title=\"JSON\"; type=\"application/json\",<https://www.ccpatio.com/?p=27767>; rel=shortlink",
+        "Server": "cloudflare",
+        "Vary": "user-agent,Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-cache-ctime": "1789756052",
+        "x-litespeed-cache": "miss",
+        "x-litespeed-cache-control": "public,max-age=3600",
+        "x-litespeed-tag": "uri=4a7a44c1e6e40a647b41a2a094d67089",
+        "x-litespeed-vary": "cookie=np_wc_currency,cookie=np_wc_currency_language,cookie=_icl_current_language, value=nitrodesktop",
+        "x-nitro-cache": "HIT",
+        "x-nitro-cache-from": "drop-in",
+        "x-nitro-rev": "1b24268",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=85,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=6WxT32cR6DP9ShDvhbQwgKxJlJlWPoHBrT80pfOjGeM1ODAjULX0EpHmnPtYmGMEcG6Mas2q7lkxw%2FplPIbQJ%2Bt0G5zu3vcm7cWhOiA3tZjiOjabzDjOIQ0UEr6BU1zrTw%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a452bf9668d9-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache",
+        "x_cache": null,
+        "x_nitro_cache": "HIT",
+        "nitro_headers": {
+          "x-nitro-cache": "HIT",
+          "x-nitro-cache-from": "drop-in",
+          "x-nitro-rev": "1b24268"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache",
+          "x-nitro-cache-from",
+          "x-nitro-rev"
+        ]
+      },
+      "plugins_found": [
+        "*",
+        "astra-addon",
+        "elementor",
+        "elementor-pro",
+        "emcp-pro",
+        "favorites",
+        "variation-swatches-woo",
+        "woocommerce"
+      ],
+      "plugin_count_unique": 8,
+      "body_bytes": 3309089,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "NitroPack fingerprint found in HTML body",
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=HIT"
+      ]
+    },
+    {
+      "label": "extra_1",
+      "url": "https://www.ccpatio.com/collections/bravada-collections/",
+      "ok": true,
+      "status_code": 200,
+      "ttfb_ms": 106.9,
+      "total_ms": 208.1,
+      "error": null,
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:08:58 GMT",
+        "Content-Type": "text/html; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a46f88e65a87-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache",
+        "Link": "<https://cdn-ilehbbj.nitrocdn.com>; rel=preconnect, <https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\",<https://www.ccpatio.com/wp-json/wp/v2/product_cat/245>; rel=\"alternate\"; title=\"JSON\"; type=\"application/json\"",
+        "Server": "cloudflare",
+        "Vary": "user-agent,Accept-Encoding",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-cache-ctime": "1789758194",
+        "x-litespeed-cache": "miss",
+        "x-litespeed-cache-control": "public,max-age=3600",
+        "x-litespeed-tag": "uri=7b00c479ec763a3252de411e08f655d2",
+        "x-litespeed-vary": "cookie=np_wc_currency,cookie=np_wc_currency_language,cookie=_icl_current_language, value=nitrodesktop",
+        "x-nitro-cache": "HIT",
+        "x-nitro-cache-from": "drop-in",
+        "x-nitro-rev": "1b24268",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=49,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=q0snJZQc8D56rkHQtun7%2B1t4QfMsFX3zyyFZrfhdjgFEA3PXpEmq3Y9skqRMq5waQ7I%2FcnH1kUyjdlqCC9gkLbGoB74XbjkIUIbAfZ0XDG1TUp6J659zoatdwPRFlRpvyw%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a46f88e65a87-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache",
+        "x_cache": null,
+        "x_nitro_cache": "HIT",
+        "nitro_headers": {
+          "x-nitro-cache": "HIT",
+          "x-nitro-cache-from": "drop-in",
+          "x-nitro-rev": "1b24268"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache",
+          "x-nitro-cache-from",
+          "x-nitro-rev"
+        ]
+      },
+      "plugins_found": [
+        "*",
+        "astra-addon",
+        "elementor",
+        "elementor-pro",
+        "emcp-pro",
+        "favorites",
+        "filter-everything",
+        "variation-swatches-woo",
+        "woocommerce"
+      ],
+      "plugin_count_unique": 9,
+      "body_bytes": 2952011,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "NitroPack fingerprint found in HTML body",
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=HIT"
+      ]
+    },
+    {
+      "label": "extra_2",
+      "url": "https://www.ccpatio.com/featured-commercial-project/optima-mcdowell-mountain/",
+      "ok": true,
+      "status_code": 200,
+      "ttfb_ms": 135.9,
+      "total_ms": 220.6,
+      "error": null,
+      "headers": {
+        "Date": "Fri, 18 Sep 2026 19:09:02 GMT",
+        "Content-Type": "text/html; charset=UTF-8",
+        "Transfer-Encoding": "chunked",
+        "Connection": "close",
+        "CF-Ray": "a3d2a48c098dcd02-PHX",
+        "CF-Cache-Status": "DYNAMIC",
+        "Cache-Control": "no-cache",
+        "Link": "<https://cdn-ilehbbj.nitrocdn.com>; rel=preconnect, <https://www.ccpatio.com/wp-json/>; rel=\"https://api.w.org/\",<https://www.ccpatio.com/wp-json/wp/v2/pages/23184>; rel=\"alternate\"; title=\"JSON\"; type=\"application/json\",<https://www.ccpatio.com/?p=23184>; rel=shortlink",
+        "Server": "cloudflare",
+        "Vary": "sec-ch-ua-mobile,Accept-Encoding, user-agent",
+        "Cf-Apo-Via": "origin,no-cache",
+        "accept-ch": "Sec-CH-UA-Mobile",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "x-cache-ctime": "1789756103",
+        "x-litespeed-cache": "hit",
+        "x-nitro-cache": "HIT",
+        "x-nitro-cache-from": "drop-in",
+        "x-nitro-rev": "1b24268",
+        "x-turbo-charged-by": "LiteSpeed",
+        "Speculation-Rules": "\"/cdn-cgi/speculation\"",
+        "Server-Timing": "cfEdge;dur=75,cfOrigin;dur=0",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=9uw%2BKfp4pulGOMril4NWUAFfIrtVTuCJNDf3wHO%2BgRMe2yBY5UKdJg7AXZQkFr54HDBx0lhIGfxNCpV4b77qOLzdjy82Hrprbd4jwKOHFz2qirW03ruawqtmpQ2bREXcFA%3D%3D\"}]}",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+      },
+      "cache_signals": {
+        "server": "cloudflare",
+        "cf_ray": "a3d2a48c098dcd02-PHX",
+        "cf_cache_status": "DYNAMIC",
+        "cf_apo_via": "origin,no-cache",
+        "age": null,
+        "cache_control": "no-cache",
+        "x_cache": null,
+        "x_nitro_cache": "HIT",
+        "nitro_headers": {
+          "x-nitro-cache": "HIT",
+          "x-nitro-cache-from": "drop-in",
+          "x-nitro-rev": "1b24268"
+        },
+        "likely_behind_cloudflare": true,
+        "nitropack_header_hits": [
+          "x-nitro-cache",
+          "x-nitro-cache-from",
+          "x-nitro-rev"
+        ]
+      },
+      "plugins_found": [
+        "*",
+        "astra-addon",
+        "elementor",
+        "elementor-pro",
+        "emcp-pro",
+        "favorites",
+        "woocommerce"
+      ],
+      "plugin_count_unique": 7,
+      "body_bytes": 2857160,
+      "is_cloudflare_522_page": false,
+      "notes": [
+        "NitroPack fingerprint found in HTML body",
+        "cf-cache-status=DYNAMIC",
+        "nitro-cache=HIT"
+      ]
+    }
+  ]
+}

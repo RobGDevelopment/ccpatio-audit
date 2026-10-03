@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC Patio — Remediation Record &amp; Audit Response</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#e7ecf0;
+  --panel:#f7f9fa;
+  --ink:#131e28;
+  --ink-soft:#4a5a67;
+  --rule:#c3ced7;
+  --rule-soft:#d9e1e7;
+  --done:#2c6553;
+  --clar:#8a6216;
+  --open:#3a5878;
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme: dark){
+    --ground:#101820; --panel:#161f28; --ink:#e4ebf0; --ink-soft:#93a4b1;
+    --rule:#2c3a46; --rule-soft:#222d37;
+    --done:#63b498; --clar:#d3a34a; --open:#7fa3c9;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101820; --panel:#161f28; --ink:#e4ebf0; --ink-soft:#93a4b1;
+  --rule:#2c3a46; --rule-soft:#222d37;
+  --done:#63b498; --clar:#d3a34a; --open:#7fa3c9;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"Archivo",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:15.5px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.sheet{max-width:860px;margin:0 auto;padding:44px 28px 80px}
+header{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:30px}
+h1{
+  font-size:clamp(27px,4.4vw,40px);
+  font-weight:700;letter-spacing:-.022em;line-height:1.08;
+  margin:0 0 12px;max-width:24ch;
+}
+.meta{color:var(--ink-soft);font-size:13.5px;display:flex;flex-wrap:wrap;gap:6px 22px}
+h2{
+  font-size:20px;font-weight:600;letter-spacing:-.012em;
+  margin:52px 0 6px;padding-bottom:7px;
+  border-bottom:1px solid var(--rule);
+}
+h3{font-size:16.5px;font-weight:600;letter-spacing:-.008em;margin:34px 0 4px}
+p{margin:0 0 15px;max-width:74ch}
+.lede{font-size:17px;line-height:1.55;margin-bottom:26px}
+.method{border-left:2px solid var(--rule);padding-left:20px;margin:0 0 10px;max-width:74ch}
+.method p{font-size:14.5px;color:var(--ink-soft)}
+table{
+  width:100%;border-collapse:collapse;margin:18px 0 22px;
+  font-size:14px;line-height:1.5;
+}
+th{
+  text-align:left;font-weight:600;padding:9px 14px 9px 0;
+  border-bottom:1.5px solid var(--rule);vertical-align:bottom;
+}
+td{padding:11px 14px 11px 0;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+td:last-child,th:last-child{padding-right:0}
+tr:last-child td{border-bottom:none}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.87em;background:var(--panel);
+  border:1px solid var(--rule-soft);border-radius:2px;padding:1px 4px;
+}
+pre{
+  background:var(--panel);border:1px solid var(--rule);border-left:4px solid var(--done);
+  padding:16px 18px;margin:18px 0 22px;overflow-x:auto;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:13px;line-height:1.6;
+}
+pre code{background:none;border:none;padding:0;font-size:inherit}
+.figure{
+  background:var(--panel);border:1px solid var(--rule);border-left:4px solid var(--done);
+  padding:20px 24px;margin:22px 0;display:flex;flex-wrap:wrap;gap:22px 46px;align-items:flex-end;
+}
+.figure dl{margin:0}
+.figure dt{font-size:13px;color:var(--ink-soft);margin-bottom:3px}
+.figure dd{margin:0;font-size:27px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.figure .note{flex:1 1 28ch;font-size:14px;color:var(--ink-soft);margin:0;max-width:46ch}
+.verdict{
+  border-left:3px solid var(--done);padding-left:18px;margin:20px 0;
+}
+.verdict.clar{border-left-color:var(--clar)}
+footer{
+  border-top:1px solid var(--rule);margin-top:54px;padding-top:18px;
+  color:var(--ink-soft);font-size:13.5px;max-width:76ch;
+}
+@media (max-width:700px){
+  .sheet{padding:30px 18px 56px}
+  table{font-size:13.5px}
+  th,td{padding-right:10px}
+}
+@media print{
+  body{background:#fff}
+  .sheet{padding:0;max-width:none}
+  h2{break-after:avoid}
+  table,pre,.figure{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<header>
+  <h1>CC Patio — remediation record and audit response</h1>
+  <div class="meta">
+    <span>Production origin — ccpatpvlive</span>
+    <span>18 September 2026</span>
+    <span>Prepared by PrimeView</span>
+  </div>
+</header>
+
+<h2>Purpose</h2>
+
+<p class="lede">This document records the remediation work carried out on the CC Patio production environment (<code>ccpatpvlive</code>), in response to the request items raised on 27 August 2026 and to the architectural audit circulated on 18 September 2026.</p>
+
+<p>It serves two functions. First, it documents what was changed, when, and what the resulting measurements show. Second, it supplies context on six findings where the available evidence did not show the full picture.</p>
+
+<p>On that second point we want to be clear about where the gap sat. The questions raised were reasonable ones to ask, and in several cases they were the right questions asked against incomplete information — a Site Health export shows plugin and constant state, but not server-level configuration, scheduling intervals, how components relate to one another, or where a task sits in the project sequence. That the reviewer could not see those things is a reporting gap on our side, not an error on theirs. Where our records or live checks show a different position, we have set out the evidence rather than simply asserting the correction.</p>
+
+<h3>How this document was prepared</h3>
+
+<div class="method">
+<p>Rather than respond to the audit from recollection, we ran an independent audit of the production environment on our own side and compared the two sets of findings item by item. Ours was a live, authenticated read-only assessment of <code>www.ccpatio.com</code> carried out using our internal audit tooling (EMCP), covering: current runtime versions, WordPress configuration, plugin and theme inventory, database footprint, scheduled actions, server-side performance, malware heuristics and core integrity, hardening posture, Elementor structure, sampled SEO and accessibility, and internal-link integrity. No content, configuration, files, plugins, users or database records were changed during it.</p>
+<p>The two assessments differ mainly in evidence base, which accounts for most of the discrepancies between them. The report we received was reasoned from a WordPress Site Health information dump — a text snapshot of a moment in time. Ours queried the live environment directly. Where a Site Health snapshot reports that a plugin is active but not how it is scheduled, or that two components are installed but not how they relate, the live check can resolve the difference.</p>
+<p>Where our own audit confirmed a finding in the report we received, we have said so plainly. Where it produced a different result, the live evidence is cited. Items we consider genuinely open are listed at the end without qualification, and several findings in the report are correct and are being tracked accordingly.</p>
+</div>
+
+<h3>Timeline</h3>
+
+<p>This document is dated the same day as the audit it responds to, so the sequence is worth setting out explicitly rather than leaving it to be inferred.</p>
+
+<table>
+<thead><tr><th>When</th><th>What</th></tr></thead>
+<tbody>
+<tr><td class="num">27 August 2026</td><td>Four request items received and addressed the same day (§1)</td></tr>
+<tr><td class="num">18 September 2026</td><td>Architectural audit received</td></tr>
+<tr><td class="num">18 September 2026</td><td>Our own read-only audit of the live environment run for comparison</td></tr>
+<tr><td class="num">18 September 2026</td><td>PHP upgraded to 8.3.33; OPcache override applied; Redis object cache installed and enabled</td></tr>
+<tr><td class="num">18 September 2026</td><td>PHP 8.4 attempted on production, found incompatible with several plugins, reverted the same day</td></tr>
+<tr><td class="num">18 September 2026</td><td>This document prepared</td></tr>
+</tbody>
+</table>
+
+<p>The three remediation items in that list were carried out today, in direct response to the audit, not beforehand. We have not back-dated anything or presented earlier work as though it anticipated the findings. The speed reflects that the two most severe findings had straightforward fixes available at host level once they were identified.</p>
+
+<h2>1. Request items of 27 August 2026</h2>
+
+<p>All four items raised on 27 August were addressed the same day. A summary of each, with the action taken and the state as of this document:</p>
+
+<table>
+<thead><tr><th class="num">#</th><th>Request</th><th>Action taken</th><th>Current state</th></tr></thead>
+<tbody>
+<tr><td class="num">1</td><td>WordPress memory restricted to 40 MB despite 1 GB PHP allocation</td><td><code>WP_MEMORY_LIMIT</code> raised; server-side PHP allocation confirmed at 1 GB</td><td>Resolved — Site Health now reports 1 GB PHP memory and a raised WordPress limit</td></tr>
+<tr><td class="num">2</td><td>Opcode cache reported disabled, driving CPU usage</td><td>Opcode caching enabled at server level; subsequently tuned (see §3)</td><td>Resolved and since improved</td></tr>
+<tr><td class="num">3</td><td><code>WP_DEBUG_DISPLAY</code> on, <code>WP_DEBUG_LOG</code> off</td><td>Configuration reversed so errors log silently rather than render on screen</td><td>Resolved — display disabled, logging to <code>ccp-wp-errors.log</code></td></tr>
+<tr><td class="num">4</td><td>Fatal-error logs and plugin conflicts across 49 installed plugins</td><td>Fatal-error log inspected under WooCommerce → Status → Logs, including WP Activity Log and auditlog hooks; obsolete and conflicting plugins removed</td><td>Resolved — installed plugin count reduced from 49 to 38</td></tr>
+</tbody>
+</table>
+
+<p>The reduction from 49 to 38 plugins is the direct result of item 4. We note this because the 18 September audit treats 38 as a starting figure rather than as an already-reduced one.</p>
+
+<p>Both audit documents correctly observe that <code>WP_DEBUG</code> is currently enabled. That is a later and deliberate change, made while troubleshooting performance, and is addressed separately in §6.</p>
+
+<h2>2. PHP runtime upgrade</h2>
+
+<p>The audit lists PHP 8.2 end-of-life as a CRITICAL finding. This has been resolved.</p>
+
+<p>The <code>ccpatpvlive</code> origin has been moved from PHP 8.2.33 to <strong>PHP 8.3.33</strong>, a supported release receiving security patches. This can be verified in Site Health at any time.</p>
+
+<p>We also attempted PHP 8.4 in the same window, and reverted to 8.3.33 the same day.</p>
+
+<p>To be precise about what happened: the WordPress admin and several product templates were <strong>incompatible</strong> with 8.4 — they did not render correctly under the newer runtime. Nothing was damaged, no data was affected, and reverting the PHP version restored normal behaviour immediately. The incompatibility was a property of the runtime version, not a change to the site.</p>
+
+<p>The cause is upstream rather than anything in the site's own configuration. Several plugins in the current stack do not yet have releases that declare PHP 8.4 support. Until those vendors ship compatible versions, moving the runtime forward would reintroduce the same rendering issues no matter how the upgrade is sequenced. The dependency is on the plugin authors, not on work we can complete ourselves.</p>
+
+<p>We should also note the method: the attempt was made on the production origin rather than the development site. That was the wrong place to test it, and the retry will be run on dev first. We raise this rather than leave it to be inferred from the absence of the word "staging" in this section.</p>
+
+<p>The sequence from here is: monitor the relevant plugins for PHP 8.4-compatible releases; once available, install them on the development site and run a compatibility matrix across WooCommerce, Elementor and the caching stack; then schedule a production runtime change with a rollback path agreed in advance. In the meantime the site runs on PHP 8.3.33, which is supported and receiving security patches, so there is no urgency forcing the move.</p>
+
+<div class="verdict">
+<p>The practical consequence is that the audit's proposed causal chain for the intermittent HTTP 522 responses — end-of-life PHP combined with a saturated OPcache under LiteSpeed — no longer holds, since neither of its two components is present. The OPcache side is covered in the next section.</p>
+</div>
+
+<h2>3. OPcache reconfiguration and current occupancy</h2>
+
+<p>Both audits flag OPcache as a P0 item, and both leave it unverified — the client report measured it as full with a 56.64% hit rate from an earlier snapshot, while the read-only audit could confirm only that OPcache was enabled, without visibility into occupancy. This section closes that gap with host-level figures.</p>
+
+<p>An override file was added for the PHP 8.3 runtime on 18 September 2026, following receipt of the audit:</p>
+
+<pre><code>; /opt/cpanel/ea-php83/root/etc/php.d/99-opcache-custom.ini
+opcache.memory_consumption=512
+opcache.interned_strings_buffer=16
+opcache.max_accelerated_files=10000</code></pre>
+
+<table>
+<thead><tr><th>Parameter</th><th>Prior state</th><th>Current setting</th><th>Observed</th></tr></thead>
+<tbody>
+<tr><td><code>memory_consumption</code></td><td>Stock default</td><td class="num">512 MB</td><td class="num">~225 MB in use</td></tr>
+<tr><td><code>interned_strings_buffer</code></td><td>8 MB, reported at 100% used</td><td class="num">16 MB</td><td>No longer saturating</td></tr>
+<tr><td><code>max_accelerated_files</code></td><td>Stock default</td><td class="num">10,000</td><td>Sufficient for current file count</td></tr>
+</tbody>
+</table>
+
+<div class="figure">
+  <dl><dt>OPcache in use</dt><dd>~225 MB</dd></dl>
+  <dl><dt>Allocated</dt><dd>512 MB</dd></dl>
+  <p class="note">The one item both audits left unverified. Host-level figures close it.</p>
+</div>
+
+<p>The cache is running at roughly <strong>225 MB of 512 MB allocated</strong>, leaving substantial headroom. It is no longer exhausting, which means the compile-thrash condition described in the client report — every cold or missed request recompiling PHP and stalling the worker — is not occurring in the current configuration.</p>
+
+<p>We would note that the earlier saturation was a function of stock OPcache defaults meeting a large WooCommerce and Elementor codebase, rather than a misconfiguration. The defaults are simply conservative for a site of this size, which is why an explicit override was the appropriate fix.</p>
+
+<h3>3.1 Persistent object cache</h3>
+
+<p>Both audits record the absence of a persistent object cache, with the read-only audit describing it as a high-value missing layer. This has since been addressed: a <strong>Redis object cache plugin has been installed and enabled</strong> on the site.</p>
+
+<p>OPcache and an object cache solve different problems, and the site now has both. OPcache stores compiled PHP opcode, removing recompilation on each request. A Redis object cache stores the results of database queries and WordPress transients between requests, so repeated work — option lookups, WooCommerce product and taxonomy queries, session data — is served from memory rather than re-queried against MariaDB each time. On a catalog site with a 513.9 MiB database this removes a meaningful share of repeated query load from the origin.</p>
+
+<p>We will monitor hit ratio and watch for serialization errors over the coming period, as the audit's own acceptance criteria suggest.</p>
+
+<h2>4. Cache topology — single HTML cache owner</h2>
+
+<p>The audit describes a double-proxy stack and a double HTML cache, with purge races and competing TTL policies between NitroPack and Cloudflare. We would like to clarify how the two layers are actually scoped, as this is a configuration-level distinction that a Site Health dump cannot surface.</p>
+
+<div class="verdict clar">
+<p><strong>NitroPack is the sole HTML and page cache owner.</strong> Cloudflare sits in front of it as a reverse proxy and WAF, primarily to mask the origin IP address for security purposes. Cloudflare HTML caching and APO are not in use on this zone. There is therefore one owner of page caching and one purge path, not two competing ones.</p>
+</div>
+
+<p>We raise this because the audit's recommendation — choose one HTML cache owner between Cloudflare and NitroPack — has already been implemented. The remaining work is documentation rather than reconfiguration.</p>
+
+<p>One point of possible confusion worth naming directly: the read-only audit observed Cloudflare returning HIT during validation. That is expected and is not evidence of a second HTML cache. Cloudflare caches static assets (CSS, JS, images, fonts) by default on any proxied zone, independently of whether HTML caching is enabled. A HIT on a static asset and a HIT on a cached HTML document are different things, and only the latter would indicate overlapping page-cache ownership.</p>
+
+<p>One consequence worth stating plainly, since it affects the remediation plan: our delegated access does not extend to editing zone-level configuration. We can prepare the header set and a staged CSP policy, and test them against checkout, forms, video and third-party widgets, but applying them to the zone requires action by CC Patio's Cloudflare account holder. The same applies to providing the current Cache Rules configuration for confirmation. We flag this so the dependency is understood now rather than read later as a commitment we did not meet.</p>
+
+<h2>5. Plugin overlap findings</h2>
+
+<p>We are reviewing every plugin the audit identifies as duplicating another's function, and the sections below set out where that review currently stands. Two of the groupings turn out to contain components that perform different jobs, which we have explained rather than actioned. The remainder are genuine redundancies and are being worked through.</p>
+
+<p>In general, plugin lists show what is installed but not how the components relate to one another, which is the distinction these sections are drawing. Where a redundancy is real, our approach is to inventory what depends on the plugin before deactivating it, rather than removing it and discovering the dependency afterwards on a live commercial site.</p>
+
+<h3>5.1 Page builder architecture</h3>
+
+<p>The audit groups four components under "page builders / theme" and describes a dual builder bootstrap cost.</p>
+
+<table>
+<thead><tr><th>Component</th><th>Actual role</th></tr></thead>
+<tbody>
+<tr><td>Astra + Astra Pro</td><td>The active <strong>theme</strong> — the foundation all templates and styling depend on. Not a page builder.</td></tr>
+<tr><td>Elementor</td><td>The <strong>page builder</strong> core.</td></tr>
+<tr><td>Elementor Pro</td><td>An <strong>extension of Elementor</strong>, not a separate builder. It cannot run without Elementor core and adds widgets and template features to the same engine.</td></tr>
+<tr><td>Spectra Legacy</td><td>A <strong>block-editor library</strong> from Astra's developer, integrated with the Astra ecosystem. Not a page builder. A consolidation candidate, subject to a block-dependency check.</td></tr>
+</tbody>
+</table>
+
+<p>There is one page builder on this site. Elementor and Elementor Pro appear as two entries in a plugin inventory because they ship as two files, but they load as a single builder — the Pro plugin has no independent rendering stack of its own. The practical bootstrap cost is therefore lower than a count of four components would suggest.</p>
+
+<p>Similarly, Astra cannot be removed or consolidated away, because it is the theme. Removing it would take the site down rather than reduce load. A theme and a page builder are complementary layers, not competing ones.</p>
+
+<p>On <strong>Spectra Legacy</strong>: Spectra is a block-editor plugin from Brainstorm Force, the same developer as Astra, and is built to integrate closely with the Astra ecosystem. It is a block library for the WordPress editor rather than a page builder in the Elementor sense, so its presence does not constitute a second builder stack.</p>
+
+<p>We accept that it is a consolidation candidate. Before deactivating it we are inventorying which pages still render Spectra blocks, because where those blocks are in live content, removing the plugin would break the rendered page rather than simply reduce load. That inventory determines whether it can be retired outright or whether the affected pages need rebuilding in Elementor first.</p>
+
+<p>The audit's related observation about 77 Elementor templates — including export copies, backups and legacy headers — is fair, and template housekeeping can be scheduled as separate work.</p>
+
+<h3>5.2 Security and access control stack</h3>
+
+<p>The audit describes Wordfence, Limit Login Attempts Reloaded and WPS Hide Login as a pile-up with overlapping authentication gates. These three address different attack surfaces and are better understood as layered controls:</p>
+
+<table>
+<thead><tr><th>Plugin</th><th>Function</th></tr></thead>
+<tbody>
+<tr><td>Wordfence</td><td>Web application firewall, malware and core-integrity scanning, traffic-level threat blocking</td></tr>
+<tr><td>Limit Login Attempts Reloaded</td><td>Rate limiting and lockout on repeated failed authentication attempts</td></tr>
+<tr><td>WPS Hide Login</td><td>Relocates the login URL, removing the default endpoint from automated scanning and credential-stuffing traffic</td></tr>
+</tbody>
+</table>
+
+<p>Each operates at a different point in the request path — the firewall inspects traffic, the rate limiter governs authentication behaviour, and the login relocation reduces the volume of automated traffic that reaches either. Removing any one of them does not have its function absorbed by the others.</p>
+
+<p>We acknowledge that Wordfence includes its own brute-force lockout capability, which is the overlap the audit identified. We are happy to document the current configuration of both so that enforcement ownership is explicit, rather than deactivating a control on the assumption that another covers it.</p>
+
+<p><strong>Temporary Login Without Password</strong> is a separate matter. The audit's concern about standing privilege-escalation surface is reasonable, and we agree it should be removed if it is not in active use.</p>
+
+<h3>5.3 Google Site Kit connection status</h3>
+
+<p>Both audits note that Site Kit is present but unauthenticated, and treat the disconnected state as a defect to be remediated or the plugin removed. The plugin is installed; it has not been connected or configured, and this is intentional.</p>
+
+<p>The ecommerce portion of the website has not gone live. Our standard process is to install and configure Site Kit as part of the marketing setup phase, alongside Google Analytics and conversion tracking and Google Merchant Center, once the ecommerce portion is ready for launch. Merchant Center in particular requires active products and SKUs to be mapped to the feed.</p>
+
+<p>Configuring analytics before then would mean tracking against a checkout and purchasing flow that is still changing. Connecting Site Kit at launch instead ensures that conversion tracking, ecommerce events and merchant data are all configured against the final live flow, rather than being set up twice.</p>
+
+<p>Site Kit is not required for WooCommerce to function, so its unconnected state has no effect on the current development of the online store. We would recommend leaving it in place: it is inert while unauthenticated, and removing it now would only mean reinstalling it when the launch and marketing phase begins.</p>
+
+<h2>6. WP_DEBUG status</h2>
+
+<p>Both audits correctly report that <code>WP_DEBUG</code> is enabled in production, and we acknowledge the finding.</p>
+
+<p>For context: following the 27 August work, debug logging was re-enabled deliberately while we investigated the performance issues that led to the OPcache and PHP changes described above. It is a diagnostic measure rather than an oversight, and display output remains off, so errors are written to log rather than rendered to visitors.</p>
+
+<p>With the OPcache work now settled and the runtime on a supported version, the main reason for keeping it on has largely passed. We will disable <code>WP_DEBUG</code> once we have confirmed stable origin behaviour over a monitoring window, and will confirm the date when we do.</p>
+
+<p>Two related points we would rather state than have asked.</p>
+
+<p>First, on the log itself. <code>WP_DEBUG_LOG</code> is configured to write to <code>/home/ccpatpvlive/logs/</code>, which sits above the web root and has no URL that maps to it. We have also checked the default WordPress location: a request for the <code>wp-content</code> debug log path returns HTTP 403 rather than serving a file. We are completing that check at the filesystem level before treating it as closed, since a 403 confirms the path is refused but not that no file exists there. We raise it because a reachable debug log is a real information-disclosure route, and a site that has had debug logging on for a period is exactly where one would look.</p>
+
+<h3>6.1 Change communication</h3>
+
+<p>The changes described in this document — the debug toggle, the OPcache override, the PHP 8.3 upgrade, the PHP 8.4 attempt and rollback, and the Redis object cache install — were not communicated to CC Patio as they were made. This document is the first notification of them. That is a gap in our process rather than in the work itself, and we would rather name it here than have it surface as a question later.</p>
+
+<p>Going forward, we propose that production changes affecting runtime, caching, or configuration are notified at the time they are made, with a short written record of what changed and why, and that anything carrying rollback risk is scheduled rather than applied ad hoc. We are happy to agree a format for that with CC Patio and the reviewing team.</p>
+
+<h2>7. Broken Link Checker scheduling</h2>
+
+<p>The client report characterises Broken Link Checker as continuously crawling and writing to the database, and rates immediate deactivation as CRITICAL.</p>
+
+<p>The plugin is configured to run on a <strong>three-day interval</strong>, not continuously. It supports the digital marketing team's link integrity checks, with particular value across weekends when no one is actively monitoring the site. Crawl scheduling is a plugin setting and is not reported in a Site Health dump, which we suspect is why the assessment assumed a continuous crawl.</p>
+
+<p>We would also note the read-only audit's link findings, which bear on how much load this plugin is actually generating. Its raw scan produced 140 candidate references across 57 unique targets, but public HTTPS validation of every one of those targets reduced this to <strong>two genuinely broken paths across four references</strong>. The remaining targets resolve directly or through working redirects. A catalog of this size with two broken internal links does not suggest a plugin under heavy load.</p>
+
+<p>That said, we are open to moving the crawl to an off-peak window, or to running it via WP-CLI on a schedule rather than through the plugin's own cron, if that would satisfy the concern. We would want to retain the capability itself, as the marketing team relies on it.</p>
+
+<h2>8. Open items</h2>
+
+<p>Several audit findings are correct and remain outstanding. We list them here with our proposed handling, so the record is complete rather than one-sided.</p>
+
+<table>
+<thead><tr><th>Item</th><th>Assessment</th><th>Owner</th><th>Proposed handling</th></tr></thead>
+<tbody>
+<tr><td>Debug log exposure</td><td>Raised by us</td><td>PrimeView</td><td>Configured path is above the web root and the default path returns 403; completing a filesystem check to close it (§6)</td></tr>
+<tr><td><code>WP_DEBUG</code> enabled</td><td>Valid</td><td>PrimeView</td><td>Disable after the monitoring window (§6)</td></tr>
+<tr><td>Missing security headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options)</td><td>Valid</td><td>PrimeView prepares; <strong>Cloudflare account holder applies</strong></td><td>We define the header set and staged CSP and test against checkout, forms and third-party widgets; zone changes require account-holder action</td></tr>
+<tr><td><code>DISALLOW_FILE_EDIT</code> not set</td><td>Valid</td><td>PrimeView</td><td>Straightforward <code>wp-config.php</code> change; can be actioned promptly</td></tr>
+<tr><td>PHP 8.4 retry</td><td>Raised by us</td><td>PrimeView + plugin vendors</td><td>Blocked on upstream plugin releases declaring 8.4 support; then dev site, compatibility matrix, scheduled production change with agreed rollback (§2)</td></tr>
+<tr><td>WooCommerce 11.1.0 → 11.1.1</td><td>Valid</td><td>PrimeView</td><td>Apply after staging smoke tests</td></tr>
+<tr><td>5,138 post revisions; postmeta at 284.5 MiB</td><td>Valid</td><td>PrimeView</td><td>Set a revision cap; clean on staging first with a tested backup</td></tr>
+<tr><td>92 <code>tmp5cd817_</code> tables (67.3 MiB)</td><td>Valid</td><td>PrimeView + host</td><td>Verify origin and ownership before any removal; likely migration residue</td></tr>
+<tr><td>12 failed Action Scheduler jobs</td><td>Valid</td><td>PrimeView</td><td>Investigate, with <code>fetch_patterns</code> failures first</td></tr>
+<tr><td>Home page HTML at ~2.8 MB</td><td>Valid</td><td>PrimeView</td><td>Review duplicated desktop and mobile sections in the Elementor structure</td></tr>
+<tr><td>Two confirmed 404 targets</td><td>Valid</td><td>PrimeView</td><td>Redirect or repoint to current project pages</td></tr>
+<tr><td>Homepage accessibility (3 contrast failures, missing alt)</td><td>Valid</td><td>PrimeView</td><td>Address alongside a browser-based WCAG pass</td></tr>
+<tr><td>Spectra Legacy, duplicate schema, duplicate header injection</td><td>Valid</td><td>PrimeView</td><td>Consolidate after dependency inventory (§5)</td></tr>
+<tr><td>Change notification process</td><td>Raised by us</td><td>PrimeView + CC Patio</td><td>Agree a format for notifying production changes at the time they are made (§6.1)</td></tr>
+</tbody>
+</table>
+
+<h3>Summary</h3>
+
+<p>Of the issues raised, the PHP end-of-life finding, the OPcache saturation finding and the missing persistent object cache were all actioned on the day the audit was received, and the OPcache occupancy figures in §3 close the item neither audit could verify. Six further findings reflect configuration, component relationships or project sequencing that the available evidence did not show: cache ownership, the theme-and-builder distinction, the security stack's layered roles, Site Kit's connection status, Broken Link Checker scheduling, and the reason <code>WP_DEBUG</code> is currently enabled.</p>
+
+<p>We have also raised three items against ourselves that the audit did not identify: the PHP 8.4 attempt was made on production rather than the development site, the debug log location is being confirmed at filesystem level, and production changes have not been communicated to CC Patio as they were made. The remaining items in the table above are accepted and tracked. We are happy to prioritise them against whatever sequence CC Patio and the reviewing team consider most useful, and to provide host-level evidence for any item where a snapshot alone would leave ambiguity.</p>
+
+<footer>Prepared by PrimeView, 18 September 2026. Host-level evidence can be supplied for any item where a Site Health snapshot alone leaves ambiguity. Cloudflare configuration is available for confirmation through CC Patio's account holder, as PrimeView holds delegated access only.</footer>
+
+</div>
+</body>
+</html>

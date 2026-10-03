@@ -1,7 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { registerPimOperator, staffSignUpAction } from "./register-actions";
+
+const DOMAIN_DENIED =
+  "Access denied. Must use a @ccpatio.com email address.";
 
 export function LandingRegisterForm({
   nextPath = "/admin/quarantine",
@@ -17,11 +20,43 @@ export function LandingRegisterForm({
     staffSignUpAction,
     null,
   );
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [isSigningUp, startSignUp] = useTransition();
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const activeError = (state && !state.ok ? state.error : null) || (signUpState && !signUpState.ok ? signUpState.error : null);
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  const activeError =
+    localError ||
+    (state && !state.ok ? state.error : null) ||
+    (signUpState && !signUpState.ok ? signUpState.error : null);
+
+  function createAccount(): void {
+    const form = formRef.current;
+    if (!form) return;
+    const email = String(new FormData(form).get("email") ?? "")
+      .trim()
+      .toLowerCase();
+    if (!email.endsWith("@ccpatio.com")) {
+      setLocalError(DOMAIN_DENIED);
+      return;
+    }
+    setLocalError(null);
+    startSignUp(() => {
+      signUpFormAction(new FormData(form));
+    });
+  }
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form
+      ref={formRef}
+      action={formAction}
+      data-hydrated={hydrated ? "true" : "false"}
+      className="space-y-4"
+    >
       <input type="hidden" name="next" value={nextPath} />
       <label className="block">
         <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
@@ -65,12 +100,12 @@ export function LandingRegisterForm({
         </button>
         
         <button
-          type="submit"
-          formAction={signUpFormAction}
-          disabled={isPending || isSignUpPending}
+          type="button"
+          disabled={isPending || isSignUpPending || isSigningUp}
+          onClick={createAccount}
           className="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:bg-zinc-800 disabled:opacity-60"
         >
-          {isSignUpPending ? "Creating Account…" : "Create @ccpatio.com Account"}
+          {isSignUpPending || isSigningUp ? "Creating Account…" : "Create @ccpatio.com Account"}
         </button>
       </div>
 

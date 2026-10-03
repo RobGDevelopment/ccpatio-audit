@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { getPimSession } from "@/lib/pim-audit";
 import { listFactoryProducts } from "@/server/factory-bom/list-factory-products";
@@ -11,6 +12,7 @@ export default async function FactoryBomPage({
 }: {
   searchParams: Promise<{ sku?: string }>;
 }) {
+  await connection();
   const session = await getPimSession();
   const params = await searchParams;
   const products = await listFactoryProducts();

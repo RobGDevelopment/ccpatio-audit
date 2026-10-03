@@ -1,0 +1,2779 @@
+{
+  "generatedAt": "2026-09-19T13:53:27.114Z",
+  "mode": "dry-run",
+  "verb": "DELETE /bom_rows/{id}",
+  "source": "live Katana /variants + /bom_rows + /recipes",
+  "totals": {
+    "parents": 96,
+    "rowsToDelete": 223,
+    "unresolvedPurgeRows": 0,
+    "refusedStillWanted": 0,
+    "liveBomRowsScanned": 3990
+  },
+  "safetyChecks": {
+    "noRefusals": true,
+    "noUnresolved": true
+  },
+  "deletionsByIngredient": {
+    "ASM-BRV-SWV-CHA-CUSH": 1,
+    "ASM-BRV-SWV-CHA-FRAME": 1,
+    "RM-MET-FLATBAR": 85,
+    "RM-RAW-FOAM": 85,
+    "RM-RAW-IRON-WOOD": 30,
+    "RM-HRD-SPACERS": 9,
+    "RM-MET-2X075-TUBING": 10,
+    "ASM-OCN-SWV-CHA-CUSH": 1,
+    "ASM-OCN-SWV-CHA-FRAME": 1
+  },
+  "parents": [
+    {
+      "parentSku": "FIN-BRV-SWV-CHA",
+      "deleteRows": [
+        {
+          "bomRowId": "7005f323-6ff0-4e3c-b85a-a7f79cc80413",
+          "ingredientSku": "ASM-BRV-SWV-CHA-CUSH"
+        },
+        {
+          "bomRowId": "f518479f-030e-4938-8edd-4df79e0cab3d",
+          "ingredientSku": "ASM-BRV-SWV-CHA-FRAME"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-BRV-SWV-CHA-34X34-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-BRV-SWV-CHA-34X34-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-CLB-CHA-34X38-BE-N",
+      "deleteRows": [
+        {
+          "bomRowId": "be612215-8db3-44a6-ae6f-08bea6cb5191",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "e3820445-b95a-44b3-87ed-f8a0346e5ce9",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-CLB-CHA-34X38-BE-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "f5e29f06-deff-4073-8095-3483f414ab62",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "2c087485-a556-45ca-b28a-e61491b15800",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "7f3cda3e-25f5-4cfd-88b2-458af4174315",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-CLB-CHA-34X38-BL-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "b4fdf5ae-4670-4c89-b7b0-45b8a03ea700",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "2161c63f-2c58-48c4-8488-baab832529e9",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "9e0d6196-aff8-4580-b630-a08e0b41f042",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-CLB-CHA-34X38-BO-N",
+      "deleteRows": [
+        {
+          "bomRowId": "3cf32a40-a054-4c52-8ac1-5717111dc863",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "0c4d0837-644b-43fc-bd66-32afb62862d7",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-CLB-CHA-34X38-BO-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "f0f68ca9-39bc-4470-9b9f-63600116c45c",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "9a416c92-e1f2-4909-ac66-b8f484a096ff",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "338fbe4a-b5eb-4264-92e7-9b1ef5339918",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-CLB-CHA-34X38-BR-N",
+      "deleteRows": [
+        {
+          "bomRowId": "92809a95-eeea-4e35-a0c1-ab78ed2b6d09",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "92291373-41b0-42db-93d3-bfc04026eea7",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-CLB-CHA-34X38-BR-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "0d67fd62-0984-473f-a167-005b2eb40638",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "a0d4755d-ce96-4222-961b-35286b17a109",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "2d6534bc-27b0-4d09-97cf-249350a746cd",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-CLB-CHA-34X38-GR-N",
+      "deleteRows": [
+        {
+          "bomRowId": "ac1124c4-7d83-4a4a-b80e-293a348612b3",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "64d5f9a3-760f-4197-b81e-fc25a781ebe5",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-CLB-CHA-34X38-GR-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "d1a6ba9b-4d5b-4759-b41c-b5dbeb5ac497",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "a2e4e144-cc3d-4687-8ad4-6a1c2c5bf371",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "e24a768a-1804-40b1-bef3-97c487924df0",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-CLB-CHA-34X38-WH-N",
+      "deleteRows": [
+        {
+          "bomRowId": "b9844fd0-8daa-49db-81e4-d72aa5e5fe43",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "4d15f1e9-4071-4a8b-8843-8a149891fe00",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-CLB-CHA-34X38-WH-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "e70a79e4-77cc-43dc-b217-b246c0047b49",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "868c1f42-eb8c-4d5d-8532-6ea8a4a30e6e",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "84f54f42-dbf7-409f-a72a-974d0a3dbe8f",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-CLB-CHA-34X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-COF-TAB-36X36-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "db50d0e9-417e-4196-b96d-15b2da5abfaa",
+          "ingredientSku": "RM-HRD-SPACERS"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-CT-36X36-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "RM-DKT-GENERIC-SLAB",
+          "role": "DKT",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-COF-TAB-42X28-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "35b122fd-f715-49a4-973a-4f1968384abd",
+          "ingredientSku": "RM-HRD-SPACERS"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-CT-42X28-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "RM-DKT-GENERIC-SLAB",
+          "role": "DKT",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-COF-TAB-42X42-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "4b263250-a7de-437e-af20-b20dbfcc7b48",
+          "ingredientSku": "RM-HRD-SPACERS"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-CT-42X42-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "RM-DKT-GENERIC-SLAB",
+          "role": "DKT",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-COF-TAB-56X28-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "83461317-dfda-4895-834a-1817e716c9e7",
+          "ingredientSku": "RM-HRD-SPACERS"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-CT-56X28-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "RM-DKT-GENERIC-SLAB",
+          "role": "DKT",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-COF-TAB-56X36-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "4168ea3f-0c3b-4d08-91d3-767481fe9c14",
+          "ingredientSku": "RM-HRD-SPACERS"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-CT-56X36-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "RM-DKT-GENERIC-SLAB",
+          "role": "DKT",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-COF-TAB-56X42-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "b6cdf7b0-86f8-48f4-99fd-4319d4641569",
+          "ingredientSku": "RM-HRD-SPACERS"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-CT-56X42-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "RM-DKT-GENERIC-SLAB",
+          "role": "DKT",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-COF-TAB-56X56-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "b637214c-0a13-4318-9836-e6c79fcde171",
+          "ingredientSku": "RM-HRD-SPACERS"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-CT-56X56-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "RM-DKT-GENERIC-SLAB",
+          "role": "DKT",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-COF-TAB-72X36-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "4059ad63-d825-4220-a9a9-613665f79356",
+          "ingredientSku": "RM-HRD-SPACERS"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-CT-72X36-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "RM-DKT-GENERIC-SLAB",
+          "role": "DKT",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-COF-TAB-72X56-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "d7b731af-8999-425b-9d64-8563ecd3c600",
+          "ingredientSku": "RM-HRD-SPACERS"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-CT-72X56-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "RM-DKT-GENERIC-SLAB",
+          "role": "DKT",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-DOU-CHS-58X79-BE",
+      "deleteRows": [
+        {
+          "bomRowId": "2b58f0dc-fc40-4dc9-bd2c-1f8c7c3555f1",
+          "ingredientSku": "RM-MET-2X075-TUBING"
+        },
+        {
+          "bomRowId": "7688e11a-676c-4b94-931a-474847a39cb9",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "fc7ec5b7-62a8-4a8a-9f11-057347376070",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-DOU-CHS-58X79-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-DOU-CHS-58X79-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-DOU-CHS-58X79-BO",
+      "deleteRows": [
+        {
+          "bomRowId": "aa43dfaf-8888-4641-bead-765860c01f26",
+          "ingredientSku": "RM-MET-2X075-TUBING"
+        },
+        {
+          "bomRowId": "56b9399a-d0c4-45aa-89ec-2ade3bb241c8",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "387613dd-728a-49d5-9942-146265017ae1",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-DOU-CHS-58X79-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-DOU-CHS-58X79-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-DOU-CHS-58X79-BR",
+      "deleteRows": [
+        {
+          "bomRowId": "b8125235-fa37-44d3-a802-433ecafb8db4",
+          "ingredientSku": "RM-MET-2X075-TUBING"
+        },
+        {
+          "bomRowId": "e784158d-595a-4eda-99e8-46be30dc1969",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "bd35dc88-1dbb-4910-9f0f-dc3695cb49bd",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-DOU-CHS-58X79-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-DOU-CHS-58X79-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-DOU-CHS-58X79-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "4343c608-2338-4d3f-a1fd-cd9f3f0aa2ad",
+          "ingredientSku": "RM-MET-2X075-TUBING"
+        },
+        {
+          "bomRowId": "cabf41e0-d7b5-4d7a-a901-34ba583d7df9",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "a04435bb-945c-4c97-ba23-18a5eb10460b",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-DOU-CHS-58X79-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-DOU-CHS-58X79-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-DOU-CHS-58X79-WH",
+      "deleteRows": [
+        {
+          "bomRowId": "b8b4982b-ee0a-42f2-bd83-9bfa090de5d5",
+          "ingredientSku": "RM-MET-2X075-TUBING"
+        },
+        {
+          "bomRowId": "1726a1fb-1d63-4c88-81c1-0f572c6f0c95",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "663d7127-1def-4cc4-be42-076b1bf14923",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-DOU-CHS-58X79-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-DOU-CHS-58X79-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-LOV-SOF-60X38-BE-N",
+      "deleteRows": [
+        {
+          "bomRowId": "3249eee6-2ac0-465a-89b4-f86a9ee111de",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "2ab34274-61a3-44d0-b88c-423515542023",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-LOV-SOF-60X38-BE-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "1a257daa-dc6d-4a0d-8061-1465e111e2ab",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "1d9c682c-155a-47c6-86e5-084dc7f7104f",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "6d9bfa59-24e4-4736-83f9-e0dcf80ecf97",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-LOV-SOF-60X38-BL-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "d0d5d1b7-363a-4124-9cce-baff4d5d9d27",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "2a58af2e-7033-40d0-a84e-171241c02718",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "f5df6b88-cb1b-45cf-9cf8-57e2cf5ce44a",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-LOV-SOF-60X38-BO-N",
+      "deleteRows": [
+        {
+          "bomRowId": "6ebdc435-a9ef-4dca-94cc-a455590c4548",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "13049457-f492-414d-8f50-a8269a2eaec5",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-LOV-SOF-60X38-BO-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "28bf5d3a-361d-40b9-a1cc-e5db72ade31c",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "4f8ad4ac-e245-4b2a-af34-ea8b73ff95df",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "0ad37a2c-3bc9-49e3-a4c7-a19814f5af6b",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-LOV-SOF-60X38-BR-N",
+      "deleteRows": [
+        {
+          "bomRowId": "9ccc2be6-ae37-45aa-8385-796b79c46e62",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "220ac5fd-30fe-4ed3-b0d7-06352796fe4d",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-LOV-SOF-60X38-BR-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "7ad03846-99ae-45ea-ad33-6f67c9b6df24",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "00786b86-adcb-4776-871e-f24ef4a1b697",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "c416e785-bdc1-4172-9e2c-23bb0a8b0f8b",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-LOV-SOF-60X38-GR-N",
+      "deleteRows": [
+        {
+          "bomRowId": "b34cc81c-770c-46b1-ae29-d8470ee28914",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "f8a17cb2-510a-4d79-ac88-bb974bf293ca",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-LOV-SOF-60X38-GR-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "8e2ac721-e59f-42cb-82e2-ef560ba8811b",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "fc707e2d-b258-40f1-b064-5234ac5d0629",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "ce2f42d8-099e-41a7-a6b2-d8bcbd283cef",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-LOV-SOF-60X38-WH-N",
+      "deleteRows": [
+        {
+          "bomRowId": "f0433e86-0f24-40f4-a976-318bbc0737d0",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "71283a0e-5195-47c7-8910-b5ef4fbc64c9",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-LOV-SOF-60X38-WH-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "e14651a0-da04-426c-883f-fe75f42ec7a2",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "738ef006-ea99-431e-8b69-f60be1f9ba81",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "8a05f32f-8509-4333-a69b-e81436a0edc9",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-LOV-SOF-60X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-30X22-BE",
+      "deleteRows": [
+        {
+          "bomRowId": "6b4b82ac-ca02-4d08-9836-b9ce1d23083f",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "3fd4e756-4130-424b-8e40-b1d90ab9eaf9",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-30X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-30X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-30X22-BO",
+      "deleteRows": [
+        {
+          "bomRowId": "a6dd7c2b-3a8f-4f3b-9289-69f4014936dd",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "e6dfb389-b53a-48c2-8712-c904862b5850",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-30X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-30X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-30X22-BR",
+      "deleteRows": [
+        {
+          "bomRowId": "da5157d4-82f8-4250-9102-2cca448a9e7c",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "dd652384-fcab-4383-9935-8438dddf2773",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-30X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-30X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-30X22-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "e8d8664d-c6e9-4f11-a115-87e2c1895b44",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "037e6480-67cf-48b2-ac42-fbf7064b5786",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-30X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-30X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-30X22-WH",
+      "deleteRows": [
+        {
+          "bomRowId": "a7b58e3a-d52f-4ec3-9c12-ea4fa8875b34",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "98463556-ffcb-4984-b28c-c8f709db05e2",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-30X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-30X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-42X22-BE",
+      "deleteRows": [
+        {
+          "bomRowId": "35aa9982-424e-42de-9b38-1fce03e6294a",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "a3e2300e-cd4b-414b-8749-e2b3cb4b7585",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-42X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-42X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-42X22-BO",
+      "deleteRows": [
+        {
+          "bomRowId": "679190cc-928a-4855-a99e-39549ae299c8",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "749914c8-1453-4432-84bd-3f8562daf4df",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-42X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-42X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-42X22-BR",
+      "deleteRows": [
+        {
+          "bomRowId": "3e796942-2c81-4b45-8642-e0cd72b32c0d",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "1e21ba6a-19ca-4442-b07a-154969c85147",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-42X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-42X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-42X22-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "b0e16539-fbdf-466d-bd67-f504a76f473b",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "9b26dc67-36e9-421e-82c5-b424c4761896",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-42X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-42X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-42X22-WH",
+      "deleteRows": [
+        {
+          "bomRowId": "08461c50-8ec0-4261-a6c3-75ac87e4e6d3",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "d97afff0-ddfe-464c-b2cd-d81f4a907256",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-42X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-42X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-60X22-BE",
+      "deleteRows": [
+        {
+          "bomRowId": "7a3be9ef-6218-42ed-b060-2385cf956474",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "9637b748-610b-436a-ac5d-4cbd1ce44c07",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-60X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-60X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-60X22-BO",
+      "deleteRows": [
+        {
+          "bomRowId": "c0677b48-6ebd-4299-8b65-a68d52db7b9a",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "13598cf3-a559-4c96-9e68-426818b8c52e",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-60X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-60X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-60X22-BR",
+      "deleteRows": [
+        {
+          "bomRowId": "165020dd-c74d-41ba-82a9-6364e0c3a9e4",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "af2b18fc-6fd1-4199-915a-23fcd1069697",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-60X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-60X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-60X22-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "9eff9ec0-b693-4bff-a570-87c1208eec26",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "357ee432-f81c-42f0-a538-8c298185b185",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-60X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-60X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-60X22-WH",
+      "deleteRows": [
+        {
+          "bomRowId": "e7f00ac5-7653-4f78-9287-179d2e3a385b",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "d63799cf-f8de-4d27-8d91-2a12fc7c2c76",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-60X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-60X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-72X22-BE",
+      "deleteRows": [
+        {
+          "bomRowId": "31baf387-d4b4-40a7-aa7a-259dbd3c3c82",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "0beddc65-d982-48d7-ab39-cbc1d6e493e3",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-72X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-72X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-72X22-BO",
+      "deleteRows": [
+        {
+          "bomRowId": "5a712369-4e7a-4182-a4b9-3dca6906eb15",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "6b2202bc-5986-4df2-ad60-67aa3d493605",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-72X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-72X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-72X22-BR",
+      "deleteRows": [
+        {
+          "bomRowId": "f5976101-23be-4243-8fce-81cfb5386021",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "a9f5856f-20ff-424c-b48b-0b931bd671de",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-72X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-72X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-72X22-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "ca89bff9-c489-41e6-a779-43b5de1707d4",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "76d7a072-a54d-45ee-aa56-bbce2a83fda4",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-72X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-72X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-OTT-72X22-WH",
+      "deleteRows": [
+        {
+          "bomRowId": "06d9f10f-24fa-4de4-b34c-cd0a6029096f",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "15ffd063-d19c-46a4-949e-710cd9684b98",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-O-72X22-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-O-72X22-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SGL-CHS-36X79-BE",
+      "deleteRows": [
+        {
+          "bomRowId": "93ba3d34-28c4-4e80-a4c8-d60d9fbec6ad",
+          "ingredientSku": "RM-MET-2X075-TUBING"
+        },
+        {
+          "bomRowId": "fe555e0a-d786-44bf-906f-75ba04d297b5",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "93e3942d-5ce0-46b8-a696-3d1ada62eaff",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-SGL-CHS-36X79-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-SGL-CHS-36X79-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SGL-CHS-36X79-BO",
+      "deleteRows": [
+        {
+          "bomRowId": "30563205-67af-4220-bcc0-d33cdce809c3",
+          "ingredientSku": "RM-MET-2X075-TUBING"
+        },
+        {
+          "bomRowId": "a9e01643-5324-4ae6-b6e3-eea0fad4f30a",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "0bc57407-1405-4062-884d-4b05d0c49b7b",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-SGL-CHS-36X79-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-SGL-CHS-36X79-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SGL-CHS-36X79-BR",
+      "deleteRows": [
+        {
+          "bomRowId": "333b33c9-704f-4ace-a440-b720028e5741",
+          "ingredientSku": "RM-MET-2X075-TUBING"
+        },
+        {
+          "bomRowId": "61560fff-c42f-41ea-9fe4-5823fad68718",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "78ee9229-dc8f-4620-b711-20d25fe1a7df",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-SGL-CHS-36X79-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-SGL-CHS-36X79-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SGL-CHS-36X79-GR",
+      "deleteRows": [
+        {
+          "bomRowId": "c60b9e1e-f5ad-4966-9be1-7311b9e81d37",
+          "ingredientSku": "RM-MET-2X075-TUBING"
+        },
+        {
+          "bomRowId": "88c5d817-13cc-44f4-abb4-4ba0f23d8e6a",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "c43d8456-ef3e-4de1-9588-b6362ef812ec",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-SGL-CHS-36X79-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-SGL-CHS-36X79-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SGL-CHS-36X79-WH",
+      "deleteRows": [
+        {
+          "bomRowId": "ab8c0e5c-9d05-4f44-b9ef-db1b9235fede",
+          "ingredientSku": "RM-MET-2X075-TUBING"
+        },
+        {
+          "bomRowId": "9f43cc0f-6b54-4669-8bca-6f1bb19a6dac",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "23f236b1-457c-474f-b1c3-ec08c1ba3c51",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCN-SGL-CHS-36X79-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCN-SGL-CHS-36X79-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-72X38-BE-N",
+      "deleteRows": [
+        {
+          "bomRowId": "b78d7da8-bc27-4ebe-b093-bd385c3e22e5",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "6917cd6d-72aa-4b0d-b59a-757c57a9fda1",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-72-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-72-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-72X38-BE-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "c0b954f0-d606-4d45-9cef-c8ae0c4e4e6c",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "a18c31f5-5ec8-49ac-8fee-73e01ac5cb4e",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "7fb0f900-1506-463f-b75b-a0c6b47cb744",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-72-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-72-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-72X38-BL-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "073bffcf-11f2-4ea6-aa44-c42960a3068e",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "5a10b59c-2ae3-413b-b058-11247e1a3f26",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "2d4caaed-bf21-4a50-9e7d-273a3d22cdad",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-72-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-72-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-72X38-BO-N",
+      "deleteRows": [
+        {
+          "bomRowId": "f158f8bb-115f-4073-bac6-438a5e89ddc8",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "5f4c2aa8-272c-439e-8546-b9ca18fb5fa0",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-72-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-72-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-72X38-BO-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "1247d598-ed0f-4d00-a930-3700a054a962",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "55ad4173-f814-4a58-94a6-0f5b9b346d67",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "120514e8-33a2-428a-8378-76cd7f554526",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-72-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-72-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-72X38-BR-N",
+      "deleteRows": [
+        {
+          "bomRowId": "94456089-3ed0-41b2-a5cc-286afbcf567b",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "fdcedd7f-4ce2-4937-933e-a1d7bb1323b0",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-72-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-72-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-72X38-BR-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "0fa5f01b-31ae-402a-9b0c-4275dc32b62b",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "76039639-5692-40f5-a59f-d362ef31d751",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "039c7547-6727-44a4-804f-ea410e73b0aa",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-72-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-72-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-72X38-GR-N",
+      "deleteRows": [
+        {
+          "bomRowId": "c14f8f45-e816-4ebd-a0df-d0f84508e1db",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "f6732da2-a7bf-4d00-8acf-8fed77058313",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-72-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-72-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-72X38-GR-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "25e46a9b-b124-42b4-8b69-3a578ef19579",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "a9b83f0e-d111-4f7a-a191-3ed09df75dd0",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "d29b02ad-f13a-4091-8ea6-ae0623a4fcdb",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-72-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-72-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-72X38-WH-N",
+      "deleteRows": [
+        {
+          "bomRowId": "11d7ddf7-a817-48f9-9095-fd2f9c870d6f",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "ac5285f4-9ecd-40d5-93d4-0d4788d8635c",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-72-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-72-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-72X38-WH-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "c1f48bd6-8206-451a-8754-1a6d560ae9d5",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "0e06b1b7-d7e9-44a2-994a-55e41f201da3",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "a1eb0361-a372-404f-a8e1-20cfc4c44e71",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-72-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-72-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-84X38-BE-N",
+      "deleteRows": [
+        {
+          "bomRowId": "ffa0552a-e528-405a-9a11-58f16cba8bbf",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "0ab35295-1d7a-465f-a22f-5295b4f49a17",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-84-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-84-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-84X38-BE-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "6d53e5a5-8519-4048-a3ef-ad5574ee629d",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "9e5b79bc-533b-47a3-982b-1f0d67cee761",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "461cf1df-9454-4006-be32-a2452129c88c",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-84-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-84-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-84X38-BL-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "804f2cef-e389-4660-ab4a-7c2b2cbcbedb",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "6b55ddbf-4275-4a03-bf78-4b5c8ae08d54",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "bca34d7d-1829-4a9c-90d6-99391ac636e7",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-84-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-84-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-84X38-BO-N",
+      "deleteRows": [
+        {
+          "bomRowId": "16e7787c-4392-4688-8b9b-347cabecd707",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "f237a863-49d2-40b8-a73e-e5a268be64eb",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-84-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-84-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-84X38-BO-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "2751e61c-79ff-471c-9ca2-d0107285b61f",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "59a6a7a4-eabe-437e-94d3-a08c13df575d",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "3a8e7356-e800-49c5-bfdd-9d998e54c931",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-84-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-84-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-84X38-BR-N",
+      "deleteRows": [
+        {
+          "bomRowId": "ee9fdc4b-de00-4d80-ae43-80b45e10f0e2",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "439a8c98-397b-4a02-8180-fc56c40c018a",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-84-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-84-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-84X38-BR-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "f9149f30-bb4d-42f7-9f34-81ba5a70f0eb",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "c8bb606d-708a-4f50-82fa-515a2dcee025",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "17cae0de-f2d4-42d8-a404-8fb64699d924",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-84-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-84-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-84X38-GR-N",
+      "deleteRows": [
+        {
+          "bomRowId": "48673418-94e5-424b-a11e-30761ce1c8cc",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "7bf2c867-0e71-4e50-a895-2a1bfef9d9e2",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-84-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-84-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-84X38-GR-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "4c9e973b-21cd-4d07-8672-42ae0d0fea6a",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "cb8725d1-bee0-4b26-afab-a288673b1040",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "2fa600d1-99b2-4cb5-8c5c-09328d127f58",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-84-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-84-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-84X38-WH-N",
+      "deleteRows": [
+        {
+          "bomRowId": "41579b35-0262-4448-89e8-8e475a8b92ea",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "587326dc-ec8c-42e5-a2f4-49ea37f2dc74",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-84-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-84-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-84X38-WH-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "e274f61f-89b6-44f8-a461-a02701b7de05",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "1746f349-9e6c-41e3-a915-c29ff6709be1",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "3c16a924-68ad-416f-8b6b-35738f0f4b78",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-84-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-84-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-96X38-BE-N",
+      "deleteRows": [
+        {
+          "bomRowId": "7b438442-8e62-4023-ad3f-973e1766e985",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "32543400-3dcb-4c72-9b55-527d6def5e8e",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-96-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-96-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-96X38-BE-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "5feefa5e-b2ea-41f0-a27f-5241cbf01ecb",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "57213d04-0245-4a70-83ca-9e4e18b14e88",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "9f7a3208-389d-4e75-949a-835b6c653d62",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-96-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-96-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-96X38-BL-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "a9996e14-7461-4a71-a734-7105d4f8f1e1",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "89679e51-59d4-4ebe-8448-bcb6df7ad47d",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "f025eb25-5281-4c94-bcdf-ee94cd464157",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-96-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-96-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-96X38-BO-N",
+      "deleteRows": [
+        {
+          "bomRowId": "f38e3b07-b99c-4d66-b9f1-058b59b6a4a8",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "0a4e2f93-bd90-4706-9117-96cd7c9e9a74",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-96-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-96-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-96X38-BO-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "2849f7a5-3136-4d24-a682-db4316da6927",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "7e95385d-13b5-4936-9426-3b828177c84d",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "f9297e1e-b36f-4488-b468-ceb8f1262d41",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-96-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-96-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-96X38-BR-N",
+      "deleteRows": [
+        {
+          "bomRowId": "f7e066fa-3980-4958-868b-bef1a05d47ae",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "fc38efed-604b-4250-923e-f2df418bc183",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-96-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-96-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-96X38-BR-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "ad4cd03c-9d52-4a6c-b8d5-332d79be18dd",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "c155a5b1-7870-4c93-80ce-a285228ebc77",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "b8baa884-c932-4fed-8460-0bcc8e388611",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-96-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-96-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-96X38-GR-N",
+      "deleteRows": [
+        {
+          "bomRowId": "de186e08-1cd2-4745-8450-189cb085325b",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "abd07af1-1b70-4644-8ec0-44ea026b5785",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-96-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-96-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-96X38-GR-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "bd69ad2d-a1f4-45cf-a473-88649283021c",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "64bfea67-cb75-4200-b7c5-3a2f6bea3b5b",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "9f82d909-c4c4-420f-86de-53b3e4fc54b1",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-96-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-96-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-96X38-WH-N",
+      "deleteRows": [
+        {
+          "bomRowId": "ce7f411b-250e-4e0a-92e2-b390bdec95fd",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "970119e1-6e62-4b83-a9be-d096d0048f7c",
+          "ingredientSku": "RM-RAW-FOAM"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-96-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-96-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SOF-96X38-WH-Y",
+      "deleteRows": [
+        {
+          "bomRowId": "b6976fc8-1d05-4405-b728-a73813000416",
+          "ingredientSku": "RM-MET-FLATBAR"
+        },
+        {
+          "bomRowId": "34af95d5-0f0e-4d0e-b87d-80b69556bcfc",
+          "ingredientSku": "RM-RAW-FOAM"
+        },
+        {
+          "bomRowId": "493a3480-7ed5-4aee-8e4a-e85bad578a9d",
+          "ingredientSku": "RM-RAW-IRON-WOOD"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "SA-OCE-S-96-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "SA-OCE-S-96-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "parentSku": "FIN-OCN-SWV-CHA",
+      "deleteRows": [
+        {
+          "bomRowId": "388804e4-b4db-43e0-8bc6-f3123dae4b58",
+          "ingredientSku": "ASM-OCN-SWV-CHA-CUSH"
+        },
+        {
+          "bomRowId": "8e672044-59f8-4c04-b6c1-660c2e70e8e5",
+          "ingredientSku": "ASM-OCN-SWV-CHA-FRAME"
+        }
+      ],
+      "replacedBy": [
+        {
+          "ingredientSku": "ASM-OCN-SWV-CHA-34X38-FRAME",
+          "role": "FRAME",
+          "quantity": 1
+        },
+        {
+          "ingredientSku": "ASM-OCN-SWV-CHA-34X38-CUSH",
+          "role": "CUSH",
+          "quantity": 1
+        }
+      ]
+    }
+  ],
+  "allBomRowIds": [
+    "7005f323-6ff0-4e3c-b85a-a7f79cc80413",
+    "f518479f-030e-4938-8edd-4df79e0cab3d",
+    "be612215-8db3-44a6-ae6f-08bea6cb5191",
+    "e3820445-b95a-44b3-87ed-f8a0346e5ce9",
+    "f5e29f06-deff-4073-8095-3483f414ab62",
+    "2c087485-a556-45ca-b28a-e61491b15800",
+    "7f3cda3e-25f5-4cfd-88b2-458af4174315",
+    "b4fdf5ae-4670-4c89-b7b0-45b8a03ea700",
+    "2161c63f-2c58-48c4-8488-baab832529e9",
+    "9e0d6196-aff8-4580-b630-a08e0b41f042",
+    "3cf32a40-a054-4c52-8ac1-5717111dc863",
+    "0c4d0837-644b-43fc-bd66-32afb62862d7",
+    "f0f68ca9-39bc-4470-9b9f-63600116c45c",
+    "9a416c92-e1f2-4909-ac66-b8f484a096ff",
+    "338fbe4a-b5eb-4264-92e7-9b1ef5339918",
+    "92809a95-eeea-4e35-a0c1-ab78ed2b6d09",
+    "92291373-41b0-42db-93d3-bfc04026eea7",
+    "0d67fd62-0984-473f-a167-005b2eb40638",
+    "a0d4755d-ce96-4222-961b-35286b17a109",
+    "2d6534bc-27b0-4d09-97cf-249350a746cd",
+    "ac1124c4-7d83-4a4a-b80e-293a348612b3",
+    "64d5f9a3-760f-4197-b81e-fc25a781ebe5",
+    "d1a6ba9b-4d5b-4759-b41c-b5dbeb5ac497",
+    "a2e4e144-cc3d-4687-8ad4-6a1c2c5bf371",
+    "e24a768a-1804-40b1-bef3-97c487924df0",
+    "b9844fd0-8daa-49db-81e4-d72aa5e5fe43",
+    "4d15f1e9-4071-4a8b-8843-8a149891fe00",
+    "e70a79e4-77cc-43dc-b217-b246c0047b49",
+    "868c1f42-eb8c-4d5d-8532-6ea8a4a30e6e",
+    "84f54f42-dbf7-409f-a72a-974d0a3dbe8f",
+    "db50d0e9-417e-4196-b96d-15b2da5abfaa",
+    "35b122fd-f715-49a4-973a-4f1968384abd",
+    "4b263250-a7de-437e-af20-b20dbfcc7b48",
+    "83461317-dfda-4895-834a-1817e716c9e7",
+    "4168ea3f-0c3b-4d08-91d3-767481fe9c14",
+    "b6cdf7b0-86f8-48f4-99fd-4319d4641569",
+    "b637214c-0a13-4318-9836-e6c79fcde171",
+    "4059ad63-d825-4220-a9a9-613665f79356",
+    "d7b731af-8999-425b-9d64-8563ecd3c600",
+    "2b58f0dc-fc40-4dc9-bd2c-1f8c7c3555f1",
+    "7688e11a-676c-4b94-931a-474847a39cb9",
+    "fc7ec5b7-62a8-4a8a-9f11-057347376070",
+    "aa43dfaf-8888-4641-bead-765860c01f26",
+    "56b9399a-d0c4-45aa-89ec-2ade3bb241c8",
+    "387613dd-728a-49d5-9942-146265017ae1",
+    "b8125235-fa37-44d3-a802-433ecafb8db4",
+    "e784158d-595a-4eda-99e8-46be30dc1969",
+    "bd35dc88-1dbb-4910-9f0f-dc3695cb49bd",
+    "4343c608-2338-4d3f-a1fd-cd9f3f0aa2ad",
+    "cabf41e0-d7b5-4d7a-a901-34ba583d7df9",
+    "a04435bb-945c-4c97-ba23-18a5eb10460b",
+    "b8b4982b-ee0a-42f2-bd83-9bfa090de5d5",
+    "1726a1fb-1d63-4c88-81c1-0f572c6f0c95",
+    "663d7127-1def-4cc4-be42-076b1bf14923",
+    "3249eee6-2ac0-465a-89b4-f86a9ee111de",
+    "2ab34274-61a3-44d0-b88c-423515542023",
+    "1a257daa-dc6d-4a0d-8061-1465e111e2ab",
+    "1d9c682c-155a-47c6-86e5-084dc7f7104f",
+    "6d9bfa59-24e4-4736-83f9-e0dcf80ecf97",
+    "d0d5d1b7-363a-4124-9cce-baff4d5d9d27",
+    "2a58af2e-7033-40d0-a84e-171241c02718",
+    "f5df6b88-cb1b-45cf-9cf8-57e2cf5ce44a",
+    "6ebdc435-a9ef-4dca-94cc-a455590c4548",
+    "13049457-f492-414d-8f50-a8269a2eaec5",
+    "28bf5d3a-361d-40b9-a1cc-e5db72ade31c",
+    "4f8ad4ac-e245-4b2a-af34-ea8b73ff95df",
+    "0ad37a2c-3bc9-49e3-a4c7-a19814f5af6b",
+    "9ccc2be6-ae37-45aa-8385-796b79c46e62",
+    "220ac5fd-30fe-4ed3-b0d7-06352796fe4d",
+    "7ad03846-99ae-45ea-ad33-6f67c9b6df24",
+    "00786b86-adcb-4776-871e-f24ef4a1b697",
+    "c416e785-bdc1-4172-9e2c-23bb0a8b0f8b",
+    "b34cc81c-770c-46b1-ae29-d8470ee28914",
+    "f8a17cb2-510a-4d79-ac88-bb974bf293ca",
+    "8e2ac721-e59f-42cb-82e2-ef560ba8811b",
+    "fc707e2d-b258-40f1-b064-5234ac5d0629",
+    "ce2f42d8-099e-41a7-a6b2-d8bcbd283cef",
+    "f0433e86-0f24-40f4-a976-318bbc0737d0",
+    "71283a0e-5195-47c7-8910-b5ef4fbc64c9",
+    "e14651a0-da04-426c-883f-fe75f42ec7a2",
+    "738ef006-ea99-431e-8b69-f60be1f9ba81",
+    "8a05f32f-8509-4333-a69b-e81436a0edc9",
+    "6b4b82ac-ca02-4d08-9836-b9ce1d23083f",
+    "3fd4e756-4130-424b-8e40-b1d90ab9eaf9",
+    "a6dd7c2b-3a8f-4f3b-9289-69f4014936dd",
+    "e6dfb389-b53a-48c2-8712-c904862b5850",
+    "da5157d4-82f8-4250-9102-2cca448a9e7c",
+    "dd652384-fcab-4383-9935-8438dddf2773",
+    "e8d8664d-c6e9-4f11-a115-87e2c1895b44",
+    "037e6480-67cf-48b2-ac42-fbf7064b5786",
+    "a7b58e3a-d52f-4ec3-9c12-ea4fa8875b34",
+    "98463556-ffcb-4984-b28c-c8f709db05e2",
+    "35aa9982-424e-42de-9b38-1fce03e6294a",
+    "a3e2300e-cd4b-414b-8749-e2b3cb4b7585",
+    "679190cc-928a-4855-a99e-39549ae299c8",
+    "749914c8-1453-4432-84bd-3f8562daf4df",
+    "3e796942-2c81-4b45-8642-e0cd72b32c0d",
+    "1e21ba6a-19ca-4442-b07a-154969c85147",
+    "b0e16539-fbdf-466d-bd67-f504a76f473b",
+    "9b26dc67-36e9-421e-82c5-b424c4761896",
+    "08461c50-8ec0-4261-a6c3-75ac87e4e6d3",
+    "d97afff0-ddfe-464c-b2cd-d81f4a907256",
+    "7a3be9ef-6218-42ed-b060-2385cf956474",
+    "9637b748-610b-436a-ac5d-4cbd1ce44c07",
+    "c0677b48-6ebd-4299-8b65-a68d52db7b9a",
+    "13598cf3-a559-4c96-9e68-426818b8c52e",
+    "165020dd-c74d-41ba-82a9-6364e0c3a9e4",
+    "af2b18fc-6fd1-4199-915a-23fcd1069697",
+    "9eff9ec0-b693-4bff-a570-87c1208eec26",
+    "357ee432-f81c-42f0-a538-8c298185b185",
+    "e7f00ac5-7653-4f78-9287-179d2e3a385b",
+    "d63799cf-f8de-4d27-8d91-2a12fc7c2c76",
+    "31baf387-d4b4-40a7-aa7a-259dbd3c3c82",
+    "0beddc65-d982-48d7-ab39-cbc1d6e493e3",
+    "5a712369-4e7a-4182-a4b9-3dca6906eb15",
+    "6b2202bc-5986-4df2-ad60-67aa3d493605",
+    "f5976101-23be-4243-8fce-81cfb5386021",
+    "a9f5856f-20ff-424c-b48b-0b931bd671de",
+    "ca89bff9-c489-41e6-a779-43b5de1707d4",
+    "76d7a072-a54d-45ee-aa56-bbce2a83fda4",
+    "06d9f10f-24fa-4de4-b34c-cd0a6029096f",
+    "15ffd063-d19c-46a4-949e-710cd9684b98",
+    "93ba3d34-28c4-4e80-a4c8-d60d9fbec6ad",
+    "fe555e0a-d786-44bf-906f-75ba04d297b5",
+    "93e3942d-5ce0-46b8-a696-3d1ada62eaff",
+    "30563205-67af-4220-bcc0-d33cdce809c3",
+    "a9e01643-5324-4ae6-b6e3-eea0fad4f30a",
+    "0bc57407-1405-4062-884d-4b05d0c49b7b",
+    "333b33c9-704f-4ace-a440-b720028e5741",
+    "61560fff-c42f-41ea-9fe4-5823fad68718",
+    "78ee9229-dc8f-4620-b711-20d25fe1a7df",
+    "c60b9e1e-f5ad-4966-9be1-7311b9e81d37",
+    "88c5d817-13cc-44f4-abb4-4ba0f23d8e6a",
+    "c43d8456-ef3e-4de1-9588-b6362ef812ec",
+    "ab8c0e5c-9d05-4f44-b9ef-db1b9235fede",
+    "9f43cc0f-6b54-4669-8bca-6f1bb19a6dac",
+    "23f236b1-457c-474f-b1c3-ec08c1ba3c51",
+    "b78d7da8-bc27-4ebe-b093-bd385c3e22e5",
+    "6917cd6d-72aa-4b0d-b59a-757c57a9fda1",
+    "c0b954f0-d606-4d45-9cef-c8ae0c4e4e6c",
+    "a18c31f5-5ec8-49ac-8fee-73e01ac5cb4e",
+    "7fb0f900-1506-463f-b75b-a0c6b47cb744",
+    "073bffcf-11f2-4ea6-aa44-c42960a3068e",
+    "5a10b59c-2ae3-413b-b058-11247e1a3f26",
+    "2d4caaed-bf21-4a50-9e7d-273a3d22cdad",
+    "f158f8bb-115f-4073-bac6-438a5e89ddc8",
+    "5f4c2aa8-272c-439e-8546-b9ca18fb5fa0",
+    "1247d598-ed0f-4d00-a930-3700a054a962",
+    "55ad4173-f814-4a58-94a6-0f5b9b346d67",
+    "120514e8-33a2-428a-8378-76cd7f554526",
+    "94456089-3ed0-41b2-a5cc-286afbcf567b",
+    "fdcedd7f-4ce2-4937-933e-a1d7bb1323b0",
+    "0fa5f01b-31ae-402a-9b0c-4275dc32b62b",
+    "76039639-5692-40f5-a59f-d362ef31d751",
+    "039c7547-6727-44a4-804f-ea410e73b0aa",
+    "c14f8f45-e816-4ebd-a0df-d0f84508e1db",
+    "f6732da2-a7bf-4d00-8acf-8fed77058313",
+    "25e46a9b-b124-42b4-8b69-3a578ef19579",
+    "a9b83f0e-d111-4f7a-a191-3ed09df75dd0",
+    "d29b02ad-f13a-4091-8ea6-ae0623a4fcdb",
+    "11d7ddf7-a817-48f9-9095-fd2f9c870d6f",
+    "ac5285f4-9ecd-40d5-93d4-0d4788d8635c",
+    "c1f48bd6-8206-451a-8754-1a6d560ae9d5",
+    "0e06b1b7-d7e9-44a2-994a-55e41f201da3",
+    "a1eb0361-a372-404f-a8e1-20cfc4c44e71",
+    "ffa0552a-e528-405a-9a11-58f16cba8bbf",
+    "0ab35295-1d7a-465f-a22f-5295b4f49a17",
+    "6d53e5a5-8519-4048-a3ef-ad5574ee629d",
+    "9e5b79bc-533b-47a3-982b-1f0d67cee761",
+    "461cf1df-9454-4006-be32-a2452129c88c",
+    "804f2cef-e389-4660-ab4a-7c2b2cbcbedb",
+    "6b55ddbf-4275-4a03-bf78-4b5c8ae08d54",
+    "bca34d7d-1829-4a9c-90d6-99391ac636e7",
+    "16e7787c-4392-4688-8b9b-347cabecd707",
+    "f237a863-49d2-40b8-a73e-e5a268be64eb",
+    "2751e61c-79ff-471c-9ca2-d0107285b61f",
+    "59a6a7a4-eabe-437e-94d3-a08c13df575d",
+    "3a8e7356-e800-49c5-bfdd-9d998e54c931",
+    "ee9fdc4b-de00-4d80-ae43-80b45e10f0e2",
+    "439a8c98-397b-4a02-8180-fc56c40c018a",
+    "f9149f30-bb4d-42f7-9f34-81ba5a70f0eb",
+    "c8bb606d-708a-4f50-82fa-515a2dcee025",
+    "17cae0de-f2d4-42d8-a404-8fb64699d924",
+    "48673418-94e5-424b-a11e-30761ce1c8cc",
+    "7bf2c867-0e71-4e50-a895-2a1bfef9d9e2",
+    "4c9e973b-21cd-4d07-8672-42ae0d0fea6a",
+    "cb8725d1-bee0-4b26-afab-a288673b1040",
+    "2fa600d1-99b2-4cb5-8c5c-09328d127f58",
+    "41579b35-0262-4448-89e8-8e475a8b92ea",
+    "587326dc-ec8c-42e5-a2f4-49ea37f2dc74",
+    "e274f61f-89b6-44f8-a461-a02701b7de05",
+    "1746f349-9e6c-41e3-a915-c29ff6709be1",
+    "3c16a924-68ad-416f-8b6b-35738f0f4b78",
+    "7b438442-8e62-4023-ad3f-973e1766e985",
+    "32543400-3dcb-4c72-9b55-527d6def5e8e",
+    "5feefa5e-b2ea-41f0-a27f-5241cbf01ecb",
+    "57213d04-0245-4a70-83ca-9e4e18b14e88",
+    "9f7a3208-389d-4e75-949a-835b6c653d62",
+    "a9996e14-7461-4a71-a734-7105d4f8f1e1",
+    "89679e51-59d4-4ebe-8448-bcb6df7ad47d",
+    "f025eb25-5281-4c94-bcdf-ee94cd464157",
+    "f38e3b07-b99c-4d66-b9f1-058b59b6a4a8",
+    "0a4e2f93-bd90-4706-9117-96cd7c9e9a74",
+    "2849f7a5-3136-4d24-a682-db4316da6927",
+    "7e95385d-13b5-4936-9426-3b828177c84d",
+    "f9297e1e-b36f-4488-b468-ceb8f1262d41",
+    "f7e066fa-3980-4958-868b-bef1a05d47ae",
+    "fc38efed-604b-4250-923e-f2df418bc183",
+    "ad4cd03c-9d52-4a6c-b8d5-332d79be18dd",
+    "c155a5b1-7870-4c93-80ce-a285228ebc77",
+    "b8baa884-c932-4fed-8460-0bcc8e388611",
+    "de186e08-1cd2-4745-8450-189cb085325b",
+    "abd07af1-1b70-4644-8ec0-44ea026b5785",
+    "bd69ad2d-a1f4-45cf-a473-88649283021c",
+    "64bfea67-cb75-4200-b7c5-3a2f6bea3b5b",
+    "9f82d909-c4c4-420f-86de-53b3e4fc54b1",
+    "ce7f411b-250e-4e0a-92e2-b390bdec95fd",
+    "970119e1-6e62-4b83-a9be-d096d0048f7c",
+    "b6976fc8-1d05-4405-b728-a73813000416",
+    "34af95d5-0f0e-4d0e-b87d-80b69556bcfc",
+    "493a3480-7ed5-4aee-8e4a-e85bad578a9d",
+    "388804e4-b4db-43e0-8bc6-f3123dae4b58",
+    "8e672044-59f8-4c04-b6c1-660c2e70e8e5"
+  ]
+}

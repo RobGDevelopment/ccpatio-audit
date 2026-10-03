@@ -1,0 +1,30 @@
+# BRAVADA COFFEE TABLE 42 x 42 - BOM
+# EXTRACTED FROM THE MODEL 2026-09-10 by ccp_extract.rb v2, from UNNAMED components.
+# Model: BRAVADA COFFEE TABLE.skp (rebuilt clean 2026-09-10)
+# Numbering: PART_NUMBERING.md v2 (PROPOSED). Gauge 16 RULED 2026-09-10.
+#
+# Nothing in the model said what product this is. These three dimensions were derived from
+# measured parts and land on PRODUCT_CATALOG.csv exactly:
+#     end frame outside            42.00      catalogue L  42
+#     rails + 2 frames  38+2+2  =  42.00      catalogue D  42
+#     frame 15.00 + top            = 16.00    catalogue H  16
+#
+# (!) STRETCHER QTY IS 4, RULED 2026-09-10 BY THE FACTORY MANAGER. THE MODEL HAS ONLY 3 PLACED.
+#     The BOM below carries the RULING. The model must have the fourth stretcher added, or every
+#     re-run will emit 3 again and this file will keep disagreeing with the model it came from.
+#     Difference: 3.17 ft of SQ2x16 per table.
+#     Top panel is 1. An earlier model carried 2; that was a duplicate.
+#
+# DEKTON TOP - RULED 2026-09-10, Factory Manager: 42x42, straight cut, polished edge.
+#   COLOUR AND THICKNESS ARE DELIBERATELY NOT IN THE PART NUMBER. DEKTON.md, THICKNESS RESOLVED
+#   2026-09-05: "thickness is not required on the Factory Order. It is required to buy a slab."
+#   Both resolve at slab planning, per order, from inventory - so they are order variants, not
+#   base-product identity. The model draws the top 1" thick; real slabs are 1.2 or 2.0 cm.
+#   THAT GEOMETRY IS NOMINAL AND IS THE ONE PART IN THE FILE THAT IS NOT MEASURED TRUTH.
+LEVEL,PARENT,PART_NUMBER,ROLE_ON_THIS_LINE,QTY_PER_PARENT,UOM,PROFILE,LENGTH_IN,END_A,END_B,REL,STOCK_EACH,SOURCE_NAME_IN_MODEL,EVIDENCE
+L3,,BRV-CFT-042042,BRAVADA COFFEE TABLE 42x42 - BASE PRODUCT,1,EA,,,,,,,,ASSERTED - no product component in the model
+L2,BRV-CFT-042042,ASM-BRV-TBLEND-042x015,TABLE END FRAME 42 x 15,2,EA,,,,,,,Component#6,MEASURED
+L1,BRV-CFT-042042,CUT-SQ2x16-038.0-9090,STRETCHER RAIL,4,EA,SQ2x16,38.0,90,90,,3.17 ft,Component#3,RULED 2026-09-10 - model has 3, must be corrected
+L1,BRV-CFT-042042,DKT-042x042-STR-POL,DEKTON TOP - straight cut, polished edge,1,EA,,,,,,12.25 sqft,Component#4,RULED 2026-09-10 - colour + thickness per order
+L1,ASM-BRV-TBLEND-042x015,CUT-SQ2x16-042.0-4545C,END FRAME LONG RAIL,2,EA,SQ2x16,42.0,45,45,C,3.50 ft,Component#2,MEASURED
+L1,ASM-BRV-TBLEND-042x015,CUT-SQ2x16-015.0-4545C,END FRAME LEG,2,EA,SQ2x16,15.0,45,45,C,1.25 ft,Component#1,MEASURED

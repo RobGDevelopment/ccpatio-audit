@@ -1,0 +1,22 @@
+CC Patio production — WordPress Site Health → Info
+Copied from WP Admin → Tools → Site Health → Info
+Timestamp in dump (wp-server current): 2026-09-19T02:22:47+00:00
+Account path: /home/ccpatpvlive/public_html
+
+[Full paste archived as provided by reviewing team, 18 Sep 2026 evening Pacific.]
+
+php_version: 8.3.33 64bit
+opcode_cache: true
+opcode_cache_memory_usage: 245346400 of 536870912
+opcode_cache_interned_strings_usage: 100% of 16777216 (0 free)
+opcode_cache_hit_rate: 99.92
+opcode_cache_full: false
+
+wp-dropins: advanced-cache.php true; object-cache.php true
+wp-plugins-active: 39 (includes Redis Object Cache 3.0.0)
+WooCommerce: 11.1.1
+uploads_size: 3.69 GB
+total_size: 6.88 GB
+WP_DEBUG: true
+WP_MEMORY_LIMIT: 512M
+WP_HOME / WP_SITEURL / WP_ENVIRONMENT_TYPE: undefined

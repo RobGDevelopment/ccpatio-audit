@@ -64,7 +64,7 @@ export function InventoryCard({
   const [uploadOpen, setUploadOpen] = useState(false);
   const [holdOpen, setHoldOpen] = useState(false);
   const [releaseOpen, setReleaseOpen] = useState(false);
-  const holdDisabled = row.available <= 0 || !canHold || !salesperson;
+  const holdDisabled = !canHold || !salesperson;
   const imageUrl = variantImagePublicUrl(row.sku);
   const src = imageUrl && version > 0 ? `${imageUrl}?v=${version}` : imageUrl;
 
@@ -153,8 +153,7 @@ export function InventoryCard({
           disabled={holdDisabled}
           title={
             holdDisabledReason ??
-            (!salesperson ? "Confirming salesperson…" : undefined) ??
-            (row.available <= 0 ? "Nothing available to hold." : undefined)
+            (!salesperson ? "Confirming salesperson…" : undefined)
           }
           onClick={() => setHoldOpen(true)}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"

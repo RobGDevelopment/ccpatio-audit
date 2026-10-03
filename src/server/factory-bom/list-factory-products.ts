@@ -1,4 +1,5 @@
 import { and, asc, eq, like } from "drizzle-orm";
+import { rollupReviewStatus } from "@/app/admin/factory-bom/factory-bom-ui";
 import { subAssemblySku } from "@/lib/heuristic-bom";
 import { getDb } from "@/server/db/client";
 import {
@@ -24,13 +25,7 @@ export type FactoryProductRow = {
 };
 
 function rollupStatus(statuses: RecipeReviewStatus[]): RecipeReviewStatus | "none" {
-  if (statuses.length === 0) return "none";
-  if (statuses.some((status) => status === "edited")) return "edited";
-  if (statuses.every((status) => status === "factory_approved")) return "factory_approved";
-  if (statuses.some((status) => status === "draft_pending_review")) {
-    return "draft_pending_review";
-  }
-  return statuses[0] ?? "none";
+  return rollupReviewStatus(statuses);
 }
 
 function subAsm(finSku: string, role: "FRAME" | "CUSH"): string {

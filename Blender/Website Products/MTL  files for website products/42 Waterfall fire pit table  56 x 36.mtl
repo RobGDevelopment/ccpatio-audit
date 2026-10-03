@@ -1,0 +1,25 @@
+#
+## Alias OBJ Material File
+# Exported from SketchUp, (c) 2000-2012 Trimble Navigation Limited
+
+newmtl _Carrera_Marble_13
+Ka 0.000000 0.000000 0.000000
+Kd 0.937255 0.937255 0.937255
+Ks 0.330000 0.330000 0.330000
+
+newmtl _Color_M06_4
+Ka 0.000000 0.000000 0.000000
+Kd 0.337255 0.337255 0.337255
+Ks 0.330000 0.330000 0.330000
+
+newmtl FrontColor
+Ka 0.000000 0.000000 0.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.330000 0.330000 0.330000
+
+newmtl _Metal_Corrugated_Shiny_1
+Ka 0.000000 0.000000 0.000000
+Kd 0.756863 0.756863 0.756863
+Ks 0.330000 0.330000 0.330000
+map_Kd 42 Waterfall fire pit table  56 x 36/_Metal_Corrugated_Shiny_1.jpg
+

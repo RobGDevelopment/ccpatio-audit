@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CC Patio — External Origin Stability &amp; Caching Telemetry Report</title>
+  <meta name="author" content="Robert J Gutierrez" />
+  <style>
+    :root {
+      --ink: #1a1f26;
+      --muted: #5c6570;
+      --line: #d8dde3;
+      --paper: #ffffff;
+      --wash: #f4f6f8;
+      --accent: #1e3a5f;
+      --critical: #8b1e1e;
+      --high: #8a5a00;
+      --medium: #1e4d7b;
+      --low: #4a5560;
+      --ok: #1f5c3a;
+    }
+
+    * { box-sizing: border-box; }
+    html { font-size: 11pt; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #e8ebef;
+      font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      line-height: 1.45;
+    }
+
+    .page {
+      max-width: 8.5in;
+      margin: 24px auto;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      padding: 0.75in 0.85in 0.9in;
+    }
+
+    @media print {
+      body { background: white; }
+      .page {
+        margin: 0;
+        border: none;
+        max-width: none;
+        padding: 0.55in 0.65in;
+      }
+      .no-print { display: none !important; }
+      a { color: inherit; text-decoration: none; }
+      h2, h3, .card, table, .verdict, .note { break-inside: avoid; }
+      .cover { break-after: page; }
+      thead { display: table-header-group; }
+    }
+
+    .toolbar {
+      max-width: 8.5in;
+      margin: 16px auto 0;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding: 0 4px;
+    }
+
+    .toolbar button {
+      appearance: none;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: white;
+      font: inherit;
+      font-size: 0.9rem;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+
+    .toolbar button.secondary {
+      background: white;
+      color: var(--accent);
+    }
+
+    .cover-rule {
+      height: 4px;
+      background: var(--accent);
+      margin: 0 0 28px;
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-weight: 600;
+      margin: 0 0 10px;
+    }
+
+    h1 {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      font-size: 1.85rem;
+      font-weight: 600;
+      line-height: 1.2;
+      color: var(--accent);
+      margin: 0 0 12px;
+    }
+
+    .subtitle {
+      font-size: 1.05rem;
+      color: var(--muted);
+      margin: 0 0 28px;
+      max-width: 38em;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      margin: 0 0 28px;
+    }
+
+    .meta-grid dt,
+    .meta-grid dd {
+      margin: 0;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.9rem;
+    }
+
+    .meta-grid dt {
+      background: var(--wash);
+      color: var(--muted);
+      font-weight: 600;
+      border-right: 1px solid var(--line);
+    }
+
+    .meta-grid dd { font-weight: 500; }
+
+    .meta-grid dt:nth-last-child(2),
+    .meta-grid dd:last-child { border-bottom: none; }
+
+    .verdict {
+      border-left: 4px solid var(--critical);
+      background: #faf5f5;
+      padding: 14px 16px;
+      margin: 0 0 16px;
+    }
+
+    .verdict strong {
+      display: block;
+      color: var(--critical);
+      margin-bottom: 6px;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .verdict p { margin: 0; }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 16px 0 8px;
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      padding: 12px 10px;
+      text-align: center;
+    }
+
+    .kpi .v {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--accent);
+      display: block;
+    }
+
+    .kpi .v.danger { color: var(--critical); }
+    .kpi .v.warn { color: var(--high); }
+    .kpi .v.ok { color: var(--ok); }
+
+    .kpi .l {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    h2 {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      font-size: 1.25rem;
+      color: var(--accent);
+      margin: 32px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin: 20px 0 8px;
+      color: var(--ink);
+    }
+
+    p { margin: 0 0 10px; }
+    .lede { color: var(--muted); margin-bottom: 14px; }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border: 1px solid currentColor;
+      white-space: nowrap;
+    }
+
+    .badge.critical { color: var(--critical); background: #faf0f0; }
+    .badge.high { color: var(--high); background: #fff8eb; }
+    .badge.ok { color: var(--ok); background: #eef6f1; }
+    .badge.p0 { color: var(--critical); background: #faf0f0; }
+    .badge.p1 { color: var(--high); background: #fff8eb; }
+    .badge.p2 { color: var(--medium); background: #eef5fb; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      margin: 0 0 14px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 7px 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    tbody tr:nth-child(even) td { background: #fafbfc; }
+    td.num { text-align: right; white-space: nowrap; }
+    tr.spike td { background: #faf0f0 !important; font-weight: 600; }
+
+    .note {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      padding: 12px 14px;
+      font-size: 0.9rem;
+      margin: 0 0 14px;
+    }
+
+    .note strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 0 0 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+    }
+
+    .card h4 {
+      margin: 0 0 8px;
+      font-size: 0.9rem;
+      color: var(--accent);
+    }
+
+    .card ul {
+      margin: 0;
+      padding-left: 1.1em;
+      font-size: 0.88rem;
+    }
+
+    .card li { margin-bottom: 4px; }
+
+    ol.toc {
+      margin: 0 0 8px;
+      padding-left: 1.25em;
+      columns: 2;
+      column-gap: 28px;
+      font-size: 0.9rem;
+    }
+
+    ol.toc li { margin-bottom: 4px; break-inside: avoid; }
+
+    .timeline {
+      border: 1px solid var(--line);
+      margin: 0 0 14px;
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .timeline-row:last-child { border-bottom: none; }
+
+    .timeline-when {
+      background: var(--wash);
+      padding: 10px 12px;
+      font-weight: 700;
+      font-size: 0.78rem;
+      border-right: 1px solid var(--line);
+      color: var(--accent);
+    }
+
+    .timeline-what {
+      padding: 10px 12px;
+      font-size: 0.88rem;
+    }
+
+    .sig {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .sig .line {
+      border-top: 1px solid var(--ink);
+      margin-top: 40px;
+      padding-top: 6px;
+      font-size: 0.85rem;
+    }
+
+    footer.doc-foot {
+      margin-top: 36px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.86em;
+    }
+
+    @media (max-width: 720px) {
+      .page { margin: 0; border: none; padding: 24px 18px; }
+      .kpis, .meta-grid, .two-col, .sig, ol.toc, .timeline-row {
+        grid-template-columns: 1fr;
+        columns: 1;
+        display: block;
+      }
+      .timeline-when { border-right: none; border-bottom: 1px solid var(--line); }
+      .meta-grid dt { border-right: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <button type="button" class="secondary" onclick="window.location.reload()">Refresh</button>
+    <button type="button" onclick="window.print()">Print / Save as PDF</button>
+  </div>
+
+  <article class="page">
+    <section class="cover">
+      <div class="cover-rule"></div>
+      <p class="eyebrow">CC Patio Furniture · Origin Stability Telemetry · Confidential</p>
+      <h1>External Origin Stability &amp; Caching Telemetry Report</h1>
+      <p class="subtitle">
+        Formal diagnostic report of sequential black-box probes against
+        <strong>www.ccpatio.com</strong>, documenting NitroPack edge masking,
+        Cloudflare proxy behavior, and a measured 20.5-second origin stall on a
+        heavy Product Detail Page under forced cache MISS conditions.
+      </p>
+
+      <dl class="meta-grid">
+        <dt>Prepared by</dt>
+        <dd>Robert J Gutierrez</dd>
+        <dt>Prepared for</dt>
+        <dd>PrimeView · CC Patio stakeholders</dd>
+        <dt>Subject site</dt>
+        <dd>https://www.ccpatio.com · Production WordPress / WooCommerce</dd>
+        <dt>Report date</dt>
+        <dd>18 September 2026</dd>
+        <dt>Test window (UTC)</dt>
+        <dd>18:45:33Z – 20:02:29Z (18 Sep 2026)</dd>
+        <dt>Test posture</dt>
+        <dd>External / black-box · Sequential only · Min. 4s sleep on endurance</dd>
+        <dt>Companion audit</dt>
+        <dd>WordPress Architectural &amp; System Stability Audit (Site Health baseline)</dd>
+        <dt>Working archive</dt>
+        <dd><code>research/telemetry_archive_20260918/</code></dd>
+      </dl>
+
+      <div class="verdict">
+        <strong>Executive verdict</strong>
+        <p>
+          The origin architecture is <strong>critically unstable</strong>. NitroPack
+          cache HITs (~107–145&nbsp;ms) mask baseline browse performance while Cloudflare
+          remains <code>cf-cache-status: DYNAMIC</code> (proxy, not HTML cache). Under
+          forced MISS conditions—even with a four-second pause between single
+          requests—the Brooklyn Corner Sofa PDP recorded a <strong>20,451.7&nbsp;ms
+          (20.5&nbsp;second)</strong> Time to First Byte stall. That latency class is
+          what produces intermittent Cloudflare HTTP 522 timeouts when the edge stops
+          waiting. Feature freeze and OPcache expansion are mandatory before enabling
+          live WooCommerce sessions or checkout.
+        </p>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><span class="v ok">~107–145ms</span><span class="l">Nitro HIT TTFB</span></div>
+        <div class="kpi"><span class="v">DYNAMIC</span><span class="l">CF cache status</span></div>
+        <div class="kpi"><span class="v danger">20.5s</span><span class="l">MISS stall (Att. 3)</span></div>
+        <div class="kpi"><span class="v warn">~3.3 MB</span><span class="l">PDP HTML size</span></div>
+      </div>
+    </section>
+
+    <h2>1. Table of contents</h2>
+    <ol class="toc">
+      <li>Scope &amp; objectives</li>
+      <li>Execution timeline &amp; safety controls</li>
+      <li>Method &amp; tooling</li>
+      <li>Finding — edge masking (NitroPack HIT)</li>
+      <li>Finding — Cloudflare DYNAMIC reality</li>
+      <li>Finding — 20.5-second origin stall</li>
+      <li>Finding — DOM / payload bloat</li>
+      <li>Finding — soft-404 commerce tax</li>
+      <li>Agency claim assessment</li>
+      <li>Limits of this study</li>
+      <li>Mandatory gates &amp; remediation</li>
+      <li>Supporting materials &amp; signatures</li>
+    </ol>
+
+    <h2>2. Scope &amp; objectives</h2>
+    <p>
+      This report documents externally observed behavior of the live production
+      origin serving <strong>www.ccpatio.com</strong>. The program goal was to
+      determine whether apparent storefront speed is produced by healthy origin
+      compute or by optimizer cache hits—and whether the origin can sustain
+      uncacheable traffic without stalling.
+    </p>
+    <p class="lede">
+      Prior Site Health diagnostics (captured 2026-09-18T12:45:48Z) established that
+      PHP OPcache was 100% full with the interned-strings buffer exhausted
+      (~24 bytes free) on LiteSpeed / PHP 8.2.33 LSAPI. This telemetry campaign
+      tests that diagnosis from outside the firewall, without SSH, LiteSpeed
+      panel, or Cloudflare dashboard access.
+    </p>
+    <div class="two-col">
+      <div class="card">
+        <h4>In scope</h4>
+        <ul>
+          <li>HTTP header routing (Cloudflare / NitroPack)</li>
+          <li>TTFB on HIT vs forced MISS paths</li>
+          <li>Heavy PDP / collection page behavior</li>
+          <li>Disabled commerce route cost (cart / checkout / account)</li>
+          <li>Sequential endurance drift on one PDP</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Out of scope</h4>
+        <ul>
+          <li>Concurrent / multi-threaded load testing</li>
+          <li>Payment gateway or checkout conversion UX</li>
+          <li>Visual redesign or merchandising changes</li>
+          <li>Direct OPcache ini edits (requires host access)</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>3. Execution timeline &amp; safety controls</h2>
+    <p class="lede">
+      All probes were strictly single-threaded. Endurance tests enforced a minimum
+      four-second sleep after every request to avoid stressing an OPcache-saturated
+      origin.
+    </p>
+
+    <div class="timeline">
+      <div class="timeline-row">
+        <div class="timeline-when">18 Sep 2026<br />18:45:33 UTC</div>
+        <div class="timeline-what">
+          <strong>Baseline multi-URL probe</strong> — 14 sequential URLs;
+          <code>--sleep 3</code>; <code>--timeout 90</code>.
+          Output: <code>probe-results.json</code>.
+          Summary: TTFB min 118.7&nbsp;ms / max 522.6&nbsp;ms / avg 395.5&nbsp;ms;
+          <code>cf-cache-status</code> always DYNAMIC; Nitro HIT on homepage.
+        </div>
+      </div>
+      <div class="timeline-row">
+        <div class="timeline-when">18 Sep 2026<br />19:09:03 UTC</div>
+        <div class="timeline-what">
+          <strong>PDP / collection probe</strong> — 17 sequential URLs including
+          Brooklyn Corner Sofa and Bravada collection;
+          <code>--sleep 4</code>.
+          Output: <code>probe-pdp.json</code>.
+          Nitro <strong>HIT</strong> on PDP (~145&nbsp;ms) and collection (~107&nbsp;ms);
+          MISS paths ~480–930&nbsp;ms; no HTTP 522 in window.
+        </div>
+      </div>
+      <div class="timeline-row">
+        <div class="timeline-when">18 Sep 2026<br />20:02:29 UTC</div>
+        <div class="timeline-what">
+          <strong>Repeat-MISS endurance</strong> — 15 attempts against
+          <code>/product/brooklyn-corner-sofa/</code> with unique query strings;
+          <code>--sleep 4</code>; <code>--timeout 90</code>.
+          Output: <code>endurance.json</code>.
+          Attempt 3 TTFB <strong>20,451.7&nbsp;ms</strong>; all attempts Nitro MISS /
+          CF DYNAMIC / HTTP 200.
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Safety rationale</strong>
+      Because Site Health already showed OPcache full, this program deliberately
+      refused parallel clients (JMeter, Artillery, multi-worker curl). A single
+      sequential client with enforced pacing is sufficient to expose origin cliffs
+      without manufacturing an outage.
+    </div>
+
+    <h2>4. Method &amp; tooling</h2>
+    <table>
+      <thead>
+        <tr><th>Tool</th><th>Function</th><th>Key parameters</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>ccpatio_external_stability_probe.py</code></td>
+          <td>Header capture, plugin path census, multi-URL TTFB</td>
+          <td>Sequential; sleep 3–4s; timeout 90s</td>
+        </tr>
+        <tr>
+          <td><code>ccpatio_endurance_tester.py</code></td>
+          <td>15× cache-busted MISS loop on one URL</td>
+          <td>Unique <code>ccp_probe</code> / UUID / timestamp QS; sleep ≥4s</td>
+        </tr>
+        <tr>
+          <td>Client location (observed)</td>
+          <td>Cloudflare PoP via <code>cf-ray</code></td>
+          <td>Primarily <strong>PHX</strong> (Phoenix); occasional LAX</td>
+        </tr>
+        <tr>
+          <td>Primary endurance URL</td>
+          <td>Heavy Elementor PDP</td>
+          <td><code>/product/brooklyn-corner-sofa/</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>5. Finding — Edge masking (NitroPack HIT)</h2>
+    <p>
+      When NitroPack returns <code>x-nitro-cache: HIT</code>, first-byte latency is
+      excellent and can create a false impression of origin health.
+    </p>
+    <table>
+      <thead>
+        <tr><th>URL</th><th>Nitro</th><th class="num">TTFB</th><th class="num">HTML size</th><th>CF status</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>/product/brooklyn-corner-sofa/</code></td>
+          <td><span class="badge ok">HIT</span></td>
+          <td class="num"><strong>145.3 ms</strong></td>
+          <td class="num">~3.31 MB</td>
+          <td>DYNAMIC</td>
+        </tr>
+        <tr>
+          <td><code>/collections/bravada-collections/</code></td>
+          <td><span class="badge ok">HIT</span></td>
+          <td class="num"><strong>106.9 ms</strong></td>
+          <td class="num">~2.95 MB</td>
+          <td>DYNAMIC</td>
+        </tr>
+        <tr>
+          <td>Featured project page (HIT)</td>
+          <td><span class="badge ok">HIT</span></td>
+          <td class="num">135.9 ms</td>
+          <td class="num">~2.86 MB</td>
+          <td>DYNAMIC</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      <strong>Conclusion:</strong> Stakeholder reports that “the site feels fast”
+      align with the <em>HIT</em> path. They do not certify LiteSpeed / PHP worker
+      health under MISS, purge, cron, or session traffic.
+    </p>
+
+    <h2>6. Finding — Cloudflare DYNAMIC reality</h2>
+    <p>
+      Across baseline, PDP/collection, and endurance runs, Cloudflare consistently
+      presented:
+    </p>
+    <ul>
+      <li><code>server: cloudflare</code></li>
+      <li><code>cf-ray</code> present (PHX / LAX)</li>
+      <li><strong><code>cf-cache-status: DYNAMIC</code></strong> on measured HTML documents</li>
+    </ul>
+    <p>
+      NitroPack—not Cloudflare—owned HTML HIT/MISS transitions
+      (<code>x-nitro-cache</code>, <code>x-nitro-cache-from</code>,
+      <code>x-nitro-rev</code>, and related headers).
+    </p>
+    <div class="note">
+      <strong>Architectural reading</strong>
+      On this sample, Cloudflare is operating as an edge proxy / WAF front door.
+      It is not serving HTML page-cache HITs for these URLs. Dual-stack “memory
+      savings” cannot be attributed to Cloudflare HTML caching based on these
+      headers.
+    </div>
+
+    <h2>7. Finding — 20.5-second origin stall</h2>
+    <p>
+      The endurance tester issued fifteen sequential GETs to the Brooklyn Corner
+      Sofa PDP. Each request carried a unique query string
+      (<code>ccp_probe</code>, UUID nonce, millisecond timestamp) to defeat
+      anonymous HTML HIT reuse. Sleep between attempts: <strong>4.0 seconds</strong>.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="num">#</th>
+          <th class="num">Status</th>
+          <th class="num">TTFB (ms)</th>
+          <th class="num">Total (ms)</th>
+          <th>CF</th>
+          <th>Nitro</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="num">1</td><td class="num">200</td><td class="num">931.6</td><td class="num">1061.2</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">2</td><td class="num">200</td><td class="num">877.2</td><td class="num">971.2</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr class="spike"><td class="num">3</td><td class="num">200</td><td class="num">20451.7</td><td class="num">20550.6</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">4</td><td class="num">200</td><td class="num">746.7</td><td class="num">849.1</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">5</td><td class="num">200</td><td class="num">853.9</td><td class="num">948.8</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">6</td><td class="num">200</td><td class="num">839.0</td><td class="num">938.3</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">7</td><td class="num">200</td><td class="num">761.6</td><td class="num">852.5</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">8</td><td class="num">200</td><td class="num">767.8</td><td class="num">854.7</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">9</td><td class="num">200</td><td class="num">685.3</td><td class="num">772.1</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">10</td><td class="num">200</td><td class="num">752.1</td><td class="num">847.5</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">11</td><td class="num">200</td><td class="num">806.7</td><td class="num">904.5</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">12</td><td class="num">200</td><td class="num">816.4</td><td class="num">902.7</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">13</td><td class="num">200</td><td class="num">832.8</td><td class="num">918.3</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">14</td><td class="num">200</td><td class="num">695.6</td><td class="num">782.5</td><td>DYNAMIC</td><td>MISS</td></tr>
+        <tr><td class="num">15</td><td class="num">200</td><td class="num">697.9</td><td class="num">838.9</td><td>DYNAMIC</td><td>MISS</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead>
+        <tr><th>Statistic</th><th class="num">Value</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>TTFB minimum</td><td class="num">685.3 ms</td></tr>
+        <tr><td>TTFB typical band (ex-spike)</td><td class="num">~685–932 ms</td></tr>
+        <tr><td>TTFB maximum (Attempt 3)</td><td class="num"><strong>20,451.7 ms (20.5 s)</strong></td></tr>
+        <tr><td>TTFB average (includes spike)</td><td class="num">2,101.1 ms</td></tr>
+        <tr><td>HTTP 5xx / 522 pages in this window</td><td class="num">0</td></tr>
+      </tbody>
+    </table>
+
+    <div class="verdict">
+      <strong>Why Attempt 3 matters</strong>
+      <p>
+        A late HTTP 200 after 20.5 seconds is a <em>near-miss timeout</em>, not a
+        healthy response. Cloudflare 522 is emitted when the edge abandons an
+        origin that fails to answer in time. This stall under <em>one</em>
+        sequential client—with a four-second pause after prior requests—shows
+        the origin can lock up without any synthetic flood. Combined with the
+        Site Health finding of a full PHP OPcache, the mechanism is consistent
+        with LiteSpeed / LSAPI workers blocked on opcode eviction and recompile
+        while regenerating a multi-megabyte Elementor PDP.
+      </p>
+    </div>
+
+    <h2>8. Finding — DOM / payload bloat</h2>
+    <p>
+      The Brooklyn Corner Sofa PDP HTML payload was approximately
+      <strong>3.3&nbsp;MB</strong> on the HIT path. Plugin footprints observed in
+      markup included Elementor, Elementor Pro, WooCommerce, Variation Swatches,
+      Astra Addon, Favorites, and EMCP Pro (non-exhaustive; not all of the 38
+      active plugins enqueue assets on every URL).
+    </p>
+    <p>
+      Each forced MISS must rebuild that document through the full WordPress /
+      builder / commerce bootstrap. Large payloads amplify CPU time, transfer
+      time, and OPcache working-set pressure.
+    </p>
+
+    <h2>9. Finding — Soft-404 commerce tax</h2>
+    <p>
+      Transactional routes are effectively disabled (catalog-oriented posture;
+      YITH Catalog Mode present in the DOM). Despite that, disabled commerce URLs
+      still incurred full storefront boots:
+    </p>
+    <table>
+      <thead>
+        <tr><th>Path</th><th>Status</th><th class="num">Body size</th><th class="num">TTFB band</th><th>Nitro</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>/cart/</code></td>
+          <td>404</td>
+          <td class="num">~2.2–2.3 MB</td>
+          <td class="num">~480–560 ms</td>
+          <td>MISS / disabled</td>
+        </tr>
+        <tr>
+          <td><code>/checkout/</code></td>
+          <td>404</td>
+          <td class="num">~2.2–2.3 MB</td>
+          <td class="num">~480–560 ms</td>
+          <td>MISS / disabled</td>
+        </tr>
+        <tr>
+          <td><code>/my-account/</code></td>
+          <td>404</td>
+          <td class="num">~2.2–2.3 MB</td>
+          <td class="num">~480–560 ms</td>
+          <td>MISS / disabled</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      <strong>Conclusion:</strong> Turning checkout “off” does not remove origin
+      cost. Bots and broken links still force multi-megabyte WordPress boots.
+      Enabling real sessions later adds <em>additional</em> uncacheable load on
+      top of an already fragile MISS path.
+    </p>
+
+    <h2>10. Agency claim assessment</h2>
+    <p>
+      PrimeView asserted that Cloudflare and NitroPack “work together” via API
+      integration and that NitroPack “packs to use less memory,” implying the
+      dual stack is non-conflicting and memory-helpful.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Claim theme</th><th>Telemetry reading</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Both systems jointly cache HTML to save memory</td>
+          <td>CF remained <strong>DYNAMIC</strong>; Nitro owned HIT/MISS. Not dual HTML HIT caching on this sample.</td>
+        </tr>
+        <tr>
+          <td>“Packing” reduces server memory pressure</td>
+          <td>Packing reduces <em>payload bytes</em>. OPcache / PHP worker RAM is a separate ledger. MISS path still stalled for 20.5s.</td>
+        </tr>
+        <tr>
+          <td>API integration prevents conflict</td>
+          <td>Purge coordination (if present) does not stop origin PHP on MISS, does not expand OPcache, and did not prevent the stall.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>11. Limits of this study</h2>
+    <ul>
+      <li>External probes cannot print live <code>opcache*</code> percentages; Site Health remains the direct OPcache measurement.</li>
+      <li>These runs did not capture a Cloudflare 522 error page; they captured a 20.5s near-timeout stall (stronger mechanistic proof for this window).</li>
+      <li>Multi-server load-balancer topology remains an unverified agency statement.</li>
+      <li>Results reflect PHX-adjacent probing at the stated UTC times; absolute TTFB varies by network path.</li>
+    </ul>
+
+    <h2>12. Mandatory gates &amp; remediation</h2>
+    <p class="lede">
+      No go-live of transactional WooCommerce sessions/checkouts until the following
+      gates are met.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Pri</th><th>Owner</th><th>Action</th><th>Acceptance</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge p0">P0</span></td>
+          <td>Host / SysAdmin</td>
+          <td>Expand OPcache memory and interned-strings buffer; verify not full</td>
+          <td>Site Health: <code>opcode_cache_full=false</code>; hit rate ≥ 90%</td>
+        </tr>
+        <tr>
+          <td><span class="badge p0">P0</span></td>
+          <td>PrimeView + CC Patio</td>
+          <td>Feature freeze on net-new Elementor / plugin work</td>
+          <td>Written freeze acknowledgment</td>
+        </tr>
+        <tr>
+          <td><span class="badge p0">P0</span></td>
+          <td>PrimeView</td>
+          <td>Declare single HTML cache owner (NitroPack <em>or</em> Cloudflare)</td>
+          <td>Signed architecture note; CF rules match choice</td>
+        </tr>
+        <tr>
+          <td><span class="badge p0">P0</span></td>
+          <td>Ops (with CF access)</td>
+          <td>Review 14–30 day Cloudflare 522/524 by URL</td>
+          <td>Zero unexplained 522s for 72 hours</td>
+        </tr>
+        <tr>
+          <td><span class="badge p1">P1</span></td>
+          <td>PrimeView</td>
+          <td>Replace fat soft-404 commerce routes with lightweight 404</td>
+          <td>Soft-404 body ≪ 100 KB</td>
+        </tr>
+        <tr>
+          <td><span class="badge p1">P1</span></td>
+          <td>PrimeView</td>
+          <td>Reduce plugin/boot surface (incl. Broken Link Checker if still active)</td>
+          <td>MISS TTFB band flattened on Brooklyn PDP</td>
+        </tr>
+        <tr>
+          <td><span class="badge p2">P2</span></td>
+          <td>Architecture</td>
+          <td>Re-run 15× endurance tester on Brooklyn PDP after remediation</td>
+          <td>No attempt ≥ 3,000 ms TTFB</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>13. Supporting materials</h2>
+    <p>
+      Machine-readable outputs and reproducible scripts are stored in
+      <code>research/telemetry_archive_20260918/</code>:
+    </p>
+    <table>
+      <thead>
+        <tr><th>File</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>probe-results.json</code></td><td>Baseline 14-URL probe (18:45:33Z)</td></tr>
+        <tr><td><code>probe-pdp.json</code></td><td>PDP / collection probe (19:09:03Z)</td></tr>
+        <tr><td><code>endurance.json</code></td><td>15× Brooklyn MISS endurance (20:02:29Z)</td></tr>
+        <tr><td><code>ccpatio_external_stability_probe.py</code></td><td>Multi-URL probe implementation</td></tr>
+        <tr><td><code>ccpatio_endurance_tester.py</code></td><td>Endurance MISS implementation</td></tr>
+        <tr><td><code>EXTERNAL_BLACKBOX_STABILITY_AUDIT.md</code></td><td>Method playbook</td></tr>
+      </tbody>
+    </table>
+    <p>
+      Related architecture materials:
+      WordPress Architectural &amp; System Stability Audit (HTML);
+      <code>research/MASTER_CCPATIO_ARCHITECTURE_SME.md</code>;
+      <code>research/system_architecture_SMEs/</code>.
+    </p>
+
+    <div class="sig">
+      <div>
+        <div class="line">
+          <strong>Robert J Gutierrez</strong><br />
+          Prepared by · 18 September 2026
+        </div>
+      </div>
+      <div>
+        <div class="line">
+          PrimeView technical lead (acknowledgment)<br />
+          Name / date
+        </div>
+      </div>
+    </div>
+
+    <footer class="doc-foot">
+      CC Patio Furniture — External Origin Stability &amp; Caching Telemetry Report · Confidential ·
+      For PrimeView and authorized CC Patio stakeholders ·
+      Document:
+      <code>docs/Vividworks/Primeview/CC_Patio_External_Telemetry_Report.html</code>
+      · Also mirrored at
+      <code>research/CC_Patio_External_Telemetry_Report.html</code>
+    </footer>
+  </article>
+</body>
+</html>

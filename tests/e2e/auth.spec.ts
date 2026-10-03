@@ -13,7 +13,10 @@ dotenv.config({
 test.describe('Gatekeeper Auth Proof', () => {
   test('rejects unauthorized domain', async ({ page }) => {
     await page.goto('/');
-    
+    await expect(page.locator('form[data-hydrated="true"]')).toBeVisible({
+      timeout: 20_000,
+    });
+
     // Fill in the form
     await page.fill('input[name="email"]', 'rogue.user@gmail.com');
     await page.fill('input[name="password"]', 'TestPassword123!');
@@ -46,7 +49,10 @@ test.describe('Gatekeeper Auth Proof', () => {
     }
 
     await page.goto('/');
-    
+    await expect(page.locator('form[data-hydrated="true"]')).toBeVisible({
+      timeout: 20_000,
+    });
+
     // Fill in the form
     await page.fill('input[name="email"]', testEmail);
     await page.fill('input[name="password"]', testPassword);

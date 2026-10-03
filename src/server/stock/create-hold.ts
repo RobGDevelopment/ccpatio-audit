@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   KatanaApiError,
   createKatanaSalesOrder,
@@ -13,12 +12,12 @@ import {
   showroomHoldOrderNo,
 } from "@/lib/inventory-holds";
 import { roundQty } from "@/lib/stock-display";
+import { eq } from "drizzle-orm";
 import { withAdvisoryLock } from "@/server/db/advisory-lock";
 import { getDb } from "@/server/db/client";
 import { inventory_holds, logistics_profiles } from "@/server/db/schema";
 import { CC_MANUFACTURING_LOCATION_ID } from "@/server/ghl/hold-order";
 import type { HoldActor, HoldOpportunity } from "@/server/ghl/hold-actor";
-import { readCardInventory, readFactoryCommitted } from "@/server/stock/factory-inventory";
 import { deleteHoldSalesOrder } from "@/server/stock/delete-hold-order";
 
 const NOTE_MAX = 500;
@@ -72,22 +71,6 @@ function additionalInfo(input: {
     `Note: ${input.note}`,
   ];
   return clip(lines.join("\n"), ADDITIONAL_INFO_MAX);
-}
-
-async function ledgerCommitted(variantId: number): Promise<number> {
-  const db = getDb();
-  const [row] = await db
-    .select({
-      total: sql<string>`coalesce(sum(${inventory_holds.qty}), 0)`,
-    })
-    .from(inventory_holds)
-    .where(
-      and(
-        eq(inventory_holds.katana_variant_id, variantId),
-        inArray(inventory_holds.status, ["active", "converting"]),
-      ),
-    );
-  return roundQty(Number(row?.total ?? 0));
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -177,38 +160,6 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
     return fail(`SKU ${sku} resolved to a different Katana variant.`);
   }
 
-  let inventory: Awaited<ReturnType<typeof readCardInventory>>;
-  let ledgerQty: number;
-  try {
-    [inventory, ledgerQty] = await Promise.all([
-      readCardInventory(input.variantId),
-      ledgerCommitted(input.variantId),
-    ]);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Could not read inventory.";
-    return fail(message);
-  }
-
-  if (!inventory.atFactory) {
-    return fail("Katana has no inventory at CC Manufacturing for this variant.");
-  }
-
-  const committed = Math.max(inventory.committed, ledgerQty);
-  const available = roundQty(inventory.inStock - committed);
-  if (qty > available) {
-    return fail(
-      `Only ${available} available at CC Manufacturing. ${qty} was requested.`,
-    );
-  }
-
-  let committedBefore: number;
-  try {
-    committedBefore = await readFactoryCommitted(input.variantId);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Could not read committed stock.";
-    return fail(message);
-  }
-
   let created: Awaited<ReturnType<typeof createKatanaSalesOrder>>;
   try {
     created = await createKatanaSalesOrder({
@@ -278,28 +229,6 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
       deleteError
         ? `${message} Compensating delete failed: ${deleteError}`
         : message,
-    );
-  }
-
-  let committedAfter: number;
-  try {
-    committedAfter = await readFactoryCommitted(input.variantId);
-  } catch (error: unknown) {
-    const deleteError = await compensate(created.salesOrderId, orderNo, holdId);
-    const message = error instanceof Error ? error.message : "Could not prove the hold committed stock.";
-    return fail(
-      deleteError
-        ? `${message} Compensating delete failed: ${deleteError}`
-        : message,
-    );
-  }
-
-  if (roundQty(committedAfter - committedBefore) + 0.00005 < qty) {
-    const deleteError = await compensate(created.salesOrderId, orderNo, holdId);
-    return fail(
-      deleteError
-        ? `Hold ${orderNo} did not commit stock at CC Manufacturing. Compensating delete failed: ${deleteError}`
-        : `Hold ${orderNo} did not commit stock at CC Manufacturing, so it was removed.`,
     );
   }
 

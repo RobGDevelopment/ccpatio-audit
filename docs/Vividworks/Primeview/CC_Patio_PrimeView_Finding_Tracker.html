@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CC Patio — PrimeView Action Tracker</title>
+  <meta name="author" content="Robert J Gutierrez" />
+  <style>
+    :root {
+      --ink: #1a1f26;
+      --muted: #5c6570;
+      --line: #d8dde3;
+      --paper: #ffffff;
+      --wash: #f4f6f8;
+      --accent: #1e3a5f;
+      --critical: #8b1e1e;
+      --high: #8a5a00;
+      --ok: #1f5c3a;
+    }
+
+    * { box-sizing: border-box; }
+    html { font-size: 11pt; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #e8ebef;
+      font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      line-height: 1.45;
+    }
+
+    .page {
+      max-width: 8.5in;
+      margin: 24px auto;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      padding: 0.75in 0.7in 0.85in;
+    }
+
+    @media print {
+      body { background: white; }
+      .page {
+        margin: 0;
+        border: none;
+        max-width: none;
+        padding: 0.5in 0.55in;
+      }
+      .no-print { display: none !important; }
+      a { color: inherit; text-decoration: none; }
+      h2, h3, table, .verdict, .note { break-inside: avoid; }
+      thead { display: table-header-group; }
+    }
+
+    .toolbar {
+      max-width: 8.5in;
+      margin: 16px auto 0;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding: 0 4px;
+    }
+
+    .toolbar button {
+      appearance: none;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: white;
+      font: inherit;
+      font-size: 0.9rem;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+
+    .cover-rule {
+      height: 4px;
+      background: var(--accent);
+      margin: 0 0 22px;
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-weight: 600;
+      margin: 0 0 8px;
+    }
+
+    h1 {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      font-size: 1.65rem;
+      font-weight: 600;
+      line-height: 1.2;
+      color: var(--accent);
+      margin: 0 0 10px;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: var(--muted);
+      margin: 0 0 20px;
+      max-width: 42em;
+    }
+
+    .meta {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin: 0 0 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 0 0 8px;
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      padding: 10px 8px;
+      text-align: center;
+    }
+
+    .kpi .v {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--accent);
+      display: block;
+    }
+
+    .kpi .v.ok { color: var(--ok); }
+    .kpi .v.warn { color: var(--high); }
+    .kpi .v.danger { color: var(--critical); }
+
+    .kpi .l {
+      display: block;
+      margin-top: 3px;
+      font-size: 0.66rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    h2 {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      font-size: 1.15rem;
+      color: var(--accent);
+      margin: 28px 0 10px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin: 18px 0 8px;
+      color: var(--ink);
+    }
+
+    p { margin: 0 0 10px; }
+    .lede { color: var(--muted); margin-bottom: 12px; font-size: 0.92rem; }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.64rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border: 1px solid currentColor;
+      white-space: nowrap;
+    }
+
+    .badge.actioned { color: var(--ok); background: #eef6f1; }
+    .badge.partial { color: var(--high); background: #fff8eb; }
+    .badge.ack { color: #1e4d7b; background: #eef5fb; }
+    .badge.none { color: var(--critical); background: #faf0f0; }
+    .badge.dispute { color: var(--high); background: #fff8eb; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      margin: 0 0 12px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 6px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    tbody tr:nth-child(even) td { background: #fafbfc; }
+    td.num { width: 2.1em; text-align: center; font-variant-numeric: tabular-nums; }
+    td.status { width: 6.4em; }
+
+    .verdict {
+      border-left: 4px solid var(--critical);
+      background: #faf5f5;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+    }
+
+    .verdict strong {
+      display: block;
+      color: var(--critical);
+      margin-bottom: 4px;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .verdict p { margin: 0; font-size: 0.92rem; }
+
+    .note {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      padding: 10px 12px;
+      font-size: 0.86rem;
+      margin: 0 0 12px;
+    }
+
+    .note strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+    }
+
+    footer.doc-foot {
+      margin-top: 28px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      font-size: 0.74rem;
+      color: var(--muted);
+    }
+
+    code { font-family: Consolas, "Courier New", monospace; font-size: 0.86em; }
+
+    @media (max-width: 720px) {
+      .page { margin: 0; border: none; padding: 20px 14px; }
+      .kpis { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <button type="button" onclick="window.print()">Print / Save as PDF</button>
+  </div>
+
+  <article class="page">
+    <div class="cover-rule"></div>
+    <p class="eyebrow">CC Patio Furniture · Agency tracker · Confidential</p>
+    <h1>PrimeView Action Tracker</h1>
+    <p class="subtitle">
+      Each finding and test from the two 18 September CC Patio reports, with
+      whether PrimeView acknowledged it, what they did, and where we confirmed
+      the live state. Updated after the evening Repeat-MISS re-run and a fresh
+      production Site Health Info copy.
+    </p>
+    <p class="meta">
+      <strong>Prepared by</strong> Robert J Gutierrez · Updated 18 September 2026 (evening)<br />
+      Source key below. Short codes in the “Found in” column point to that key.
+    </p>
+
+    <div class="verdict">
+      <strong>Bottom line — OPcache slab is resized; origin is still not stable</strong>
+      <p>
+        Site Health Info at 02:22:47Z confirms PHP 8.3.33, a 512 MB opcode
+        slab (~234 MB used), <code>opcode_cache_full: false</code>, and hit
+        rate <strong>99.92%</strong>. Interned strings are still
+        <strong>100% of 16 MB (0 free)</strong> — PrimeView’s “no longer
+        saturating / PASS” line is false. The same Repeat-MISS test still
+        stalled at <strong>21.2 s</strong>. Do not treat the origin as
+        stable. Do not enable live checkout or Katana sync.
+      </p>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><span class="v ok">5</span><span class="l">Actioned</span></div>
+      <div class="kpi"><span class="v warn">8</span><span class="l">Acknowledged only</span></div>
+      <div class="kpi"><span class="v warn">6</span><span class="l">Disputed / reframed</span></div>
+      <div class="kpi"><span class="v danger">14</span><span class="l">Open / unexplained</span></div>
+    </div>
+
+    <h2>Where we found it</h2>
+    <p class="lede">Every status below is tagged with one or more of these sources. SH-2 is the Info copy pasted from WP Admin on the evening of 18 September (dump clock 02:22:47Z on 19 September).</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>What it is</th>
+          <th>Where it lives / how we got it</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>SH-1</code></td>
+          <td>Original production Site Health Info dump</td>
+          <td>WP Admin → Tools → Site Health → Info · captured <strong>2026-09-18T12:45:48Z</strong> · basis of the architectural audit PDF</td>
+        </tr>
+        <tr>
+          <td><code>SH-2</code></td>
+          <td>Fresh production Site Health Info copy</td>
+          <td>WP Admin → Tools → Site Health → Info → Copy site info · dump clock <strong>2026-09-19T02:22:47Z</strong> · pasted to the reviewing team · archive <code>research/telemetry_archive_20260918/site-health-20260919T022247Z.txt</code></td>
+        </tr>
+        <tr>
+          <td><code>END-1</code></td>
+          <td>First Repeat-MISS endurance run</td>
+          <td><code>research/telemetry_archive_20260918/endurance.json</code> · Brooklyn Corner Sofa · <strong>2026-09-18T20:02:29Z</strong> · attempt 3 = 20,451.7 ms</td>
+        </tr>
+        <tr>
+          <td><code>END-2</code></td>
+          <td>Same-protocol evening re-run</td>
+          <td><code>research/telemetry_archive_20260918/endurance-rerun.json</code> · same URL, 15× sequential, 4 s sleep · attempt 7 = 21,222.5 ms</td>
+        </tr>
+        <tr>
+          <td><code>PV-ENG</code></td>
+          <td>PrimeView engineering remediation record</td>
+          <td><code>docs/Vividworks/Primeview/CC Patio - Website Report.html</code> · 18 Sep 2026 · claimed 512/16/10k ini, interned “no longer saturating,” 522 chain closed</td>
+        </tr>
+        <tr>
+          <td><code>PV-CLIENT</code></td>
+          <td>PrimeView client go-live PDF</td>
+          <td><code>DevSite/CC Patio - Site Health Report for Client (3).pdf</code> · 18 Sep 2026 · OPcache marked RESOLVED / Katana PASS</td>
+        </tr>
+        <tr>
+          <td><code>PV-EMAIL</code></td>
+          <td>John P. support note</td>
+          <td>Email to Rob, 18 Sep 2026 · Cloudflare / NitroPack access language</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>OPcache — SH-1 vs SH-2 vs PrimeView’s claim</h3>
+    <p class="lede">Found in <code>SH-2</code> section <code>### wp-server ###</code>. Their ini claim is in <code>PV-ENG</code> §3.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>SH-1 (12:45Z)</th>
+          <th>SH-2 (02:22Z)</th>
+          <th>PrimeView said</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>PHP</td>
+          <td>8.2.33</td>
+          <td><strong>8.3.33</strong></td>
+          <td>Moved to 8.3.33 (PV-ENG §2 / PV-CLIENT)</td>
+        </tr>
+        <tr>
+          <td>Opcode slab</td>
+          <td>128 MB, full (<code>134217648</code> / <code>134217728</code>)</td>
+          <td><strong>512 MB</strong>, ~234 MB used (<code>245346400</code> / <code>536870912</code>)</td>
+          <td>~225 MB of 512 · RESOLVED / PASS</td>
+        </tr>
+        <tr>
+          <td><code>opcode_cache_full</code></td>
+          <td>true</td>
+          <td><strong>false</strong></td>
+          <td>Implied healthy</td>
+        </tr>
+        <tr>
+          <td>Hit rate</td>
+          <td>56.64%</td>
+          <td><strong>99.92%</strong></td>
+          <td>Not published (now confirmed in SH-2)</td>
+        </tr>
+        <tr>
+          <td>Interned strings</td>
+          <td>100% of 8 MB (24 bytes free)</td>
+          <td><strong>100% of 16 MB (0 free)</strong></td>
+          <td>“No longer saturating” — <strong>false</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Count</th>
+          <th>What it means</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge actioned">Actioned</span></td>
+          <td>5</td>
+          <td>A production change is confirmed in SH-2: OPcache resize, PHP 8.3, Redis drop-in, Woo 11.1.1, plus their HTML-owner write-up. Does not mean the stability gate is met.</td>
+        </tr>
+        <tr>
+          <td><span class="badge ack">Ack only</span></td>
+          <td>8</td>
+          <td>They agree it is real; SH-2 shows it still present (WP_DEBUG, Spectra, Temporary Login, schema, header/security overlap, HTML size).</td>
+        </tr>
+        <tr>
+          <td><span class="badge dispute">Disputed / reframed</span></td>
+          <td>6</td>
+          <td>They push back (BLC, dual-builder, Site Kit, 522 closed). 522-closed and interned “not saturating” are contradicted by END-2 and SH-2.</td>
+        </tr>
+        <tr>
+          <td><span class="badge none">Open / unexplained</span></td>
+          <td>14</td>
+          <td>Not done, or SH-2 shows a large unexplained delta (uploads 43.69 GB → 3.69 GB) they never described.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Repeat-MISS — audit vs evening re-run</h3>
+    <p class="lede">Same target, same protocol: 15 sequential cache-busted GETs to <code>/product/brooklyn-corner-sofa/</code>, 4 s sleep, no concurrency.</p>
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Audit run (20:02Z)</th>
+          <th>Evening re-run</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Evidence</td>
+          <td><code>endurance.json</code></td>
+          <td><code>endurance-rerun.json</code></td>
+        </tr>
+        <tr>
+          <td>HTTP / CF / NitroPack</td>
+          <td>15/15 × 200 · DYNAMIC · MISS</td>
+          <td>15/15 × 200 · DYNAMIC · MISS</td>
+        </tr>
+        <tr>
+          <td>Typical TTFB</td>
+          <td>685–932 ms</td>
+          <td>670–960 ms</td>
+        </tr>
+        <tr>
+          <td>The stall</td>
+          <td><strong>Attempt 3: 20,451.7 ms</strong></td>
+          <td><strong>Attempt 7: 21,222.5 ms</strong></td>
+        </tr>
+        <tr>
+          <td>Mean TTFB</td>
+          <td>2,101.1 ms</td>
+          <td>2,129.2 ms</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="lede">
+      They did not shrink <code>/cart</code> / <code>/checkout</code> /
+      <code>/my-account</code> soft-404s, did not deactivate Broken Link
+      Checker, and did not produce 72-hour Cloudflare 5xx. Those remain open.
+    </p>
+
+    <h2>A. Architectural &amp; System Stability Audit</h2>
+    <p class="lede">Priority findings from SH-1 (12:45:48Z). Live state in the last two columns is from SH-2 unless noted.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="num">#</th>
+          <th>Problem we identified</th>
+          <th>Acknowledged?</th>
+          <th>PrimeView action / live state now</th>
+          <th>Found in</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="num">A1</td>
+          <td><strong>OPcache saturated</strong> — FULL; interned strings 100% of 8 MB (24 bytes free); hit rate 56.64%. Primary 522 driver.</td>
+          <td>Yes — both audits, P0</td>
+          <td>Ini applied and loaded. SH-2: slab 245346400 / 536870912 (~234/512 MB), <code>opcode_cache_full: false</code>, hit rate <strong>99.92</strong>. Interned strings still <strong>100% of 16777216 (0 free)</strong>. PV-ENG/PV-CLIENT “no longer saturating / PASS” is false. END-2 stall 21.2 s remains — slab health did not clear the cliff. Raise interned to 32 MB.</td>
+          <td>SH-2 <code>wp-server</code> · PV-ENG §3 · PV-CLIENT · END-2</td>
+          <td class="status"><span class="badge partial">Partial</span></td>
+        </tr>
+        <tr>
+          <td class="num">A2</td>
+          <td><strong>PHP 8.2.33 past end-of-life</strong> (Nov 2025). Upgrade on staging first, then 8.3 or 8.4 after a plugin matrix.</td>
+          <td>Yes — Critical</td>
+          <td>Live runtime is <strong>PHP 8.3.33</strong> LSAPI. Confirmed. 8.4-on-live attempt remains a process failure (PV-ENG §2); not visible in Site Health other than landing on 8.3.</td>
+          <td>SH-2 <code>php_version</code> · PV-ENG §2</td>
+          <td class="status"><span class="badge actioned">Confirmed</span></td>
+        </tr>
+        <tr>
+          <td class="num">A3</td>
+          <td><strong>NitroPack + Cloudflare double-proxy / double HTML cache</strong> — purge races, loopbacks, competing TTLs. Pick one HTML owner.</td>
+          <td>Yes — then reframed</td>
+          <td>Still <code>advanced-cache.php</code> + <code>WP_CACHE=true</code> + NitroPack 1.20.1. No Cache Rules export. HTML owner remains a write-up, not a zone export.</td>
+          <td>SH-2 <code>wp-dropins</code> / plugins / <code>WP_CACHE</code> · PV-ENG §4 · END-2 <code>DYNAMIC</code></td>
+          <td class="status"><span class="badge dispute">Reframed</span></td>
+        </tr>
+        <tr>
+          <td class="num">A4</td>
+          <td><strong>38 plugins + dual builders</strong> — Elementor + Pro alongside Spectra Legacy and Astra Pro. Plugin tree 593 MB. Target ≤28.</td>
+          <td>Yes — then reframed</td>
+          <td>Active plugins are now <strong>39</strong> (38 + Redis Object Cache). Plugin tree 460.51 MB (was 593 MB in SH-1). Spectra, Elementor, Elementor Pro, Astra Pro all still active. Target ≤28 not met.</td>
+          <td>SH-2 <code>wp-plugins-active (39)</code> · SH-1 (38)</td>
+          <td class="status"><span class="badge dispute">Reframed</span></td>
+        </tr>
+        <tr>
+          <td class="num">A5</td>
+          <td><strong>Broken Link Checker</strong> active — continuous crawl / DB writes on a ~47 GB site. Deactivate immediately (P0).</td>
+          <td>Yes — disputed as continuous</td>
+          <td>Still active: Broken Link Checker 2.4.14.1. Not deactivated.</td>
+          <td>SH-2 plugin list · PV-ENG §7</td>
+          <td class="status"><span class="badge dispute">Disputed</span></td>
+        </tr>
+        <tr>
+          <td class="num">A6</td>
+          <td><strong>WP_DEBUG=true</strong> in production (display off; log to <code>/home/ccpatpvlive/logs/ccp-wp-errors.log</code>).</td>
+          <td>Yes</td>
+          <td>Still <code>WP_DEBUG: true</code>, display false, log <code>/home/ccpatpvlive/logs/ccp-wp-errors.log</code>.</td>
+          <td>SH-2 <code>wp-constants</code> · PV-ENG §6</td>
+          <td class="status"><span class="badge ack">Ack only</span></td>
+        </tr>
+        <tr>
+          <td class="num">A7</td>
+          <td><strong>Uploads 43.69 GB</strong> (~92% of 47.42 GB site). No media lifecycle / object-storage offload. <code>upload_max_filesize</code> 20 MB.</td>
+          <td>No</td>
+          <td>Never described. SH-2 now shows uploads <strong>3.69 GB</strong> and total <strong>6.88 GB</strong> (SH-1: 43.69 / 47.42). <code>upload_max_filesize</code> now 80m (was 20m). Ask what was offloaded or deleted, and whether a backup exists.</td>
+          <td>SH-2 <code>wp-paths-sizes</code> / <code>wp-media</code> · SH-1</td>
+          <td class="status"><span class="badge none">Unexplained</span></td>
+        </tr>
+        <tr>
+          <td class="num">A8</td>
+          <td><strong>Security / header plugin pile-up</strong> — Wordfence + Limit Login + WPS Hide Login + Temporary Login; HFCM + WP Headers And Footers.</td>
+          <td>Partial</td>
+          <td>All still active in SH-2: Wordfence 9.0.1, Limit Login 3.3.9, WPS Hide Login 1.9.19, Temporary Login 1.9.9, HFCM 1.1.46, WP Headers And Footers 3.1.5. Client PDF said Limit Login deactivation is “in progress” — not done. <code>DISALLOW_FILE_EDIT</code> still absent from constants.</td>
+          <td>SH-2 plugin list / <code>wp-constants</code> · PV-CLIENT §4</td>
+          <td class="status"><span class="badge ack">Ack only</span></td>
+        </tr>
+        <tr>
+          <td class="num">A9</td>
+          <td><strong>Dual schema / SEO</strong> — Rank Math + Schema &amp; Structured Data for WP &amp; AMP. Competing JSON-LD.</td>
+          <td>Yes — as open item</td>
+          <td>Both still active: Rank Math 1.0.278 and Schema &amp; Structured Data 1.66.</td>
+          <td>SH-2 plugin list · PV-ENG §8</td>
+          <td class="status"><span class="badge ack">Ack only</span></td>
+        </tr>
+        <tr>
+          <td class="num">A10</td>
+          <td><strong>Site Kit unauthenticated</strong>; <code>WP_HOME</code> / <code>WP_SITEURL</code> / <code>WP_ENVIRONMENT_TYPE</code> undefined.</td>
+          <td>Site Kit yes; constants no</td>
+          <td>Site Kit 1.187.0 still <code>not-connected</code> / not authenticated. Constants still undefined. <code>WP_MEMORY_LIMIT</code> still 512M — not “raised to match 1 GB” (only <code>WP_MAX_MEMORY_LIMIT</code> is 1G).</td>
+          <td>SH-2 <code>google-site-kit</code> / <code>wp-constants</code> · PV-CLIENT</td>
+          <td class="status"><span class="badge dispute">Reframed</span></td>
+        </tr>
+        <tr>
+          <td class="num">A11</td>
+          <td><strong>Intermittent Cloudflare 522</strong> — origin stall under LiteSpeed; do not “fix” by raising CF timeouts. Zero 522s for 72 hours; warm origin &lt;5 s.</td>
+          <td>Yes — then declared closed</td>
+          <td>SH-2 shows opcode slab healthy (hit 99.92, not full). END-2 still 21.2 s MISS TTFB. Closure sentence does not hold: interned strings still 100%, stall unchanged. No 72-hour CF Analytics.</td>
+          <td>SH-2 <code>wp-server</code> · END-2 · PV-ENG §2 · PV-CLIENT gate</td>
+          <td class="status"><span class="badge dispute">Over-claimed</span></td>
+        </tr>
+        <tr>
+          <td class="num">A12</td>
+          <td><strong>LiteSpeed LSAPI workers / PHP children</strong> — raise if needed as part of 522 remediation.</td>
+          <td>No</td>
+          <td>Site Health does not report LSAPI limits. Still unknown. SH-2 only shows <code>httpd_software: LiteSpeed</code> and <code>php_sapi: litespeed</code>.</td>
+          <td>SH-2 <code>wp-server</code> (absent)</td>
+          <td class="status"><span class="badge none">Not addressed</span></td>
+        </tr>
+        <tr>
+          <td class="num">A13</td>
+          <td><strong>NitroPack optimizer loopbacks and purge-on-SKU-edit</strong> — origin self-requests and mass cold starts.</td>
+          <td>No (topology only)</td>
+          <td>NitroPack 1.20.1 and <code>advanced-cache.php</code> still present. No exclusion / purge-policy export.</td>
+          <td>SH-2 drop-ins / plugin list</td>
+          <td class="status"><span class="badge none">Not addressed</span></td>
+        </tr>
+        <tr>
+          <td class="num">A14</td>
+          <td><strong>Apex vs www canonical</strong> — Site Kit <code>www.ccpatio.com</code> vs Search Console <code>ccpatio.com</code>.</td>
+          <td>No</td>
+          <td>Unchanged. SH-2: <code>reference_url: https://www.ccpatio.com</code> vs <code>search_console_property: https://ccpatio.com/</code>.</td>
+          <td>SH-2 <code>google-site-kit</code></td>
+          <td class="status"><span class="badge none">Not addressed</span></td>
+        </tr>
+        <tr>
+          <td class="num">A15</td>
+          <td><strong>Decommission: Spectra Legacy</strong> after block audit.</td>
+          <td>Yes</td>
+          <td>Still active: Spectra Legacy 2.20.3.</td>
+          <td>SH-2 plugin list · PV-ENG §5.1</td>
+          <td class="status"><span class="badge ack">Ack only</span></td>
+        </tr>
+        <tr>
+          <td class="num">A16</td>
+          <td><strong>Decommission: Temporary Login Without Password</strong> if unused.</td>
+          <td>Yes</td>
+          <td>Still active: Temporary Login Without Password 1.9.9.</td>
+          <td>SH-2 plugin list · PV-ENG §5.2</td>
+          <td class="status"><span class="badge ack">Ack only</span></td>
+        </tr>
+        <tr>
+          <td class="num">A17</td>
+          <td><strong>Decommission: WordPress Importer</strong> and <strong>Better Search Replace</strong> — must not stay active in production.</td>
+          <td>No</td>
+          <td>Both still active: WordPress Importer 0.9.6, Better Search Replace 1.4.11.</td>
+          <td>SH-2 plugin list</td>
+          <td class="status"><span class="badge none">Not addressed</span></td>
+        </tr>
+        <tr>
+          <td class="num">A18</td>
+          <td><strong>WooCommerce 11.1.0</strong> — patch to 11.1.1 (observed in Site Health).</td>
+          <td>Yes — their §8</td>
+          <td>Now <strong>WooCommerce 11.1.1</strong> on production. They said this was OPEN pending staging smoke; it is applied.</td>
+          <td>SH-2 plugin list · PV-ENG §8 (was open)</td>
+          <td class="status"><span class="badge actioned">Actioned</span></td>
+        </tr>
+        <tr>
+          <td class="num">A19</td>
+          <td><strong>Feature freeze / no net-new plugins</strong> until stability gate; govern Code Snippets 8–14 in version control.</td>
+          <td>No (they proposed notify-after, not freeze)</td>
+          <td>No freeze. Plugin count rose 38 → 39 (Redis added). Same 7 Code Snippets (IDs 8–14) still global.</td>
+          <td>SH-2 <code>wp-plugins-active</code> / <code>code-snippets</code> · PV-ENG §6.1</td>
+          <td class="status"><span class="badge none">Not addressed</span></td>
+        </tr>
+        <tr>
+          <td class="num">A20</td>
+          <td><strong>Staging parity + load test</strong> — clone prod LiteSpeed/PHP/OPcache; 50 concurrent PDPs without 5xx.</td>
+          <td>Indirect only</td>
+          <td>Not evidenced in Site Health. PV-CLIENT still lists concurrent-order / Katana test as NOT YET RUN.</td>
+          <td>PV-CLIENT §6 · PV-ENG §2</td>
+          <td class="status"><span class="badge none">Not addressed</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>B. External Origin Stability &amp; Caching Telemetry</h2>
+    <p class="lede">Empirical tests against https://www.ccpatio.com. Sequential only; 4-second sleep on endurance.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="num">#</th>
+          <th>Test / problem identified</th>
+          <th>Acknowledged?</th>
+          <th>PrimeView action / live state now</th>
+          <th>Found in</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="num">B1</td>
+          <td><strong>NitroPack HIT path (edge masking).</strong> Brooklyn sofa HIT ~145 ms / ~3.3 MB HTML. Bravada collection HIT ~107 ms / ~3.0 MB. Fast HIT ≠ healthy origin.</td>
+          <td>Indirect</td>
+          <td>NitroPack still the HTML cache path. PV-CLIENT cover score 84/B is HIT-path masking, not MISS health.</td>
+          <td>END-1 probe-pdp · PV-CLIENT cover</td>
+          <td class="status"><span class="badge ack">Ack only</span></td>
+        </tr>
+        <tr>
+          <td class="num">B2</td>
+          <td><strong>Cloudflare HTML is DYNAMIC.</strong> Every document probe: <code>server: cloudflare</code>, <code>cf-ray</code>, <code>cf-cache-status: DYNAMIC</code>.</td>
+          <td>Yes</td>
+          <td>Evening re-run still DYNAMIC on all 15 HTML MISSes. Matches their “NitroPack owns HTML” write-up. Cache Rules still not exported.</td>
+          <td>END-2 · PV-ENG §4 · PV-EMAIL</td>
+          <td class="status"><span class="badge actioned">Documented</span></td>
+        </tr>
+        <tr>
+          <td class="num">B3</td>
+          <td><strong>Repeat-MISS endurance (smoking gun).</strong> 15 sequential cache-busted GETs. Attempt 3: <strong>20,451.7 ms</strong>.</td>
+          <td>No — stall not cited</td>
+          <td>PrimeView did not cite this test. CC Patio re-ran it: attempt 7 = <strong>21,222.5 ms</strong>. Same class after their OPcache/PHP/Redis work.</td>
+          <td>END-1 · END-2</td>
+          <td class="status"><span class="badge none">Still failing</span></td>
+        </tr>
+        <tr>
+          <td class="num">B4</td>
+          <td><strong>DOM / plugin bloat on PDP.</strong> ~3.3 MB HTML; Elementor stack in the DOM.</td>
+          <td>Partial (homepage size)</td>
+          <td>Plugin surface now 39, not reduced. Same builder stack still active in SH-2.</td>
+          <td>END-1 · SH-2 plugin list · PV-ENG §8</td>
+          <td class="status"><span class="badge ack">Ack only</span></td>
+        </tr>
+        <tr>
+          <td class="num">B5</td>
+          <td><strong>Soft-404 commerce routes.</strong> <code>/cart/</code>, <code>/checkout/</code>, <code>/my-account/</code> ~2.2–2.3 MB 404s. YITH Catalog Mode.</td>
+          <td>No</td>
+          <td>YITH WooCommerce Catalog Mode 2.58.0 still active. Routes not re-tested in SH-2 (Site Health does not measure HTML size).</td>
+          <td>END-1 · SH-2 plugin list</td>
+          <td class="status"><span class="badge none">Not addressed</span></td>
+        </tr>
+        <tr>
+          <td class="num">B6</td>
+          <td><strong>P0 — resize OPcache</strong> and verify not full; hit rate ≥90%.</td>
+          <td>Yes</td>
+          <td>SH-2 confirms resize, <code>opcode_cache_full: false</code>, hit rate 99.92. Interned still 100% of 16 MB. END-2 cliff remains — acceptance not fully met. Next: interned 32 MB; then worker/Redis/MISS generation.</td>
+          <td>SH-2 <code>wp-server</code> · PV-ENG §3 · END-2</td>
+          <td class="status"><span class="badge partial">Partial</span></td>
+        </tr>
+        <tr>
+          <td class="num">B7</td>
+          <td><strong>P0 — single HTML cache owner</strong>; document Cloudflare Cache Rules (expect DYNAMIC).</td>
+          <td>Yes</td>
+          <td>Written assertion only. END-2 still DYNAMIC. Zone export pending CC Patio exec credentials.</td>
+          <td>END-2 · PV-ENG §4 · PV-CLIENT §5</td>
+          <td class="status"><span class="badge partial">Partial</span></td>
+        </tr>
+        <tr>
+          <td class="num">B8</td>
+          <td><strong>P0 — 72-hour Cloudflare 5xx review</strong> once dashboard access granted.</td>
+          <td>No</td>
+          <td>Not performed. Not in Site Health. Credentials requested from CC Patio executives.</td>
+          <td>PV-ENG §4 / footer · PV-CLIENT §5</td>
+          <td class="status"><span class="badge none">Not addressed</span></td>
+        </tr>
+        <tr>
+          <td class="num">B9</td>
+          <td><strong>P1 — lightweight 404s</strong> on disabled commerce routes (body well under 100 KB).</td>
+          <td>No</td>
+          <td>None. Same as B5.</td>
+          <td>END-1</td>
+          <td class="status"><span class="badge none">Not addressed</span></td>
+        </tr>
+        <tr>
+          <td class="num">B10</td>
+          <td><strong>P1 — deactivate Broken Link Checker / reduce plugin boot</strong>.</td>
+          <td>Yes — BLC only</td>
+          <td>BLC 2.4.14.1 still active. Active plugins 39, not reduced.</td>
+          <td>SH-2 plugin list · PV-ENG §7</td>
+          <td class="status"><span class="badge dispute">Disputed</span></td>
+        </tr>
+        <tr>
+          <td class="num">B11</td>
+          <td><strong>P2 — re-run endurance tester</strong> on Brooklyn PDP. No multi-second cliffs.</td>
+          <td>No — PrimeView did not re-run</td>
+          <td>CC Patio re-ran it (END-2). Gate failed: 21,222.5 ms. SH-2 later showed a healthy opcode slab — so the cliff is no longer explained by “OPcache full.”</td>
+          <td>END-2 · SH-2</td>
+          <td class="status"><span class="badge none">Still failing</span></td>
+        </tr>
+        <tr>
+          <td class="num">B12</td>
+          <td><strong>Feature freeze</strong> before live Woo sessions/checkouts.</td>
+          <td>No</td>
+          <td>No freeze. YITH Catalog Mode still on (checkout not live). PV-CLIENT still points at Katana go-live. Woo 11.1.1 and Redis were added after the audit.</td>
+          <td>SH-2 · PV-CLIENT §6 · PV-ENG §6.1</td>
+          <td class="status"><span class="badge none">Not addressed</span></td>
+        </tr>
+        <tr>
+          <td class="num">B13</td>
+          <td><strong>Unverified load-balancer / multi-server claim</strong>.</td>
+          <td>No</td>
+          <td>SH-2 still shows one account path <code>/home/ccpatpvlive/public_html</code>. Does not prove or disprove a LB.</td>
+          <td>SH-2 <code>wordpress_path</code></td>
+          <td class="status"><span class="badge none">Not addressed</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>C. Extra actions PrimeView took (not asked as a numbered test)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>What they did</th>
+          <th>Relation to our reports / live state</th>
+          <th>Found in</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Enabled <strong>Redis object cache</strong> on production</td>
+          <td>SH-1 had no <code>object-cache.php</code>. SH-2: drop-in true + Redis Object Cache 3.0.0 active. Did not prevent END-2 21.2 s stall.</td>
+          <td>SH-2 <code>wp-dropins</code> / plugin list · PV-ENG §3.1 · END-2</td>
+        </tr>
+        <tr>
+          <td>Applied <strong>WooCommerce 11.1.1</strong></td>
+          <td>SH-1 was 11.1.0. PV-ENG §8 listed this as OPEN after staging. Now live.</td>
+          <td>SH-2 plugin list</td>
+        </tr>
+        <tr>
+          <td>Raised upload limits to <strong>80m</strong></td>
+          <td>SH-1: 20m / 40m. Not mentioned in PV-ENG or PV-CLIENT.</td>
+          <td>SH-2 <code>wp-media</code> / <code>wp-server</code></td>
+        </tr>
+        <tr>
+          <td>Uploads disk <strong>43.69 GB → 3.69 GB</strong></td>
+          <td>Unexplained. Not in any PrimeView write-up. Confirm offload vs deletion vs measurement change.</td>
+          <td>SH-1 vs SH-2 <code>wp-paths-sizes</code></td>
+        </tr>
+        <tr>
+          <td>Attempted <strong>PHP 8.4 on live</strong>, then reverted</td>
+          <td>Opposite of staging-first (audit §9). Not visible in SH-2 except current 8.3.33.</td>
+          <td>PV-ENG §2</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <strong>How to read the counts.</strong>
+      Actioned / confirmed (5): PHP 8.3 (A2, SH-2), Redis drop-in (§C, SH-2), Woo 11.1.1 (A18, SH-2), HTML-owner write-up (B2), OPcache slab resize (A1/B6, SH-2 — interned still full).
+      Acknowledged only (8): A6, A8, A9, A15, A16, B1, B4, B7.
+      Disputed (6): A3, A4, A5, A10, A11, B10.
+      Open / unexplained (14): A7 (uploads delta), A12–A14, A17, A19, A20, B3, B5, B8, B9, B11–B13.
+      Controlling measurements: SH-2 interned strings 100% of 16 MB; END-2 21.2 s MISS cliff.
+    </div>
+
+    <footer class="doc-foot">
+      CC Patio Furniture — PrimeView Action Tracker · Updated 18 September 2026 evening ·
+      Confidential · Evidence: SH-1 12:45:48Z · SH-2 WP Admin Tools → Site Health → Info 02:22:47Z ·
+      END-1 / END-2 under <code>research/telemetry_archive_20260918/</code> ·
+      PV-ENG / PV-CLIENT / PV-EMAIL ·
+      This file:
+      <code>docs/Vividworks/Primeview/CC_Patio_PrimeView_Finding_Tracker.html</code>
+    </footer>
+  </article>
+</body>
+</html>

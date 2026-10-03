@@ -1,0 +1,31 @@
+Product variant code / SKU (required),Product operation name (required),Resource,Cost parameter,Hours,Minutes,Seconds,Operation type
+ASM-BRK-BAR-TAB-120X28-FRAME,Cold Saw Fabrication,Metal Cutting,,0,6,54,process
+ASM-BRK-BAR-TAB-120X28-FRAME,Fabrication & Welding,FAB POD A,,1,16,18,process
+ASM-BRK-BAR-TAB-120X28-FRAME,Sandblasting Setup,Sandblasting,,0,10,0,setup
+ASM-BRK-BAR-TAB-120X28-FRAME,Sandblasting,Sandblasting,,0,20,0,process
+ASM-BRK-BAR-TAB-120X28-FRAME,Powder Coating Booth,Powder Coating Booth,,0,13,48,process
+ASM-BRK-BAR-TAB-120X28-FRAME,Curing Oven,Curing Oven,,0,20,0,process
+ASM-BRK-BAR-TAB-120X36-FRAME,Cold Saw Fabrication,Metal Cutting,,0,6,54,process
+ASM-BRK-BAR-TAB-120X36-FRAME,Fabrication & Welding,FAB POD A,,1,16,18,process
+ASM-BRK-BAR-TAB-120X36-FRAME,Sandblasting Setup,Sandblasting,,0,10,0,setup
+ASM-BRK-BAR-TAB-120X36-FRAME,Sandblasting,Sandblasting,,0,20,0,process
+ASM-BRK-BAR-TAB-120X36-FRAME,Powder Coating Booth,Powder Coating Booth,,0,13,48,process
+ASM-BRK-BAR-TAB-120X36-FRAME,Curing Oven,Curing Oven,,0,20,0,process
+ASM-BRK-BAR-TAB-28X120-FRAME,Cold Saw Fabrication,Metal Cutting,,0,6,54,process
+ASM-BRK-BAR-TAB-28X120-FRAME,Fabrication & Welding,FAB POD A,,1,16,18,process
+ASM-BRK-BAR-TAB-28X120-FRAME,Sandblasting Setup,Sandblasting,,0,10,0,setup
+ASM-BRK-BAR-TAB-28X120-FRAME,Sandblasting,Sandblasting,,0,20,0,process
+ASM-BRK-BAR-TAB-28X120-FRAME,Powder Coating Booth,Powder Coating Booth,,0,13,48,process
+ASM-BRK-BAR-TAB-28X120-FRAME,Curing Oven,Curing Oven,,0,20,0,process
+ASM-BRK-BAR-TAB-28X72-FRAME,Cold Saw Fabrication,Metal Cutting,,0,6,54,process
+ASM-BRK-BAR-TAB-28X72-FRAME,Fabrication & Welding,FAB POD A,,1,16,18,process
+ASM-BRK-BAR-TAB-28X72-FRAME,Sandblasting Setup,Sandblasting,,0,10,0,setup
+ASM-BRK-BAR-TAB-28X72-FRAME,Sandblasting,Sandblasting,,0,20,0,process
+ASM-BRK-BAR-TAB-28X72-FRAME,Powder Coating Booth,Powder Coating Booth,,0,13,48,process
+ASM-BRK-BAR-TAB-28X72-FRAME,Curing Oven,Curing Oven,,0,20,0,process
+ASM-BRK-BAR-TAB-28X96-FRAME,Cold Saw Fabrication,Metal Cutting,,0,6,54,process
+ASM-BRK-BAR-TAB-28X96-FRAME,Fabrication & Welding,FAB POD A,,1,16,18,process
+ASM-BRK-BAR-TAB-28X96-FRAME,Sandblasting Setup,Sandblasting,,0,10,0,setup
+ASM-BRK-BAR-TAB-28X96-FRAME,Sandblasting,Sandblasting,,0,20,0,process
+ASM-BRK-BAR-TAB-28X96-FRAME,Powder Coating Booth,Powder Coating Booth,,0,13,48,process
+ASM-BRK-BAR-TAB-28X96-FRAME,Curing Oven,Curing Oven,,0,20,0,process

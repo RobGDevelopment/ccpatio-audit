@@ -1,0 +1,1592 @@
+action,sku,name,itemType,trackId,reason,steps
+upsert,ASM-BRK-BAR-TAB-120X28-FRAME,BROOKLYN TABLE (BAR HEIGHT) 28 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-120X36-FRAME,BROOKLYN TABLE (BAR HEIGHT) 36 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-28X120-FRAME,"BROOKLYN TABLE (BAR HEIGHT) 28"" x 120"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-28X72-FRAME,"BROOKLYN TABLE (BAR HEIGHT) 28"" x 72"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-28X96-FRAME,"BROOKLYN TABLE (BAR HEIGHT) 28"" x 96"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-36X120-FRAME,"BROOKLYN TABLE (BAR HEIGHT) 36"" x 120"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-36X36-FRAME,"STAR LEG TABLE (BAR HEIGHT) 36"" x 36"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-36X72-FRAME,"BROOKLYN TABLE (BAR HEIGHT) 36"" x 72"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-36X96-FRAME,"BROOKLYN TABLE (BAR HEIGHT) 36"" x 96"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-42X42-FRAME,"STAR LEG TABLE (BAR HEIGHT) 42"" x 42"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-72X28-FRAME,BROOKLYN TABLE (BAR HEIGHT) 28 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-72X36-FRAME,BROOKLYN TABLE (BAR HEIGHT) 36 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-96X36-FRAME,BROOKLYN TABLE (BAR HEIGHT) 36 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-BAR-TAB-98X28-FRAME,BROOKLYN TABLE (BAR HEIGHT) 28 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-120X28-FRAME,BROOKLYN TABLE (COUNTER HEIGHT) 28 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-120X36-FRAME,BROOKLYN TABLE (COUNTER HEIGHT) 36 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-28X120-FRAME,"BROOKLYN TABLE (COUNTER HEIGHT) 28"" x 120"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-28X72-FRAME,"BROOKLYN TABLE (COUNTER HEIGHT) 28"" x 72"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-28X96-FRAME,"BROOKLYN TABLE (COUNTER HEIGHT) 28"" x 96"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-36X120-FRAME,"BROOKLYN TABLE (COUNTER HEIGHT) 36"" x 120"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-36X36-FRAME,"STAR LEG TABLE (COUNTER HEIGHT) 36"" x 36"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-36X72-FRAME,"BROOKLYN TABLE (COUNTER HEIGHT) 36"" x 72"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-36X96-FRAME,"BROOKLYN TABLE (COUNTER HEIGHT) 36"" x 96"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-42X42-FRAME,"STAR LEG TABLE (COUNTER HEIGHT) 42"" x 42"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-72X18-FRAME,BROOKLYN TABLE (COUNTER HEIGHT) 18 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-72X28-FRAME,BROOKLYN TABLE (COUNTER HEIGHT) 28 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-72X36-FRAME,BROOKLYN TABLE (COUNTER HEIGHT) 36 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-96X28-FRAME,BROOKLYN TABLE (COUNTER HEIGHT) 28 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-CNT-TAB-96X36-FRAME,BROOKLYN TABLE (COUNTER HEIGHT) 36 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-COR-CHS-84X42-CUSH,"BROOKLYN CORNER CHAISE 84"" x 42"" x 30"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-COR-CHS-84X42-FRAME,"BROOKLYN CORNER CHAISE 84"" x 42"" x 30"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-120X28-FRAME,BROOKLYN TABLE (DINING HEIGHT) 28 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-120X36-FRAME,BROOKLYN TABLE (DINING HEIGHT) 36 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-28X120-FRAME,"BROOKLYN TABLE (DINING HEIGHT) 28"" x 120"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-28X72-FRAME,"BROOKLYN TABLE (DINING HEIGHT) 28"" x 72"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-28X96-FRAME,"BROOKLYN TABLE (DINING HEIGHT) 28"" x 96"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-36X120-FRAME,"BROOKLYN TABLE (DINING HEIGHT) 36"" x 120"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-36X36-FRAME,"STAR LEG TABLE (DINING HEIGHT) 36"" x 36"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-36X72-FRAME,"BROOKLYN TABLE (DINING HEIGHT) 36"" x 72"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-36X96-FRAME,"BROOKLYN TABLE (DINING HEIGHT) 36"" x 96"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-42X42-FRAME,"STAR LEG TABLE (DINING HEIGHT) 42"" x 42"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-72X28-FRAME,BROOKLYN TABLE (DINING HEIGHT) 28 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-72X36-FRAME,BROOKLYN TABLE (DINING HEIGHT) 36 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-96X28-FRAME,BROOKLYN TABLE (DINING HEIGHT) 28 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-DIN-TAB-96X36-FRAME,BROOKLYN TABLE (DINING HEIGHT) 36 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-22X42-CUSH,"BROOKLYN OTTOMAN 22"" x 42"" x 17"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-22X42-FRAME,"BROOKLYN OTTOMAN 22"" x 42"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-22X60-CUSH,"BROOKLYN OTTOMAN 22"" x 60"" x 17"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-22X60-FRAME,"BROOKLYN OTTOMAN 22"" x 60"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-22X72-CUSH,"BROOKLYN OTTOMAN 22"" x 72"" x 17"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-22X72-FRAME,"BROOKLYN OTTOMAN 22"" x 72"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-34X34-CUSH,"BROOKLYN OTTOMAN 34"" x 34"" x 17"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-34X34-FRAME,"BROOKLYN OTTOMAN 34"" x 34"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-34X42-CUSH,"BROOKLYN OTTOMAN 34"" x 42"" x 17"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-34X42-FRAME,"BROOKLYN OTTOMAN 34"" x 42"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-34X60-CUSH,"BROOKLYN OTTOMAN 34"" x 60"" x 17"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-34X60-FRAME,"BROOKLYN OTTOMAN 34"" x 60"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-34X72-CUSH,"BROOKLYN OTTOMAN 34"" x 72"" x 17"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-34X72-FRAME,"BROOKLYN OTTOMAN 34"" x 72"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-42X22-CUSH,BROOKLYN OTTOMAN 22 X 42 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-42X22-FRAME,BROOKLYN OTTOMAN 22 X 42 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-42X34-CUSH,BROOKLYN OTTOMAN 34 X 42 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-42X34-FRAME,BROOKLYN OTTOMAN 34 X 42 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-56X42-CUSH,"BROOKLYN OTTOMAN 56"" x 42"" x 17"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-56X42-FRAME,"BROOKLYN OTTOMAN 56"" x 42"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-60X22-CUSH,BROOKLYN OTTOMAN 22 X 60 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-60X22-FRAME,BROOKLYN OTTOMAN 22 X 60 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-60X34-CUSH,BROOKLYN OTTOMAN 34 X 60 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-60X34-FRAME,BROOKLYN OTTOMAN 34 X 60 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-72X22-CUSH,BROOKLYN OTTOMAN 22 X 72 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-72X22-FRAME,BROOKLYN OTTOMAN 22 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-OTT-72X34-CUSH,BROOKLYN OTTOMAN 34 X 72 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-OTT-72X34-FRAME,BROOKLYN OTTOMAN 34 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRK-SOF-60X34-CUSH,"BROOKLYN SOFA 60"" x 34"" x 30"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRK-SOF-60X34-FRAME,"BROOKLYN SOFA 60"" x 34"" x 30"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-ARM-SOF-34X34-CUSH,"BRAVADA ARMLESS SOFA 34"" x 34"" x 31"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-ARM-SOF-34X34-FRAME,"BRAVADA ARMLESS SOFA 34"" x 34"" x 31"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-ARM-SOF-72X34-CUSH,"BRAVADA ARMLESS SOFA 72"" x 34"" x 31"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-ARM-SOF-72X34-FRAME,"BRAVADA ARMLESS SOFA 72"" x 34"" x 31"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-ARM-SOF-84X34-CUSH,"BRAVADA ARMLESS SOFA 84"" x 34"" x 31"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-ARM-SOF-84X34-FRAME,"BRAVADA ARMLESS SOFA 84"" x 34"" x 31"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-ARM-SOF-96X34-CUSH,"BRAVADA ARMLESS SOFA 96"" x 34"" x 31"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-ARM-SOF-96X34-FRAME,"BRAVADA ARMLESS SOFA 96"" x 34"" x 31"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-BCH-96X34-CUSH,"BRAVADA ROUNDED BENCH 96"" X 34"" X 18"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-BCH-96X34-FRAME,"BRAVADA ROUNDED BENCH 96"" X 34"" X 18"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-COF-TAB-28X42-FRAME,"BRAVADA COFFEE TABLE 28"" x 42"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-COF-TAB-36X56-FRAME,"BRAVADA COFFEE TABLE 36"" x 56"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-COF-TAB-42X56-FRAME,"BRAVADA COFFEE TABLE 42"" x 56"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-COF-TAB-42X72-FRAME,"BRAVADA COFFEE TABLE 42"" x 72"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-COF-TAB-56X72-FRAME,"BRAVADA COFFEE TABLE 56"" x 72"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-COR-CHS-72X34-CUSH,"BRAVADA CORNER CHAISE 72"" x 34"" x 31"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-COR-CHS-72X34-FRAME,"BRAVADA CORNER CHAISE 72"" x 34"" x 31"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-COR-CHS-84X34-CUSH,"BRAVADA CORNER CHAISE 84"" x 34"" x 31"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-COR-CHS-84X34-FRAME,"BRAVADA CORNER CHAISE 84"" x 34"" x 31"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-DYB-84X72-CUSH,"BRAVADA DAYBED 84"" x 72"" x 27"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-DYB-84X72-FRAME,"BRAVADA DAYBED 84"" x 72"" x 27"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-DYB-84X84-CUSH,"BRAVADA ROUND DAYBED 84"" DIAMETER CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-DYB-84X84-FRAME,"BRAVADA ROUND DAYBED 84"" DIAMETER FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-OTT-22X30-CUSH,"BRAVADA OTTOMAN 22"" x 30"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-OTT-22X30-FRAME,"BRAVADA OTTOMAN 22"" x 30"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-OTT-22X42-CUSH,"BRAVADA OTTOMAN 22"" x 42"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-OTT-22X42-FRAME,"BRAVADA OTTOMAN 22"" x 42"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-OTT-22X60-CUSH,"BRAVADA OTTOMAN 22"" x 60"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-OTT-22X60-FRAME,"BRAVADA OTTOMAN 22"" x 60"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-OTT-22X72-CUSH,"BRAVADA OTTOMAN 22"" x 72"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-OTT-22X72-FRAME,"BRAVADA OTTOMAN 22"" x 72"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-OTT-34X42-CUSH,"BRAVADA OTTOMAN 34"" x 42"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-OTT-34X42-FRAME,"BRAVADA OTTOMAN 34"" x 42"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-OTT-34X60-CUSH,"BRAVADA OTTOMAN 34"" x 60"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-OTT-34X60-FRAME,"BRAVADA OTTOMAN 34"" x 60"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-OTT-34X72-CUSH,"BRAVADA OTTOMAN 34"" x 72"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-OTT-34X72-FRAME,"BRAVADA OTTOMAN 34"" x 72"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-OVS-CHS-72X42-CUSH,"BRAVADA OVERSIZED CHAISE 72"" x 42"" x 31"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-OVS-CHS-72X42-FRAME,"BRAVADA OVERSIZED CHAISE 72"" x 42"" x 31"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-OVS-CHS-84X42-CUSH,"BRAVADA OVERSIZED CHAISE 84"" x 42"" x 31"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-OVS-CHS-84X42-FRAME,"BRAVADA OVERSIZED CHAISE 84"" x 42"" x 31"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-BRV-SWV-CHA-CUSH,BRAVADA SWIVEL CHAIR W/DEKTON SIDEARM CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-BRV-SWV-CHA-FRAME,BRAVADA SWIVEL CHAIR W/DEKTON SIDEARM FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-CAB-DYB-84X84-CUSH,"CABANA DAYBED 84"" x 84"" x 78"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-CAB-DYB-84X84-FRAME,"CABANA DAYBED 84"" x 84"" x 78"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-CAB-MIS-10X10-CUSH,CABANA 10' X 10' X 9' w/Sunbrella Top & Curtains CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-CAB-MIS-10X10-FRAME,CABANA 10' X 10' X 9' w/Sunbrella Top & Curtains FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-CUS-OTT-22X72-CUSH,"CUSTOM STORAGE OTTOMAN 22"" x 72"" x 23"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-CUS-OTT-22X72-FRAME,"CUSTOM STORAGE OTTOMAN 22"" x 72"" x 23"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-CUS-OTT-23X82-CUSH,"CUSTOM STORAGE OTTOMAN 23"" x 82"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-CUS-OTT-23X82-FRAME,"CUSTOM STORAGE OTTOMAN 23"" x 82"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-CUS-OTT-72X22-CUSH,CUSTOM STORAGE OTTOMAN 22 X 72 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-CUS-OTT-72X22-FRAME,CUSTOM STORAGE OTTOMAN 22 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-CUS-OTT-82X23-CUSH,CUSTOM STORAGE OTTOMAN 23 X 82 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-CUS-OTT-82X23-FRAME,CUSTOM STORAGE OTTOMAN 23 X 82 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-120X42-FRAME,DAISY BASE TABLE (BAR HEIGHT) 42 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-120X56-FRAME,DAISY BASE TABLE (BAR HEIGHT) 56 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-42X120-FRAME,"DAISY BASE TABLE (BAR HEIGHT) 42"" x 120"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-42X72-FRAME,"DAISY BASE TABLE (BAR HEIGHT) 42"" x 72"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-42X96-FRAME,"DAISY BASE TABLE (BAR HEIGHT) 42"" x 96"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-56X120-FRAME,"DAISY BASE TABLE (BAR HEIGHT) 56"" x 120"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-56X56-FRAME,"DAISY BASE TABLE (BAR HEIGHT) 56"" x 56"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-56X72-FRAME,"DAISY BASE TABLE (BAR HEIGHT) 56"" x 72"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-56X96-FRAME,"DAISY BASE TABLE (BAR HEIGHT) 56"" x 96"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-72X42-FRAME,DAISY BASE TABLE (BAR HEIGHT) 42 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-72X56-FRAME,DAISY BASE TABLE (BAR HEIGHT) 56 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-96X42-FRAME,DAISY BASE TABLE (BAR HEIGHT) 42 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-BAR-TAB-96X56-FRAME,DAISY BASE TABLE (BAR HEIGHT) 56 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-120X42-FRAME,DAISY BASE TABLE (COUNTER HEIGHT) 42 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-120X56-FRAME,DAISY BASE TABLE (COUNTER HEIGHT) 56 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-42X120-FRAME,"DAISY BASE TABLE (COUNTER HEIGHT) 42"" x 120"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-42X72-FRAME,"DAISY BASE TABLE (COUNTER HEIGHT) 42"" x 72"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-42X96-FRAME,"DAISY BASE TABLE (COUNTER HEIGHT) 42"" x 96"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-56X120-FRAME,"DAISY BASE TABLE (COUNTER HEIGHT) 56"" x 120"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-56X56-FRAME,"DAISY BASE TABLE (COUNTER HEIGHT) 56"" x 56"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-56X72-FRAME,"DAISY BASE TABLE (COUNTER HEIGHT) 56"" x 72"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-56X96-FRAME,"DAISY BASE TABLE (COUNTER HEIGHT) 56"" x 96"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-72X42-FRAME,DAISY BASE TABLE (COUNTER HEIGHT) 42 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-72X56-FRAME,DAISY BASE TABLE (COUNTER HEIGHT) 56 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-96X42-FRAME,DAISY BASE TABLE (COUNTER HEIGHT) 42 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-CNT-TAB-96X56-FRAME,DAISY BASE TABLE (COUNTER HEIGHT) 56 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-DIN-TAB-120X42-FRAME,DAISY BASE TABLE (DINING HEIGHT) 42 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-DIN-TAB-120X56-FRAME,DAISY BASE TABLE (DINING HEIGHT) 56 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-DIN-TAB-42X30-FRAME,"DAISY BASE ROUND TABLE (DINING HEIGHT) 42"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-DIN-TAB-42X42-FRAME,DAISY BASE ROUND TABLE (DINING HEIGHT) 42 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-DIN-TAB-56X30-FRAME,"DAISY BASE ROUND TABLE (DINING HEIGHT) 56"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-DIN-TAB-56X56-FRAME,DAISY BASE TABLE (DINING HEIGHT) 56 X 56 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-DIN-TAB-56X72-FRAME,"DAISY BASE TABLE (DINING HEIGHT) 56"" x 72"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-DIN-TAB-56X96-FRAME,"DAISY BASE TABLE (DINING HEIGHT) 56"" x 96"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-DIN-TAB-72X42-FRAME,DAISY BASE TABLE (DINING HEIGHT) 42 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-DIN-TAB-72X56-FRAME,DAISY BASE TABLE (DINING HEIGHT) 56 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-DIN-TAB-96X42-FRAME,DAISY BASE TABLE (DINING HEIGHT) 42 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-DIN-TAB-96X56-FRAME,DAISY BASE TABLE (DINING HEIGHT) 56 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-FIR-TAB-42X42-FRAME,"PROPANE FIRE PIT TABLE 42"" x 42"" x 21"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-FIR-TAB-56X42-FRAME,"PROPANE FIRE PIT TABLE 56"" x 42"" x 21"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-FIR-TAB-84X56-FRAME,"DAISY BASE FIRE PIT DINING TABLE 84"" x 56"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-FIR-TAB-96X56-FRAME,"DAISY BASE FIRE PIT DINING TABLE 96"" x 56"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-TAB-108X56-FRAME,"DAISY BASE OVAL TABLE 108"" X 56"" X 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-DAI-TAB-72X42-FRAME,Daisy Base Table 72 x 42 Dining Height FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-ESY-CHS-CUSH,ADD-ON WHEELS FOR CHAISE LOUNGERS CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-ESY-CHS-FRAME,ADD-ON WHEELS FOR CHAISE LOUNGERS FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-FLY-BCH-42X18-CUSH,FLY LEG BENCH (BAR HEIGHT) 42 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-FLY-BCH-42X18-FRAME,FLY LEG BENCH (BAR HEIGHT) 42 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-FLY-DIN-CHA-18X18-CUSH,FLY LEG CHAIR (DINING HEIGHT) CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-FLY-DIN-CHA-18X18-FRAME,FLY LEG CHAIR (DINING HEIGHT) FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-FLY-FLY-BST-18X18-CUSH,FLY LEG BARSTOOL (BAR HEIGHT) CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-FLY-FLY-BST-18X18-FRAME,FLY LEG BARSTOOL (BAR HEIGHT) FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-FLY-LEG-BAR-COU-HEI-CUSH,FLY LEG BARSTOOL (COUNTER HEIGHT) CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-FLY-LEG-BAR-COU-HEI-FRAME,FLY LEG BARSTOOL (COUNTER HEIGHT) FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-FLY-LEG-BEN-COU-HEI-42-CUSH,FLY LEG BENCH (COUNTER HEIGHT) 42 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-FLY-LEG-BEN-COU-HEI-42-FRAME,FLY LEG BENCH (COUNTER HEIGHT) 42 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-FLY-LEG-BEN-DIN-HEI-42-CUSH,FLY LEG BENCH (DINING HEIGHT) 42 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-FLY-LEG-BEN-DIN-HEI-42-FRAME,FLY LEG BENCH (DINING HEIGHT) 42 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-FLY-TAB-38X8-FRAME,FLY TABLE 8 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-FLY-TAB-60X12-FRAME,FLY TABLE 60 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-FLY-TAB-72X12-FRAME,FLY TABLE 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-FLY-TAB-84X12-FRAME,FLY TABLE 84 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-FLY-TAB-96X12-FRAME,FLY TABLE 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-HAL-BAC-BAR-BAR-HEI-CUSH,HALF BACK BARSTOOL (BAR HEIGHT) CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-HAL-BAC-BAR-BAR-HEI-FRAME,HALF BACK BARSTOOL (BAR HEIGHT) FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-LED-CHA-CUSH,LEDGE LOUNGER SIGNATURE LOWBACK CHAIR CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-LED-CHA-FRAME,LEDGE LOUNGER SIGNATURE LOWBACK CHAIR FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-LED-SID-TAB-FRAME,LEDGE LOUNGER AUTOGRAPH SIDE TABLE FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MIS-DIN-BCH-72X22-CUSH,DINING BENCH W/NO ARMS 72 X 22 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MIS-DIN-BCH-72X22-FRAME,DINING BENCH W/NO ARMS 72 X 22 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MIS-DIN-BCH-96X22-CUSH,DINING BENCH W/NO ARMS 96 X 22 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MIS-DIN-BCH-96X22-FRAME,DINING BENCH W/NO ARMS 96 X 22 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MIS-DIN-CHA-17X21-CUSH,HALF BACK CHAIR (DINING HEIGHT CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MIS-DIN-CHA-17X21-FRAME,HALF BACK CHAIR (DINING HEIGHT FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MIS-FIR-TAB-42X42-FRAME,PROPANE FIRE PIT TABLE 42 X 42 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MIS-FLY-BST-17X21-CUSH,HALF BACK BARSTOOL (COUNTER HEIGHT) CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MIS-FLY-BST-17X21-FRAME,HALF BACK BARSTOOL (COUNTER HEIGHT) FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MIS-OTT-22X22-CUSH,"CUBE OTTOMAN 22"" x 22"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MIS-OTT-22X22-FRAME,"CUBE OTTOMAN 22"" x 22"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MIS-SID-TAB-13X30-FRAME,U SIDE TABLE FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MIS-TAB-13X30-FRAME,T TABLE FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-CLB-CHA-32X36-CUSH,"MILAN CLUB CHAIR 32"" x 36"" x 16"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-CLB-CHA-32X36-FRAME,"MILAN CLUB CHAIR 32"" x 36"" x 16"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-OTT-22X60-CUSH,"MILAN OTTOMAN 22"" x 60"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-OTT-22X60-FRAME,"MILAN OTTOMAN 22"" x 60"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-OTT-22X72-CUSH,"MILAN OTTOMAN 22"" x 72"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-OTT-22X72-FRAME,"MILAN OTTOMAN 22"" x 72"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-OTT-34X34-CUSH,"MILAN OTTOMAN 34"" x 34"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-OTT-34X34-FRAME,"MILAN OTTOMAN 34"" x 34"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-OTT-34X42-CUSH,"MILAN OTTOMAN 34"" x 42"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-OTT-34X42-FRAME,"MILAN OTTOMAN 34"" x 42"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-OTT-34X60-CUSH,"MILAN OTTOMAN 34"" x 60"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-OTT-34X60-FRAME,"MILAN OTTOMAN 34"" x 60"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-OTT-34X72-CUSH,"MILAN OTTOMAN 34"" x 72"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-OTT-34X72-FRAME,"MILAN OTTOMAN 34"" x 72"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-OTT-56X42-CUSH,"MILAN OTTOMAN 56"" x 42"" x 16"" CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-OTT-56X42-FRAME,"MILAN OTTOMAN 56"" x 42"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-SOF-60X62-CUSH,"MILAN DOUBLE-SIDED SOFA 60"" x 62"" x 16"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-SOF-60X62-FRAME,"MILAN DOUBLE-SIDED SOFA 60"" x 62"" x 16"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-SOF-62X42-CUSH,"MILAN T-SHAPED SOFA 62"" x 42"" x 22"" x 16"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-SOF-62X42-FRAME,"MILAN T-SHAPED SOFA 62"" x 42"" x 22"" x 16"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-SOF-72X36-CUSH,"MILAN ONE-SIDED SOFA 72"" x 36"" x 16"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-SOF-72X36-FRAME,"MILAN ONE-SIDED SOFA 72"" x 36"" x 16"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-SOF-84X36-CUSH,"MILAN ONE SIDED SOFA 84"" x 36"" x 16"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-SOF-84X36-FRAME,"MILAN ONE SIDED SOFA 84"" x 36"" x 16"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-SOF-96X36-CUSH,"MILAN ONE-SIDED SOFA 96"" x 36"" x 16"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-MLN-SOF-96X36-FRAME,"MILAN ONE-SIDED SOFA 96"" x 36"" x 16"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-MLN-TAB-56X14-FRAME,"OCCASIONAL TABLE 56""x14""x36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCC-TAB-56X14-FRAME,OCCASIONAL TABLE FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-COF-TAB-28X42-FRAME,"OCEAN COFFEE TABLE 28"" x 42"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-COF-TAB-28X56-FRAME,"OCEAN COFFEE TABLE 28"" x 56"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-COF-TAB-36X56-FRAME,"OCEAN COFFEE TABLE 36"" x 56"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-COF-TAB-36X72-FRAME,"OCEAN COFFEE TABLE 36"" x 72"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-COF-TAB-42X56-FRAME,"OCEAN COFFEE TABLE 42"" x 56"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-COF-TAB-42X72-FRAME,"OCEAN COFFEE TABLE 42"" x 72"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-COF-TAB-56X72-FRAME,"OCEAN COFFEE TABLE 56"" x 72"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-MIN-LOV-48X38-CUSH,"OCEAN MINI LOVESEAT 48"" x 38"" x 33"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-OCN-MIN-LOV-48X38-FRAME,"OCEAN MINI LOVESEAT 48"" x 38"" x 33"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-MIN-LOV-CUSH,Ocean Mini Loveseat CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-OCN-MIN-LOV-FRAME,Ocean Mini Loveseat FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-SID-TAB-12-FRAME,ANGULAR SIDE TABLE FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-SID-TAB-13X30-FRAME,"U SIDE TABLE 13"" x 30"" x 21"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-SID-TAB-32X32-FRAME,"TRIANGLE SIDE TABLE 32"" x 32"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-SID-TAB-36X17-FRAME,"OCEAN ROUND SIDE TABLE 36"" x 17"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-SWV-CHA-34X38-CUSH,"OCEAN SWIVEL CHAIR 34"" x 38"" x 33"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-OCN-SWV-CHA-34X38-FRAME,"OCEAN SWIVEL CHAIR 34"" x 38"" x 33"" BH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-SWV-CHA-CUSH,Ocean Swivel Chair CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-OCN-SWV-CHA-FRAME,Ocean Swivel Chair FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-TAB-13X30-FRAME,"T TABLE 13"" x 30"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-TAB-34X12-FRAME,"FLY TABLE 34"" X 12"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-TAB-72X12-FRAME,"FLY TABLE 72"" X 12"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-TAB-84X12-FRAME,"FLY TABLE 84"" X 12"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-OCN-TAB-96X12-FRAME,"FLY TABLE 96"" X 12"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-STA-BAR-TAB-36X36-FRAME,STAR LEG TABLE (BAR HEIGHT) 36 X 36 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-STA-BAR-TAB-42X42-FRAME,STAR LEG TABLE (BAR HEIGHT) 42 X 42 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-STA-BAR-TAB-72X36-FRAME,STAR LEG TABLE (BAR HEIGHT) 36 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-STA-CNT-TAB-36X36-FRAME,STAR LEG TABLE (COUNTER HEIGHT) 36 X 36 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-STA-CNT-TAB-42X42-FRAME,STAR LEG TABLE (COUNTER HEIGHT) 42 X 42 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-STA-CNT-TAB-72X36-FRAME,STAR LEG TABLE (COUNTER HEIGHT) 36 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-STA-DIN-TAB-36X36-FRAME,STAR LEG TABLE (DINING HEIGHT) 36 X 36 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-STA-DIN-TAB-42X42-FRAME,STAR LEG TABLE (DINING HEIGHT) 42 X 42 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-STA-DIN-TAB-72X36-FRAME,STAR LEG TABLE (DINING HEIGHT) 36 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TAY-BAR-W-ARM-COU-HEI-CUSH,TAYLOR BARSTOOL W/ARMS (COUNTER HEIGHT) CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TAY-BAR-W-ARM-COU-HEI-FRAME,TAYLOR BARSTOOL W/ARMS (COUNTER HEIGHT) FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TAY-BCH-24X23-CUSH,"TAYLOR BENCH (BAR HEIGHT) 24"" x 23"" x 42"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TAY-BCH-24X23-FRAME,"TAYLOR BENCH (BAR HEIGHT) 24"" x 23"" x 42"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TAY-BCH-42X23-CUSH,"TAYLOR BENCH (COUNTER HEIGHT) 42"" x 23"" x 24"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TAY-BCH-42X23-FRAME,"TAYLOR BENCH (COUNTER HEIGHT) 42"" x 23"" x 24"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TAY-BCH-72X23-CUSH,"TAYLOR BENCH (BAR HEIGHT) 72"" x 23"" x 30"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TAY-BCH-72X23-FRAME,"TAYLOR BENCH (BAR HEIGHT) 72"" x 23"" x 30"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TAY-BEN-BAR-HEI-72-CUSH,TAYLOR BENCH (BAR HEIGHT) 72 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TAY-BEN-BAR-HEI-72-FRAME,TAYLOR BENCH (BAR HEIGHT) 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TAY-BEN-DIN-HEI-42-CUSH,TAYLOR BENCH (DINING HEIGHT) 42 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TAY-BEN-DIN-HEI-42-FRAME,TAYLOR BENCH (DINING HEIGHT) 42 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TAY-BEN-DIN-HEI-72-CUSH,TAYLOR BENCH (DINING HEIGHT) 72 CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TAY-BEN-DIN-HEI-72-FRAME,TAYLOR BENCH (DINING HEIGHT) 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TAY-BST-18X23-CUSH,TAYLOR BARSTOOL (COUNTER HEIGHT) CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TAY-BST-18X23-FRAME,TAYLOR BARSTOOL (COUNTER HEIGHT) FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TAY-BST-19X23-CUSH,"TAYLOR BARSTOOL (BAR HEIGHT) 19"" x 23"" x 30"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TAY-BST-19X23-FRAME,"TAYLOR BARSTOOL (BAR HEIGHT) 19"" x 23"" x 30"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TAY-BST-24X23-CUSH,"TAYLOR BARSTOOL w/ARMS (BAR HEIGHT) 24"" x 23"" x 30"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TAY-BST-24X23-FRAME,"TAYLOR BARSTOOL w/ARMS (BAR HEIGHT) 24"" x 23"" x 30"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TAY-DIN-CHA-19X23-CUSH,TAYLOR CHAIR (DINING HEIGHT) CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TAY-DIN-CHA-19X23-FRAME,TAYLOR CHAIR (DINING HEIGHT) FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TAY-DIN-CHA-24X23-CUSH,"TAYLOR CHAIR w/ARMS (DINING HEIGHT) 24"" x 23"" x 18"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TAY-DIN-CHA-24X23-FRAME,"TAYLOR CHAIR w/ARMS (DINING HEIGHT) 24"" x 23"" x 18"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TJM-CHA-CUSH,FREELO CHAIR SPLASH CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,ASM-TJM-CHA-FRAME,FREELO CHAIR SPLASH FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TJM-TAB-FRAME,Ripple Table FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-TRI-SID-TAB-32X32-FRAME,TRIANGLE SIDE TABLE FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BAR-TAB-120X28-FRAME,WATERFALL TABLE (BAR HEIGHT) 28 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BAR-TAB-120X36-FRAME,WATERFALL TABLE (BAR HEIGHT) 36 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BAR-TAB-28X120-FRAME,"WATERFALL TABLE (BAR HEIGHT) 28"" x 120"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BAR-TAB-28X72-FRAME,"WATERFALL TABLE (BAR HEIGHT) 28"" x 72"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BAR-TAB-28X96-FRAME,"WATERFALL TABLE (BAR HEIGHT) 28"" x 96"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BAR-TAB-36X120-FRAME,"WATERFALL TABLE (BAR HEIGHT) 36"" x 120"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BAR-TAB-36X72-FRAME,"WATERFALL TABLE (BAR HEIGHT) 36"" x 72"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BAR-TAB-36X96-FRAME,"WATERFALL TABLE (BAR HEIGHT) 36"" x 96"" x 42"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BAR-TAB-72X28-FRAME,WATERFALL TABLE (BAR HEIGHT) 28 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BAR-TAB-72X36-FRAME,WATERFALL TABLE (BAR HEIGHT) 36 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BAR-TAB-96X28-FRAME,WATERFALL TABLE (BAR HEIGHT) 28 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BAR-TAB-96X36-FRAME,WATERFALL TABLE (BAR HEIGHT) 36 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-BCH-42X18-CUSH,"FLY LEG BENCH (DINING HEIGHT) 42"" x 18"" x 18"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-WFT-BCH-42X18-FRAME,"FLY LEG BENCH (DINING HEIGHT) 42"" x 18"" x 18"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-CNT-TAB-120X28-FRAME,WATERFALL TABLE (COUNTER HEIGHT) 28 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-CNT-TAB-120X36-FRAME,WATERFALL TABLE (COUNTER HEIGHT) 36 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-CNT-TAB-28X120-FRAME,"WATERFALL TABLE (COUNTER HEIGHT) 28"" x 120"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-CNT-TAB-28X72-FRAME,"WATERFALL TABLE (COUNTER HEIGHT) 28"" x 72"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-CNT-TAB-28X96-FRAME,"WATERFALL TABLE (COUNTER HEIGHT) 28"" x 96"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-CNT-TAB-36X120-FRAME,"WATERFALL TABLE (COUNTER HEIGHT) 36"" x 120"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-CNT-TAB-36X72-FRAME,"WATERFALL TABLE (COUNTER HEIGHT) 36"" x 72"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-CNT-TAB-36X96-FRAME,"WATERFALL TABLE (COUNTER HEIGHT) 36"" x 96"" x 36"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-CNT-TAB-72X28-FRAME,WATERFALL TABLE (COUNTER HEIGHT) 28 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-CNT-TAB-72X36-FRAME,WATERFALL TABLE (COUNTER HEIGHT) 36 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-CNT-TAB-96X28-FRAME,WATERFALL TABLE (COUNTER HEIGHT) 28 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-CNT-TAB-96X36-FRAME,WATERFALL TABLE (COUNTER HEIGHT) 36 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-BCH-72X22-CUSH,"DINING BENCH w/NO ARMS 72"" x 22"" x 18"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-WFT-DIN-BCH-72X22-FRAME,"DINING BENCH w/NO ARMS 72"" x 22"" x 18"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-BCH-96X22-CUSH,"DINING BENCH w/NO ARMS 96"" x 22"" x 18"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-WFT-DIN-BCH-96X22-FRAME,"DINING BENCH w/NO ARMS 96"" x 22"" x 18"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-CHA-17X21-CUSH,"HALF BACK CHAIR (DINING HEIGHT) 17"" x 21"" x 18"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-WFT-DIN-CHA-17X21-FRAME,"HALF BACK CHAIR (DINING HEIGHT) 17"" x 21"" x 18"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-CHA-18X18-CUSH,"FLY LEG CHAIR (DINING HEIGHT) 18"" x 18"" x 18"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-WFT-DIN-CHA-18X18-FRAME,"FLY LEG CHAIR (DINING HEIGHT) 18"" x 18"" x 18"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-TAB-120X28-FRAME,WATERFALL TABLE (DINING HEIGHT) 28 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-TAB-120X36-FRAME,WATERFALL TABLE (DINING HEIGHT) 36 X 120 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-TAB-28X120-FRAME,"WATERFALL TABLE (DINING HEIGHT) 28"" x 120"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-TAB-28X72-FRAME,"WATERFALL TABLE (DINING HEIGHT) 28"" x 72"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-TAB-28X96-FRAME,"WATERFALL TABLE (DINING HEIGHT) 28"" x 96"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-TAB-36X120-FRAME,"WATERFALL TABLE (DINING HEIGHT) 36"" x 120"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-TAB-36X72-FRAME,"WATERFALL TABLE (DINING HEIGHT) 36"" x 72"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-TAB-36X96-FRAME,"WATERFALL TABLE (DINING HEIGHT) 36"" x 96"" x 30"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-TAB-72X36-FRAME,WATERFALL TABLE (DINING HEIGHT) 36 X 72 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-TAB-96X28-FRAME,WATERFALL TABLE (DINING HEIGHT) 28 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-DIN-TAB-96X36-FRAME,WATERFALL TABLE (DINING HEIGHT) 36 X 96 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-FIR-TAB-56X36-FRAME,"WATERFALL FIRE PIT TABLE 56"" x 36"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-FIR-TAB-72X36-FRAME,"WATERFALL FIRE PIT TABLE 72"" x 36"" x 16"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-FLY-BST-17X21-CUSH,"HALF BACK BARSTOOL (BAR HEIGHT) 17"" x 21"" x 30"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-WFT-FLY-BST-17X21-FRAME,"HALF BACK BARSTOOL (BAR HEIGHT) 17"" x 21"" x 30"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-FLY-BST-18X18-CUSH,"FLY LEG BARSTOOL (BAR HEIGHT) 18"" x 18"" x 30"" SH CUSH",sub_assembly,cushion,cush_suffix,4
+upsert,ASM-WFT-FLY-BST-18X18-FRAME,"FLY LEG BARSTOOL (BAR HEIGHT) 18"" x 18"" x 30"" SH FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-SID-TAB-13X40-FRAME,WATERFALL SIDE TABLE 40X13 FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,ASM-WFT-SID-TAB-40X13-FRAME,"WATERFALL SIDE TABLE 40"" x 13"" x 12"" FRAME",sub_assembly,aluminum_frame,frame_suffix,5
+upsert,FIN-BRK-BAR-TAB-120X28,BROOKLYN TABLE (BAR HEIGHT) 28 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-BAR-TAB-120X36,BROOKLYN TABLE (BAR HEIGHT) 36 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-BAR-TAB-28X120,"BROOKLYN TABLE (BAR HEIGHT) 28"" x 120"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-BAR-TAB-28X72,"BROOKLYN TABLE (BAR HEIGHT) 28"" x 72"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-BAR-TAB-28X96,"BROOKLYN TABLE (BAR HEIGHT) 28"" x 96"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-BAR-TAB-36X120,"BROOKLYN TABLE (BAR HEIGHT) 36"" x 120"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-BAR-TAB-36X36,"STAR LEG TABLE (BAR HEIGHT) 36"" x 36"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-BAR-TAB-36X72,"BROOKLYN TABLE (BAR HEIGHT) 36"" x 72"" x 42""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-BAR-TAB-36X72-STARLEG,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-BAR-TAB-36X96,"BROOKLYN TABLE (BAR HEIGHT) 36"" x 96"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-BAR-TAB-42X42,"STAR LEG TABLE (BAR HEIGHT) 42"" x 42"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-BAR-TAB-72X28,BROOKLYN TABLE (BAR HEIGHT) 28 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-BAR-TAB-72X36,BROOKLYN TABLE (BAR HEIGHT) 36 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-BAR-TAB-96X36,BROOKLYN TABLE (BAR HEIGHT) 36 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-BAR-TAB-98X28,BROOKLYN TABLE (BAR HEIGHT) 28 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CHS-72X34-LS,Brooklyn Chaise 72 x 34 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-CHS-72X34-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X34-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X34-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X34-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X34-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-CHS-72X34-RS,Brooklyn Chaise 72 x 34 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-CHS-72X34-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X34-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X34-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X34-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X34-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-CHS-72X42-LS,Brooklyn Chaise 72 x 42 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-CHS-72X42-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X42-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X42-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X42-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X42-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-CHS-72X42-RS,Brooklyn Chaise 72 x 42 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-CHS-72X42-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X42-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X42-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X42-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-72X42-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-CHS-84X34-LS,Brooklyn Chaise 84 x 34 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-CHS-84X34-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X34-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X34-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X34-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X34-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-CHS-84X34-RS,Brooklyn Chaise 84 x 34 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-CHS-84X34-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X34-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X34-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X34-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X34-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-CHS-84X42-LS,Brooklyn Chaise 84 x 42 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-CHS-84X42-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X42-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X42-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X42-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X42-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-CHS-84X42-RS,Brooklyn Chaise 84 x 42 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-CHS-84X42-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X42-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X42-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X42-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-CHS-84X42-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-CNT-TAB-120X28,BROOKLYN TABLE (COUNTER HEIGHT) 28 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CNT-TAB-120X36,BROOKLYN TABLE (COUNTER HEIGHT) 36 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CNT-TAB-28X120,"BROOKLYN TABLE (COUNTER HEIGHT) 28"" x 120"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CNT-TAB-28X72,"BROOKLYN TABLE (COUNTER HEIGHT) 28"" x 72"" x 36""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-CNT-TAB-28X72-TABLECOUNTER,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-CNT-TAB-28X96,"BROOKLYN TABLE (COUNTER HEIGHT) 28"" x 96"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CNT-TAB-36X120,"BROOKLYN TABLE (COUNTER HEIGHT) 36"" x 120"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CNT-TAB-36X36,"STAR LEG TABLE (COUNTER HEIGHT) 36"" x 36"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CNT-TAB-36X72,"BROOKLYN TABLE (COUNTER HEIGHT) 36"" x 72"" x 36""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-CNT-TAB-36X72-STARLEG,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-CNT-TAB-36X96,"BROOKLYN TABLE (COUNTER HEIGHT) 36"" x 96"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CNT-TAB-42X42,"STAR LEG TABLE (COUNTER HEIGHT) 42"" x 42"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CNT-TAB-72X18,BROOKLYN TABLE (COUNTER HEIGHT) 18 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CNT-TAB-72X28,BROOKLYN TABLE (COUNTER HEIGHT) 28 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CNT-TAB-72X36,BROOKLYN TABLE (COUNTER HEIGHT) 36 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CNT-TAB-96X28,BROOKLYN TABLE (COUNTER HEIGHT) 28 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-CNT-TAB-96X36,BROOKLYN TABLE (COUNTER HEIGHT) 36 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-COR-CHS-84X42,"BROOKLYN CORNER CHAISE 84"" x 42"" x 30"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-COR-SOF-72X34,"BROOKLYN CORNER SOFA 72"" x 34"" x 30"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-COR-SOF-72X34-LS,Brooklyn Corner Sofa 72 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-COR-SOF-72X34-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-72X34-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-72X34-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-72X34-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-72X34-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-COR-SOF-72X34-RS,Brooklyn Corner Sofa 72 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-COR-SOF-72X34-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-72X34-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-72X34-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-72X34-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-72X34-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-COR-SOF-84X34,"BROOKLYN CORNER SOFA 84"" x 34"" x 30"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-COR-SOF-84X34-LS,Brooklyn Corner Sofa 84 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-COR-SOF-84X34-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-84X34-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-84X34-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-84X34-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-84X34-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-COR-SOF-84X34-RS,Brooklyn Corner Sofa 84 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-COR-SOF-84X34-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-84X34-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-84X34-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-84X34-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-84X34-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-COR-SOF-96X34,"BROOKLYN CORNER SOFA 96"" x 34"" x 30"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-COR-SOF-96X34-LS,Brooklyn Corner Sofa 96 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-COR-SOF-96X34-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-96X34-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-96X34-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-96X34-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-96X34-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-COR-SOF-96X34-RS,Brooklyn Corner Sofa 96 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-COR-SOF-96X34-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-96X34-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-96X34-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-96X34-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-COR-SOF-96X34-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-DIN-TAB-120X28,BROOKLYN TABLE (DINING HEIGHT) 28 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DIN-TAB-120X36,BROOKLYN TABLE (DINING HEIGHT) 36 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DIN-TAB-28X120,"BROOKLYN TABLE (DINING HEIGHT) 28"" x 120"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DIN-TAB-28X72,"BROOKLYN TABLE (DINING HEIGHT) 28"" x 72"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DIN-TAB-28X96,"BROOKLYN TABLE (DINING HEIGHT) 28"" x 96"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DIN-TAB-36X120,"BROOKLYN TABLE (DINING HEIGHT) 36"" x 120"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DIN-TAB-36X36,"STAR LEG TABLE (DINING HEIGHT) 36"" x 36"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DIN-TAB-36X72,"BROOKLYN TABLE (DINING HEIGHT) 36"" x 72"" x 30""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-DIN-TAB-36X72-STARLEG,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-DIN-TAB-36X96,"BROOKLYN TABLE (DINING HEIGHT) 36"" x 96"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DIN-TAB-42X42,"STAR LEG TABLE (DINING HEIGHT) 42"" x 42"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DIN-TAB-72X28,BROOKLYN TABLE (DINING HEIGHT) 28 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DIN-TAB-72X36,BROOKLYN TABLE (DINING HEIGHT) 36 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DIN-TAB-96X28,BROOKLYN TABLE (DINING HEIGHT) 28 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DIN-TAB-96X36,BROOKLYN TABLE (DINING HEIGHT) 36 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-DOU-CHS-58X79,"BROOKLYN DOUBLE CHAISE LOUNGE 58"" x 79"" x 11"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-DOU-CHS-58X79-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-DOU-CHS-58X79-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-DOU-CHS-58X79-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-DOU-CHS-58X79-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-DOU-CHS-58X79-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-LOV-SOF,Brooklyn Loveseat,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-LOV-SOF-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-LOV-SOF-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-LOV-SOF-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-LOV-SOF-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-LOV-SOF-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-OTT-22X42,"BROOKLYN OTTOMAN 22"" x 42"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-22X60,"BROOKLYN OTTOMAN 22"" x 60"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-22X72,"BROOKLYN OTTOMAN 22"" x 72"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-34X34,"BROOKLYN OTTOMAN 34"" x 34"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-34X42,"BROOKLYN OTTOMAN 34"" x 42"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-34X60,"BROOKLYN OTTOMAN 34"" x 60"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-34X72,"BROOKLYN OTTOMAN 34"" x 72"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-42X22,BROOKLYN OTTOMAN 22 X 42,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-42X34,BROOKLYN OTTOMAN 34 X 42,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-56X42,"BROOKLYN OTTOMAN 56"" x 42"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-60X22,BROOKLYN OTTOMAN 22 X 60,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-60X34,BROOKLYN OTTOMAN 34 X 60,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-72X22,BROOKLYN OTTOMAN 22 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-OTT-72X34,BROOKLYN OTTOMAN 34 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-SGL-CHS-38X79,"BROOKLYN SINGLE CHAISE LOUNGE 38"" x 79"" x 11"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-SGL-CHS-38X79-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SGL-CHS-38X79-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SGL-CHS-38X79-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SGL-CHS-38X79-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SGL-CHS-38X79-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-SOF-60X34,"BROOKLYN SOFA 60"" x 34"" x 30"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRK-SOF-72X34,"BROOKLYN SOFA 72"" x 34"" x 30"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-SOF-72X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SOF-72X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SOF-72X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SOF-72X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SOF-72X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-SOF-84X34,"BROOKLYN SOFA 84"" x 34"" x 30"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-SOF-84X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SOF-84X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SOF-84X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SOF-84X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SOF-84X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-SOF-96X34,"BROOKLYN SOFA 96"" x 34"" x 30"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-SOF-96X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SOF-96X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SOF-96X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SOF-96X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-SOF-96X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-TRA-DOU-CHS-48X72,"BROOKLYN TRANSITIONAL DOUBLE CHAISE 48"" x 72"" x 30"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-TRA-DOU-CHS-48X72-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-TRA-DOU-CHS-48X72-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-TRA-DOU-CHS-48X72-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-TRA-DOU-CHS-48X72-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-TRA-DOU-CHS-48X72-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRK-TRA-SGL-CHS-36X72,"BROOKLYN TRANSITIONAL SINGLE CHAISE 36"" x 72"" x 30"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRK-TRA-SGL-CHS-36X72-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-TRA-SGL-CHS-36X72-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-TRA-SGL-CHS-36X72-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-TRA-SGL-CHS-36X72-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRK-TRA-SGL-CHS-36X72-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-ARM-LOV-60,Bravada Armless Loveseat,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-ARM-LOV-60-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-LOV-60-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-LOV-60-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-LOV-60-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-LOV-60-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-ARM-SOF-34X34,"BRAVADA ARMLESS SOFA 34"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-ARM-SOF-72,Bravada Armless Sofa 72,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-ARM-SOF-72-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-SOF-72-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-SOF-72-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-SOF-72-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-SOF-72-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-ARM-SOF-72X34,"BRAVADA ARMLESS SOFA 72"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-ARM-SOF-72X34-ARMLESSSOFA,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-ARM-SOF-84,Bravada Armless Sofa 84,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-ARM-SOF-84-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-SOF-84-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-SOF-84-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-SOF-84-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-SOF-84-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-ARM-SOF-84X34,"BRAVADA ARMLESS SOFA 84"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-ARM-SOF-96,Bravada Armless Sofa 96,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-ARM-SOF-96-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-SOF-96-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-SOF-96-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-SOF-96-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-ARM-SOF-96-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-ARM-SOF-96X34,"BRAVADA ARMLESS SOFA 96"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-BCH-96X34,"BRAVADA ROUNDED BENCH 96"" X 34"" X 18"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-BCH-96X34-ROUNDEDBACKED,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-CHS-34X72-LS,Bravada Chaise 34 X 72 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-CHS-34X72-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X72-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X72-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X72-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X72-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-CHS-34X72-RS,Bravada Chaise 34 X 72 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-CHS-34X72-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X72-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X72-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X72-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X72-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-CHS-34X84-LS,Bravada Chaise 34 X 84 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-CHS-34X84-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X84-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X84-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X84-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X84-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-CHS-34X84-RS,Bravada Chaise 34 X 84 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-CHS-34X84-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X84-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X84-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X84-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-34X84-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-CHS-42X72-LS,Bravada Chaise 42X72 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-CHS-42X72-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X72-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X72-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X72-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X72-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-CHS-42X72-RS,Bravada Chaise 42X72 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-CHS-42X72-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X72-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X72-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X72-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X72-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-CHS-42X84-LS,Bravada Chaise 42 X 84 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-CHS-42X84-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X84-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X84-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X84-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X84-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-CHS-42X84-RS,Bravada Chaise 42 X 84 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-CHS-42X84-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X84-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X84-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X84-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CHS-42X84-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-CLB-CHA,Bravada Club Chair,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-CLB-CHA-34X34,"BRAVADA CLUB CHAIR 34"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-CLB-CHA-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CLB-CHA-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CLB-CHA-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CLB-CHA-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-CLB-CHA-WH,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COF-TAB-28X42,"BRAVADA COFFEE TABLE 28"" x 42"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-COF-TAB-36X36,"BRAVADA COFFEE TABLE 36"" x 36"" x 17""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COF-TAB-36X36-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-36X36-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-36X36-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-36X36-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-36X36-WT,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COF-TAB-36X56,"BRAVADA COFFEE TABLE 36"" x 56"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-COF-TAB-42X28,BRAVADA COFFEE TABLE 28 X 42,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COF-TAB-42X28-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-42X28-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-42X28-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-42X28-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-42X28-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COF-TAB-42X42,"BRAVADA COFFEE TABLE 42"" x 42"" x 17""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COF-TAB-42X42-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-42X42-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-42X42-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-42X42-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-42X42-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COF-TAB-42X56,"BRAVADA COFFEE TABLE 42"" x 56"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-COF-TAB-42X72,"BRAVADA COFFEE TABLE 42"" x 72"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-COF-TAB-56X28,Bravada Coffee Table 56 x 28,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COF-TAB-56X28-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X28-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X28-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X28-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X28-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COF-TAB-56X36,BRAVADA COFFEE TABLE 36 X 56,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COF-TAB-56X36-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X36-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X36-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X36-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X36-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COF-TAB-56X42,BRAVADA COFFEE TABLE 42 X 56,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COF-TAB-56X42-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X42-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X42-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X42-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X42-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COF-TAB-56X56,"BRAVADA COFFEE TABLE 56"" x 56"" x 17""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COF-TAB-56X56-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X56-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X56-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X56-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-56X56-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COF-TAB-56X72,"BRAVADA COFFEE TABLE 56"" x 72"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-COF-TAB-72X36,BRAVADA COFFEE TABLE 36 X 72,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COF-TAB-72X36-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-72X36-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-72X36-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-72X36-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-72X36-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COF-TAB-72X42,BRAVADA COFFEE TABLE 42 X 72,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COF-TAB-72X42-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-72X42-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-72X42-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-72X42-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-72X42-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COF-TAB-72X56,BRAVADA COFFEE TABLE 56 X 72,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COF-TAB-72X56-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-72X56-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-72X56-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-72X56-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COF-TAB-72X56-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COR-CHS-72X34,"BRAVADA CORNER CHAISE 72"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-COR-CHS-84X34,"BRAVADA CORNER CHAISE 84"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-COR-SOF-72X34,"BRAVADA CORNER SOFA 72"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-COR-SOF-72X34-LS,Bravada Corner Sofa 72 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COR-SOF-72X34-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-72X34-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-72X34-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-72X34-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-72X34-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COR-SOF-72X34-RS,Bravada Corner Sofa 72 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COR-SOF-72X34-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-72X34-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-72X34-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-72X34-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-72X34-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COR-SOF-84X34,"BRAVADA CORNER SOFA 84"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-COR-SOF-84X34-LS,Bravada Corner Sofa 84 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COR-SOF-84X34-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-84X34-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-84X34-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-84X34-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-84X34-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COR-SOF-84X34-RS,Bravada Corner Sofa 84 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COR-SOF-84X34-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-84X34-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-84X34-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-84X34-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-84X34-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COR-SOF-96X34,"BRAVADA CORNER SOFA 96"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-COR-SOF-96X34-LS,Bravada Corner Sofa 96 (Left Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COR-SOF-96X34-LS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-96X34-LS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-96X34-LS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-96X34-LS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-96X34-LS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-COR-SOF-96X34-RS,Bravada Corner Sofa 96 (Right Facing),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-COR-SOF-96X34-RS-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-96X34-RS-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-96X34-RS-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-96X34-RS-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-COR-SOF-96X34-RS-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-DOU-CHS-58X79,"BRAVADA DOUBLE CHAISE LOUNGE 58"" x 79"" x 14"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-DOU-CHS-58X79-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DOU-CHS-58X79-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DOU-CHS-58X79-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DOU-CHS-58X79-GR,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-DOU-CHS-58X79-NOARM,Bravada Chaise Lounge Double (No Metal Arms),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-DOU-CHS-58X79-NOARM-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DOU-CHS-58X79-NOARM-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DOU-CHS-58X79-NOARM-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DOU-CHS-58X79-NOARM-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DOU-CHS-58X79-NOARM-WH,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DOU-CHS-58X79-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-DYB-72X72,"BRAVADA DAYBED 72"" x 72"" x 27"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-DYB-72X72-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-72X72-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-72X72-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-72X72-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-72X72-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-DYB-72X78,BRAVADA DAYBED 72 X 78,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-DYB-72X78-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-72X78-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-72X78-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-72X78-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-72X78-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-DYB-78X72,Bravada Daybed 78,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-DYB-78X72-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-78X72-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-78X72-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-78X72-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-78X72-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-DYB-78X78,BRAVADA DAYBED 78 X 78,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-DYB-78X78-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-78X78-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-78X78-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-78X78-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-78X78-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-DYB-84X72,"BRAVADA DAYBED 84"" x 72"" x 27"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-DYB-84X78,BRAVADA DAYBED 84 X 78,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-DYB-84X78-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-84X78-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-84X78-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-84X78-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-DYB-84X78-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-DYB-84X84,"BRAVADA ROUND DAYBED 84"" DIAMETER",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-DYB-84X84-DAYBED,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-LOV-SOF-60X34,"BRAVADA LOVESEAT 60"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-LOV-SOF-60X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-LOV-SOF-60X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-LOV-SOF-60X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-LOV-SOF-60X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-LOV-SOF-60X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-MIN-LOV-48X34,"BRAVADA MINI LOVESEAT 48"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-MIN-LOV-48X34-ARMLESSMINI,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-MIN-LOV-48X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-MIN-LOV-48X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-MIN-LOV-48X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-MIN-LOV-48X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-MIN-LOV-48X34-MINILOVESEAT,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-MIN-LOV-48X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-22X30,"BRAVADA OTTOMAN 22"" x 30"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-OTT-22X42,"BRAVADA OTTOMAN 22"" x 42"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-OTT-22X60,"BRAVADA OTTOMAN 22"" x 60"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-OTT-22X72,"BRAVADA OTTOMAN 22"" x 72"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-OTT-30X22,BRAVADA OTTOMAN 22 X 30,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-30X22-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-30X22-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-30X22-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-30X22-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-30X22-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-34X34,"BRAVADA OTTOMAN 34"" x 34"" x 16""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-34X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-34X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-34X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-34X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-34X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-34X42,"BRAVADA OTTOMAN 34"" x 42"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-OTT-34X60,"BRAVADA OTTOMAN 34"" x 60"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-OTT-34X72,"BRAVADA OTTOMAN 34"" x 72"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-OTT-42X22,BRAVADA OTTOMAN 22 X 42,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-42X22-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-42X22-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-42X22-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-42X22-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-42X22-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-42X34,BRAVADA OTTOMAN 34 X 42,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-42X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-42X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-42X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-42X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-42X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-60X22,BRAVADA OTTOMAN 22 X 60,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-60X22-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-60X22-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-60X22-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-60X22-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-60X22-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-60X34,BRAVADA OTTOMAN 34 X 60,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-60X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-60X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-60X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-60X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-60X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-72X22,BRAVADA OTTOMAN 22 X 72,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-72X22-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-72X22-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-72X22-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-72X22-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-72X22-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-72X34,BRAVADA OTTOMAN 34 X 72,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-72X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-72X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-72X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-72X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-72X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-DKT-30X22,Bravada Ottoman 30X22 (Dekton Top),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-DKT-30X22-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-30X22-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-30X22-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-30X22-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-30X22-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-DKT-34X34,Bravada Ottoman 34X34 (Dekton Top),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-DKT-34X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-34X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-34X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-34X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-34X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-DKT-42X22,Bravada Ottoman 42X22 (Dekton Top),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-DKT-42X22-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-42X22-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-42X22-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-42X22-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-42X22-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-DKT-42X34,Bravada Ottoman 42X34 (Dekton Top),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-DKT-42X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-42X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-42X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-42X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-42X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-DKT-60X22,Bravada Ottoman 60X22 (Dekton Top),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-DKT-60X22-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-60X22-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-60X22-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-60X22-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-60X22-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-DKT-60X34,Bravada Ottoman 60 x 34 (Dekton Top),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-DKT-60X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-60X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-60X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-60X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-60X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-DKT-72X22,Bravada Ottoman 72X22 (Dekton Top),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-DKT-72X22-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-72X22-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-72X22-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-72X22-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-72X22-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OTT-DKT-72X34,Bravada Ottoman 72 x 34 (Dekton Top),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-OTT-DKT-72X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-72X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-72X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-72X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-OTT-DKT-72X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-OVS-CHS-72X42,"BRAVADA OVERSIZED CHAISE 72"" x 42"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-OVS-CHS-84X42,"BRAVADA OVERSIZED CHAISE 84"" x 42"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-SGL-CHS-30X79,"BRAVADA SINGLE CHAISE LOUNGE 30"" x 79"" x 14"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-SGL-CHS-30X79-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SGL-CHS-30X79-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SGL-CHS-30X79-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SGL-CHS-30X79-GR,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-SGL-CHS-30X79-NOARM,Bravada Chaise Lounge Single (No Metal Arms),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-SGL-CHS-30X79-NOARM-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SGL-CHS-30X79-NOARM-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SGL-CHS-30X79-NOARM-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SGL-CHS-30X79-NOARM-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SGL-CHS-30X79-NOARM-WH,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SGL-CHS-30X79-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-SID-TAB-20X20,"BRAVADA SIDE TABLE 20"" x 20"" x 17""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-SID-TAB-20X20-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SID-TAB-20X20-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SID-TAB-20X20-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SID-TAB-20X20-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SID-TAB-20X20-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-SOF-72X34,"BRAVADA SOFA 72"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-SOF-72X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SOF-72X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SOF-72X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SOF-72X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SOF-72X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-SOF-84X34,"BRAVADA SOFA 84"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-SOF-84X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SOF-84X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SOF-84X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SOF-84X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SOF-84X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-SOF-96X34,"BRAVADA SOFA 96"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-SOF-96X34-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SOF-96X34-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SOF-96X34-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SOF-96X34-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SOF-96X34-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-SWG-66X42,"BRAVADA SWING 66"" x 42"" x 23"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-SWG-66X42-SWINGFRAME,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-SWG-72X12,"BRAVADA 60"" ROUND SWING 72"" x 12"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-SWG-72X42,"BRAVADA SWING 72"" x 42"" x 23"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-SWG-72X42-SWINGFRAME,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SWG-72X42-SWINGFRAME2,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-BRV-SWG-84,"BRAVADA SWING FRAME ONLY 84""+ Thicker Gauge",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-SWG-84X42,"BRAVADA SWING 84"" x 42"" x 23"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-SWG-96X32,"BRAVADA SWING 96"" x 32"" x 23"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-SWV-CHA,BRAVADA SWIVEL CHAIR W/DEKTON SIDEARM,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-BRV-SWV-CHA-34X34,"BRAVADA SWIVEL CHAIR 34"" x 34"" x 31"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-BRV-SWV-CHA-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SWV-CHA-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SWV-CHA-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SWV-CHA-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-BRV-SWV-CHA-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-CAB-DYB-84X84,"CABANA DAYBED 84"" x 84"" x 78""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-CAB-MIS,LUMBAR PILLOW (alt size),finished_good,final_assembly,fin_prefix,2
+upsert,FIN-CAB-MIS-10X10,CABANA 10' X 10' X 9' w/Sunbrella Top & Curtains,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-CAB-MIS-12X24,"LUMBAR PILLOW 12"" X 24""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-CAB-MIS-17X17,"SQUARE PILLOW 17"" X 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-CAB-MIS-23X23,"SQUARE PILLOW 23"" X 23""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-CAN-UMB,CANTILEVER UMBRELLA w/BASE,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-CUS-OTT-22X72,"CUSTOM STORAGE OTTOMAN 22"" x 72"" x 23""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-CUS-OTT-23X82,"CUSTOM STORAGE OTTOMAN 23"" x 82""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-CUS-OTT-72X22,CUSTOM STORAGE OTTOMAN 22 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-CUS-OTT-82X23,CUSTOM STORAGE OTTOMAN 23 X 82,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-120X42,DAISY BASE TABLE (BAR HEIGHT) 42 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-120X56,DAISY BASE TABLE (BAR HEIGHT) 56 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-42X120,"DAISY BASE TABLE (BAR HEIGHT) 42"" x 120"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-42X72,"DAISY BASE TABLE (BAR HEIGHT) 42"" x 72"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-42X96,"DAISY BASE TABLE (BAR HEIGHT) 42"" x 96"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-56X120,"DAISY BASE TABLE (BAR HEIGHT) 56"" x 120"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-56X56,"DAISY BASE TABLE (BAR HEIGHT) 56"" x 56"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-56X72,"DAISY BASE TABLE (BAR HEIGHT) 56"" x 72"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-56X96,"DAISY BASE TABLE (BAR HEIGHT) 56"" x 96"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-72X42,DAISY BASE TABLE (BAR HEIGHT) 42 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-72X56,DAISY BASE TABLE (BAR HEIGHT) 56 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-96X42,DAISY BASE TABLE (BAR HEIGHT) 42 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-BAR-TAB-96X56,DAISY BASE TABLE (BAR HEIGHT) 56 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-120X42,DAISY BASE TABLE (COUNTER HEIGHT) 42 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-120X56,DAISY BASE TABLE (COUNTER HEIGHT) 56 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-42X120,"DAISY BASE TABLE (COUNTER HEIGHT) 42"" x 120"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-42X72,"DAISY BASE TABLE (COUNTER HEIGHT) 42"" x 72"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-42X96,"DAISY BASE TABLE (COUNTER HEIGHT) 42"" x 96"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-56X120,"DAISY BASE TABLE (COUNTER HEIGHT) 56"" x 120"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-56X56,"DAISY BASE TABLE (COUNTER HEIGHT) 56"" x 56"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-56X72,"DAISY BASE TABLE (COUNTER HEIGHT) 56"" x 72"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-56X96,"DAISY BASE TABLE (COUNTER HEIGHT) 56"" x 96"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-72X42,DAISY BASE TABLE (COUNTER HEIGHT) 42 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-72X56,DAISY BASE TABLE (COUNTER HEIGHT) 56 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-96X42,DAISY BASE TABLE (COUNTER HEIGHT) 42 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-CNT-TAB-96X56,DAISY BASE TABLE (COUNTER HEIGHT) 56 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-DIN-TAB-120X42,DAISY BASE TABLE (DINING HEIGHT) 42 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-DIN-TAB-120X56,DAISY BASE TABLE (DINING HEIGHT) 56 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-DIN-TAB-42X30,"DAISY BASE ROUND TABLE (DINING HEIGHT) 42"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-DIN-TAB-42X42,DAISY BASE ROUND TABLE (DINING HEIGHT) 42,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-DIN-TAB-56X30,"DAISY BASE ROUND TABLE (DINING HEIGHT) 56"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-DIN-TAB-56X56,DAISY BASE TABLE (DINING HEIGHT) 56 X 56,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-DIN-TAB-56X72,"DAISY BASE TABLE (DINING HEIGHT) 56"" x 72"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-DIN-TAB-56X96,"DAISY BASE TABLE (DINING HEIGHT) 56"" x 96"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-DIN-TAB-72X42,DAISY BASE TABLE (DINING HEIGHT) 42 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-DIN-TAB-72X56,DAISY BASE TABLE (DINING HEIGHT) 56 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-DIN-TAB-96X42,DAISY BASE TABLE (DINING HEIGHT) 42 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-DIN-TAB-96X56,DAISY BASE TABLE (DINING HEIGHT) 56 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-FIR-TAB-42X42,"PROPANE FIRE PIT TABLE 42"" x 42"" x 21""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-FIR-TAB-56X42,"PROPANE FIRE PIT TABLE 56"" x 42"" x 21""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-FIR-TAB-84X56,"DAISY BASE FIRE PIT DINING TABLE 84"" x 56"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-FIR-TAB-96X56,"DAISY BASE FIRE PIT DINING TABLE 96"" x 56"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-TAB-108X56,"DAISY BASE OVAL TABLE 108"" X 56"" X 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-DAI-TAB-72X42,Daisy Base Table 72 x 42 Dining Height,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-DAI-TAB-72X42-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-DAI-TAB-72X42-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-DAI-TAB-72X42-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-DAI-TAB-72X42-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-DAI-TAB-72X42-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-ESY-CHS,ADD-ON WHEELS FOR CHAISE LOUNGERS,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-ESY-MIS,FLEXY TWIN NO BASE,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-ESY-MIS-ADDIRONWOOD,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-ESY-MIS-TWINBASE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-ESY-MIS-UNFABRICATEDDE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-ESY-MIS-WEATHERPROOFCO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-ESY-MIS-ZENBASE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-ESY-MIS-ZENCOVER,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-ESY-MIS-ZENSHADE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-ESY-MIS-ZENSHADE2,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-ESY-MIS-ZENTWIN,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-FLY-BCH-42X18,FLY LEG BENCH (BAR HEIGHT) 42,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-FLY-DIN-CHA-18X18,FLY LEG CHAIR (DINING HEIGHT),finished_good,final_assembly,fin_prefix,2
+upsert,FIN-FLY-FLY-BST-18X18,FLY LEG BARSTOOL (BAR HEIGHT),finished_good,final_assembly,fin_prefix,2
+upsert,FIN-FLY-LEG-BAR-COU-HEI,FLY LEG BARSTOOL (COUNTER HEIGHT),finished_good,final_assembly,fin_prefix,2
+upsert,FIN-FLY-LEG-BEN-COU-HEI-42,FLY LEG BENCH (COUNTER HEIGHT) 42,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-FLY-LEG-BEN-DIN-HEI-42,FLY LEG BENCH (DINING HEIGHT) 42,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-FLY-TAB-38X8,FLY TABLE 8,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-FLY-TAB-60X12,FLY TABLE 60,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-FLY-TAB-72X12,FLY TABLE 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-FLY-TAB-84X12,FLY TABLE 84,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-FLY-TAB-96X12,FLY TABLE 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-HAL-BAC-BAR-BAR-HEI,HALF BACK BARSTOOL (BAR HEIGHT),finished_good,final_assembly,fin_prefix,2
+upsert,FIN-KIN-MIS,KINDLE LIVING HEATER (Allison),finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-KIN-MIS-KINDLELIVING,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-LED-CHA,LEDGE LOUNGER SIGNATURE LOWBACK CHAIR,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-LED-SID-TAB,LEDGE LOUNGER AUTOGRAPH SIDE TABLE,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MIS-DIN-BCH-72X22,DINING BENCH W/NO ARMS 72 X 22,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MIS-DIN-BCH-96X22,DINING BENCH W/NO ARMS 96 X 22,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MIS-DIN-CHA-17X21,HALF BACK CHAIR (DINING HEIGHT,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MIS-FIR-TAB-42X42,PROPANE FIRE PIT TABLE 42 X 42,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MIS-FLY-BST-17X21,HALF BACK BARSTOOL (COUNTER HEIGHT),finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MIS-OTT-22X22,"CUBE OTTOMAN 22"" x 22"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MIS-SID-TAB-13X30,U SIDE TABLE,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MIS-TAB-13X30,T TABLE,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-CLB-CHA-32X36,"MILAN CLUB CHAIR 32"" x 36"" x 16"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-MIS,FABRICATED DEKTON SLAB,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-OTT-22X60,"MILAN OTTOMAN 22"" x 60"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-OTT-22X72,"MILAN OTTOMAN 22"" x 72"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-OTT-34X34,"MILAN OTTOMAN 34"" x 34"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-OTT-34X42,"MILAN OTTOMAN 34"" x 42"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-OTT-34X60,"MILAN OTTOMAN 34"" x 60"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-OTT-34X72,"MILAN OTTOMAN 34"" x 72"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-OTT-56X42,"MILAN OTTOMAN 56"" x 42"" x 16""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-MLN-SOF,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-MLN-SOF-60X62,"MILAN DOUBLE-SIDED SOFA 60"" x 62"" x 16"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-SOF-62X42,"MILAN T-SHAPED SOFA 62"" x 42"" x 22"" x 16"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-SOF-72X36,"MILAN ONE-SIDED SOFA 72"" x 36"" x 16"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-SOF-84X36,"MILAN ONE SIDED SOFA 84"" x 36"" x 16"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-SOF-96X36,"MILAN ONE-SIDED SOFA 96"" x 36"" x 16"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-TAB-56X14,"OCCASIONAL TABLE 56""x14""x36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-MLN-UMB,LIDO UMBRELLA,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-MLN-UMB-CANTILEVERUMBR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-MLN-UMB-MARINAUMBRELLA,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-MLN-UMB-MARINAUMBRELLA2,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCC-TAB-56X14,OCCASIONAL TABLE,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-CLB-CHA-34X38,"OCEAN CLUB CHAIR w/METAL ARM 34"" x 38"" x 33"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-CLB-CHA-34X38-BE-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-CLB-CHA-34X38-BE-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-CLB-CHA-34X38-BL-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-CLB-CHA-34X38-BO-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-CLB-CHA-34X38-BO-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-CLB-CHA-34X38-BR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-CLB-CHA-34X38-BR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-CLB-CHA-34X38-GR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-CLB-CHA-34X38-GR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-CLB-CHA-34X38-WH-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-CLB-CHA-34X38-WH-Y,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-COF-TAB-28X42,"OCEAN COFFEE TABLE 28"" x 42"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-COF-TAB-28X56,"OCEAN COFFEE TABLE 28"" x 56"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-COF-TAB-36X36,"OCEAN COFFEE TABLE 36"" x 36"" x 17""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-COF-TAB-36X36-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-36X36-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-36X36-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-36X36-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-36X36-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-COF-TAB-36X56,"OCEAN COFFEE TABLE 36"" x 56"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-COF-TAB-36X72,"OCEAN COFFEE TABLE 36"" x 72"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-COF-TAB-42X28,OCEAN COFFEE TABLE 28 X 42,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-COF-TAB-42X28-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-42X28-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-42X28-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-42X28-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-42X28-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-COF-TAB-42X42,"OCEAN COFFEE TABLE 42"" x 42"" x 17""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-COF-TAB-42X42-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-42X42-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-42X42-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-42X42-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-42X42-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-COF-TAB-42X56,"OCEAN COFFEE TABLE 42"" x 56"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-COF-TAB-42X72,"OCEAN COFFEE TABLE 42"" x 72"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-COF-TAB-56X28,OCEAN COFFEE TABLE 28 X 56,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-COF-TAB-56X28-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X28-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X28-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X28-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X28-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-COF-TAB-56X36,OCEAN COFFEE TABLE 36 X 56,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-COF-TAB-56X36-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X36-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X36-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X36-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X36-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-COF-TAB-56X42,OCEAN COFFEE TABLE 42 X 56,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-COF-TAB-56X42-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X42-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X42-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X42-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X42-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-COF-TAB-56X56,"OCEAN COFFEE TABLE 56"" x 56"" x 17""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-COF-TAB-56X56-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X56-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X56-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X56-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-56X56-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-COF-TAB-56X72,"OCEAN COFFEE TABLE 56"" x 72"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-COF-TAB-72X36,OCEAN COFFEE TABLE 36 X 72,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-COF-TAB-72X36-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-72X36-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-72X36-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-72X36-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-72X36-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-COF-TAB-72X42,OCEAN COFFEE TABLE 42 X 72,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-COF-TAB-72X42-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-72X42-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-72X42-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-72X42-V23143105,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-72X42-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-COF-TAB-72X56,OCEAN COFFEE TABLE 56 X 72,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-COF-TAB-72X56-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-72X56-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-72X56-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-72X56-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-COF-TAB-72X56-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-DOU-CHS-58X79,"OCEAN DOUBLE CHAISE LOUNGE 58"" x 79"" x 14"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-DOU-CHS-58X79-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-DOU-CHS-58X79-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-DOU-CHS-58X79-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-DOU-CHS-58X79-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-DOU-CHS-58X79-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-LOV-SOF-60X38,"OCEAN LOVESEAT 60"" x 38"" x 33"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-LOV-SOF-60X38-BE-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-LOV-SOF-60X38-BE-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-LOV-SOF-60X38-BL-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-LOV-SOF-60X38-BO-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-LOV-SOF-60X38-BO-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-LOV-SOF-60X38-BR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-LOV-SOF-60X38-BR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-LOV-SOF-60X38-GR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-LOV-SOF-60X38-GR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-LOV-SOF-60X38-WH-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-LOV-SOF-60X38-WH-Y,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-MIN-LOV,Ocean Mini Loveseat,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-MIN-LOV-48X38,"OCEAN MINI LOVESEAT 48"" x 38"" x 33"" BH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-MIN-LOV-60X48,OCEAN MINI LOVESEAT 48,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-MIN-LOV-BE-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-MIN-LOV-BE-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-MIN-LOV-BL-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-MIN-LOV-BO-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-MIN-LOV-BO-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-MIN-LOV-BR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-MIN-LOV-BR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-MIN-LOV-GR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-MIN-LOV-GR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-MIN-LOV-WH-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-MIN-LOV-WH-Y,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-OTT-30X22,"OCEAN OTTOMAN 30"" x 22"" x 16""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-OTT-30X22-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-30X22-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-30X22-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-30X22-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-30X22-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-OTT-42X22,"OCEAN OTTOMAN 42"" x 22"" x 16""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-OTT-42X22-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-42X22-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-42X22-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-42X22-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-42X22-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-OTT-60X22,"OCEAN OTTOMAN 60"" x 22"" x 16""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-OTT-60X22-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-60X22-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-60X22-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-60X22-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-60X22-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-OTT-72X22,"OCEAN OTTOMAN 72"" x 22"" x 16""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-OTT-72X22-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-72X22-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-72X22-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-72X22-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-OTT-72X22-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-SGL-CHS-36X79,"OCEAN SINGLE CHAISE LOUNGE 36"" x 79"" x 14"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-SGL-CHS-36X79-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SGL-CHS-36X79-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SGL-CHS-36X79-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SGL-CHS-36X79-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SGL-CHS-36X79-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-SID-TAB-12,ANGULAR SIDE TABLE,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-SID-TAB-13X30,"U SIDE TABLE 13"" x 30"" x 21""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-SID-TAB-20X20,"OCEAN SIDE TABLE 20"" x 20"" x 17""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-SID-TAB-20X20-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SID-TAB-20X20-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SID-TAB-20X20-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SID-TAB-20X20-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SID-TAB-20X20-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-SID-TAB-32X32,"TRIANGLE SIDE TABLE 32"" x 32"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-SID-TAB-36X17,"OCEAN ROUND SIDE TABLE 36"" x 17""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-SID-TAB-36X36,OCEAN ROUND SIDE TABLE 36,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-SID-TAB-36X36-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SID-TAB-36X36-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SID-TAB-36X36-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SID-TAB-36X36-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SID-TAB-36X36-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-SID-TAB-42,Ocean Round Side Table 42,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-SID-TAB-42-BE,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SID-TAB-42-BO,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SID-TAB-42-BR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SID-TAB-42-GR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SID-TAB-42-WH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-SOF-72X38,"OCEAN SOFA 72"" x 38"" x 33"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-SOF-72X38-BE-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-72X38-BE-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-72X38-BL-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-72X38-BO-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-72X38-BO-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-72X38-BR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-72X38-BR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-72X38-GR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-72X38-GR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-72X38-WH-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-72X38-WH-Y,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-SOF-84X38,"OCEAN SOFA 84"" x 38"" x 33"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-SOF-84X38-BE-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-84X38-BE-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-84X38-BL-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-84X38-BO-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-84X38-BO-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-84X38-BR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-84X38-BR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-84X38-GR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-84X38-GR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-84X38-WH-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-84X38-WH-Y,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-SOF-96X38,"OCEAN SOFA 96"" x 38"" x 33"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-SOF-96X38-BE-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-96X38-BE-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-96X38-BL-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-96X38-BO-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-96X38-BO-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-96X38-BR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-96X38-BR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-96X38-GR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-96X38-GR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-96X38-WH-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SOF-96X38-WH-Y,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-SWV-CHA,Ocean Swivel Chair,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-SWV-CHA-34X34,OCEAN SWIVEL CHAIR 34,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-SWV-CHA-34X38,"OCEAN SWIVEL CHAIR 34"" x 38"" x 33"" BH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-SWV-CHA-34X38-SWIVELCHAIR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SWV-CHA-BE-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SWV-CHA-BE-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SWV-CHA-BL-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SWV-CHA-BO-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SWV-CHA-BO-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SWV-CHA-BR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SWV-CHA-BR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SWV-CHA-GR-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SWV-CHA-GR-Y,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SWV-CHA-WH-N,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-OCN-SWV-CHA-WH-Y,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-TAB-13X30,"T TABLE 13"" x 30"" x 16""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-TAB-34X12,"FLY TABLE 34"" X 12""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-OCN-TAB-34X12-FLYTABLE,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-OCN-TAB-72X12,"FLY TABLE 72"" X 12""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-TAB-84X12,"FLY TABLE 84"" X 12""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-OCN-TAB-96X12,"FLY TABLE 96"" X 12""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-STA-BAR-TAB-36X36,STAR LEG TABLE (BAR HEIGHT) 36 X 36,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-STA-BAR-TAB-42X42,STAR LEG TABLE (BAR HEIGHT) 42 X 42,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-STA-BAR-TAB-72X36,STAR LEG TABLE (BAR HEIGHT) 36 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-STA-CNT-TAB-36X36,STAR LEG TABLE (COUNTER HEIGHT) 36 X 36,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-STA-CNT-TAB-42X42,STAR LEG TABLE (COUNTER HEIGHT) 42 X 42,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-STA-CNT-TAB-72X36,STAR LEG TABLE (COUNTER HEIGHT) 36 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-STA-DIN-TAB-36X36,STAR LEG TABLE (DINING HEIGHT) 36 X 36,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-STA-DIN-TAB-42X42,STAR LEG TABLE (DINING HEIGHT) 42 X 42,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-STA-DIN-TAB-72X36,STAR LEG TABLE (DINING HEIGHT) 36 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-TAY-BAR-W-ARM-COU-HEI,TAYLOR BARSTOOL W/ARMS (COUNTER HEIGHT),finished_good,final_assembly,fin_prefix,2
+upsert,FIN-TAY-BCH-24X23,"TAYLOR BENCH (BAR HEIGHT) 24"" x 23"" x 42"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-TAY-BCH-42X23,"TAYLOR BENCH (COUNTER HEIGHT) 42"" x 23"" x 24"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-TAY-BCH-42X23-BENCHDINING,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-TAY-BCH-72X23,"TAYLOR BENCH (BAR HEIGHT) 72"" x 23"" x 30"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-TAY-BCH-72X23-BENCHCOUNTER,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-TAY-BCH-72X23-BENCHDINING,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-TAY-BEN-BAR-HEI-72,TAYLOR BENCH (BAR HEIGHT) 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-TAY-BEN-DIN-HEI-42,TAYLOR BENCH (DINING HEIGHT) 42,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-TAY-BEN-DIN-HEI-72,TAYLOR BENCH (DINING HEIGHT) 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-TAY-BST-18X23,TAYLOR BARSTOOL (COUNTER HEIGHT),finished_good,final_assembly,fin_prefix,2
+upsert,FIN-TAY-BST-19X23,"TAYLOR BARSTOOL (BAR HEIGHT) 19"" x 23"" x 30"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-TAY-BST-19X23-BARSTOOLCOUNTE,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-TAY-BST-24X23,"TAYLOR BARSTOOL w/ARMS (BAR HEIGHT) 24"" x 23"" x 30"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-TAY-BST-24X23-BARSTOOLARMS,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-TAY-DIN-CHA-19X23,TAYLOR CHAIR (DINING HEIGHT),finished_good,final_assembly,fin_prefix,2
+upsert,FIN-TAY-DIN-CHA-24X23,"TAYLOR CHAIR w/ARMS (DINING HEIGHT) 24"" x 23"" x 18"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-TJM-CHA,FREELO CHAIR SPLASH,finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-TJM-CHA-MIBSTERCHAIR,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-TJM-CHA-MOONCHAIR,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-TJM-MIS,"LAYLO LOUNGER, NO RISERS",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-TJM-MIS-12X17,"TWO SHAYZ LOUNGERS & TWO SETS OF 12"" RISERS FOR 17"" DEPTH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-TJM-MIS-13,"TWO SHAYZ LOUNGERS & TWO SETS OF 8"" RISERS, FOR 13"" DEPTH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-TJM-MIS-LAYLOLOUNGER,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-TJM-MIS-ONECOATED,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-TJM-MIS-PILLOWLOUNGERS,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-TJM-MIS-TWOCOATED,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-TJM-MIS-TWOSHAYZ,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-TJM-MIS-TWOSHAYZ2,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-TJM-MIS-TWOWOOSAH,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-TJM-TAB,Ripple Table,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-TRI-SID-TAB-32X32,TRIANGLE SIDE TABLE,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BAR-TAB-120X28,WATERFALL TABLE (BAR HEIGHT) 28 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BAR-TAB-120X36,WATERFALL TABLE (BAR HEIGHT) 36 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BAR-TAB-28X120,"WATERFALL TABLE (BAR HEIGHT) 28"" x 120"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BAR-TAB-28X72,"WATERFALL TABLE (BAR HEIGHT) 28"" x 72"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BAR-TAB-28X96,"WATERFALL TABLE (BAR HEIGHT) 28"" x 96"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BAR-TAB-36X120,"WATERFALL TABLE (BAR HEIGHT) 36"" x 120"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BAR-TAB-36X72,"WATERFALL TABLE (BAR HEIGHT) 36"" x 72"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BAR-TAB-36X96,"WATERFALL TABLE (BAR HEIGHT) 36"" x 96"" x 42""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BAR-TAB-72X28,WATERFALL TABLE (BAR HEIGHT) 28 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BAR-TAB-72X36,WATERFALL TABLE (BAR HEIGHT) 36 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BAR-TAB-96X28,WATERFALL TABLE (BAR HEIGHT) 28 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BAR-TAB-96X36,WATERFALL TABLE (BAR HEIGHT) 36 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-BCH-42X18,"FLY LEG BENCH (DINING HEIGHT) 42"" x 18"" x 18"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-WFT-BCH-42X18-FLYLEG,,,,live_in_katana_not_in_sku_mappings,0
+skip_missing_hub,FIN-WFT-BCH-42X18-FLYLEG2,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-WFT-CNT-TAB-120X28,WATERFALL TABLE (COUNTER HEIGHT) 28 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-CNT-TAB-120X36,WATERFALL TABLE (COUNTER HEIGHT) 36 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-CNT-TAB-28X120,"WATERFALL TABLE (COUNTER HEIGHT) 28"" x 120"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-CNT-TAB-28X72,"WATERFALL TABLE (COUNTER HEIGHT) 28"" x 72"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-CNT-TAB-28X96,"WATERFALL TABLE (COUNTER HEIGHT) 28"" x 96"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-CNT-TAB-36X120,"WATERFALL TABLE (COUNTER HEIGHT) 36"" x 120"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-CNT-TAB-36X72,"WATERFALL TABLE (COUNTER HEIGHT) 36"" x 72"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-CNT-TAB-36X96,"WATERFALL TABLE (COUNTER HEIGHT) 36"" x 96"" x 36""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-CNT-TAB-72X28,WATERFALL TABLE (COUNTER HEIGHT) 28 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-CNT-TAB-72X36,WATERFALL TABLE (COUNTER HEIGHT) 36 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-CNT-TAB-96X28,WATERFALL TABLE (COUNTER HEIGHT) 28 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-CNT-TAB-96X36,WATERFALL TABLE (COUNTER HEIGHT) 36 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-BCH-72X22,"DINING BENCH w/NO ARMS 72"" x 22"" x 18"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-BCH-96X22,"DINING BENCH w/NO ARMS 96"" x 22"" x 18"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-CHA-17X21,"HALF BACK CHAIR (DINING HEIGHT) 17"" x 21"" x 18"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-CHA-18X18,"FLY LEG CHAIR (DINING HEIGHT) 18"" x 18"" x 18"" SH",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-TAB-120X28,WATERFALL TABLE (DINING HEIGHT) 28 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-TAB-120X36,WATERFALL TABLE (DINING HEIGHT) 36 X 120,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-TAB-28X120,"WATERFALL TABLE (DINING HEIGHT) 28"" x 120"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-TAB-28X72,"WATERFALL TABLE (DINING HEIGHT) 28"" x 72"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-TAB-28X96,"WATERFALL TABLE (DINING HEIGHT) 28"" x 96"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-TAB-36X120,"WATERFALL TABLE (DINING HEIGHT) 36"" x 120"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-TAB-36X72,"WATERFALL TABLE (DINING HEIGHT) 36"" x 72"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-TAB-36X96,"WATERFALL TABLE (DINING HEIGHT) 36"" x 96"" x 30""",finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-TAB-72X28,Waterfall Dining Table 72x28,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-TAB-72X36,WATERFALL TABLE (DINING HEIGHT) 36 X 72,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-TAB-96X28,WATERFALL TABLE (DINING HEIGHT) 28 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-DIN-TAB-96X36,WATERFALL TABLE (DINING HEIGHT) 36 X 96,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-FIR-TAB-56X36,"WATERFALL FIRE PIT TABLE 56"" x 36"" x 16""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-WFT-FIR-TAB-56X36-CUBEFIRE,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-WFT-FIR-TAB-72X36,"WATERFALL FIRE PIT TABLE 72"" x 36"" x 16""",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-WFT-FIR-TAB-72X36-CUBEFIRE,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-WFT-FLY-BST-17X21,"HALF BACK BARSTOOL (BAR HEIGHT) 17"" x 21"" x 30"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-WFT-FLY-BST-17X21-HALFBACK,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-WFT-FLY-BST-18X18,"FLY LEG BARSTOOL (BAR HEIGHT) 18"" x 18"" x 30"" SH",finished_good,final_assembly,fin_prefix,2
+skip_missing_hub,FIN-WFT-FLY-BST-18X18-LEGBARSTOOL,,,,live_in_katana_not_in_sku_mappings,0
+upsert,FIN-WFT-SID-TAB-13X40,WATERFALL SIDE TABLE 40X13,finished_good,final_assembly,fin_prefix,2
+upsert,FIN-WFT-SID-TAB-40X13,"WATERFALL SIDE TABLE 40"" x 13"" x 12""",finished_good,final_assembly,fin_prefix,2
+upsert,SA-BRA-AL-60-CUSH,Bravada Armless Loveseat Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-AL-60-FRAME,Bravada Armless Loveseat Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-AS-72-CUSH,Bravada Armless Sofa 72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-AS-72-FRAME,Bravada Armless Sofa 72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-AS-84-CUSH,Bravada Armless Sofa 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-AS-84-FRAME,Bravada Armless Sofa 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-AS-96-CUSH,Bravada Armless Sofa 96 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-AS-96-FRAME,Bravada Armless Sofa 96 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-C-34X72-LS-CUSH,Bravada Chaise 34 X 72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-C-34X72-LS-FRAME,Bravada Chaise 34 X 72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-C-34X72-RS-CUSH,Bravada Chaise 34 X 72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-C-34X72-RS-FRAME,Bravada Chaise 34 X 72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-C-34X84-LS-CUSH,Bravada Chaise 34 X 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-C-34X84-LS-FRAME,Bravada Chaise 34 X 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-C-34X84-RS-CUSH,Bravada Chaise 34 X 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-C-34X84-RS-FRAME,Bravada Chaise 34 X 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-C-42X72-LS-CUSH,Bravada Chaise 42X72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-C-42X72-LS-FRAME,Bravada Chaise 42X72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-C-42X72-RS-CUSH,Bravada Chaise 42X72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-C-42X72-RS-FRAME,Bravada Chaise 42X72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-C-42X84-LS-CUSH,Bravada Chaise 42 X 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-C-42X84-LS-FRAME,Bravada Chaise 42 X 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-C-42X84-RS-CUSH,Bravada Chaise 42 X 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-C-42X84-RS-FRAME,Bravada Chaise 42 X 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CADA-72X78-CUSH,Bravada Cabana Daybed 72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CADA-72X78-FRAME,Bravada Cabana Daybed 72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CADA-78X78-CUSH,Bravada Cabana Daybed 78 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CADA-78X78-FRAME,Bravada Cabana Daybed 78 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CADA-84X78-CUSH,Bravada Cabana Daybed 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CADA-84X78-FRAME,Bravada Cabana Daybed 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CC-CUSH,Bravada Club Chair Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CL-D-A-CUSH,Bravada Chaise Lounge Double Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CL-D-A-FRAME,Bravada Chaise Lounge Double Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CL-D-CUSH,Bravada Chaise Lounge Double Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CL-D-FRAME,Bravada Chaise Lounge Double Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CL-S-A-CUSH,Bravada Chaise Lounge Single Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CL-S-A-FRAME,Bravada Chaise Lounge Single Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CL-S-CUSH,Bravada Chaise Lounge Single Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CL-S-FRAME,Bravada Chaise Lounge Single Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CS-72-LS-CUSH,Bravada Corner Sofa 72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CS-72-LS-FRAME,Bravada Corner Sofa 72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CS-72-RS-CUSH,Bravada Corner Sofa 72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CS-72-RS-FRAME,Bravada Corner Sofa 72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CS-84-LS-CUSH,Bravada Corner Sofa 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CS-84-LS-FRAME,Bravada Corner Sofa 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CS-84-RS-CUSH,Bravada Corner Sofa 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CS-84-RS-FRAME,Bravada Corner Sofa 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CS-96-LS-CUSH,Bravada Corner Sofa 96 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CS-96-LS-FRAME,Bravada Corner Sofa 96 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CS-96-RS-CUSH,Bravada Corner Sofa 96 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-CS-96-RS-FRAME,Bravada Corner Sofa 96 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CT-36X36-FRAME,Bravada Coffee Table 36 x 36 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CT-42X28-FRAME,Bravada Coffee Table 42 x 28 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CT-42X42-FRAME,Bravada Coffee Table 42 x 42 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CT-56X28-FRAME,Bravada Coffee Table 56 x 28 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CT-56X36-FRAME,Bravada Coffee Table 56 x 36 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CT-56X42-FRAME,Bravada Coffee table 56 x 42 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CT-56X56-FRAME,Bravada Coffee Table 56 x 56 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CT-72X36-FRAME,Bravada Coffee Table 72 x 36 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CT-72X42-FRAME,Bravada Coffee Table 72 x 42 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-CT-72X56-FRAME,Bravada Coffee Table 72 x 56 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-D-7272-CUSH,Bravada Daybed 72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-D-7272-FRAME,Bravada Daybed 72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-D-7872-CUSH,Bravada Daybed 78 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-D-7872-FRAME,Bravada Daybed 78 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-L-CUSH,Bravada Loveseat Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-L-FRAME,Bravada Loveseat Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-ML-CUSH,Bravada Mini Loveseat Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-ML-FRAME,Bravada Mini Loveseat Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-O-30X22-CUSH,Bravada Ottoman 30X22 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-O-30X22-FRAME,Bravada Ottoman 30X22 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-O-34X34-CUSH,Bravada Ottoman 34X34 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-O-34X34-FRAME,Bravada Ottoman 34X34 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-O-42X22-CUSH,Bravada Ottoman 42X22 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-O-42X22-FRAME,Bravada Ottoman 42X22 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-O-42X34-CUSH,Bravada Ottoman 42X34 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-O-42X34-FRAME,Bravada Ottoman 42X34 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-O-60X22-CUSH,Bravada Ottoman 60X22 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-O-60X22-FRAME,Bravada Ottoman 60X22 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-O-60X34-CUSH,Bravada Ottoman 60 x 34 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-O-60X34-FRAME,Bravada Ottoman 60 x 34 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-O-72X22-CUSH,Bravada Ottoman 72X22 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-O-72X22-FRAME,Bravada Ottoman 72X22 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-O-72X34-CUSH,Bravada Ottoman 72 x 34 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-O-72X34-FRAME,Bravada Ottoman 72 x 34 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-ODT-30X22-CUSH,Bravada Ottoman 30X22 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-ODT-30X22-FRAME,Bravada Ottoman 30X22 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-ODT-34X34-CUSH,Bravada Ottoman 34X34 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-ODT-34X34-FRAME,Bravada Ottoman 34X34 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-ODT-42X22-CUSH,Bravada Ottoman 42X22 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-ODT-42X22-FRAME,Bravada Ottoman 42X22 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-ODT-42X34-CUSH,Bravada Ottoman 42X34 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-ODT-42X34-FRAME,Bravada Ottoman 42X34 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-ODT-60X22-CUSH,Bravada Ottoman 60X22 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-ODT-60X22-FRAME,Bravada Ottoman 60X22 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-ODT-60X34-CUSH,Bravada Ottoman 60 x 34 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-ODT-60X34-FRAME,Bravada Ottoman 60 x 34 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-ODT-72X22-CUSH,Bravada Ottoman 72X22 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-ODT-72X22-FRAME,Bravada Ottoman 72X22 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-ODT-72X34-CUSH,Bravada Ottoman 72 x 34 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-ODT-72X34-FRAME,Bravada Ottoman 72 x 34 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-S-72-CUSH,Bravada Sofa 72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-S-72-FRAME,Bravada Sofa 72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-S-84-CUSH,Bravada Sofa 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-S-84-FRAME,Bravada Sofa 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-S-96-CUSH,Bravada Sofa 96 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-S-96-FRAME,Bravada Sofa 96 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-SC-CUSH,Bravada Swivel Chair Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRA-SC-FRAME,Bravada Swivel Chair Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRA-ST-20X20-FRAME,Bravada Side Table 20 x 20 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-C-72X34-LS-CUSH,Brooklyn Chaise 72 x 34 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-C-72X34-LS-FRAME,Brooklyn Chaise 72 x 34 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-C-72X34-RS-CUSH,Brooklyn Chaise 72 x 34 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-C-72X34-RS-FRAME,Brooklyn Chaise 72 x 34 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-C-72X42-LS-CUSH,Brooklyn Chaise 72 x 42 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-C-72X42-LS-FRAME,Brooklyn Chaise 72 x 42 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-C-72X42-RS-CUSH,Brooklyn Chaise 72 x 42 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-C-72X42-RS-FRAME,Brooklyn Chaise 72 x 42 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-C-84X34-LS-CUSH,Brooklyn Chaise 84 x 34 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-C-84X34-LS-FRAME,Brooklyn Chaise 84 x 34 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-C-84X34-RS-CUSH,Brooklyn Chaise 84 x 34 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-C-84X34-RS-FRAME,Brooklyn Chaise 84 x 34 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-C-84X42-LS-CUSH,Brooklyn Chaise 84 x 42 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-C-84X42-LS-FRAME,Brooklyn Chaise 84 x 42 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-C-84X42-RS-CUSH,Brooklyn Chaise 84 x 42 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-C-84X42-RS-FRAME,Brooklyn Chaise 84 x 42 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-CL-D-CUSH,Brooklyn Chaise Lounge Double Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-CL-D-FRAME,Brooklyn Chaise Lounge Double Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-CL-S-CUSH,Brooklyn Chaise Lounge Single Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-CL-S-FRAME,Brooklyn Chaise Lounge Single Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-CS-72-LS-CUSH,Brooklyn Corner Sofa 72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-CS-72-LS-FRAME,Brooklyn Corner Sofa 72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-CS-72-RS-CUSH,Brooklyn Corner Sofa 72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-CS-72-RS-FRAME,Brooklyn Corner Sofa 72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-CS-84-LS-CUSH,Brooklyn Corner Sofa 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-CS-84-LS-FRAME,Brooklyn Corner Sofa 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-CS-84-RS-CUSH,Brooklyn Corner Sofa 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-CS-84-RS-FRAME,Brooklyn Corner Sofa 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-CS-96-LS-CUSH,Brooklyn Corner Sofa 96 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-CS-96-LS-FRAME,Brooklyn Corner Sofa 96 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-CS-96-RS-CUSH,Brooklyn Corner Sofa 96 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-CS-96-RS-FRAME,Brooklyn Corner Sofa 96 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-L-CUSH,Brooklyn Loveseat Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-L-FRAME,Brooklyn Loveseat Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-S-72-CUSH,Brooklyn Sofa 72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-S-72-FRAME,Brooklyn Sofa 72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-S-84-CUSH,Brooklyn Sofa 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-S-84-FRAME,Brooklyn Sofa 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-S-96-CUSH,Brooklyn Sofa 96 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-S-96-FRAME,Brooklyn Sofa 96 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-TC-D-CUSH,Brooklyn Transitional Chaise Double Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-TC-D-FRAME,Brooklyn Transitional Chaise Double Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-BRO-TC-S-CUSH,Brooklyn Transitional Chaise Single Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-BRO-TC-S-FRAME,Brooklyn Transitional Chaise Single Frame,sub_assembly,aluminum_frame,frame_suffix,5
+skip_no_track,SA-BRV-ARM,"Bravada Arm Assembly (shared, not handed)",sub_assembly,,unmatched_family,0
+skip_no_track,SA-BRV-CLB-CHA-34X34-BACK,Bravada Club Chair Back,sub_assembly,,unmatched_family,0
+upsert,SA-BRV-CLB-CHA-34X34-CUSH,"BRAVADA CLUB CHAIR 34"" x 34"" x 31"" BH CUSH",sub_assembly,cushion,cush_suffix,4
+skip_no_track,SA-BRV-CLB-CHA-34X34-SEAT,Bravada Club Chair Seat Frame,sub_assembly,,unmatched_family,0
+upsert,SA-DAI-TAB-72X42-FRAME,Daisy Base Table 72 x 42 Dining Height FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-CC-CUSH,Ocean Club Chair Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-CC-FRAME,Ocean Club Chair Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-CT-36X36-FRAME,Ocean Coffee Table 36 x 36 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-CT-42X28-FRAME,Ocean Coffee Table 42 x 28 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-CT-42X42-FRAME,Ocean Coffee Table 42 x 42 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-CT-56X28-FRAME,Ocean Coffee Table 56 x 28 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-CT-56X36-FRAME,Ocean Coffee Table 56 x 36 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-CT-56X42-FRAME,Ocean Coffee Table 56 x 42 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-CT-56X56-FRAME,Ocean Coffee Table 56 x 56 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-CT-72X36-FRAME,Ocean Coffee Table 72 x 36 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-CT-72X42-FRAME,Ocean Coffee Table 72 x 42 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-CT-72X56-FRAME,Ocean Coffee Table 72 x 56 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-DCL-CUSH,Ocean Double Chaise Lounge Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-DCL-FRAME,Ocean Double Chaise Lounge Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-L-CUSH,Ocean Loveseat Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-L-FRAME,Ocean Loveseat Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-ML-CUSH,Ocean Mini Loveseat Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-ML-FRAME,Ocean Mini Loveseat Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-O-30X22-CUSH,Ocean Ottoman 30 x 22 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-O-30X22-FRAME,Ocean Ottoman 30 x 22 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-O-42X22-CUSH,Ocean Ottoman 42 x 22 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-O-42X22-FRAME,Ocean Ottoman 42 x 22 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-O-60X22-CUSH,Ocean Ottoman 60 x 22 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-O-60X22-FRAME,Ocean Ottoman 60 x 22 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-O-72X22-CUSH,Ocean Ottoman 72 x 22 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-O-72X22-FRAME,Ocean Ottoman 72 x 22 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-RST-36-FRAME,Ocean Round Side table 36 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-RST-42-FRAME,Ocean Round Side Table 42 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-S-72-CUSH,Ocean Sofa 72 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-S-72-FRAME,Ocean Sofa 72 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-S-84-CUSH,Ocean Sofa 84 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-S-84-FRAME,Ocean Sofa 84 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-S-96-CUSH,Ocean Sofa 96 Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-S-96-FRAME,Ocean Sofa 96 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-SC-CUSH,Ocean Swivel Chair Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-SC-FRAME,Ocean Swivel Chair Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-SCL-CUSH,Ocean Single Chaise Lounge Cushion,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCE-SCL-FRAME,Ocean Single Chaise Lounge Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCE-ST-20X20-FRAME,Ocean Side Table 20 x 20 Frame,sub_assembly,aluminum_frame,frame_suffix,5
+upsert,SA-OCN-MIN-LOV-CUSH,Ocean Mini Loveseat CUSH,sub_assembly,cushion,cush_suffix,4
+upsert,SA-OCN-MIN-LOV-FRAME,Ocean Mini Loveseat FRAME,sub_assembly,aluminum_frame,frame_suffix,5
+skip_no_track,SA-WFT-DIN-TAB-72X28-BASE,Waterfall Dining Table Base Frame,sub_assembly,,unmatched_family,0

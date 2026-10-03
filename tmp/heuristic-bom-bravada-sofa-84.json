@@ -1,0 +1,111 @@
+{
+  "status": "ready",
+  "skipReason": null,
+  "finSku": "FIN-BRV-SOF-84X34",
+  "name": "Bravada Sofa 84",
+  "category": "Bravada Collection",
+  "family": "seating",
+  "dimSource": "84X34",
+  "widthIn": 84,
+  "depthIn": 34,
+  "heightIn": 30,
+  "tubeNetFt": 29.6667,
+  "frameSku": "ASM-BRV-SOF-84X34-FRAME",
+  "cushionSku": "ASM-BRV-SOF-84X34-CUSH",
+  "powderSku": "PWD-BLACK",
+  "parents": [
+    {
+      "role": "frame",
+      "sku": "ASM-BRV-SOF-84X34-FRAME",
+      "variantId": null,
+      "productId": null,
+      "productAction": "create",
+      "rows": [
+        {
+          "ingredientSku": "RM-MET-2X2-TUBING",
+          "quantity": 32.04,
+          "uom": "ft",
+          "notes": "tubingFeet(84x34x30) 29.6667 × 1.08",
+          "cutList": [],
+          "variantId": 42047074
+        },
+        {
+          "ingredientSku": "RM-MET-FLATBAR",
+          "quantity": 14.4,
+          "uom": "ft",
+          "notes": "seatingFlatbarFeet(84)",
+          "cutList": [],
+          "variantId": 23143136
+        },
+        {
+          "ingredientSku": "RM-HRD-2X2-METAL-CAP",
+          "quantity": 6,
+          "uom": "ea",
+          "notes": "6 legs",
+          "cutList": [],
+          "variantId": 41913014
+        },
+        {
+          "ingredientSku": "PWD-BLACK",
+          "quantity": 2.492,
+          "uom": "lb",
+          "notes": "powderPounds(29.6667) × 1.05",
+          "cutList": [],
+          "variantId": 42049883
+        }
+      ]
+    },
+    {
+      "role": "cushion",
+      "sku": "ASM-BRV-SOF-84X34-CUSH",
+      "variantId": null,
+      "productId": null,
+      "productAction": "create",
+      "rows": [
+        {
+          "ingredientSku": "RM-FAB-GENERIC",
+          "quantity": 9.6963,
+          "uom": "yd",
+          "notes": "MTO fabric placeholder — swap FAB-* at order time",
+          "cutList": [],
+          "variantId": 42062750
+        },
+        {
+          "ingredientSku": "RM-RAW-FOAM",
+          "quantity": 83.3,
+          "uom": "boardft",
+          "notes": "4in seat slab",
+          "cutList": [],
+          "variantId": 23178511
+        }
+      ]
+    },
+    {
+      "role": "finished_good",
+      "sku": "FIN-BRV-SOF-84X34",
+      "variantId": 42013468,
+      "productId": 17951043,
+      "productAction": "reuse",
+      "rows": [
+        {
+          "ingredientSku": "ASM-BRV-SOF-84X34-FRAME",
+          "quantity": 1,
+          "uom": "ea",
+          "notes": "FG consumes one welded frame",
+          "cutList": [],
+          "variantId": null
+        },
+        {
+          "ingredientSku": "ASM-BRV-SOF-84X34-CUSH",
+          "quantity": 1,
+          "uom": "ea",
+          "notes": "FG consumes one cushion set",
+          "cutList": [],
+          "variantId": null
+        }
+      ]
+    }
+  ],
+  "generatedAt": "2026-10-02T13:06:24.633Z",
+  "mode": "confirm"
+}

@@ -1,0 +1,730 @@
+{
+  "generatedAt": "2026-10-02T02:26:31.988Z",
+  "mode": "confirm-planned",
+  "summary": {
+    "countRows": 31,
+    "unambiguousExisting": 14,
+    "toMint": 17,
+    "excludedWeak": 0,
+    "excludedCheck": 0,
+    "stocktakeRows": 31,
+    "feetOnStocktake": 10800,
+    "feetExisting": 6140,
+    "feetToMint": 4660,
+    "feetExcludedWeak": 0,
+    "feetExcludedCheck": 0,
+    "setRemainingItemsAsCounted": false,
+    "locationId": 98179,
+    "stocktakeNumber": "MIG-METAL-COUNT-20261001",
+    "blocked": 0
+  },
+  "excluded": [],
+  "mints": [
+    {
+      "sku": "MET-TBR1083",
+      "name": "1 X 14GA RD TUBE",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 6,
+      "feet": 120
+    },
+    {
+      "sku": "MET-TBR2083",
+      "name": "2 X 14GA RD TUBE",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 4,
+      "feet": 80
+    },
+    {
+      "sku": "MET-TBR112083",
+      "name": "1-1/2 X 14GA RD TUBE",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 3,
+      "feet": 60
+    },
+    {
+      "sku": "MET-TB11120",
+      "name": "1 X 1 X 11GA SQ TUBE",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 2,
+      "feet": 40
+    },
+    {
+      "sku": "MET-TB112112060",
+      "name": "1-1/2 X 1-1/2 X 16GA SQ TUBE",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 125,
+      "feet": 2500
+    },
+    {
+      "sku": "MET-TB33060",
+      "name": "Aluminum Square Tube 3x3 16g",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 3,
+      "feet": 60
+    },
+    {
+      "sku": "MET-TB11234120",
+      "name": "1-1/2 X 3/4 X 11GA REC TUBE",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 13,
+      "feet": 260
+    },
+    {
+      "sku": "MET-TB1121120",
+      "name": "1-1/2 X 1 X 11GA REC TUBE",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 3,
+      "feet": 60
+    },
+    {
+      "sku": "MET-TB21120",
+      "name": "Aluminum Rect Tube 2x1 11g",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 6,
+      "feet": 120
+    },
+    {
+      "sku": "MET-TB31060",
+      "name": "3 X 1 X 16GA REC TUBE",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 7,
+      "feet": 140
+    },
+    {
+      "sku": "MET-TB32120",
+      "name": "3 X 2 X 11GA REC TUBE",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 5,
+      "feet": 100
+    },
+    {
+      "sku": "MET-TB42120",
+      "name": "4 X 2 X 11GA REC TUBE",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 1,
+      "feet": 20
+    },
+    {
+      "sku": "MET-FH34112",
+      "name": "Aluminum Flat Bar 1-1/2 x 3/4",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 4,
+      "feet": 80
+    },
+    {
+      "sku": "MET-FH181",
+      "name": "Aluminum Flat Bar 1 x 1/8",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 40,
+      "feet": 800
+    },
+    {
+      "sku": "MET-FH14112",
+      "name": "1/4 X 1-1/2 HR FLAT BAR",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 7,
+      "feet": 140
+    },
+    {
+      "sku": "MET-FH182",
+      "name": "1/8 X 2 HR FLAT BAR",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 1,
+      "feet": 20
+    },
+    {
+      "sku": "MET-FH142",
+      "name": "Aluminum Flat Bar 2 x 1/4",
+      "uom": "ft",
+      "category": "Metal",
+      "pieces": 3,
+      "feet": 60
+    }
+  ],
+  "blockers": [],
+  "stocktake": {
+    "stocktake_number": "MIG-METAL-COUNT-20261001",
+    "location_id": 98179,
+    "reason": "Aluminum extrusion physical count 2026-10-01. Feet = sticks × length. Fabric and finished goods are not in this count.",
+    "created_date": "2026-10-01",
+    "set_remaining_items_as_counted": false,
+    "stocktake_rows": [
+      {
+        "variant_id": 42322779,
+        "sku": "MET-TBR1083",
+        "counted_quantity": 120,
+        "notes": "MET-TBR1083 6 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049882,
+        "sku": "MET-TBR34083",
+        "counted_quantity": 60,
+        "notes": "MET-TBR34083 3 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42322780,
+        "sku": "MET-TBR2083",
+        "counted_quantity": 80,
+        "notes": "MET-TBR2083 4 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42322781,
+        "sku": "MET-TBR112083",
+        "counted_quantity": 60,
+        "notes": "MET-TBR112083 3 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049872,
+        "sku": "MET-TB11060",
+        "counted_quantity": 2200,
+        "notes": "MET-TB11060 110 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42322782,
+        "sku": "MET-TB11120",
+        "counted_quantity": 40,
+        "notes": "MET-TB11120 2 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42322783,
+        "sku": "MET-TB112112060",
+        "counted_quantity": 2500,
+        "notes": "MET-TB112112060 125 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049877,
+        "sku": "MET-TB22060",
+        "counted_quantity": 500,
+        "notes": "MET-TB22060 25 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049878,
+        "sku": "MET-TB22120",
+        "counted_quantity": 80,
+        "notes": "MET-TB22120 4 sticks × 20 ft"
+      },
+      {
+        "variant_id": null,
+        "sku": "MET-TB33060",
+        "counted_quantity": 60,
+        "notes": "MET-TB33060 3 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049874,
+        "sku": "MET-TB11234060",
+        "counted_quantity": 1100,
+        "notes": "MET-TB11234060 55 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42322784,
+        "sku": "MET-TB11234120",
+        "counted_quantity": 260,
+        "notes": "MET-TB11234120 13 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42322785,
+        "sku": "MET-TB1121120",
+        "counted_quantity": 60,
+        "notes": "MET-TB1121120 3 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049879,
+        "sku": "MET-TB234060",
+        "counted_quantity": 300,
+        "notes": "MET-TB234060 15 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049875,
+        "sku": "MET-TB21060",
+        "counted_quantity": 300,
+        "notes": "MET-TB21060 15 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049876,
+        "sku": "MET-TB21120",
+        "counted_quantity": 120,
+        "notes": "MET-TB21120 6 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42322786,
+        "sku": "MET-TB31060",
+        "counted_quantity": 140,
+        "notes": "MET-TB31060 7 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049880,
+        "sku": "MET-TB32060",
+        "counted_quantity": 800,
+        "notes": "MET-TB32060 40 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42322787,
+        "sku": "MET-TB32120",
+        "counted_quantity": 100,
+        "notes": "MET-TB32120 5 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049881,
+        "sku": "MET-TB42060",
+        "counted_quantity": 240,
+        "notes": "MET-TB42060 12 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42322788,
+        "sku": "MET-TB42120",
+        "counted_quantity": 20,
+        "notes": "MET-TB42120 1 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049864,
+        "sku": "MET-RDH12",
+        "counted_quantity": 200,
+        "notes": "MET-RDH12 10 sticks × 20 ft"
+      },
+      {
+        "variant_id": null,
+        "sku": "MET-FH34112",
+        "counted_quantity": 80,
+        "notes": "MET-FH34112 4 sticks × 20 ft"
+      },
+      {
+        "variant_id": null,
+        "sku": "MET-FH181",
+        "counted_quantity": 800,
+        "notes": "MET-FH181 40 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049857,
+        "sku": "MET-FH141",
+        "counted_quantity": 140,
+        "notes": "MET-FH141 7 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049858,
+        "sku": "MET-FH18112",
+        "counted_quantity": 40,
+        "notes": "MET-FH18112 2 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049859,
+        "sku": "MET-FH316112",
+        "counted_quantity": 100,
+        "notes": "MET-FH316112 5 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42322789,
+        "sku": "MET-FH14112",
+        "counted_quantity": 140,
+        "notes": "MET-FH14112 7 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42322790,
+        "sku": "MET-FH182",
+        "counted_quantity": 20,
+        "notes": "MET-FH182 1 sticks × 20 ft"
+      },
+      {
+        "variant_id": 42049860,
+        "sku": "MET-FH3162",
+        "counted_quantity": 80,
+        "notes": "MET-FH3162 4 sticks × 20 ft"
+      },
+      {
+        "variant_id": null,
+        "sku": "MET-FH142",
+        "counted_quantity": 60,
+        "notes": "MET-FH142 3 sticks × 20 ft"
+      }
+    ]
+  },
+  "lines": [
+    {
+      "profile": "ROUND TUBE 1 14g",
+      "disposition": "mint",
+      "sku": "MET-TBR1083",
+      "name": "1 X 14GA RD TUBE",
+      "pieces": 6,
+      "lengthFt": 20,
+      "feet": 120,
+      "variantId": 42322779,
+      "liveOnHand": 120,
+      "blocker": null
+    },
+    {
+      "profile": "ROUND TUBE 3/4 14g",
+      "disposition": "upload",
+      "sku": "MET-TBR34083",
+      "name": "3/4 X 14GA RD TUBE",
+      "pieces": 3,
+      "lengthFt": 20,
+      "feet": 60,
+      "variantId": 42049882,
+      "liveOnHand": 60,
+      "blocker": null
+    },
+    {
+      "profile": "ROUND TUBE 2 14g",
+      "disposition": "mint",
+      "sku": "MET-TBR2083",
+      "name": "2 X 14GA RD TUBE",
+      "pieces": 4,
+      "lengthFt": 20,
+      "feet": 80,
+      "variantId": 42322780,
+      "liveOnHand": 80,
+      "blocker": null
+    },
+    {
+      "profile": "ROUND TUBE 1-1/2 14g",
+      "disposition": "mint",
+      "sku": "MET-TBR112083",
+      "name": "1-1/2 X 14GA RD TUBE",
+      "pieces": 3,
+      "lengthFt": 20,
+      "feet": 60,
+      "variantId": 42322781,
+      "liveOnHand": 60,
+      "blocker": null
+    },
+    {
+      "profile": "SQUARE TUBE 1x1 16g",
+      "disposition": "upload",
+      "sku": "MET-TB11060",
+      "name": "1 X 1 X 16GA SQ TUBE",
+      "pieces": 110,
+      "lengthFt": 20,
+      "feet": 2200,
+      "variantId": 42049872,
+      "liveOnHand": 2200,
+      "blocker": null
+    },
+    {
+      "profile": "SQUARE TUBE 1x1 11g",
+      "disposition": "mint",
+      "sku": "MET-TB11120",
+      "name": "1 X 1 X 11GA SQ TUBE",
+      "pieces": 2,
+      "lengthFt": 20,
+      "feet": 40,
+      "variantId": 42322782,
+      "liveOnHand": 40,
+      "blocker": null
+    },
+    {
+      "profile": "SQUARE TUBE 1-1/2x1-1/2 16g",
+      "disposition": "mint",
+      "sku": "MET-TB112112060",
+      "name": "1-1/2 X 1-1/2 X 16GA SQ TUBE",
+      "pieces": 125,
+      "lengthFt": 20,
+      "feet": 2500,
+      "variantId": 42322783,
+      "liveOnHand": 2500,
+      "blocker": null
+    },
+    {
+      "profile": "SQUARE TUBE 2x2 16g",
+      "disposition": "upload",
+      "sku": "MET-TB22060",
+      "name": "2 X 2 X 16GA SQ TUBE",
+      "pieces": 25,
+      "lengthFt": 20,
+      "feet": 500,
+      "variantId": 42049877,
+      "liveOnHand": 500,
+      "blocker": null
+    },
+    {
+      "profile": "SQUARE TUBE 2x2 11g",
+      "disposition": "upload",
+      "sku": "MET-TB22120",
+      "name": "2 X 2 X 11GA SQ TUBE",
+      "pieces": 4,
+      "lengthFt": 20,
+      "feet": 80,
+      "variantId": 42049878,
+      "liveOnHand": 80,
+      "blocker": null
+    },
+    {
+      "profile": "SQUARE TUBE 3x3 16g",
+      "disposition": "mint",
+      "sku": "MET-TB33060",
+      "name": "Aluminum Square Tube 3x3 16g",
+      "pieces": 3,
+      "lengthFt": 20,
+      "feet": 60,
+      "variantId": null,
+      "liveOnHand": null,
+      "blocker": null
+    },
+    {
+      "profile": "RECT TUBE 1-1/2x3/4 16g",
+      "disposition": "upload",
+      "sku": "MET-TB11234060",
+      "name": "1-1/2 X 3/4 X 16GA REC TUBE",
+      "pieces": 55,
+      "lengthFt": 20,
+      "feet": 1100,
+      "variantId": 42049874,
+      "liveOnHand": 1100,
+      "blocker": null
+    },
+    {
+      "profile": "RECT TUBE 1-1/2x3/4 11g",
+      "disposition": "mint",
+      "sku": "MET-TB11234120",
+      "name": "1-1/2 X 3/4 X 11GA REC TUBE",
+      "pieces": 13,
+      "lengthFt": 20,
+      "feet": 260,
+      "variantId": 42322784,
+      "liveOnHand": 260,
+      "blocker": null
+    },
+    {
+      "profile": "RECT TUBE 1-1/2x1 11g",
+      "disposition": "mint",
+      "sku": "MET-TB1121120",
+      "name": "1-1/2 X 1 X 11GA REC TUBE",
+      "pieces": 3,
+      "lengthFt": 20,
+      "feet": 60,
+      "variantId": 42322785,
+      "liveOnHand": 60,
+      "blocker": null
+    },
+    {
+      "profile": "RECT TUBE 2x3/4 16g",
+      "disposition": "upload",
+      "sku": "MET-TB234060",
+      "name": "2 X 3/4 X 16GA REC TUBE",
+      "pieces": 15,
+      "lengthFt": 20,
+      "feet": 300,
+      "variantId": 42049879,
+      "liveOnHand": 300,
+      "blocker": null
+    },
+    {
+      "profile": "RECT TUBE 2x1 16g",
+      "disposition": "upload",
+      "sku": "MET-TB21060",
+      "name": "2 X 1 X 16GA REC TUBE",
+      "pieces": 15,
+      "lengthFt": 20,
+      "feet": 300,
+      "variantId": 42049875,
+      "liveOnHand": 300,
+      "blocker": null
+    },
+    {
+      "profile": "RECT TUBE 2x1 11g?",
+      "disposition": "mint",
+      "sku": "MET-TB21120",
+      "name": "Aluminum Rect Tube 2x1 11g",
+      "pieces": 6,
+      "lengthFt": 20,
+      "feet": 120,
+      "variantId": 42049876,
+      "liveOnHand": 0,
+      "blocker": null
+    },
+    {
+      "profile": "RECT TUBE 3x1 16g",
+      "disposition": "mint",
+      "sku": "MET-TB31060",
+      "name": "3 X 1 X 16GA REC TUBE",
+      "pieces": 7,
+      "lengthFt": 20,
+      "feet": 140,
+      "variantId": 42322786,
+      "liveOnHand": 140,
+      "blocker": null
+    },
+    {
+      "profile": "RECT TUBE 3x2 16g",
+      "disposition": "upload",
+      "sku": "MET-TB32060",
+      "name": "3 X 2 X 16GA REC TUBE",
+      "pieces": 40,
+      "lengthFt": 20,
+      "feet": 800,
+      "variantId": 42049880,
+      "liveOnHand": 800,
+      "blocker": null
+    },
+    {
+      "profile": "RECT TUBE 3x2 11g",
+      "disposition": "mint",
+      "sku": "MET-TB32120",
+      "name": "3 X 2 X 11GA REC TUBE",
+      "pieces": 5,
+      "lengthFt": 20,
+      "feet": 100,
+      "variantId": 42322787,
+      "liveOnHand": 100,
+      "blocker": null
+    },
+    {
+      "profile": "RECT TUBE 4x2 16g",
+      "disposition": "upload",
+      "sku": "MET-TB42060",
+      "name": "4 X 2 X 16GA REC TUBE",
+      "pieces": 12,
+      "lengthFt": 20,
+      "feet": 240,
+      "variantId": 42049881,
+      "liveOnHand": 240,
+      "blocker": null
+    },
+    {
+      "profile": "RECT TUBE 4x2 11g",
+      "disposition": "mint",
+      "sku": "MET-TB42120",
+      "name": "4 X 2 X 11GA REC TUBE",
+      "pieces": 1,
+      "lengthFt": 20,
+      "feet": 20,
+      "variantId": 42322788,
+      "liveOnHand": 20,
+      "blocker": null
+    },
+    {
+      "profile": "ROUND BAR 1/2 SOLID",
+      "disposition": "upload",
+      "sku": "MET-RDH12",
+      "name": "1/2 HOT ROLLED ROUND SOLID",
+      "pieces": 10,
+      "lengthFt": 20,
+      "feet": 200,
+      "variantId": 42049864,
+      "liveOnHand": 200,
+      "blocker": null
+    },
+    {
+      "profile": "FLAT BAR 1-1/2x3/4",
+      "disposition": "mint",
+      "sku": "MET-FH34112",
+      "name": "Aluminum Flat Bar 1-1/2 x 3/4",
+      "pieces": 4,
+      "lengthFt": 20,
+      "feet": 80,
+      "variantId": null,
+      "liveOnHand": null,
+      "blocker": null
+    },
+    {
+      "profile": "FLAT BAR 1x1/8",
+      "disposition": "mint",
+      "sku": "MET-FH181",
+      "name": "Aluminum Flat Bar 1 x 1/8",
+      "pieces": 40,
+      "lengthFt": 20,
+      "feet": 800,
+      "variantId": null,
+      "liveOnHand": null,
+      "blocker": null
+    },
+    {
+      "profile": "FLAT BAR 1x1/4",
+      "disposition": "upload",
+      "sku": "MET-FH141",
+      "name": "1/4 X 1 HR FLAT BAR",
+      "pieces": 7,
+      "lengthFt": 20,
+      "feet": 140,
+      "variantId": 42049857,
+      "liveOnHand": 140,
+      "blocker": null
+    },
+    {
+      "profile": "FLAT BAR 1-1/2x1/8",
+      "disposition": "upload",
+      "sku": "MET-FH18112",
+      "name": "1/8 X 1-1/2 HR FLAT BAR",
+      "pieces": 2,
+      "lengthFt": 20,
+      "feet": 40,
+      "variantId": 42049858,
+      "liveOnHand": 40,
+      "blocker": null
+    },
+    {
+      "profile": "FLAT BAR 1-1/2x3/16",
+      "disposition": "upload",
+      "sku": "MET-FH316112",
+      "name": "3/16 X 1-1/2 HR FLAT BAR",
+      "pieces": 5,
+      "lengthFt": 20,
+      "feet": 100,
+      "variantId": 42049859,
+      "liveOnHand": 100,
+      "blocker": null
+    },
+    {
+      "profile": "FLAT BAR 1-1/2x1/4",
+      "disposition": "mint",
+      "sku": "MET-FH14112",
+      "name": "1/4 X 1-1/2 HR FLAT BAR",
+      "pieces": 7,
+      "lengthFt": 20,
+      "feet": 140,
+      "variantId": 42322789,
+      "liveOnHand": 140,
+      "blocker": null
+    },
+    {
+      "profile": "FLAT BAR 2x1/8",
+      "disposition": "mint",
+      "sku": "MET-FH182",
+      "name": "1/8 X 2 HR FLAT BAR",
+      "pieces": 1,
+      "lengthFt": 20,
+      "feet": 20,
+      "variantId": 42322790,
+      "liveOnHand": 20,
+      "blocker": null
+    },
+    {
+      "profile": "FLAT BAR 2x3/16",
+      "disposition": "upload",
+      "sku": "MET-FH3162",
+      "name": "3/16 X 2 HR FLAT BAR",
+      "pieces": 4,
+      "lengthFt": 20,
+      "feet": 80,
+      "variantId": 42049860,
+      "liveOnHand": 80,
+      "blocker": null
+    },
+    {
+      "profile": "FLAT BAR 2x1/4",
+      "disposition": "mint",
+      "sku": "MET-FH142",
+      "name": "Aluminum Flat Bar 2 x 1/4",
+      "pieces": 3,
+      "lengthFt": 20,
+      "feet": 60,
+      "variantId": null,
+      "liveOnHand": null,
+      "blocker": null
+    }
+  ]
+}

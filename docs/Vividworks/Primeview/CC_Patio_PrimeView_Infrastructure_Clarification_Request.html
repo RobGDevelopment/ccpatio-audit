@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CC Patio — Infrastructure Clarification Request to PrimeView</title>
+  <meta name="author" content="Robert J Gutierrez" />
+  <style>
+    :root {
+      --ink: #1a1f26;
+      --muted: #5c6570;
+      --line: #d8dde3;
+      --paper: #ffffff;
+      --wash: #f4f6f8;
+      --accent: #1e3a5f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #e8ebef;
+      font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      line-height: 1.45;
+      font-size: 11pt;
+    }
+    .toolbar {
+      max-width: 8.5in;
+      margin: 16px auto 0;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .toolbar button {
+      appearance: none;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: white;
+      font: inherit;
+      font-size: 0.9rem;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+    .page {
+      max-width: 8.5in;
+      margin: 16px auto 32px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      padding: 0.75in 0.85in;
+    }
+    @media print {
+      body { background: white; }
+      .toolbar { display: none; }
+      .page { margin: 0; border: none; max-width: none; padding: 0.55in 0.65in; }
+    }
+    .cover-rule { height: 4px; background: var(--accent); margin: 0 0 20px; }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-weight: 600;
+      margin: 0 0 8px;
+    }
+    h1 {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      font-size: 1.45rem;
+      color: var(--accent);
+      margin: 0 0 8px;
+      line-height: 1.25;
+    }
+    .meta {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin: 0 0 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .meta strong { color: var(--ink); }
+    h2 {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      font-size: 1.05rem;
+      color: var(--accent);
+      margin: 22px 0 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--line);
+    }
+    p { margin: 0 0 10px; }
+    ol.q {
+      margin: 0 0 6px;
+      padding-left: 1.35em;
+    }
+    ol.q > li {
+      margin-bottom: 10px;
+      padding-left: 4px;
+    }
+    ol.q > li::marker { font-weight: 700; color: var(--accent); }
+    .why {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .note {
+      background: var(--wash);
+      border-left: 3px solid var(--accent);
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      margin: 14px 0;
+    }
+    footer {
+      margin-top: 28px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .email-block {
+      background: var(--wash);
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      font-size: 0.88rem;
+      margin: 0 0 18px;
+      white-space: pre-wrap;
+      font-family: Consolas, "Courier New", monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button type="button" onclick="window.print()">Print / Save as PDF</button>
+  </div>
+
+  <article class="page">
+    <div class="cover-rule"></div>
+    <p class="eyebrow">CC Patio · Pre-Remediation Infrastructure Clarification</p>
+    <h1>Technical Questions for PrimeView Lead Server Engineer</h1>
+    <p class="meta">
+      <strong>From:</strong> Robert J Gutierrez<br />
+      <strong>To:</strong> PrimeView — Lead Server / Infrastructure Engineer<br />
+      <strong>Re:</strong> Architectural blind spots prior to OPcache &amp; caching remediation (www.ccpatio.com)<br />
+      <strong>Date:</strong> 18 September 2026<br />
+      <strong>Companion:</strong> CC_Patio_WordPress_Architectural_Stability_Audit.html
+    </p>
+
+    <div class="email-block">Subject: CC Patio — Required infrastructure clarifications before OPcache / cache remediation
+
+Hello —
+
+Our stability audit of www.ccpatio.com was based on the WordPress Site Health diagnostic dump only. That gives us strong visibility into the application layer, but we lack authoritative detail on edge routing, LiteSpeed/server config, NitroPack SaaS behavior, and deployment/change pipelines.
+
+Before any OPcache resizing or caching-stack changes proceed, please answer the questions below so we share a single, complete architecture map. Please respond with concrete values (screenshots or exported rules accepted) rather than generalities.
+
+Thank you,
+Robert J Gutierrez</div>
+
+    <div class="note">
+      <strong>Why this is blocking.</strong>
+      Site Health confirmed OPcache FULL, NitroPack + <code>advanced-cache.php</code>, and Cloudflare in front of LiteSpeed — but not <em>how</em> those layers are configured to interact. Remediating OPcache while the wrong cache owner still purges/loopbacks will not clear 522s.
+    </div>
+
+    <h2>A. Ownership &amp; access</h2>
+    <ol class="q">
+      <li>
+        Who is the authoritative owner of the Cloudflare zone for <code>ccpatio.com</code> / <code>www.ccpatio.com</code> (PrimeView, host, or client), and who can export DNS, Page Rules, Cache Rules, WAF, and Analytics?
+        <span class="why">Blind spot: we cannot validate edge behavior without zone ownership clarity.</span>
+      </li>
+      <li>
+        Who controls the LiteSpeed / hosting panel for <code>ccpatpvlive</code> (cPanel, CyberPanel, DirectAdmin, managed LiteSpeed), and can you provide read-only access or exported PHP / OPcache / LSAPI settings?
+        <span class="why">Blind spot: Site Health shows PHP limits, not worker pools or OPcache ini.</span>
+      </li>
+      <li>
+        Who owns the NitroPack account bound to this site, and can you export (or screenshot) Optimization, Cache, and CDN settings as of today?
+        <span class="why">Blind spot: SaaS-side config is invisible from Site Health.</span>
+      </li>
+    </ol>
+
+    <h2>B. Cloudflare edge &amp; origin path</h2>
+    <ol class="q" start="4">
+      <li>
+        Is the orange-cloud (proxied) status enabled for <code>www</code> and apex? List any DNS records that bypass Cloudflare (grey-cloud, direct A/AAAA to origin).
+        <span class="why">Blind spot: partial proxying explains inconsistent 522 patterns.</span>
+      </li>
+      <li>
+        What is the exact origin hostname/IP Cloudflare connects to, and is origin pull over HTTPS with Full (strict), Full, or Flexible SSL?
+        <span class="why">Blind spot: SSL mode and origin identity affect handshake failures misread as 522s.</span>
+      </li>
+      <li>
+        Provide the current Cloudflare Cache Rules / Page Rules / Configuration Rules that affect HTML, <code>/wp-admin</code>, <code>/wp-json</code>, WooCommerce cart/checkout, and static assets (Cache Everything, Bypass, Edge TTL, Browser TTL).
+        <span class="why">Blind spot: competing HTML cache at edge vs NitroPack is a primary 522 amplifier.</span>
+      </li>
+      <li>
+        Is Cloudflare APO for WordPress, Argo, or any Polish/Mirage/Auto Minify feature enabled? If APO is on, is the WordPress plugin installed or was it removed?
+        <span class="why">Blind spot: APO + NitroPack is a known double-optimization conflict.</span>
+      </li>
+      <li>
+        What are the Cloudflare origin connection timeout / proxy read timeout settings (default vs Enterprise custom), and how many 522 / 524 events occurred in the last 14 and 30 days (path + country breakdown if available)?
+        <span class="why">Blind spot: we inferred 522s from ops reports; need edge telemetry.</span>
+      </li>
+      <li>
+        Are there Cloudflare Workers, Transform Rules, or Load Balancers in the request path for www.ccpatio.com?
+        <span class="why">Blind spot: Workers can add latency or origin fan-out invisible to WordPress.</span>
+      </li>
+      <li>
+        Confirm canonical host policy: apex <code>ccpatio.com</code> vs <code>www.ccpatio.com</code> — which redirects where (Cloudflare rule vs WordPress vs .htaccess), and is Search Console verified on the same host Rank Math / Site Kit use?
+        <span class="why">Blind spot: Site Kit showed www reference URL vs apex SC property.</span>
+      </li>
+    </ol>
+
+    <h2>C. LiteSpeed / PHP / OPcache (server plane)</h2>
+    <ol class="q" start="11">
+      <li>
+        Export current PHP / OPcache settings: <code>opcache.memory_consumption</code>, <code>opcache.interned_strings_buffer</code>, <code>opcache.max_accelerated_files</code>, <code>opcache.revalidate_freq</code>, <code>opcache.validate_timestamps</code>, JIT status (on/off), and whether OPcache is per-vhost or global.
+        <span class="why">Blind spot: Site Health only showed FULL + 56.6% hit rate — not tunables.</span>
+      </li>
+      <li>
+        What are LiteSpeed PHP LSAPI / external app limits for this vhost: max connections, max idle time, process soft/hard limits, and current peak concurrency during business hours?
+        <span class="why">Blind spot: 522s often mean exhausted workers, not “slow PHP” alone.</span>
+      </li>
+      <li>
+        Is LiteSpeed Cache (LSCWP) installed or was it previously used? Is there any server-level cache (LSCache, Redis object cache, Memcached) in front of or beside NitroPack?
+        <span class="why">Blind spot: third cache tier may exist outside the plugin list.</span>
+      </li>
+      <li>
+        What is the hosting plan resource envelope (vCPU, RAM, IOPS, inode limits), and have you observed CPU steal, disk wait, or inode pressure coinciding with 522 windows?
+        <span class="why">Blind spot: application dump cannot show noisy-neighbor / I/O saturation.</span>
+      </li>
+      <li>
+        Confirm MariaDB location (same host vs remote), whether query cache / slow-query log is enabled, and current max_connections utilization at peak.
+        <span class="why">Blind spot: 518 MB DB size ≠ connection or lock contention profile.</span>
+      </li>
+    </ol>
+
+    <h2>D. NitroPack SaaS ↔ origin interaction</h2>
+    <ol class="q" start="16">
+      <li>
+        Is NitroPack configured for HTML caching, image optimization, font optimization, and/or remote “optimizer” fetches that cause the origin to request itself (loopback)? Provide the setting names as shown in the NitroPack dashboard.
+        <span class="why">Blind spot: loopbacks under full OPcache are a classic 522 generator.</span>
+      </li>
+      <li>
+        What is NitroPack’s purge policy on WooCommerce product/stock updates, Elementor saves, and Rank Math changes — instantaneous full-site purge, targeted URL purge, or queued?
+        <span class="why">Blind spot: purge storms explain intermittent cold-start clusters.</span>
+      </li>
+      <li>
+        Does NitroPack’s CDN serve HTML and assets from NitroPack’s network, Cloudflare, or both? Clarify the TLS certificate and cache key strategy for personalized / cart cookies.
+        <span class="why">Blind spot: dual CDN ownership breaks cookie/cache correctness and debugging.</span>
+      </li>
+      <li>
+        Are there NitroPack exclusions for cart, checkout, my-account, wp-admin, REST API, and Gravity Forms confirmation pages? Paste the exclusion list.
+        <span class="why">Blind spot: missing exclusions cause cache poisoning or forced origin hits.</span>
+      </li>
+    </ol>
+
+    <h2>E. Deployment, cron, and change pipeline</h2>
+    <ol class="q" start="20">
+      <li>
+        How are production code and plugin/theme updates deployed (SFTP, Git pull, CI/CD, host panel)? Is there a staging hostname with the same LiteSpeed/PHP/OPcache/Cloudflare topology?
+        <span class="why">Blind spot: “fragile staging” may not mirror production edge/server config.</span>
+      </li>
+      <li>
+        Is system cron or WP-Cron used? List high-frequency Action Scheduler / cron jobs (Broken Link Checker, NitroPack, WebToffee feeds, Rank Math, Wordfence scans) and their schedules.
+        <span class="why">Blind spot: background load can starve LSAPI during catalog hours.</span>
+      </li>
+      <li>
+        What is the change-control process for enabling/disabling caching plugins, and has NitroPack or Cloudflare Cache Everything been toggled during the period of intermittent 522s?
+        <span class="why">Blind spot: recent config churn may be the proximate cause.</span>
+      </li>
+      <li>
+        Confirm whether object caching (Redis/Memcached via Drop-In) is planned or already present outside WordPress’s reported drop-ins (we only see <code>advanced-cache.php</code>).
+        <span class="why">Blind spot: missing object-cache.php in Site Health may still mean server Redis unused by WP.</span>
+      </li>
+    </ol>
+
+    <h2>F. Security / WAF / access path (affects origin load)</h2>
+    <ol class="q" start="24">
+      <li>
+        Are Cloudflare WAF managed rules, Bot Fight Mode, or rate limits active on wp-login / xmlrpc / checkout? Do they challenge legitimate optimization or monitoring user-agents (NitroPack bots, uptime checks)?
+        <span class="why">Blind spot: challenged optimizer bots retry and amplify origin load.</span>
+      </li>
+      <li>
+        What is the real wp-login URL under WPS Hide Login, and are uptime monitors hitting a 404/redirect loop that still burns PHP workers?
+        <span class="why">Blind spot: health checks against a hidden login can look like origin failure.</span>
+      </li>
+    </ol>
+
+    <h2>Requested deliverables (please attach)</h2>
+    <ol class="q">
+      <li>Cloudflare: DNS export + Cache/Page/Config rules export (or screenshots) + 14-day 5xx analytics.</li>
+      <li>Server: PHP info / OPcache ini + LiteSpeed external app limits for this vhost.</li>
+      <li>NitroPack: dashboard settings export/screenshots + exclusion list + purge policy.</li>
+      <li>One diagram or bullet path: <em>Client → Cloudflare → (optional NitroPack CDN) → LiteSpeed → PHP LSAPI → MariaDB</em> with “cache yes/no” at each hop.</li>
+      <li>Written confirmation of the single intended HTML cache owner going forward: <strong>Cloudflare XOR NitroPack</strong> (not both).</li>
+    </ol>
+
+    <div class="note">
+      <strong>Remediation sequencing.</strong>
+      Please do <em>not</em> begin OPcache resizing or cache-plugin cutovers until items A–D are answered and we jointly sign off on the single cache owner. OPcache work without edge clarity risks masking 522s rather than eliminating them.
+    </div>
+
+    <p style="margin-top:20px;">
+      Regards,<br /><br />
+      <strong>Robert J Gutierrez</strong><br />
+      CC Patio — Architecture / Stability
+    </p>
+
+    <footer>
+      Companion audit: docs/Vividworks/Primeview/CC_Patio_WordPress_Architectural_Stability_Audit.html ·
+      This questionnaire: docs/Vividworks/Primeview/CC_Patio_PrimeView_Infrastructure_Clarification_Request.html ·
+      Confidential — for PrimeView engineering and authorized CC Patio stakeholders.
+    </footer>
+  </article>
+</body>
+</html>

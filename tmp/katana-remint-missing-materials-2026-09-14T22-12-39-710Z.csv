@@ -1,0 +1,7 @@
+action,target_sku,name,material_id,variant_id,old_sku,old_uom,new_uom,status
+"patched","RM-HRD-SPACERS","Spacers","17465332","41147406","","pcs","pcs","ok"
+"patched","RM-HRD-UMBRELLA-HOLDER","Umbrella Holder","17594967","41339591","","pcs","pcs","ok"
+"patched","RM-MET-2X075-TUBING","2x3/4 Tubing","10592711","23143516","","Ft","ft","ok"
+"patched","RM-MET-FLATBAR","Flatbar","10592493","23143136","","Ft","ft","ok"
+"patched","RM-RAW-FOAM","Foam","10609849","23178511","","BoardFt","boardft","ok"
+"patched","RM-RAW-IRON-WOOD","Iron Wood","10592547","23143214","","pcs","pcs","ok"

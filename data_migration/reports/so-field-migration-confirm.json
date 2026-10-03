@@ -1,0 +1,522 @@
+{
+  "updatedAt": "2026-10-02T15:15:17.621Z",
+  "orderFilter": null,
+  "patched": 56,
+  "skippedNotInKatana": 0,
+  "skippedNoCsv": 1,
+  "skippedEmpty": 0,
+  "failed": 0,
+  "results": [
+    {
+      "legacyOrder": "1769",
+      "orderNo": "WIP-1769",
+      "salesOrderId": 52651271,
+      "ledgerSalesOrderId": 52651271,
+      "status": "patched",
+      "fieldCount": 9,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1491",
+      "orderNo": "WIP-1491",
+      "salesOrderId": 52655941,
+      "ledgerSalesOrderId": 52655941,
+      "status": "patched",
+      "fieldCount": 13,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1505",
+      "orderNo": "WIP-1505",
+      "salesOrderId": 52656163,
+      "ledgerSalesOrderId": 52656163,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1632",
+      "orderNo": "WIP-1632",
+      "salesOrderId": 52656265,
+      "ledgerSalesOrderId": 52656265,
+      "status": "patched",
+      "fieldCount": 14,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1658",
+      "orderNo": "WIP-1658",
+      "salesOrderId": 52656277,
+      "ledgerSalesOrderId": 52656277,
+      "status": "patched",
+      "fieldCount": 13,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1666",
+      "orderNo": "WIP-1666",
+      "salesOrderId": 52656391,
+      "ledgerSalesOrderId": 52656391,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1675",
+      "orderNo": "WIP-1675",
+      "salesOrderId": 52656404,
+      "ledgerSalesOrderId": 52656404,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1676",
+      "orderNo": "WIP-1676",
+      "salesOrderId": 52656420,
+      "ledgerSalesOrderId": 52656420,
+      "status": "patched",
+      "fieldCount": 13,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1677",
+      "orderNo": "WIP-1677",
+      "salesOrderId": 52656439,
+      "ledgerSalesOrderId": 52656439,
+      "status": "patched",
+      "fieldCount": 14,
+      "warnings": [
+        "Type \"PICKUP\" is not a Katana Type choice"
+      ]
+    },
+    {
+      "legacyOrder": "1685",
+      "orderNo": "WIP-1685",
+      "salesOrderId": 52656465,
+      "ledgerSalesOrderId": 52656465,
+      "status": "patched",
+      "fieldCount": 17,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1691",
+      "orderNo": "WIP-1691",
+      "salesOrderId": 52656501,
+      "ledgerSalesOrderId": 52656501,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1711",
+      "orderNo": "WIP-1711",
+      "status": "skipped_no_csv_row"
+    },
+    {
+      "legacyOrder": "1712",
+      "orderNo": "WIP-1712",
+      "salesOrderId": 52656544,
+      "ledgerSalesOrderId": 52656544,
+      "status": "patched",
+      "fieldCount": 14,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1717",
+      "orderNo": "WIP-1717",
+      "salesOrderId": 52656551,
+      "ledgerSalesOrderId": 52656551,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1719",
+      "orderNo": "WIP-1719",
+      "salesOrderId": 52656571,
+      "ledgerSalesOrderId": 52656571,
+      "status": "patched",
+      "fieldCount": 17,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1720",
+      "orderNo": "WIP-1720",
+      "salesOrderId": 52656580,
+      "ledgerSalesOrderId": 52656580,
+      "status": "patched",
+      "fieldCount": 17,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1721",
+      "orderNo": "WIP-1721",
+      "salesOrderId": 52656600,
+      "ledgerSalesOrderId": 52656600,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1723",
+      "orderNo": "WIP-1723",
+      "salesOrderId": 52656617,
+      "ledgerSalesOrderId": 52656617,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1727",
+      "orderNo": "WIP-1727",
+      "salesOrderId": 52656639,
+      "ledgerSalesOrderId": 52656639,
+      "status": "patched",
+      "fieldCount": 17,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1731",
+      "orderNo": "WIP-1731",
+      "salesOrderId": 52656651,
+      "ledgerSalesOrderId": 52656651,
+      "status": "patched",
+      "fieldCount": 17,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1734",
+      "orderNo": "WIP-1734",
+      "salesOrderId": 52656676,
+      "ledgerSalesOrderId": 52656676,
+      "status": "patched",
+      "fieldCount": 14,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1738",
+      "orderNo": "WIP-1738",
+      "salesOrderId": 52656689,
+      "ledgerSalesOrderId": 52656689,
+      "status": "patched",
+      "fieldCount": 17,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1740",
+      "orderNo": "WIP-1740",
+      "salesOrderId": 52656702,
+      "ledgerSalesOrderId": 52656702,
+      "status": "patched",
+      "fieldCount": 17,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1744",
+      "orderNo": "WIP-1744",
+      "salesOrderId": 52656715,
+      "ledgerSalesOrderId": 52656715,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1748",
+      "orderNo": "WIP-1748",
+      "salesOrderId": 52656734,
+      "ledgerSalesOrderId": 52656734,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1749",
+      "orderNo": "WIP-1749",
+      "salesOrderId": 52656744,
+      "ledgerSalesOrderId": 52656744,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1750",
+      "orderNo": "WIP-1750",
+      "salesOrderId": 52656750,
+      "ledgerSalesOrderId": 52656750,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1751",
+      "orderNo": "WIP-1751",
+      "salesOrderId": 52656778,
+      "ledgerSalesOrderId": 52656778,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1752",
+      "orderNo": "WIP-1752",
+      "salesOrderId": 52656798,
+      "ledgerSalesOrderId": 52656798,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1754",
+      "orderNo": "WIP-1754",
+      "salesOrderId": 52656820,
+      "ledgerSalesOrderId": 52656820,
+      "status": "patched",
+      "fieldCount": 15,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1756",
+      "orderNo": "WIP-1756",
+      "salesOrderId": 52656974,
+      "ledgerSalesOrderId": 52656974,
+      "status": "patched",
+      "fieldCount": 13,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1759",
+      "orderNo": "WIP-1759",
+      "salesOrderId": 52656994,
+      "ledgerSalesOrderId": 52656994,
+      "status": "patched",
+      "fieldCount": 11,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1760",
+      "orderNo": "WIP-1760",
+      "salesOrderId": 52657004,
+      "ledgerSalesOrderId": 52657004,
+      "status": "patched",
+      "fieldCount": 10,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1761",
+      "orderNo": "WIP-1761",
+      "salesOrderId": 52657022,
+      "ledgerSalesOrderId": 52657022,
+      "status": "patched",
+      "fieldCount": 11,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1762",
+      "orderNo": "WIP-1762",
+      "salesOrderId": 52657037,
+      "ledgerSalesOrderId": 52657037,
+      "status": "patched",
+      "fieldCount": 12,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1763",
+      "orderNo": "WIP-1763",
+      "salesOrderId": 52657053,
+      "ledgerSalesOrderId": 52657053,
+      "status": "patched",
+      "fieldCount": 9,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1764",
+      "orderNo": "WIP-1764",
+      "salesOrderId": 52657063,
+      "ledgerSalesOrderId": 52657063,
+      "status": "patched",
+      "fieldCount": 17,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1765",
+      "orderNo": "WIP-1765",
+      "salesOrderId": 52657075,
+      "ledgerSalesOrderId": 52657075,
+      "status": "patched",
+      "fieldCount": 14,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1766",
+      "orderNo": "WIP-1766",
+      "salesOrderId": 52657090,
+      "ledgerSalesOrderId": 52657090,
+      "status": "patched",
+      "fieldCount": 13,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1767",
+      "orderNo": "WIP-1767",
+      "salesOrderId": 52657103,
+      "ledgerSalesOrderId": 52657103,
+      "status": "patched",
+      "fieldCount": 9,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1768",
+      "orderNo": "WIP-1768",
+      "salesOrderId": 52657121,
+      "ledgerSalesOrderId": 52657121,
+      "status": "patched",
+      "fieldCount": 10,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1770",
+      "orderNo": "WIP-1770",
+      "salesOrderId": 52657151,
+      "ledgerSalesOrderId": 52657151,
+      "status": "patched",
+      "fieldCount": 9,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1771",
+      "orderNo": "WIP-1771",
+      "salesOrderId": 52657177,
+      "ledgerSalesOrderId": 52657177,
+      "status": "patched",
+      "fieldCount": 9,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1772",
+      "orderNo": "WIP-1772",
+      "salesOrderId": 52657187,
+      "ledgerSalesOrderId": 52657187,
+      "status": "patched",
+      "fieldCount": 9,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1773",
+      "orderNo": "WIP-1773",
+      "salesOrderId": 52657202,
+      "ledgerSalesOrderId": 52657202,
+      "status": "patched",
+      "fieldCount": 11,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1774",
+      "orderNo": "WIP-1774",
+      "salesOrderId": 52657208,
+      "ledgerSalesOrderId": 52657208,
+      "status": "patched",
+      "fieldCount": 9,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1775",
+      "orderNo": "WIP-1775",
+      "salesOrderId": 52657223,
+      "ledgerSalesOrderId": 52657223,
+      "status": "patched",
+      "fieldCount": 10,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1776",
+      "orderNo": "WIP-1776",
+      "salesOrderId": 52657247,
+      "ledgerSalesOrderId": 52657247,
+      "status": "patched",
+      "fieldCount": 13,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1777",
+      "orderNo": "WIP-1777",
+      "salesOrderId": 52657267,
+      "ledgerSalesOrderId": 52657267,
+      "status": "patched",
+      "fieldCount": 11,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1778",
+      "orderNo": "WIP-1778",
+      "salesOrderId": 52657272,
+      "ledgerSalesOrderId": 52657272,
+      "status": "patched",
+      "fieldCount": 11,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1779",
+      "orderNo": "WIP-1779",
+      "salesOrderId": 52657283,
+      "ledgerSalesOrderId": 52657283,
+      "status": "patched",
+      "fieldCount": 11,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1780",
+      "orderNo": "WIP-1780",
+      "salesOrderId": 52657294,
+      "ledgerSalesOrderId": 52657294,
+      "status": "patched",
+      "fieldCount": 9,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1781",
+      "orderNo": "WIP-1781",
+      "salesOrderId": 52657314,
+      "ledgerSalesOrderId": 52657314,
+      "status": "patched",
+      "fieldCount": 9,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1782",
+      "orderNo": "WIP-1782",
+      "salesOrderId": 52657331,
+      "ledgerSalesOrderId": 52657331,
+      "status": "patched",
+      "fieldCount": 9,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1783",
+      "orderNo": "WIP-1783",
+      "salesOrderId": 52657345,
+      "ledgerSalesOrderId": 52657345,
+      "status": "patched",
+      "fieldCount": 10,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1784",
+      "orderNo": "WIP-1784",
+      "salesOrderId": 52657354,
+      "ledgerSalesOrderId": 52657354,
+      "status": "patched",
+      "fieldCount": 10,
+      "warnings": []
+    },
+    {
+      "legacyOrder": "1785",
+      "orderNo": "WIP-1785",
+      "salesOrderId": 52657380,
+      "ledgerSalesOrderId": 52657380,
+      "status": "patched",
+      "fieldCount": 9,
+      "warnings": []
+    }
+  ]
+}

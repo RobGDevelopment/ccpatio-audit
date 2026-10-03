@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CC Patio — WordPress Architectural &amp; System Stability Audit</title>
+  <meta name="author" content="Robert J Gutierrez" />
+  <style>
+    :root {
+      --ink: #1a1f26;
+      --muted: #5c6570;
+      --line: #d8dde3;
+      --paper: #ffffff;
+      --wash: #f4f6f8;
+      --accent: #1e3a5f;
+      --critical: #8b1e1e;
+      --high: #8a5a00;
+      --medium: #1e4d7b;
+      --low: #4a5560;
+      --ok: #1f5c3a;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { font-size: 11pt; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #e8ebef;
+      font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      line-height: 1.45;
+    }
+
+    .page {
+      max-width: 8.5in;
+      margin: 24px auto;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      padding: 0.75in 0.85in 0.9in;
+    }
+
+    @media print {
+      body { background: white; }
+      .page {
+        margin: 0;
+        border: none;
+        max-width: none;
+        padding: 0.55in 0.65in;
+      }
+      .no-print { display: none !important; }
+      a { color: inherit; text-decoration: none; }
+      h2, h3, .card, table, .callout { break-inside: avoid; }
+      .cover { break-after: page; }
+    }
+
+    .toolbar {
+      max-width: 8.5in;
+      margin: 16px auto 0;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding: 0 4px;
+    }
+
+    .toolbar button {
+      appearance: none;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: white;
+      font: inherit;
+      font-size: 0.9rem;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+
+    .toolbar button.secondary {
+      background: white;
+      color: var(--accent);
+    }
+
+    /* Cover */
+    .cover-rule {
+      height: 4px;
+      background: var(--accent);
+      margin: 0 0 28px;
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-weight: 600;
+      margin: 0 0 10px;
+    }
+
+    h1 {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      font-size: 1.85rem;
+      font-weight: 600;
+      line-height: 1.2;
+      color: var(--accent);
+      margin: 0 0 12px;
+    }
+
+    .subtitle {
+      font-size: 1.05rem;
+      color: var(--muted);
+      margin: 0 0 28px;
+      max-width: 36em;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      margin: 0 0 28px;
+    }
+
+    .meta-grid dt,
+    .meta-grid dd {
+      margin: 0;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.92rem;
+    }
+
+    .meta-grid dt {
+      background: var(--wash);
+      color: var(--muted);
+      font-weight: 600;
+      border-right: 1px solid var(--line);
+    }
+
+    .meta-grid dd { font-weight: 500; }
+
+    .meta-grid dt:nth-last-child(2),
+    .meta-grid dd:last-child { border-bottom: none; }
+
+    .verdict {
+      border-left: 4px solid var(--critical);
+      background: #faf5f5;
+      padding: 14px 16px;
+      margin: 0 0 8px;
+    }
+
+    .verdict strong {
+      display: block;
+      color: var(--critical);
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .verdict p { margin: 0; }
+
+    /* Sections */
+    h2 {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      font-size: 1.25rem;
+      color: var(--accent);
+      margin: 32px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin: 20px 0 8px;
+      color: var(--ink);
+    }
+
+    p { margin: 0 0 10px; }
+
+    .lede { color: var(--muted); margin-bottom: 14px; }
+
+    /* KPI strip */
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 16px 0 8px;
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      padding: 12px 10px;
+      text-align: center;
+    }
+
+    .kpi .v {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--accent);
+      display: block;
+    }
+
+    .kpi .v.danger { color: var(--critical); }
+    .kpi .v.warn { color: var(--high); }
+
+    .kpi .l {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border: 1px solid currentColor;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .badge.critical { color: var(--critical); background: #faf0f0; }
+    .badge.high { color: var(--high); background: #fff8eb; }
+    .badge.medium { color: var(--medium); background: #eef5fb; }
+    .badge.low { color: var(--low); background: var(--wash); }
+    .badge.p0 { color: var(--critical); background: #faf0f0; }
+    .badge.p1 { color: var(--high); background: #fff8eb; }
+    .badge.p2 { color: var(--medium); background: #eef5fb; }
+    .badge.p3 { color: var(--low); background: var(--wash); }
+
+    /* Findings */
+    .finding {
+      border: 1px solid var(--line);
+      margin: 0 0 10px;
+      page-break-inside: avoid;
+    }
+
+    .finding-h {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: var(--wash);
+      border-bottom: 1px solid var(--line);
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .finding-b { padding: 10px 12px; font-size: 0.92rem; color: var(--ink); }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+      margin: 0 0 14px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 7px 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    tbody tr:nth-child(even) td { background: #fafbfc; }
+
+    td.num { text-align: right; white-space: nowrap; }
+
+    /* Flow */
+    .flow {
+      border: 1px solid var(--line);
+      padding: 0;
+      margin: 0 0 14px;
+    }
+
+    .flow-step {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .flow-step:last-child { border-bottom: none; }
+
+    .flow-hop {
+      background: var(--wash);
+      padding: 10px 12px;
+      font-weight: 700;
+      font-size: 0.82rem;
+      border-right: 1px solid var(--line);
+      color: var(--accent);
+    }
+
+    .flow-hop.warn { background: #fff8eb; color: var(--high); }
+
+    .flow-detail {
+      padding: 10px 12px;
+      font-size: 0.88rem;
+    }
+
+    pre.mermaid-block {
+      background: var(--wash);
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      overflow-x: auto;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      font-family: Consolas, "Courier New", monospace;
+      white-space: pre;
+      margin: 0 0 14px;
+    }
+
+    .note {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      padding: 12px 14px;
+      font-size: 0.9rem;
+      margin: 0 0 14px;
+    }
+
+    .note strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 0 0 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+    }
+
+    .card h4 {
+      margin: 0 0 8px;
+      font-size: 0.9rem;
+      color: var(--accent);
+    }
+
+    .card ul {
+      margin: 0;
+      padding-left: 1.1em;
+      font-size: 0.88rem;
+    }
+
+    .card li { margin-bottom: 4px; }
+
+    footer.doc-foot {
+      margin-top: 36px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .sig {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .sig .line {
+      border-top: 1px solid var(--ink);
+      margin-top: 40px;
+      padding-top: 6px;
+      font-size: 0.85rem;
+    }
+
+    ol.toc {
+      margin: 0 0 8px;
+      padding-left: 1.25em;
+      columns: 2;
+      column-gap: 28px;
+      font-size: 0.9rem;
+    }
+
+    ol.toc li { margin-bottom: 4px; break-inside: avoid; }
+
+    @media (max-width: 720px) {
+      .page { margin: 0; border: none; padding: 24px 18px; }
+      .kpis, .meta-grid, .two-col, .flow-step, .sig, ol.toc {
+        grid-template-columns: 1fr;
+        columns: 1;
+        display: block;
+      }
+      .flow-hop { border-right: none; border-bottom: 1px solid var(--line); }
+      .meta-grid dt { border-right: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <button type="button" class="secondary" onclick="window.location.href=window.location.pathname">Refresh</button>
+    <button type="button" onclick="window.print()">Print / Save as PDF</button>
+  </div>
+
+  <article class="page">
+    <!-- COVER -->
+    <section class="cover">
+      <div class="cover-rule"></div>
+      <p class="eyebrow">CC Patio Furniture · Infrastructure Audit · Confidential</p>
+      <h1>WordPress Architectural &amp; System Stability Audit</h1>
+      <p class="subtitle">
+        Structural assessment of the production WordPress / WooCommerce origin
+        behind Cloudflare (<strong>www.ccpatio.com</strong>), prepared for handback
+        to the development agency prior to further feature work.
+      </p>
+
+      <dl class="meta-grid">
+        <dt>Prepared by</dt>
+        <dd>Robert J Gutierrez</dd>
+        <dt>Prepared for</dt>
+        <dd>PrimeView (development agency) · CC Patio stakeholders</dd>
+        <dt>Subject environment</dt>
+        <dd>Production — <code>/home/ccpatpvlive/public_html</code></dd>
+        <dt>Report date</dt>
+        <dd>18 September 2026</dd>
+        <dt>Evidence source</dt>
+        <dd>WordPress Site Health → Info dump (captured 2026-09-18T12:45:48Z)</dd>
+        <dt>Classification</dt>
+        <dd>Agency remediation brief · Stability gate before net-new development</dd>
+      </dl>
+
+      <div class="verdict">
+        <strong>Executive verdict</strong>
+        <p>
+          The origin is in a failure-prone configuration. PHP OPcache is saturated,
+          PHP 8.2 is past End-of-Life, and NitroPack is stacked on Cloudflare while
+          38 active plugins (including dual page builders and Broken Link Checker)
+          inflate every dynamic request. Intermittent Cloudflare <strong>HTTP 522</strong>
+          origin timeouts are consistent with origin PHP stalls under this stack —
+          not with Cloudflare itself being unavailable.
+        </p>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><span class="v">LiteSpeed</span><span class="l">Web server</span></div>
+        <div class="kpi"><span class="v danger">8.2.33</span><span class="l">PHP (EOL)</span></div>
+        <div class="kpi"><span class="v warn">38</span><span class="l">Active plugins</span></div>
+        <div class="kpi"><span class="v danger">FULL</span><span class="l">OPcache state</span></div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><span class="v">1G</span><span class="l">memory_limit</span></div>
+        <div class="kpi"><span class="v">300s</span><span class="l">max_execution_time</span></div>
+        <div class="kpi"><span class="v">518 MB</span><span class="l">Database</span></div>
+        <div class="kpi"><span class="v warn">47.4 GB</span><span class="l">Total disk</span></div>
+      </div>
+    </section>
+
+    <h2>1. Table of contents</h2>
+    <ol class="toc">
+      <li>Purpose &amp; scope</li>
+      <li>Priority findings</li>
+      <li>Infrastructure &amp; environment</li>
+      <li>Caching &amp; network ingress conflicts</li>
+      <li>Plugin architecture &amp; bloat analysis</li>
+      <li>System communication flow</li>
+      <li>Prioritized remediation punch list</li>
+      <li>Stability gate (stop-ship criteria)</li>
+      <li>Appendix — evidence snapshot</li>
+    </ol>
+
+    <h2>2. Purpose &amp; scope</h2>
+    <p>
+      This audit evaluates architectural and operational stability of the WordPress
+      infrastructure operated for CC Patio and built/maintained by PrimeView. Staging
+      has been reported as fragile (PHP 8.2, intermittent Cloudflare 522s, heavy plugin
+      load including NitroPack, Elementor, and Spectra).
+    </p>
+    <p class="lede">
+      <strong>In scope:</strong> runtime environment, caching topology, plugin overlaps,
+      request path, and a concrete remediation punch list.<br />
+      <strong>Out of scope:</strong> visual redesign, VividWorks configurator feature work,
+      and catalog merchandising — all deferred until the stability gate in §8 is met.
+    </p>
+
+    <h2>3. Priority findings</h2>
+
+    <div class="finding">
+      <div class="finding-h">OPcache saturated — primary 522 driver <span class="badge critical">Critical</span></div>
+      <div class="finding-b">Opcode cache is FULL. Interned strings at 100% (24 bytes free of 8 MB). Hit rate only 56.64%. Every cold/miss request recompiles PHP under LiteSpeed → origin stalls past Cloudflare’s ~100s handshake timeout → HTTP 522.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-h">PHP 8.2 is past End-of-Life <span class="badge critical">Critical</span></div>
+      <div class="finding-b">Runtime is PHP 8.2.33. PHP 8.2 reached EOL November 2025. As of September 2026 there are no security patches. Staging/production should target PHP 8.3 (or 8.4) after a plugin compatibility matrix.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-h">NitroPack + Cloudflare double-proxy stack <span class="badge critical">Critical</span></div>
+      <div class="finding-b">WP_CACHE=true, advanced-cache.php drop-in present, NitroPack 1.20.1 active while Cloudflare proxies the edge. Classic purge storms, origin loopbacks for optimization, and competing TTL policies that amplify origin load during cache misses.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-h">38 active plugins + dual builders <span class="badge high">High</span></div>
+      <div class="finding-b">Elementor 4.2.4 + Elementor Pro 4.2.3 alongside Spectra Legacy 2.20.3 and Astra Pro. Two page-builder stacks on every frontend bootstrap. Plugin tree alone is 593 MB on disk.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-h">Broken Link Checker active in production <span class="badge high">High</span></div>
+      <div class="finding-b">BLC 2.4.14.1 continuously crawls and writes to the database. On a ~47 GB media site this is a known origin-CPU / MySQL contention source and should be offline or scheduled off-peak via CLI only.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-h">WP_DEBUG enabled in production <span class="badge high">High</span></div>
+      <div class="finding-b">WP_DEBUG=true with log to /home/ccpatpvlive/logs/ccp-wp-errors.log. Extra logging I/O under load worsens LiteSpeed worker saturation. Keep DEBUG_LOG only if rotated and sampled under incident flag.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-h">Uploads balloon: 43.69 GB <span class="badge medium">Medium</span></div>
+      <div class="finding-b">Media library is ~92% of total site footprint (47.42 GB). Imagick is available but upload_max_filesize is only 20 MB — legacy originals likely retained without WebP/AVIF lifecycle or object-storage offload.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-h">Security / header plugin pile-up <span class="badge medium">Medium</span></div>
+      <div class="finding-b">Wordfence + Limit Login Attempts + WPS Hide Login + Temporary Login Without Password, plus Header Footer Code Manager AND WP Headers And Footers. Overlapping auth gates and duplicate head/footer injection points.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-h">Dual schema / SEO stacks <span class="badge medium">Medium</span></div>
+      <div class="finding-b">Rank Math SEO 1.0.278 plus Schema &amp; Structured Data for WP &amp; AMP 1.66. Competing JSON-LD emitters cause invalid markup and extra frontend work.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-h">Site Kit not connected; environment constants soft <span class="badge low">Low</span></div>
+      <div class="finding-b">Google Site Kit scopes unauthenticated despite a G- measurement ID present. WP_HOME / WP_SITEURL / WP_ENVIRONMENT_TYPE undefined — fragile for CDN URL rewriting and environment parity.</div>
+    </div>
+
+    <h2>4. Infrastructure &amp; environment</h2>
+    <p class="lede">
+      Allocations that look generous (1G PHP memory, 300s execution) do not prevent
+      Cloudflare 522s when workers are blocked on compile, database, or NitroPack round-trips.
+    </p>
+
+    <table>
+      <thead>
+        <tr><th>Parameter</th><th>Observed value</th><th>Audit note</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Web server</td><td>LiteSpeed</td><td>Confirmed via Site Health httpd_software</td></tr>
+        <tr><td>PHP runtime</td><td>8.2.33 (litespeed SAPI)</td><td>EOL since November 2025</td></tr>
+        <tr><td>PHP memory_limit</td><td>1G</td><td>Adequate if OPcache healthy</td></tr>
+        <tr><td>WP_MEMORY_LIMIT</td><td>512M</td><td>Admin may hit ceiling under Elementor</td></tr>
+        <tr><td>max_execution_time</td><td>300s</td><td>Masks slow jobs; Cloudflare still returns 522</td></tr>
+        <tr><td>max_input_time</td><td>60s</td><td>Tight versus heavy admin POSTs</td></tr>
+        <tr><td>upload_max_filesize</td><td>20M</td><td>Low for furniture CAD/PDF workflows</td></tr>
+        <tr><td>Database</td><td>MariaDB 10.11.19</td><td>Supported; database size 518.11 MB</td></tr>
+        <tr><td>max_allowed_packet</td><td>256 MB</td><td>Adequate</td></tr>
+        <tr><td>max_connections</td><td>151</td><td>Watch under BLC + NitroPack pressure</td></tr>
+        <tr><td>OPcache</td><td>FULL · 56.6% hit · strings 100%</td><td>Immediate resize required</td></tr>
+        <tr><td>Disk footprint</td><td>47.42 GB total</td><td>Uploads 43.69 GB; plugins 593 MB; themes 44 MB</td></tr>
+        <tr><td>WordPress</td><td>7.1.1</td><td>Theme Astra 4.13.11 (+ Pro 4.13.9); WooCommerce 11.1.0</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <strong>EOL &amp; 522 linkage</strong>
+      PHP 8.2 is unsupported. Combined with a full OPcache and LiteSpeed LSAPI, cold or
+      thrashing workers stop answering Cloudflare’s origin probe → 522 Connection Timed Out.
+      Raising Cloudflare timeouts alone will not remediate saturated OPcache or plugin boot cost.
+    </div>
+
+    <h2>5. Caching &amp; network ingress conflicts</h2>
+    <div class="two-col">
+      <div class="card">
+        <h4>Cloudflare edge</h4>
+        <p style="margin:0;font-size:0.88rem;">
+          Proxies www.ccpatio.com as WAF + optional HTML cache. On miss, waits for origin;
+          prolonged PHP/DB stall yields HTTP 522. Site Kit reports reference URL
+          https://www.ccpatio.com with Search Console property https://ccpatio.com/
+          (apex vs www — confirm canonical consistency).
+        </p>
+      </div>
+      <div class="card">
+        <h4>NitroPack origin layer</h4>
+        <p style="margin:0;font-size:0.88rem;">
+          advanced-cache.php drop-in + WP_CACHE=true. Optimization may trigger origin
+          self-requests (loopbacks) and aggressive purge fan-out when WooCommerce /
+          Elementor content changes. Under plugin churn, purge storms force simultaneous
+          cold PHP boots — worst case for a full OPcache.
+        </p>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Conflict mode</th><th>Symptom</th><th>Mitigation</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Double HTML cache</td>
+          <td>Stale or thrashing pages; purge races</td>
+          <td>One owner: Cloudflare APO/Cache Rules <em>or</em> NitroPack — not both</td>
+        </tr>
+        <tr>
+          <td>Optimization loopback</td>
+          <td>Origin CPU spikes; Cloudflare sees slow origin</td>
+          <td>Disable NitroPack remote optimize; warm via Cloudflare</td>
+        </tr>
+        <tr>
+          <td>Purge on every SKU edit</td>
+          <td>Catalog updates → mass cold starts</td>
+          <td>Scoped purges; queue; off-peak cron</td>
+        </tr>
+        <tr>
+          <td>Cloudflare ~100s origin wait</td>
+          <td>Intermittent 522 under load</td>
+          <td>Fix OPcache + plugin boot; do not only raise timeouts</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>6. Plugin architecture &amp; bloat analysis</h2>
+    <p class="lede">
+      Thirty-eight active plugins categorized by functional domain. The commerce core is
+      justified; dual builders, dual SEO/schema, and always-on operations tools are not.
+    </p>
+
+    <h3>6.1 Domain categorization</h3>
+    <table>
+      <thead>
+        <tr><th>Domain</th><th class="num">Count</th><th>Plugins</th><th>Risk</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Caching / CDN</td><td class="num">1</td>
+          <td>NitroPack (+ advanced-cache.php drop-in)</td>
+          <td>Conflicts with Cloudflare; purge/loopback risk</td>
+        </tr>
+        <tr>
+          <td>Page builders / theme</td><td class="num">4</td>
+          <td>Elementor, Elementor Pro, Spectra Legacy, Astra Pro</td>
+          <td>Dual builder bootstrap cost</td>
+        </tr>
+        <tr>
+          <td>Commerce</td><td class="num">8</td>
+          <td>WooCommerce, Variation Swatches, Premmerce Permalinks, YITH Catalog Mode, Filter Everything, Favorites, CC Patio Rug Catalog, WebToffee Feeds</td>
+          <td>Core stack — keep; audit Rug Catalog</td>
+        </tr>
+        <tr>
+          <td>Security / access</td><td class="num">4</td>
+          <td>Wordfence, Limit Login Attempts, WPS Hide Login, Temporary Login Without Password</td>
+          <td>Overlap; Temporary Login elevated risk</td>
+        </tr>
+        <tr>
+          <td>SEO / schema / analytics</td><td class="num">4</td>
+          <td>Rank Math, Schema &amp; Structured Data, Site Kit, accessiBe</td>
+          <td>Dual schema; Site Kit disconnected</td>
+        </tr>
+        <tr>
+          <td>Forms / CRM / chat</td><td class="num">3</td>
+          <td>Gravity Forms, GF Zapier, Podium</td>
+          <td>Acceptable; watch Zapier webhooks under load</td>
+        </tr>
+        <tr>
+          <td>Utilities / ops</td><td class="num">14</td>
+          <td>ACF, Code Snippets (7), Broken Link Checker, Better Search Replace, Redirection, HFCM, WP Headers And Footers, Dynamic QR, PDF Embedder, Importer, Duplicate Post, WP Activity Log, WP Mail SMTP, EMCP Tools</td>
+          <td>Highest bloat; deactivate non-runtime tools</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>6.2 Architectural overlaps</h3>
+    <table>
+      <thead>
+        <tr><th>Conflict</th><th>Recommendation</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Elementor Pro ↔ Spectra Legacy</td>
+          <td>Pick one builder. Prefer Elementor (already Pro-licensed); deactivate Spectra Legacy and audit Spectra blocks before removal.</td>
+        </tr>
+        <tr>
+          <td>NitroPack ↔ Cloudflare proxy cache</td>
+          <td>Single optimization owner. Prefer Cloudflare APO/Cache Rules <em>or</em> NitroPack. Disable NitroPack origin optimization if Cloudflare remains on.</td>
+        </tr>
+        <tr>
+          <td>Rank Math ↔ Schema &amp; Structured Data</td>
+          <td>Disable Schema plugin; consolidate JSON-LD in Rank Math. Validate with Google Rich Results test.</td>
+        </tr>
+        <tr>
+          <td>HFCM ↔ WP Headers And Footers</td>
+          <td>Consolidate all head/footer injections into one plugin; remove the other.</td>
+        </tr>
+        <tr>
+          <td>Wordfence ↔ Limit Login ↔ WPS Hide Login</td>
+          <td>Keep Wordfence as primary. Disable Limit Login if Wordfence lockout covers it; keep Hide Login only if WAF rules are updated.</td>
+        </tr>
+        <tr>
+          <td>Astra Pro hooks ↔ Elementor Theme Builder</td>
+          <td>Document which templates are Astra vs Elementor; avoid dual header/footer builders.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>6.3 Immediate decommission candidates</h3>
+    <table>
+      <thead>
+        <tr><th>Plugin</th><th>Rationale</th><th>Urgency</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Broken Link Checker</td><td>Continuous crawl → MySQL/CPU contention on large catalogs</td><td><span class="badge critical">Critical</span></td></tr>
+        <tr><td>NitroPack (if Cloudflare retained)</td><td>Double-cache architecture explaining intermittent 522s</td><td><span class="badge critical">Critical</span></td></tr>
+        <tr><td>Spectra Legacy</td><td>Redundant with Elementor Pro; legacy maintenance path</td><td><span class="badge high">High</span></td></tr>
+        <tr><td>Schema &amp; Structured Data</td><td>Duplicates Rank Math schema output</td><td><span class="badge high">High</span></td></tr>
+        <tr><td>Temporary Login Without Password</td><td>Standing privilege-escalation vector if unused</td><td><span class="badge high">High</span></td></tr>
+        <tr><td>WordPress Importer</td><td>Admin-only tool; must not stay active in production</td><td><span class="badge high">High</span></td></tr>
+        <tr><td>Better Search Replace</td><td>Destructive DB tool; activate only for migrations</td><td><span class="badge high">High</span></td></tr>
+        <tr><td>WP Headers And Footers <em>or</em> HFCM</td><td>Duplicate injection layers</td><td><span class="badge medium">Medium</span></td></tr>
+        <tr><td>EMCP Tools (Premium)</td><td>Unclear runtime need; third-party surface area</td><td><span class="badge medium">Medium</span></td></tr>
+        <tr><td>Dynamic QR Code</td><td>Likely page-scoped; load only where needed</td><td><span class="badge low">Low</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <strong>Code Snippets — retain, but govern</strong>
+      Seven global snippets (Related Products, Add-ons, Breadcrumbs, Finishes Options,
+      Disable Dropdown, Variation with Price, Main Category Link) implement storefront
+      behavior. Do not delete blindly — export to version control and consider promoting
+      to a must-use plugin owned by PrimeView under change control.
+    </div>
+
+    <h2>7. System communication flow</h2>
+    <p class="lede">
+      Request path from client through Cloudflare to origin, PHP, plugins, MariaDB, and
+      outbound SaaS. Cloudflare 522 responses occur when the edge (hop 2) waits on hops 3–6.
+    </p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-hop">1. Browser</div>
+        <div class="flow-detail">HTTPS request to www.ccpatio.com (WooCommerce PDP / archive / Elementor page).</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-hop warn">2. Cloudflare Edge</div>
+        <div class="flow-detail">Proxy + WAF. If HTML is not cached at edge → origin fetch. Miss/purge → full PHP path. Timeout waiting on origin → <strong>HTTP 522</strong>.</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-hop">3. Origin LiteSpeed</div>
+        <div class="flow-detail">TLS terminate; static vs dynamic routing. Hits advanced-cache.php (NitroPack drop-in) before WordPress bootstrap.</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-hop warn">4. PHP (LSAPI)</div>
+        <div class="flow-detail">PHP 8.2.33 under LiteSpeed. OPcache FULL → compile thrash. Loads WP core + 38 plugins + Astra + 7 Code Snippets.</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-hop">5. Application layer</div>
+        <div class="flow-detail">Elementor/Spectra render, WooCommerce queries, Rank Math + Schema JSON-LD, NitroPack optimize/rewrite, Wordfence checks.</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-hop">6. MariaDB 10.11</div>
+        <div class="flow-detail">518 MB catalog/options/transients. Broken Link Checker + Activity Log + Woo sessions compete for connections (max 151).</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-hop">7. Outbound APIs</div>
+        <div class="flow-detail">NitroPack SaaS, Gravity Forms Zapier, Podium, Site Kit/GA4, Rank Math, accessiBe, WebToffee feeds — each adds latency on admin or cron paths.</div>
+      </div>
+    </div>
+
+    <h3>7.1 Sequence diagram (Mermaid)</h3>
+    <pre class="mermaid-block">sequenceDiagram
+  participant B as Browser
+  participant CF as Cloudflare Edge
+  participant LS as LiteSpeed Origin
+  participant PHP as PHP 8.2 LSAPI
+  participant WP as WP Core + 38 Plugins
+  participant DB as MariaDB 10.11
+  participant EXT as NitroPack / Zapier / GA / Podium
+
+  B-&gt;&gt;CF: HTTPS request
+  alt Edge HTML HIT
+    CF--&gt;&gt;B: Cached response
+  else Edge MISS / BYPASS
+    CF-&gt;&gt;LS: Origin fetch (timeout → 522)
+    LS-&gt;&gt;PHP: LSAPI worker
+    Note over PHP: OPcache FULL = compile thrash
+    PHP-&gt;&gt;WP: Bootstrap Astra/Elementor/Woo/NitroPack
+    WP-&gt;&gt;DB: Queries / transients / sessions
+    WP-&gt;&gt;EXT: Optional outbound SaaS
+    DB--&gt;&gt;WP: Result sets
+    WP--&gt;&gt;PHP: Rendered HTML
+    PHP--&gt;&gt;LS: Response
+    LS--&gt;&gt;CF: Origin body
+    CF--&gt;&gt;B: Proxied response
+  end</pre>
+
+    <h2>8. Prioritized remediation punch list</h2>
+    <p class="lede">
+      Hand this list to PrimeView and hosting before any further feature development.
+      <strong>P0</strong> items are stability gates.
+    </p>
+
+    <table>
+      <thead>
+        <tr><th>Pri</th><th>Owner</th><th>Action</th><th>Acceptance criteria</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge p0">P0</span></td>
+          <td>Host / SysAdmin</td>
+          <td>Resize OPcache: raise memory (≥256–512 MB), interned_strings_buffer (≥16–32 MB), tune revalidate_freq; confirm opcode_cache_full=false and hit rate &gt;90%.</td>
+          <td>Site Health shows OPcache not full; measurable p95 TTFB drop on origin.</td>
+        </tr>
+        <tr>
+          <td><span class="badge p0">P0</span></td>
+          <td>PrimeView + Host</td>
+          <td>Resolve CF 522s: raise LiteSpeed workers / PHP LSAPI children; disable NitroPack <em>or</em> Cloudflare HTML cache — pick one; purge both after change.</td>
+          <td>Zero 522s for 72 hours in Cloudflare Analytics; origin responds &lt;5s warm.</td>
+        </tr>
+        <tr>
+          <td><span class="badge p0">P0</span></td>
+          <td>PrimeView</td>
+          <td>Deactivate Broken Link Checker immediately; remove from autoload; clear BLC cron hooks.</td>
+          <td>No BLC cron in wp-cron / Action Scheduler; DB write rate drops.</td>
+        </tr>
+        <tr>
+          <td><span class="badge p1">P1</span></td>
+          <td>PrimeView</td>
+          <td>Deactivate Spectra Legacy, Schema plugin, Importer, Better Search Replace, Temporary Login (if unused); consolidate header plugins.</td>
+          <td>Active plugin count ≤28; no dual schema in view-source.</td>
+        </tr>
+        <tr>
+          <td><span class="badge p1">P1</span></td>
+          <td>Host</td>
+          <td>Plan PHP 8.3 (or 8.4) upgrade on a staging clone first; run WooCommerce / Elementor / cache-plugin compatibility matrix.</td>
+          <td>Staging on supported PHP with green smoke tests.</td>
+        </tr>
+        <tr>
+          <td><span class="badge p1">P1</span></td>
+          <td>PrimeView</td>
+          <td>Set WP_DEBUG=false in production; retain rotated DEBUG_LOG only under incident flag; define WP_ENVIRONMENT_TYPE=production and hardcode WP_HOME / WP_SITEURL.</td>
+          <td>Site Health constants match; log growth rate controlled.</td>
+        </tr>
+        <tr>
+          <td><span class="badge p2">P2</span></td>
+          <td>PrimeView + Media</td>
+          <td>Media lifecycle: offload/archive cold uploads, regenerate WebP/AVIF, raise upload limits only after CDN offload.</td>
+          <td>Uploads directory trend flat or declining month-over-month.</td>
+        </tr>
+        <tr>
+          <td><span class="badge p2">P2</span></td>
+          <td>PrimeView</td>
+          <td>Freeze net-new plugin installs until stability gate passes; document Code Snippets 8–14 as version-controlled mu-plugin candidates.</td>
+          <td>Change-control checklist signed; snippets in repository.</td>
+        </tr>
+        <tr>
+          <td><span class="badge p2">P2</span></td>
+          <td>Ops</td>
+          <td>Reconnect or remove Google Site Kit; verify Rank Math Search Console ownership; enable consent mode if accessiBe/CMP required.</td>
+          <td>Analytics auth green or plugin removed.</td>
+        </tr>
+        <tr>
+          <td><span class="badge p3">P3</span></td>
+          <td>Agency</td>
+          <td>Staging parity: clone production with same LiteSpeed / PHP / OPcache; load-test product archive + variation PDP before further feature work.</td>
+          <td>Staging survives 50 concurrent PDP loads without 5xx.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>9. Stability gate (stop-ship criteria)</h2>
+    <p>
+      No net-new feature development (Elementor templates, Spectra work, VividWorks embeds,
+      large catalog imports, or production PHP major upgrades without staging proof) until
+      the following are true:
+    </p>
+    <div class="two-col">
+      <div class="card">
+        <h4>Must be true</h4>
+        <ul>
+          <li>OPcache not full; hit rate ≥ 90%</li>
+          <li>Active plugins ≤ 28 after decommissions</li>
+          <li>Single cache owner (Cloudflare <em>xor</em> NitroPack)</li>
+          <li>Broken Link Checker deactivated; no crawl crons</li>
+          <li>WP_DEBUG false in production</li>
+          <li>72 hours with zero Cloudflare 522s</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Explicitly deferred until gate</h4>
+        <ul>
+          <li>New Elementor templates / Spectra work</li>
+          <li>VividWorks configurator embeds</li>
+          <li>Large catalog imports / feed regenerations</li>
+          <li>Production PHP major upgrade without staging proof</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>10. Appendix — evidence snapshot</h2>
+    <table>
+      <thead>
+        <tr><th>Item</th><th>Value from Site Health dump</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Site</td><td>https://www.ccpatio.com (production)</td></tr>
+        <tr><td>WordPress</td><td>7.1.1 · en_US · permalink /%category%/%postname%/</td></tr>
+        <tr><td>Theme</td><td>Astra 4.13.11 (latest 4.13.12) + Astra Pro 4.13.9</td></tr>
+        <tr><td>Active plugins</td><td>38</td></tr>
+        <tr><td>Code Snippets</td><td>7 global snippets (IDs 8–14)</td></tr>
+        <tr><td>Drop-in</td><td>advanced-cache.php = true</td></tr>
+        <tr><td>WP_CACHE</td><td>true</td></tr>
+        <tr><td>WP_DEBUG</td><td>true (display false; log enabled)</td></tr>
+        <tr><td>Uploads size</td><td>43.69 GB</td></tr>
+        <tr><td>Database size</td><td>518.11 MB</td></tr>
+        <tr><td>Total size</td><td>47.42 GB</td></tr>
+        <tr><td>Capture timestamp</td><td>2026-09-18T12:45:48+00:00</td></tr>
+      </tbody>
+    </table>
+
+    <div class="sig">
+      <div>
+        <div class="line">
+          <strong>Robert J Gutierrez</strong><br />
+          Prepared by · 18 September 2026
+        </div>
+      </div>
+      <div>
+        <div class="line">
+          PrimeView technical lead (acknowledgment)<br />
+          Name / date
+        </div>
+      </div>
+    </div>
+
+    <footer class="doc-foot">
+      CC Patio Furniture — WordPress Architectural &amp; System Stability Audit · Confidential ·
+      For distribution to PrimeView and authorized CC Patio stakeholders only ·
+      Evidence: WordPress Tools → Site Health → Info (production dump).
+      Document path:
+      <code>docs/Vividworks/Primeview/CC_Patio_WordPress_Architectural_Stability_Audit.html</code>
+    </footer>
+  </article>
+</body>
+</html>

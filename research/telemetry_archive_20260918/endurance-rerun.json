@@ -1,0 +1,174 @@
+{
+  "probed_at_utc": "2026-09-19T01:43:50.051186+00:00",
+  "base_url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/",
+  "runs": 15,
+  "sleep_sec": 4.0,
+  "timeout_sec": 90.0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=1&ccp_nonce=a023bd336c6e4019843ff93827ad8eb4&t=1789782139612",
+      "status": 200,
+      "ttfb_ms": 959.8,
+      "total_ms": 1058.4,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e4a59bdaa75e-PHX"
+    },
+    {
+      "attempt": 2,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=2&ccp_nonce=254ac07c88ca492abebfa6f2f5c5f104&t=1789782144718",
+      "status": 200,
+      "ttfb_ms": 762.4,
+      "total_ms": 852.4,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e4c54e96720e-PHX"
+    },
+    {
+      "attempt": 3,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=3&ccp_nonce=7448d814be0e4cdd912f1d0695006ffc&t=1789782149615",
+      "status": 200,
+      "ttfb_ms": 778.0,
+      "total_ms": 923.8,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e4e3fa13298f-PHX"
+    },
+    {
+      "attempt": 4,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=4&ccp_nonce=e582e841a32e44938c475f5abd929b44&t=1789782154583",
+      "status": 200,
+      "ttfb_ms": 709.9,
+      "total_ms": 822.6,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e502e8d297f4-PHX"
+    },
+    {
+      "attempt": 5,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=5&ccp_nonce=eeffad79bf7740a499c7a125e89ad874&t=1789782159449",
+      "status": 200,
+      "ttfb_ms": 822.9,
+      "total_ms": 1185.3,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e5213c02d967-PHX"
+    },
+    {
+      "attempt": 6,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=6&ccp_nonce=bab73f84100a463e83af72e5e617c5f8&t=1789782164678",
+      "status": 200,
+      "ttfb_ms": 735.7,
+      "total_ms": 838.7,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e541fa2664d4-PHX"
+    },
+    {
+      "attempt": 7,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=7&ccp_nonce=f9d17fbb014c42adb6df14e63edbf2e5&t=1789782169561",
+      "status": 200,
+      "ttfb_ms": 21222.5,
+      "total_ms": 21321.5,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e5606fa3d430-PHX"
+    },
+    {
+      "attempt": 8,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=8&ccp_nonce=eb2fbda065cb4b9b9accdd76e0ec1d58&t=1789782194927",
+      "status": 200,
+      "ttfb_ms": 871.0,
+      "total_ms": 942.6,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e5ff6fbe267c-PHX"
+    },
+    {
+      "attempt": 9,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=9&ccp_nonce=66e475fc188546eeb996c31777b90869&t=1789782199914",
+      "status": 200,
+      "ttfb_ms": 700.8,
+      "total_ms": 807.8,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e61e1f115711-PHX"
+    },
+    {
+      "attempt": 10,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=10&ccp_nonce=3bb9eac20bda40c19db81d1ff5f715a3&t=1789782204765",
+      "status": 200,
+      "ttfb_ms": 793.3,
+      "total_ms": 896.4,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e63c8cc64ca7-PHX"
+    },
+    {
+      "attempt": 11,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=11&ccp_nonce=0c283def90e24b888e7383022f21b1c7&t=1789782209706",
+      "status": 200,
+      "ttfb_ms": 669.8,
+      "total_ms": 767.9,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e65b49765529-PHX"
+    },
+    {
+      "attempt": 12,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=12&ccp_nonce=f0633123708e4bb0aae03aff5b7e586f&t=1789782214518",
+      "status": 200,
+      "ttfb_ms": 734.3,
+      "total_ms": 865.2,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e6796cd0f00f-PHX"
+    },
+    {
+      "attempt": 13,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=13&ccp_nonce=049968c9fec744d48cdc4159f15bf9af&t=1789782219427",
+      "status": 200,
+      "ttfb_ms": 711.7,
+      "total_ms": 830.6,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e6982a147244-PHX"
+    },
+    {
+      "attempt": 14,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=14&ccp_nonce=bb12dcb52f8f47e58151625ef12c52fd&t=1789782224302",
+      "status": 200,
+      "ttfb_ms": 762.4,
+      "total_ms": 859.9,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e6b68f0864d4-PHX"
+    },
+    {
+      "attempt": 15,
+      "url": "https://www.ccpatio.com/product/brooklyn-corner-sofa/?ccp_probe=15&ccp_nonce=12895d07f56f44d78c5c8cc8cc0ad7f1&t=1789782229206",
+      "status": 200,
+      "ttfb_ms": 703.2,
+      "total_ms": 796.8,
+      "error": null,
+      "cf_cache_status": "DYNAMIC",
+      "nitro_cache": "MISS",
+      "cf_ray": "a3d4e6d5684ef00f-PHX"
+    }
+  ]
+}

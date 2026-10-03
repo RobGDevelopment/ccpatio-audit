@@ -1,0 +1,43 @@
+{
+  "mode": "live",
+  "holdSkus": 99,
+  "holdYards": 2846.7,
+  "stocktakes": [
+    {
+      "stocktakeNumber": "MIG-STK-FABRIC-20260811-1",
+      "family": "fabric",
+      "rows": 249,
+      "set_remaining_items_as_counted": true
+    },
+    {
+      "stocktakeNumber": "MIG-STK-FABRIC-20260811-2",
+      "family": "fabric",
+      "rows": 249,
+      "set_remaining_items_as_counted": true
+    },
+    {
+      "stocktakeNumber": "MIG-STK-FABRIC-20260811-3",
+      "family": "fabric",
+      "rows": 247,
+      "set_remaining_items_as_counted": true
+    },
+    {
+      "stocktakeNumber": "MIG-STK-FABRIC-20260811-4",
+      "family": "fabric",
+      "rows": 66,
+      "set_remaining_items_as_counted": true
+    },
+    {
+      "stocktakeNumber": "MIG-STK-DEKTON-20260723-1",
+      "family": "dekton",
+      "rows": 99,
+      "set_remaining_items_as_counted": true
+    },
+    {
+      "stocktakeNumber": "MIG-STK-FIREPIT-1",
+      "family": "firepit",
+      "rows": 27,
+      "set_remaining_items_as_counted": true
+    }
+  ]
+}

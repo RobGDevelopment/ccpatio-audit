@@ -38,7 +38,7 @@ import { BomAssemblyCard } from "./BomAssemblyCard";
 import { CadUploadDropzone } from "./CadUploadDropzone";
 import { FactoryProductSidebar } from "./FactoryProductSidebar";
 import { RecipeHeader } from "./RecipeHeader";
-import { PIM_INPUT, card } from "./factory-bom-ui";
+import { PIM_INPUT, card, rollupReviewStatus } from "./factory-bom-ui";
 
 function flattenTree(node: BomTreeNode): BomTreeNode[] {
   return [node, ...node.children.flatMap(flattenTree)];
@@ -307,6 +307,10 @@ export function FactoryBomWorkbench({
         setBundles(nextBundles);
         setEstimate(nextEstimate);
         setActiveParent(selectedSku);
+        const lineStatus = rollupReviewStatus(
+          nextBundles.flatMap((bundle) => bundle.lines.map((line) => line.status)),
+        );
+        if (lineStatus !== "none") setBannerStatus(lineStatus);
       } catch (loadError: unknown) {
         if (!cancelled) {
           setError(

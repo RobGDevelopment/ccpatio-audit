@@ -1,0 +1,117 @@
+action,family,name,current_sku,proposed_sku,quantity,for_customer,detail
+FOR_CUSTOMER_HOLD,fabric,ACTION STONE,44285-0002,FAB-ACT-STO,0,20,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,AGRA INDIGO,145147-0000,FAB-AGR-IND,0,4,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,ARRAY DUNE,145654-0001,FAB-ARR-DUN,2,15,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,ASCEND SPA,145410-0009,FAB-ASC-SPA,2,16,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,BERENSON TUXEDO,8521-0000,FAB-BER-TUX,5,11,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,BORO INDIGO,146030-0002,FAB-BOR-IND,4,8,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,BRANNON WHISPER,FAB-BRA-WHI,FAB-BRA-WHI,0,2,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CABANA CLASSIC,58030-0000,FAB-CAB-CLA,48,16,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS AIR BLUE,5410-0000,FAB-CAN-AIRBLU,1,2,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS BLACK,5408-0000,FAB-CAN-BLA,2,6,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS CANVAS,5453-0000,FAB-CAN-CAN,6,22,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS COCOA,5425-0000,FAB-CAN-COC,4,6,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS FOREST GREEN,5446-0000,FAB-CAN-FORGRE,19,20,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS HAZE,14059-0054,FAB-CAN-HAZ,2,6,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS HEATHER BEIGE,5476-0000,FAB-CAN-HEABEI,84,8,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS HENNA,5407-0000,FAB-CAN-HEN,28,4,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS JAVA,57014-0000,FAB-CAN-JAV,0,2,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS NATURAL,5404-0000,FAB-CAN-NAT,2,7,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS NAVY,5439-0000,FAB-CAN-NAV,8,20,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS RAVEN BLACK,FAB-CAN-RAVBLA,FAB-CAN-RAVBLA,2,25,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CANVAS WHITE,57003-0000,FAB-CAN-WHI,6,16,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CASSAVA INDIGO,44496-0008,FAB-CAS-IND,22,8,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CASSAVA STONE,44496-0002,FAB-CAS-STO,1,9,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CASSAVA WHITE,44496-0001,FAB-CAS-WHI,0,5,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CAST ASH,40428-0000,FAB-CAS-ASH,0,20,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CAST SLATE,40434-000,FAB-CAST-SLAT,5,5,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CHARMER PEBBLE,42111-0003,FAB-CHA-PEB,3,45,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CHARTRES CLOUD,45864-0081,FAB-CHA-CLO,3,9,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CHARTRES DAYBREAK,45864-0107,FAB-CHA-DAY,8,10,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CHARTRES OPAL,45864-0087,FAB-CHA-OPA,3,10,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CHARTRES TRUFFLE,45864-0103,FAB-CHA-TRU,6,18,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CONCH ULTRALEATHER,FAB-CON-ULT,FAB-CON-ULT,0,10,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CONNECTION ONYX,145153-0000,FAB-CON-ONY,1,68,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CRUSH ASH,42101-0004,FAB-CRU-ASH,7,28,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CRUSH SNOW,42101-0001,FAB-CRU-SNO,0,93,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CYCLE DENIM,146396-0001,FAB-CYC-DEN,3,2,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,CYCLE SPARROW,146396-0002,FAB-CYC-SPA,0,14,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,DETAIL LINEN,146003-0001,FAB-DET-LIN,2.5,40,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,DUMONT STUCCO,305825-0002,FAB-DUM-STU,5,89.7,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,DUPIONE DEEP SEA,8019-0000,FAB-DUP-DEESEA,2,37,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,ECHO DUNE,57007-0000,FAB-ECH-DUN,2,10,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,ENRICH CLOUD,44341-0003,FAB-ENR-CLO,3,10,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,ESCHER INDIGO,146225-0003,FAB-ESC-IND,1,22,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,EXHALE SKY,FAB-EXH-SKY,FAB-EXH-SKY,0,6,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,GATEAWAY MIST,FAB-GAT-MIS,FAB-GAT-MIS,0,6,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,GLACIAL,FAB-GLA-GLA,FAB-GLA-GLA,0,7,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,HERITAGE CHAR,18009-0000,FAB-HER-CHA,3,47,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,HERITAGE DIJON,18023-0000,FAB-HER-DIJ,2,8,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,HERITAGE PAPYRUS,18006-0000,FAB-HER-PAP,21,60,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,HERITAGE SABLE,18019-0000,FAB-HER-SAB,0,3,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,HERITAGE SMOKE,18014-0000,FAB-HER-SMO,0,2,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,HYBRID SMOKE,42079-0000,FAB-HYB-SMO,4,15,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,KINDLE INDIGO,145666-0004,FAB-KIN-IND,12,43,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,KINDLE SILK,145666-0002,FAB-KIN-SIL,76,20,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,LEAF STRUCTURE,FAB-LEA-STR,FAB-LEA-STR,0,5,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,LEAF STRUCTURE CLOUD,146419-0001,FAB-LEA-STRCLO,11,44,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,LINEN SILVER,8351-0000,FAB-LIN-SIL,14,11,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,LINVILLE DENIM,145707-0012,FAB-LIN-DEN,0,3,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,LINVILLE PARCHMENT,145707-0006,FAB-LIN-PAR,0,59,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,LITCHFIELD MIDNIGHT,42011-0023,FAB-LIT-MID,7,68,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,LIVELY PARCHMENT,FAB-LIV-PAR,FAB-LIV-PAR,0,8,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,LYNVILLE OYSTER,FAB-LYN-OYS,FAB-LYN-OYS,0,14,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,MAINSTREET PUTTY,42048-0012,FAB-MAI-PUT,2,77,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,MARVEL MUSHROOM,44494-0004,FAB-MAR-MUS,2,9,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,METAMORPHIC FOG,46094-0003,FAB-MET-FOG,73,26,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,METAMORPHIC LAGOON,46094-0005,FAB-MET-LAG,9,162,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,METAMORPHIC SAND,46094-0002,FAB-MET-SAN,44,94,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,METAMORPHIC SNOW,46094-0001,FAB-MET-SNO,9,39,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,MIDORI INDIGO,145256-0001,FAB-MID-IND,1,2,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,MOUNTAINS SNOW,72011-0001,FAB-MOU-SNO,14,27,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,NUANCE CLOUD,400000-0001,FAB-NUA-CLO,2,10,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,NURTURE CHARCOAL,42102-0006,FAB-NUR-CHA,1,3,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,NURTURE PEBBLE,42102-0002,FAB-NUR-PEB,4,11,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,NURTURE WHITE,42102-0001,FAB-NUR-WHI,0,7,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,OYSTER AWNING/MARINE,FAB-OYS-AWNMAR,FAB-OYS-AWNMAR,60,363,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,PIAZZA LAGOON,305423-0013,FAB-PIA-LAG,0,5,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,PIAZZA VAPOR,305423-0003,FAB-PIA-VAP,2,12,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,PIQUE MIDNIGHT,40421-0022,FAB-PIQ-MID,0,2,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,PLAY ADOBE,FAB-PLAY-ADOB,FAB-PLAY-ADOB,0,5,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,PLAY SNOW,FAB-PLA-SNO,FAB-PLA-SNO,0,76,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,PRECISE FAWN,145602-0006,FAB-PRE-FAW,3,6,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,RALLY EMBER (WESLEY MAYAN),FAB-RAL-EMBWESMAY,FAB-RAL-EMBWESMAY,0,137,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,REMIX SILK,48145-0003,FAB-REM-SIL,2,38,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,REVIVE SAND,11500-003,FAB-REV-SAN,0,44,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,RITSY ROSEMARY,FAB-RIT-ROS,FAB-RIT-ROS,0,7,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,SAVY ONYX,FAB-SAVY-ONYX,FAB-SAVY-ONYX,0,28,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,SHIBORI CLASSIC,145360-0011,FAB-SHI-CLA,7,2,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,SHORE CLASSIC,58033-0000,FAB-SHO-CLA,3,4,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,SKY BLUE AWNING/MARINE,FAB-SKY-BLUAWNMAR,FAB-SKY-BLUAWNMAR,25,298,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,SPECTRUM CARBON,48085-0000,FAB-SPEC-CARB,5,5,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,SPECTRUM CAYENNE,48026-0000,FAB-SPE-CAY,0,3,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,SPECTRUM CILANTRO,48022-0000,FAB-SPE-CIL,1,6,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,SPECTRUM INDIGO,48080-0000,FAB-SPE-IND,3,28,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,SPECTRUM MUSHROOM,48031-0000,FAB-SPE-MUS,5,2,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,"STANDAR MESH 54"" ALMOND",FAB-STA-MES54ALM,FAB-STA-MES54ALM,0,60,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,STEM GREEN ULTRALEATHER,640-4338,FAB-STE-GREULT,2,2,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,TROPICS JUNGLE,FAB-TROPICS-JUNGLE,FAB-TROPICS-JUNGLE,0,3,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,UNDERCURRENT STORM,47203-0002,FAB-UND-STO,93,2,Reserved yards stay out of In stock. The physical sheet still records this hold.
+FOR_CUSTOMER_HOLD,fabric,VIENTO NAUTICAL,FAB-VIE-NAU,FAB-VIE-NAU,0,14,Reserved yards stay out of In stock. The physical sheet still records this hold.
+LEAVE_UNTOUCHED,dekton,Dekton (generic slab),RM-DKT-GENERIC-SLAB,,,,No row on the physical sheet. Stock was not changed.
+LEAVE_UNTOUCHED,fabric,BEACON,FAB-BEA-BEA,,,,No row on the physical sheet. Stock was not changed.
+LEAVE_UNTOUCHED,fabric,CANVAS BRICK,FAB-CAN-BRI,,,,No row on the physical sheet. Stock was not changed.
+LEAVE_UNTOUCHED,fabric,CAPRA II SHADOW,145601-0001,,,,No row on the physical sheet. Stock was not changed.
+LEAVE_UNTOUCHED,fabric,"PHIFERTEX STANDARD MESH 54"" BLACK X04",FAB-PHI-BLAX04,,,,No row on the physical sheet. Stock was not changed.
+LEAVE_UNTOUCHED,fabric,"PHIFERTEX STANDARD MESH 54"" WHITE 000",FAB-PHI-WHI000,,,,No row on the physical sheet. Stock was not changed.
+LEAVE_UNTOUCHED,fabric,PLAY SAGE,FAB-PLAY-SAG,,,,No row on the physical sheet. Stock was not changed.
+LEAVE_UNTOUCHED,fabric,RAINDROP ULTRALEATHER,FAB-RAI-ULT,,,,No row on the physical sheet. Stock was not changed.
+LEAVE_UNTOUCHED,fabric,TEST FABRIC - RAW,RM-FAB-TEST-FABRIC-RAW,,,,No row on the physical sheet. Stock was not changed.
+REVIEW,firepit,"18"" Square Bowl — SST Torpedo Match Lit (TOR-MLFPK18SQBL-FLEX-LP)",,FRP-HPC-TORMLFPK18SQBLFLEXLP,0,,"Description is shared by more than one vendor code, so the code was appended to the material name"
+REVIEW,firepit,"18"" Square Bowl — SST Torpedo Match Lit (TOR-MLFPK18SQBL-FLEX-NG)",,FRP-HPC-TORMLFPK18SQBLFLEXNG,0,,"Description is shared by more than one vendor code, so the code was appended to the material name"
+REVIEW,firepit,"36"" Linear Trough — SST Torpedo Match Lit (TOR-MLFPK36 TRGH-FLEX-NG)",,FRP-HPC-TORMLFPK36TRGHFLEXNG,0,,"Description is shared by more than one vendor code, so the code was appended to the material name"
+REVIEW,firepit,"48"" Linear Trough — SST Torpedo Push Button/Flame Sensing (TOR-FPPK48-TRGH-FLEX-LP)",,FRP-HPC-TORFPPK48TRGHFLEXLP,0,,"Description is shared by more than one vendor code, so the code was appended to the material name"
+REVIEW,firepit,"48"" Linear Trough — SST Torpedo Push Button/Flame Sensing (TOR-FPPK48-TRGH-FLEX-NG)",,FRP-HPC-TORFPPK48TRGHFLEXNG,0,,"Description is shared by more than one vendor code, so the code was appended to the material name"
+REVIEW,firepit,"60"" Linear Trough — SST Torpedo Push Button/Flame Sensing (TOR-FPPK60-TRGH-FLEX-NG)",,FRP-HPC-TORFPPK60TRGHFLEXNG,1,,"Description is shared by more than one vendor code, so the code was appended to the material name"
+REVIEW,firepit,"72"" Linear Trough — SST Torpedo Push Button/Flame Sensing (TOR-FPPK72-TRGH-FLEX-NG)",,FRP-HPC-TORFPPK72TRGHFLEXNG,2,,"Description is shared by more than one vendor code, so the code was appended to the material name"
+UNMAPPED,fabric,COAST NAVAL BLUE,,,0,0,No FAB- code in the September material dictionary

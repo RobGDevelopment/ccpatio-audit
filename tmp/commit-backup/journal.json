@@ -1,0 +1,195 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1756212120000,
+      "tag": "0001_sku_quarantine_mo",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1756215720000,
+      "tag": "0002_sku_aliases_cascade",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1756219320000,
+      "tag": "0003_product_bom",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1756222920000,
+      "tag": "0004_raw_materials_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1756226520000,
+      "tag": "0005_incoming_webhooks",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787789238160,
+      "tag": "0005_grey_ben_urich",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787790000000,
+      "tag": "0006_finished_goods_na_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787791000000,
+      "tag": "0007_pim_enterprise_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787792000000,
+      "tag": "0008_sku_mappings_pim_universal",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787793000000,
+      "tag": "0009_multi_level_bom",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787866666260,
+      "tag": "0010_pim_operators_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1787950000000,
+      "tag": "0011_raw_materials_realtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788036000000,
+      "tag": "0012_sync_to_woo",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788390000000,
+      "tag": "0013_mdm_phase1_intake",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788393600000,
+      "tag": "0014_mdm_phase2_quarantine",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1788449532395,
+      "tag": "0015_perfect_fallen_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788970000000,
+      "tag": "0017_factory_bom_draft",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789056400000,
+      "tag": "0018_sketchup_cutlist_notes",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789142800000,
+      "tag": "0019_secondary_extraction",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789229200000,
+      "tag": "0020_cad_uploads",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789315600000,
+      "tag": "0021_product_bom_draft_cut_list",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789402000000,
+      "tag": "0022_item_operations_sku_wc_seq_uidx",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1789488400000,
+      "tag": "0023_channel_sync_payload_hash",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1789574800000,
+      "tag": "0024_hub_tables_rls_lockdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1789661200000,
+      "tag": "0025_rm_item_type_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789747600000,
+      "tag": "0026_order_intake",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790953664222,
+      "tag": "0026_inventory_holds",
+      "breakpoints": true
+    }
+  ]
+}

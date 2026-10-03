@@ -1,0 +1,175 @@
+{
+  "dryRun": true,
+  "legacyOrder": "1769",
+  "orderNo": "WIP-1769",
+  "customer": "CAROL BENNET",
+  "salesOrderId": 52651271,
+  "ledgerSalesOrderId": 52651271,
+  "idMismatch": false,
+  "existingCustomFields": {
+    "080e53b9-c995-420f-b14c-a421d776865d": "13271 E. Juan Tabo Rd SCOTTSDALE AZ 85255-0465",
+    "56faf8e5-cb9c-4fd8-9ae3-7297c7b50ecf": "2026-10-12",
+    "96e71abb-84db-4899-a6a3-fdc746a73ae1": "NOT REQUIRED",
+    "a043c8f2-213c-414a-aab5-f439dc93f10b": 1,
+    "b1145d84-31c8-4891-b220-bd6e9f5e3c04": "NOT REQUIRED",
+    "f6381313-bff6-4600-b334-2d9913c5f501": "NOT REQUIRED",
+    "f6997d52-78c4-4d78-85c8-a43a48d87f24": "2026-10-12",
+    "fab62731-ab4f-4159-8466-053406c44c96": "NOT REQUIRED"
+  },
+  "patch": {
+    "method": "PATCH",
+    "path": "/sales_orders/52651271",
+    "body": {
+      "custom_fields": {
+        "080e53b9-c995-420f-b14c-a421d776865d": "13271 E. Juan Tabo Rd SCOTTSDALE AZ 85255-0465",
+        "56faf8e5-cb9c-4fd8-9ae3-7297c7b50ecf": "2026-10-12",
+        "96e71abb-84db-4899-a6a3-fdc746a73ae1": "NOT REQUIRED",
+        "a043c8f2-213c-414a-aab5-f439dc93f10b": 1,
+        "b1145d84-31c8-4891-b220-bd6e9f5e3c04": "NOT REQUIRED",
+        "f6381313-bff6-4600-b334-2d9913c5f501": "NOT REQUIRED",
+        "f6997d52-78c4-4d78-85c8-a43a48d87f24": "2026-10-12",
+        "fab62731-ab4f-4159-8466-053406c44c96": "NOT REQUIRED",
+        "a3693cba-9d33-4147-b0ee-5b40367e4f42": true
+      }
+    }
+  },
+  "fieldLegend": [
+    {
+      "label": "Delivery Address",
+      "id": "080e53b9-c995-420f-b14c-a421d776865d",
+      "column": "Delivery Address",
+      "sheetValue": "13271 E. Juan Tabo Rd SCOTTSDALE AZ 85255-0465",
+      "sent": true,
+      "value": "13271 E. Juan Tabo Rd SCOTTSDALE AZ 85255-0465"
+    },
+    {
+      "label": "Piece Count Cshn",
+      "id": "02102db3-ff92-4731-b297-2f66ad8a9787",
+      "column": "QTY CUSH",
+      "sheetValue": null,
+      "sent": false,
+      "value": null
+    },
+    {
+      "label": "Piece Count Mtl",
+      "id": "455c524e-c4c9-4fba-a398-a9583907386b",
+      "column": "QTY METAL",
+      "sheetValue": null,
+      "sent": false,
+      "value": null
+    },
+    {
+      "label": "Piece Count Dktn",
+      "id": "ed9fbff0-6b2e-40cc-994f-e63e2b71cacc",
+      "column": "QTY DEKT",
+      "sheetValue": null,
+      "sent": false,
+      "value": null
+    },
+    {
+      "label": "Covers",
+      "id": "b1145d84-31c8-4891-b220-bd6e9f5e3c04",
+      "column": "Covers",
+      "sheetValue": "NOT REQUIRED",
+      "sent": true,
+      "value": "NOT REQUIRED"
+    },
+    {
+      "label": "Umbrella",
+      "id": "96e71abb-84db-4899-a6a3-fdc746a73ae1",
+      "column": "Umbrella",
+      "sheetValue": "NOT REQUIRED",
+      "sent": true,
+      "value": "NOT REQUIRED"
+    },
+    {
+      "label": "Tenjam/Others",
+      "id": "fab62731-ab4f-4159-8466-053406c44c96",
+      "column": "Tenjam/Others",
+      "sheetValue": "NOT REQUIRED",
+      "sent": true,
+      "value": "NOT REQUIRED"
+    },
+    {
+      "label": "Firepit System",
+      "id": "f6381313-bff6-4600-b334-2d9913c5f501",
+      "column": "Firepit System",
+      "sheetValue": "NOT REQUIRED",
+      "sent": true,
+      "value": "NOT REQUIRED"
+    },
+    {
+      "label": "Proj Hrs Cushion",
+      "id": "21c83e06-4229-4c83-9dda-3e18819fed03",
+      "column": "Proj. Hrs Cushion",
+      "sheetValue": null,
+      "sent": false,
+      "value": null
+    },
+    {
+      "label": "Proj Hrs Metal",
+      "id": "7b1b9ff0-f20a-4d52-8489-d95c8dd321d3",
+      "column": "Proj. Hrs Metal",
+      "sheetValue": null,
+      "sent": false,
+      "value": null
+    },
+    {
+      "label": "Proj Hrs Dekton",
+      "id": "cb787793-0a5e-41cc-ba7b-d49ae33d778c",
+      "column": "Proj. Hrs Dekton",
+      "sheetValue": null,
+      "sent": false,
+      "value": null
+    },
+    {
+      "label": "Type",
+      "id": "a043c8f2-213c-414a-aab5-f439dc93f10b",
+      "column": "Type",
+      "sheetValue": "RESIDENTIAL",
+      "sent": true,
+      "value": 1
+    },
+    {
+      "label": "Delivery Date",
+      "id": "56faf8e5-cb9c-4fd8-9ae3-7297c7b50ecf",
+      "column": "Delivery Date",
+      "sheetValue": "Mon, Oct 12, 2026",
+      "sent": true,
+      "value": "2026-10-12"
+    },
+    {
+      "label": "Production Deadline",
+      "id": "f6997d52-78c4-4d78-85c8-a43a48d87f24",
+      "column": "Production Deadline",
+      "sheetValue": "Mon, Oct 12, 2026",
+      "sent": true,
+      "value": "2026-10-12"
+    },
+    {
+      "label": "PU/Drop",
+      "id": "48c82687-8492-40aa-81c4-db9ec378129d",
+      "column": "PU / DROP",
+      "sheetValue": null,
+      "sent": false,
+      "value": null
+    },
+    {
+      "label": "Delivery Confirmed",
+      "id": "a3693cba-9d33-4147-b0ee-5b40367e4f42",
+      "column": "Delivery Conf.",
+      "sheetValue": "YES",
+      "sent": true,
+      "value": true
+    },
+    {
+      "label": "PU/Drop Confirmed",
+      "id": "21f24fd8-ee94-4ab9-965e-4285775091c5",
+      "column": "PU / DROP Confirmed",
+      "sheetValue": "NA",
+      "sent": false,
+      "value": null
+    }
+  ],
+  "warnings": []
+}

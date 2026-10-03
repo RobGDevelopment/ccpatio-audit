@@ -1,0 +1,1909 @@
+{
+  "generatedAt": "2026-10-02T02:27:44.862Z",
+  "scrapFactor": 1.08,
+  "scrapAppliedInQuantities": false,
+  "assumedGauge": "16 GA",
+  "recipeSkuPolicy": "purchasing MET-* only; RM-MET-* is never the recipe SKU",
+  "files": [
+    {
+      "file": "1 BRAVADA club chair.obj",
+      "units": "inches",
+      "finCandidate": "FIN-BRV-CLB-CHA",
+      "match": "not_checked",
+      "proposedParentSku": "ASM-BRV-CLB-CHA-FRAME",
+      "status": "measured",
+      "draftEligible": true,
+      "flags": [
+        "assumed_16_ga",
+        "envelope_unchecked"
+      ],
+      "sticks": [
+        {
+          "group": "Mesh1 Group2 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 30,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 8
+            },
+            {
+              "lengthIn": 30,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh2 Group4 Group3 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 1.5,
+          "sectionMinorIn": 0.75,
+          "longPointIn": 30,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.75,
+              "count": 4
+            },
+            {
+              "lengthIn": 1.5,
+              "count": 4
+            },
+            {
+              "lengthIn": 30,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "RT1.5x0.75-16",
+          "recipeSku": "MET-TB11234060",
+          "rejectedPlaceholderSku": "RM-MET-15X075-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh3 Group5 Group3 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 1,
+          "sectionMinorIn": 0.13,
+          "longPointIn": 30,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.13,
+              "count": 4
+            },
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 30,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "FB1x0.125",
+          "recipeSku": "MET-FH181",
+          "rejectedPlaceholderSku": "RM-MET-FLATBAR",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh4 Group6 Group3 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 1,
+          "sectionMinorIn": 0.13,
+          "longPointIn": 30,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.13,
+              "count": 4
+            },
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 30,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "FB1x0.125",
+          "recipeSku": "MET-FH181",
+          "rejectedPlaceholderSku": "RM-MET-FLATBAR",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh5 Group7 Group3 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 1,
+          "sectionMinorIn": 0.13,
+          "longPointIn": 30,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.13,
+              "count": 4
+            },
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 30,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "FB1x0.125",
+          "recipeSku": "MET-FH181",
+          "rejectedPlaceholderSku": "RM-MET-FLATBAR",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh6 Group8 Group3 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 1,
+          "sectionMinorIn": 0.13,
+          "longPointIn": 30,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.13,
+              "count": 4
+            },
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 30,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "FB1x0.125",
+          "recipeSku": "MET-FH181",
+          "rejectedPlaceholderSku": "RM-MET-FLATBAR",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh7 Group9 Group3 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 1,
+          "sectionMinorIn": 0.13,
+          "longPointIn": 30,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.13,
+              "count": 4
+            },
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 30,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "FB1x0.125",
+          "recipeSku": "MET-FH181",
+          "rejectedPlaceholderSku": "RM-MET-FLATBAR",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh8 Group10 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 30,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 8
+            },
+            {
+              "lengthIn": 30,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh9 Group11 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 8,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 8
+            },
+            {
+              "lengthIn": 8,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh10 Group13 Group12 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 10,
+          "shortPointIn": 8,
+          "endA": 45,
+          "endB": 90,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 6
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 2
+            },
+            {
+              "lengthIn": 8,
+              "count": 2
+            },
+            {
+              "lengthIn": 10,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh11 Group14 Group12 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 10,
+          "shortPointIn": 8,
+          "endA": 45,
+          "endB": 90,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 6
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 2
+            },
+            {
+              "lengthIn": 8,
+              "count": 2
+            },
+            {
+              "lengthIn": 10,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh12 Group15 Group12 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 34,
+          "shortPointIn": 30,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 30,
+              "count": 2
+            },
+            {
+              "lengthIn": 34,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh13 Group16 Group12 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 32,
+          "shortPointIn": null,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 32,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh14 Group17 Group12 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 21,
+          "shortPointIn": 17,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": true,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 17,
+              "count": 1
+            },
+            {
+              "lengthIn": 19,
+              "count": 2
+            },
+            {
+              "lengthIn": 21,
+              "count": 1
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh15 Group18 Group12 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 21,
+          "shortPointIn": 17,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": true,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 17,
+              "count": 1
+            },
+            {
+              "lengthIn": 19,
+              "count": 2
+            },
+            {
+              "lengthIn": 21,
+              "count": 1
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh16 Group19 Group12 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 32,
+          "shortPointIn": null,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 32,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh17 Group20 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 8,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 8
+            },
+            {
+              "lengthIn": 8,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh18 Group21 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 30,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 8
+            },
+            {
+              "lengthIn": 30,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh19 Group23 Group22 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 32,
+          "shortPointIn": 30,
+          "endA": 45,
+          "endB": 90,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 6
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 2
+            },
+            {
+              "lengthIn": 30,
+              "count": 2
+            },
+            {
+              "lengthIn": 32,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh20 Group24 Group22 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 14,
+          "shortPointIn": 12,
+          "endA": 45,
+          "endB": 90,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 6
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 2
+            },
+            {
+              "lengthIn": 12,
+              "count": 2
+            },
+            {
+              "lengthIn": 14,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh21 Group26 Group25 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 32,
+          "shortPointIn": 30,
+          "endA": 45,
+          "endB": 90,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 6
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 2
+            },
+            {
+              "lengthIn": 30,
+              "count": 2
+            },
+            {
+              "lengthIn": 32,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh22 Group27 Group25 Group1 Model",
+          "material": "_Color_M06_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 14,
+          "shortPointIn": 12,
+          "endA": 45,
+          "endB": 90,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 6
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 2
+            },
+            {
+              "lengthIn": 12,
+              "count": 2
+            },
+            {
+              "lengthIn": 14,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        }
+      ],
+      "recipes": [
+        {
+          "recipeSku": "MET-TB22060",
+          "profileCode": "SQ2-16",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "pieces": 16,
+          "netFt": 29.8333,
+          "scrapFactor": 1.08,
+          "katanaQuantityFt": 32.22,
+          "scrapAppliedInThisFile": false,
+          "cuts": [
+            {
+              "qtyEa": 1,
+              "longPointIn": 34,
+              "shortPointIn": 30,
+              "endA": 45,
+              "endB": 45,
+              "compoundLongEdges": false
+            },
+            {
+              "qtyEa": 2,
+              "longPointIn": 32,
+              "shortPointIn": null,
+              "endA": 45,
+              "endB": 45,
+              "compoundLongEdges": false
+            },
+            {
+              "qtyEa": 2,
+              "longPointIn": 32,
+              "shortPointIn": 30,
+              "endA": 45,
+              "endB": 90,
+              "compoundLongEdges": false
+            },
+            {
+              "qtyEa": 3,
+              "longPointIn": 30,
+              "shortPointIn": null,
+              "endA": 90,
+              "endB": 90,
+              "compoundLongEdges": false
+            },
+            {
+              "qtyEa": 2,
+              "longPointIn": 21,
+              "shortPointIn": 17,
+              "endA": 45,
+              "endB": 45,
+              "compoundLongEdges": true
+            },
+            {
+              "qtyEa": 2,
+              "longPointIn": 14,
+              "shortPointIn": 12,
+              "endA": 45,
+              "endB": 90,
+              "compoundLongEdges": false
+            },
+            {
+              "qtyEa": 2,
+              "longPointIn": 10,
+              "shortPointIn": 8,
+              "endA": 45,
+              "endB": 90,
+              "compoundLongEdges": false
+            },
+            {
+              "qtyEa": 2,
+              "longPointIn": 8,
+              "shortPointIn": null,
+              "endA": 90,
+              "endB": 90,
+              "compoundLongEdges": false
+            }
+          ],
+          "flag": null
+        },
+        {
+          "recipeSku": "MET-FH181",
+          "profileCode": "FB1x0.125",
+          "rejectedPlaceholderSku": "RM-MET-FLATBAR",
+          "assumedGauge": "16 GA",
+          "pieces": 5,
+          "netFt": 12.5,
+          "scrapFactor": 1.08,
+          "katanaQuantityFt": 13.5,
+          "scrapAppliedInThisFile": false,
+          "cuts": [
+            {
+              "qtyEa": 5,
+              "longPointIn": 30,
+              "shortPointIn": null,
+              "endA": 90,
+              "endB": 90,
+              "compoundLongEdges": false
+            }
+          ],
+          "flag": null
+        },
+        {
+          "recipeSku": "MET-TB11234060",
+          "profileCode": "RT1.5x0.75-16",
+          "rejectedPlaceholderSku": "RM-MET-15X075-TUBING",
+          "assumedGauge": "16 GA",
+          "pieces": 1,
+          "netFt": 2.5,
+          "scrapFactor": 1.08,
+          "katanaQuantityFt": 2.7,
+          "scrapAppliedInThisFile": false,
+          "cuts": [
+            {
+              "qtyEa": 1,
+              "longPointIn": 30,
+              "shortPointIn": null,
+              "endA": 90,
+              "endB": 90,
+              "compoundLongEdges": false
+            }
+          ],
+          "flag": null
+        }
+      ],
+      "omittedStickLike": []
+    },
+    {
+      "file": "19 OCEAN sofa 72.obj",
+      "units": "inches",
+      "finCandidate": "FIN-OCN-SOF-72",
+      "match": "not_checked",
+      "proposedParentSku": "ASM-OCN-SOF-72-FRAME",
+      "status": "measured",
+      "draftEligible": true,
+      "flags": [
+        "assumed_16_ga",
+        "envelope_ok"
+      ],
+      "sticks": [
+        {
+          "group": "Mesh9 Group8 Group7 Group6 Group2 Group1 Model",
+          "material": "M_0128_White",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 20,
+          "shortPointIn": 16,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 16,
+              "count": 2
+            },
+            {
+              "lengthIn": 20,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh10 Group9 Group7 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 38,
+          "shortPointIn": 34,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 34,
+              "count": 2
+            },
+            {
+              "lengthIn": 38,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh12 Group11 Group7 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 20,
+          "shortPointIn": 16,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 16,
+              "count": 2
+            },
+            {
+              "lengthIn": 20,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh13 Group13 Group12 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 29,
+          "shortPointIn": 25,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 25,
+              "count": 2
+            },
+            {
+              "lengthIn": 29,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh14 Group14 Group12 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 29,
+          "shortPointIn": 25,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 25,
+              "count": 2
+            },
+            {
+              "lengthIn": 29,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh15 Group15 Group12 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 68,
+          "shortPointIn": 64,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 64,
+              "count": 2
+            },
+            {
+              "lengthIn": 68,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh16 Group16 Group12 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 68,
+          "shortPointIn": 64,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 64,
+              "count": 2
+            },
+            {
+              "lengthIn": 68,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh17 Group19 Group18 Group17 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 1,
+          "sectionMinorIn": 0.12,
+          "longPointIn": 64,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.12,
+              "count": 4
+            },
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 64,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "FB1x0.125",
+          "recipeSku": "MET-FH181",
+          "rejectedPlaceholderSku": "RM-MET-FLATBAR",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh18 Group20 Group18 Group17 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 1,
+          "sectionMinorIn": 0.13,
+          "longPointIn": 64,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.13,
+              "count": 4
+            },
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 64,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "FB1x0.125",
+          "recipeSku": "MET-FH181",
+          "rejectedPlaceholderSku": "RM-MET-FLATBAR",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh19 Group21 Group18 Group17 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 1,
+          "sectionMinorIn": 0.12,
+          "longPointIn": 64,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.12,
+              "count": 4
+            },
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 64,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "FB1x0.125",
+          "recipeSku": "MET-FH181",
+          "rejectedPlaceholderSku": "RM-MET-FLATBAR",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh20 Group22 Group18 Group17 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 1,
+          "sectionMinorIn": 0.13,
+          "longPointIn": 64,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.13,
+              "count": 4
+            },
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 64,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "FB1x0.125",
+          "recipeSku": "MET-FH181",
+          "rejectedPlaceholderSku": "RM-MET-FLATBAR",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh21 Group23 Group18 Group17 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 1,
+          "sectionMinorIn": 0.13,
+          "longPointIn": 64,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.13,
+              "count": 4
+            },
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 64,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "FB1x0.125",
+          "recipeSku": "MET-FH181",
+          "rejectedPlaceholderSku": "RM-MET-FLATBAR",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh22 Group24 Group17 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 1.5,
+          "sectionMinorIn": 0.75,
+          "longPointIn": 25,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.75,
+              "count": 4
+            },
+            {
+              "lengthIn": 1.5,
+              "count": 4
+            },
+            {
+              "lengthIn": 25,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "RT1.5x0.75-16",
+          "recipeSku": "MET-TB11234060",
+          "rejectedPlaceholderSku": "RM-MET-15X075-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh23 Group25 Group17 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 1.5,
+          "sectionMinorIn": 0.75,
+          "longPointIn": 25,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.75,
+              "count": 4
+            },
+            {
+              "lengthIn": 1.5,
+              "count": 4
+            },
+            {
+              "lengthIn": 25,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "RT1.5x0.75-16",
+          "recipeSku": "MET-TB11234060",
+          "rejectedPlaceholderSku": "RM-MET-15X075-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh24 Group26 Group17 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 1.5,
+          "sectionMinorIn": 0.75,
+          "longPointIn": 25,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.75,
+              "count": 4
+            },
+            {
+              "lengthIn": 1.5,
+              "count": 4
+            },
+            {
+              "lengthIn": 25,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "RT1.5x0.75-16",
+          "recipeSku": "MET-TB11234060",
+          "rejectedPlaceholderSku": "RM-MET-15X075-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh25 Group27 Group17 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 1.5,
+          "sectionMinorIn": 0.75,
+          "longPointIn": 25,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 0.75,
+              "count": 4
+            },
+            {
+              "lengthIn": 1.5,
+              "count": 4
+            },
+            {
+              "lengthIn": 25,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "RT1.5x0.75-16",
+          "recipeSku": "MET-TB11234060",
+          "rejectedPlaceholderSku": "RM-MET-15X075-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh26 Group29 Group28 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 20,
+          "shortPointIn": 16,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 16,
+              "count": 2
+            },
+            {
+              "lengthIn": 20,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh27 Group30 Group28 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 38,
+          "shortPointIn": 34,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 34,
+              "count": 2
+            },
+            {
+              "lengthIn": 38,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh29 Group32 Group28 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 2,
+          "longPointIn": 20,
+          "shortPointIn": 16,
+          "endA": 45,
+          "endB": 45,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 4
+            },
+            {
+              "lengthIn": 16,
+              "count": 2
+            },
+            {
+              "lengthIn": 20,
+              "count": 2
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh31 Group35 Group33 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2.01,
+          "sectionMinorIn": 2.01,
+          "longPointIn": 27,
+          "shortPointIn": 24.58,
+          "endA": 45,
+          "endB": 90,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": true,
+          "edgesIn": [
+            {
+              "lengthIn": 2.01,
+              "count": 6
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 2
+            },
+            {
+              "lengthIn": 24.58,
+              "count": 1
+            },
+            {
+              "lengthIn": 25,
+              "count": 1
+            },
+            {
+              "lengthIn": 26.58,
+              "count": 1
+            },
+            {
+              "lengthIn": 27,
+              "count": 1
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh32 Group36 Group33 Group6 Group2 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2.01,
+          "sectionMinorIn": 2.01,
+          "longPointIn": 27,
+          "shortPointIn": 24.58,
+          "endA": 45,
+          "endB": 90,
+          "lengthConvention": "long_point",
+          "compoundLongEdges": true,
+          "edgesIn": [
+            {
+              "lengthIn": 2.01,
+              "count": 6
+            },
+            {
+              "lengthIn": 2.83,
+              "count": 2
+            },
+            {
+              "lengthIn": 24.58,
+              "count": 1
+            },
+            {
+              "lengthIn": 25,
+              "count": 1
+            },
+            {
+              "lengthIn": 26.58,
+              "count": 1
+            },
+            {
+              "lengthIn": 27,
+              "count": 1
+            }
+          ],
+          "droppedMiterFacesIn": [
+            2.83
+          ],
+          "profileCode": "SQ2-16",
+          "recipeSku": "MET-TB22060",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh33 Group38 Group37 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 1,
+          "longPointIn": 60,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 60,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "SQ2x1-16",
+          "recipeSku": "MET-TB21060",
+          "rejectedPlaceholderSku": "RM-MET-2X1-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh34 Group39 Group37 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 1,
+          "longPointIn": 60,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 60,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "SQ2x1-16",
+          "recipeSku": "MET-TB21060",
+          "rejectedPlaceholderSku": "RM-MET-2X1-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        },
+        {
+          "group": "Mesh35 Group40 Group37 Group1 Model",
+          "material": "_Color_M05_4",
+          "sectionMajorIn": 2,
+          "sectionMinorIn": 1,
+          "longPointIn": 60,
+          "shortPointIn": null,
+          "endA": 90,
+          "endB": 90,
+          "lengthConvention": "square",
+          "compoundLongEdges": false,
+          "edgesIn": [
+            {
+              "lengthIn": 1,
+              "count": 4
+            },
+            {
+              "lengthIn": 2,
+              "count": 4
+            },
+            {
+              "lengthIn": 60,
+              "count": 4
+            }
+          ],
+          "droppedMiterFacesIn": [],
+          "profileCode": "SQ2x1-16",
+          "recipeSku": "MET-TB21060",
+          "rejectedPlaceholderSku": "RM-MET-2X1-TUBING",
+          "assumedGauge": "16 GA",
+          "flag": null
+        }
+      ],
+      "recipes": [
+        {
+          "recipeSku": "MET-TB22060",
+          "profileCode": "SQ2-16",
+          "rejectedPlaceholderSku": "RM-MET-2X2-TUBING",
+          "assumedGauge": "16 GA",
+          "pieces": 12,
+          "netFt": 33.6667,
+          "scrapFactor": 1.08,
+          "katanaQuantityFt": 36.36,
+          "scrapAppliedInThisFile": false,
+          "cuts": [
+            {
+              "qtyEa": 2,
+              "longPointIn": 68,
+              "shortPointIn": 64,
+              "endA": 45,
+              "endB": 45,
+              "compoundLongEdges": false
+            },
+            {
+              "qtyEa": 2,
+              "longPointIn": 38,
+              "shortPointIn": 34,
+              "endA": 45,
+              "endB": 45,
+              "compoundLongEdges": false
+            },
+            {
+              "qtyEa": 2,
+              "longPointIn": 29,
+              "shortPointIn": 25,
+              "endA": 45,
+              "endB": 45,
+              "compoundLongEdges": false
+            },
+            {
+              "qtyEa": 2,
+              "longPointIn": 27,
+              "shortPointIn": 24.58,
+              "endA": 45,
+              "endB": 90,
+              "compoundLongEdges": true
+            },
+            {
+              "qtyEa": 4,
+              "longPointIn": 20,
+              "shortPointIn": 16,
+              "endA": 45,
+              "endB": 45,
+              "compoundLongEdges": false
+            }
+          ],
+          "flag": null
+        },
+        {
+          "recipeSku": "MET-FH181",
+          "profileCode": "FB1x0.125",
+          "rejectedPlaceholderSku": "RM-MET-FLATBAR",
+          "assumedGauge": "16 GA",
+          "pieces": 5,
+          "netFt": 26.6667,
+          "scrapFactor": 1.08,
+          "katanaQuantityFt": 28.8,
+          "scrapAppliedInThisFile": false,
+          "cuts": [
+            {
+              "qtyEa": 5,
+              "longPointIn": 64,
+              "shortPointIn": null,
+              "endA": 90,
+              "endB": 90,
+              "compoundLongEdges": false
+            }
+          ],
+          "flag": null
+        },
+        {
+          "recipeSku": "MET-TB21060",
+          "profileCode": "SQ2x1-16",
+          "rejectedPlaceholderSku": "RM-MET-2X1-TUBING",
+          "assumedGauge": "16 GA",
+          "pieces": 3,
+          "netFt": 15,
+          "scrapFactor": 1.08,
+          "katanaQuantityFt": 16.2,
+          "scrapAppliedInThisFile": false,
+          "cuts": [
+            {
+              "qtyEa": 3,
+              "longPointIn": 60,
+              "shortPointIn": null,
+              "endA": 90,
+              "endB": 90,
+              "compoundLongEdges": false
+            }
+          ],
+          "flag": null
+        },
+        {
+          "recipeSku": "MET-TB11234060",
+          "profileCode": "RT1.5x0.75-16",
+          "rejectedPlaceholderSku": "RM-MET-15X075-TUBING",
+          "assumedGauge": "16 GA",
+          "pieces": 4,
+          "netFt": 8.3333,
+          "scrapFactor": 1.08,
+          "katanaQuantityFt": 9,
+          "scrapAppliedInThisFile": false,
+          "cuts": [
+            {
+              "qtyEa": 4,
+              "longPointIn": 25,
+              "shortPointIn": null,
+              "endA": 90,
+              "endB": 90,
+              "compoundLongEdges": false
+            }
+          ],
+          "flag": null
+        }
+      ],
+      "omittedStickLike": [
+        {
+          "group": "Mesh11 Group10 Group7 Group6 Group2 Group1 Model",
+          "reason": "non_prism",
+          "faces": 61
+        },
+        {
+          "group": "Mesh28 Group31 Group28 Group6 Group2 Group1 Model",
+          "reason": "non_prism",
+          "faces": 61
+        },
+        {
+          "group": "Mesh30 Group34 Group33 Group6 Group2 Group1 Model",
+          "reason": "non_prism",
+          "faces": 7
+        }
+      ]
+    }
+  ]
+}

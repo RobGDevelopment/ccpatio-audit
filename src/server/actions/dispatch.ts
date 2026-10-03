@@ -2,7 +2,7 @@
 
 import { getPimSession } from "@/lib/pim-audit";
 import { lookupDockDistance } from "@/server/freight/distance";
-import { asGhlRecord, ghlGet, readGhlConfig } from "@/server/ghl/private-api";
+import { asGhlRecord, ghlGet, readGhlConfig, updateOpportunityValue } from "@/server/ghl/private-api";
 
 /** One line on a sample sales order. Catalog products are not rated from this list. */
 export type ReadyToShipSkidItem = {
@@ -22,6 +22,7 @@ export type ReadyToShipOrder = {
   customerName: string;
   destZip: string;
   distanceMiles: number;
+  ghlOpportunityId: string;
   skidItems: ReadyToShipSkidItem[];
 };
 
@@ -31,6 +32,7 @@ const READY_TO_SHIP_QUEUE: ReadyToShipOrder[] = [
     customerName: "John Doe",
     destZip: "90210",
     distanceMiles: 400,
+    ghlOpportunityId: "123",
     skidItems: [{ weightLb: 150, freightClass: "175", lengthIn: 72, widthIn: 34 }],
   },
   {
@@ -38,6 +40,7 @@ const READY_TO_SHIP_QUEUE: ReadyToShipOrder[] = [
     customerName: "Jane Smith",
     destZip: "60606",
     distanceMiles: 1400,
+    ghlOpportunityId: "456",
     skidItems: [{ weightLb: 200, freightClass: "175", lengthIn: 84, widthIn: 36 }],
   },
   {
@@ -45,6 +48,7 @@ const READY_TO_SHIP_QUEUE: ReadyToShipOrder[] = [
     customerName: "Bob Vance",
     destZip: "85255",
     distanceMiles: 15,
+    ghlOpportunityId: "789",
     skidItems: [{ weightLb: 100, freightClass: "175", lengthIn: 34, widthIn: 34 }],
   },
 ];
@@ -250,4 +254,20 @@ export async function searchGhlOpportunities(
     // GoHighLevel timeouts and unexpected payload shapes stay off the sales floor.
     return [];
   }
+}
+
+/**
+ * Freezes a dispatch quote to a GoHighLevel opportunity.
+ */
+export async function freezeDispatchOpportunity(
+  opportunityId: string,
+  valueUsd: number,
+  carrierName: string,
+) {
+  await requireDispatchSession();
+  const res = await updateOpportunityValue(opportunityId, valueUsd, carrierName);
+  if (!res.ok) {
+    throw new Error(res.error);
+  }
+  return { ok: true };
 }

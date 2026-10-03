@@ -61,8 +61,8 @@ export function PlaceHoldModal({
 
   const uom = row.uom?.trim() || displayStockUom(row.sku);
   const availableLabel = `${formatQty(row.available)} ${uom}`;
-  const quantityIssue = holdQuantityIssue(qty, row.available);
-  const quantityWarning = holdQuantityWarning(qty, row.available);
+  const quantityIssue = holdQuantityIssue(qty);
+  const quantityWarning = holdQuantityWarning(qty);
   const math = holdQuantityMath(qty, row.available);
   const showingConfirm = step === "confirm" && math !== null;
 
@@ -368,7 +368,6 @@ export function PlaceHoldModal({
                 inputMode="decimal"
                 type="number"
                 min={1}
-                max={row.available}
                 step="any"
                 aria-invalid={quantityWarning !== null}
                 aria-describedby={qtyDescribedBy}

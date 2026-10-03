@@ -1,0 +1,246 @@
+{
+  "generatedAt": "2026-10-02T05:44:30.142Z",
+  "mode": "confirm",
+  "file": "1 BRAVADA club chair.obj",
+  "status": "ready",
+  "skipReason": null,
+  "resolution": "sized_variant",
+  "dimSource": "catalog_default",
+  "widthIn": 34,
+  "depthIn": 34,
+  "family": "seating",
+  "finCandidates": [
+    "FIN-BRV-CLB-CHA-34X34",
+    "FIN-BRV-CLB-CHA"
+  ],
+  "finSku": "FIN-BRV-CLB-CHA-34X34",
+  "frameSku": "ASM-BRV-CLB-CHA-34X34-FRAME",
+  "cushionSku": "ASM-BRV-CLB-CHA-34X34-CUSH",
+  "tubeNetFt": 32.3333,
+  "scrapIncludedInQuantity": true,
+  "powderSku": "PWD-BLACK",
+  "parents": [
+    {
+      "role": "frame",
+      "sku": "ASM-BRV-CLB-CHA-34X34-FRAME",
+      "variantId": null,
+      "productId": null,
+      "productAction": "create",
+      "rows": [
+        {
+          "ingredientSku": "MET-TB22060",
+          "quantity": 32.22,
+          "uom": "ft",
+          "notes": "1x34\" 45/45 short 30; 2x32\" 45/45; 2x32\" 45/90 short 30; 3x30\" 90/90; 2x21\" 45/45 short 17 compound; 2x14\" 45/90 short 12; 2x10\" 45/90 short 8; 2x8\" 90/90",
+          "cutList": [
+            {
+              "role": "SQ2-16",
+              "profile": "SQ2-16",
+              "lengthIn": 34,
+              "endA": 45,
+              "endB": 45,
+              "qtyEa": 1,
+              "lengthConvention": "long_point",
+              "sourceName": "1 BRAVADA club chair.obj",
+              "confidence": "obj_edge",
+              "drawingPartNumber": null
+            },
+            {
+              "role": "SQ2-16",
+              "profile": "SQ2-16",
+              "lengthIn": 32,
+              "endA": 45,
+              "endB": 45,
+              "qtyEa": 2,
+              "lengthConvention": "long_point",
+              "sourceName": "1 BRAVADA club chair.obj",
+              "confidence": "obj_edge",
+              "drawingPartNumber": null
+            },
+            {
+              "role": "SQ2-16",
+              "profile": "SQ2-16",
+              "lengthIn": 32,
+              "endA": 45,
+              "endB": 90,
+              "qtyEa": 2,
+              "lengthConvention": "long_point",
+              "sourceName": "1 BRAVADA club chair.obj",
+              "confidence": "obj_edge",
+              "drawingPartNumber": null
+            },
+            {
+              "role": "SQ2-16",
+              "profile": "SQ2-16",
+              "lengthIn": 30,
+              "endA": 90,
+              "endB": 90,
+              "qtyEa": 3,
+              "lengthConvention": "square",
+              "sourceName": "1 BRAVADA club chair.obj",
+              "confidence": "obj_edge",
+              "drawingPartNumber": null
+            },
+            {
+              "role": "SQ2-16",
+              "profile": "SQ2-16",
+              "lengthIn": 21,
+              "endA": 45,
+              "endB": 45,
+              "qtyEa": 2,
+              "lengthConvention": "long_point",
+              "sourceName": "1 BRAVADA club chair.obj",
+              "confidence": "obj_edge",
+              "drawingPartNumber": null
+            },
+            {
+              "role": "SQ2-16",
+              "profile": "SQ2-16",
+              "lengthIn": 14,
+              "endA": 45,
+              "endB": 90,
+              "qtyEa": 2,
+              "lengthConvention": "long_point",
+              "sourceName": "1 BRAVADA club chair.obj",
+              "confidence": "obj_edge",
+              "drawingPartNumber": null
+            },
+            {
+              "role": "SQ2-16",
+              "profile": "SQ2-16",
+              "lengthIn": 10,
+              "endA": 45,
+              "endB": 90,
+              "qtyEa": 2,
+              "lengthConvention": "long_point",
+              "sourceName": "1 BRAVADA club chair.obj",
+              "confidence": "obj_edge",
+              "drawingPartNumber": null
+            },
+            {
+              "role": "SQ2-16",
+              "profile": "SQ2-16",
+              "lengthIn": 8,
+              "endA": 90,
+              "endB": 90,
+              "qtyEa": 2,
+              "lengthConvention": "square",
+              "sourceName": "1 BRAVADA club chair.obj",
+              "confidence": "obj_edge",
+              "drawingPartNumber": null
+            }
+          ],
+          "variantId": 42049877
+        },
+        {
+          "ingredientSku": "MET-FH181",
+          "quantity": 13.5,
+          "uom": "ft",
+          "notes": "5x30\" 90/90",
+          "cutList": [
+            {
+              "role": "FB1x0.125",
+              "profile": "FB1x0.125",
+              "lengthIn": 30,
+              "endA": 90,
+              "endB": 90,
+              "qtyEa": 5,
+              "lengthConvention": "square",
+              "sourceName": "1 BRAVADA club chair.obj",
+              "confidence": "obj_edge",
+              "drawingPartNumber": null
+            }
+          ],
+          "variantId": 42322824
+        },
+        {
+          "ingredientSku": "MET-TB11234060",
+          "quantity": 2.7,
+          "uom": "ft",
+          "notes": "1x30\" 90/90",
+          "cutList": [
+            {
+              "role": "RT1.5x0.75-16",
+              "profile": "RT1.5x0.75-16",
+              "lengthIn": 30,
+              "endA": 90,
+              "endB": 90,
+              "qtyEa": 1,
+              "lengthConvention": "square",
+              "sourceName": "1 BRAVADA club chair.obj",
+              "confidence": "obj_edge",
+              "drawingPartNumber": null
+            }
+          ],
+          "variantId": 42049874
+        },
+        {
+          "ingredientSku": "RM-HRD-2X2-METAL-CAP",
+          "quantity": 4,
+          "uom": "ea",
+          "notes": "4 legs",
+          "cutList": [],
+          "variantId": 41913014
+        },
+        {
+          "ingredientSku": "PWD-BLACK",
+          "quantity": 2.716,
+          "uom": "lb",
+          "notes": "powderPounds(32.3333 tube ft) × 1.05",
+          "cutList": [],
+          "variantId": 42049883
+        }
+      ]
+    },
+    {
+      "role": "cushion",
+      "sku": "ASM-BRV-CLB-CHA-34X34-CUSH",
+      "variantId": null,
+      "productId": null,
+      "productAction": "create",
+      "rows": [
+        {
+          "ingredientSku": "RM-FAB-GENERIC",
+          "quantity": 3.9247,
+          "uom": "yd",
+          "notes": "MTO fabric placeholder — swap FAB-* at order time",
+          "cutList": [],
+          "variantId": 42062750
+        },
+        {
+          "ingredientSku": "RM-RAW-FOAM",
+          "quantity": 33.7167,
+          "uom": "boardft",
+          "notes": "4in seat slab",
+          "cutList": [],
+          "variantId": 23178511
+        }
+      ]
+    },
+    {
+      "role": "finished_good",
+      "sku": "FIN-BRV-CLB-CHA-34X34",
+      "variantId": 42013463,
+      "productId": 17951038,
+      "productAction": "reuse",
+      "rows": [
+        {
+          "ingredientSku": "ASM-BRV-CLB-CHA-34X34-FRAME",
+          "quantity": 1,
+          "uom": "ea",
+          "notes": "FG consumes one welded frame",
+          "cutList": [],
+          "variantId": null
+        },
+        {
+          "ingredientSku": "ASM-BRV-CLB-CHA-34X34-CUSH",
+          "quantity": 1,
+          "uom": "ea",
+          "notes": "FG consumes one cushion set",
+          "cutList": [],
+          "variantId": null
+        }
+      ]
+    }
+  ]
+}

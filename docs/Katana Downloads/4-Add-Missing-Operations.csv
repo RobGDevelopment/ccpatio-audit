@@ -1,0 +1,117 @@
+Product variant code / SKU (required),Product variant name,Product operation name (required),Resource,Type,Cost parameter,Hours,Minutes,Seconds
+SA-BRK-TRA-DOU-CHS-48X72-CUSH,,Fabric Cutting,Fabric Cutting,Process,,0,2,54
+SA-BRK-TRA-DOU-CHS-48X72-CUSH,,Fabric Sewing,Fabric Sewing,Process,,0,13,48
+SA-BRK-TRA-DOU-CHS-48X72-CUSH,,Cushion Stuffing,Cushion Stuffing,Process,,0,4,0
+SA-BRK-TRA-DOU-CHS-48X72-CUSH,,Quality Control,Quality Control,Process,,0,8,0
+SA-BRK-TRA-DOU-CHS-48X72-FRAME,,Cold Saw Fabrication,Metal Cutting,Process,,0,6,54
+SA-BRK-TRA-DOU-CHS-48X72-FRAME,,Fabrication & Welding,FAB POD A,Process,,1,16,18
+SA-BRK-TRA-DOU-CHS-48X72-FRAME,,Sandblasting Setup,Sandblasting,Setup,,0,10,0
+SA-BRK-TRA-DOU-CHS-48X72-FRAME,,Sandblasting,Sandblasting,Process,,0,20,0
+SA-BRK-TRA-DOU-CHS-48X72-FRAME,,Powder Coating Booth,Powder Coating Booth,Process,,0,13,48
+SA-BRK-TRA-DOU-CHS-48X72-FRAME,,Curing Oven,Curing Oven,Process,,0,20,0
+SA-BRK-TRA-SGL-CHS-36X72-CUSH,,Fabric Cutting,Fabric Cutting,Process,,0,2,54
+SA-BRK-TRA-SGL-CHS-36X72-CUSH,,Fabric Sewing,Fabric Sewing,Process,,0,13,48
+SA-BRK-TRA-SGL-CHS-36X72-CUSH,,Cushion Stuffing,Cushion Stuffing,Process,,0,4,0
+SA-BRK-TRA-SGL-CHS-36X72-CUSH,,Quality Control,Quality Control,Process,,0,8,0
+SA-BRK-TRA-SGL-CHS-36X72-FRAME,,Cold Saw Fabrication,Metal Cutting,Process,,0,6,54
+SA-BRK-TRA-SGL-CHS-36X72-FRAME,,Fabrication & Welding,FAB POD A,Process,,1,16,18
+SA-BRK-TRA-SGL-CHS-36X72-FRAME,,Sandblasting Setup,Sandblasting,Setup,,0,10,0
+SA-BRK-TRA-SGL-CHS-36X72-FRAME,,Sandblasting,Sandblasting,Process,,0,20,0
+SA-BRK-TRA-SGL-CHS-36X72-FRAME,,Powder Coating Booth,Powder Coating Booth,Process,,0,13,48
+SA-BRK-TRA-SGL-CHS-36X72-FRAME,,Curing Oven,Curing Oven,Process,,0,20,0
+SA-BRV-CLB-CHA-34X34-FRAME,,Cold Saw Fabrication,Metal Cutting,Process,,0,6,54
+SA-BRV-CLB-CHA-34X34-FRAME,,Fabrication & Welding,FAB POD A,Process,,1,16,18
+SA-BRV-CLB-CHA-34X34-FRAME,,Sandblasting Setup,Sandblasting,Setup,,0,10,0
+SA-BRV-CLB-CHA-34X34-FRAME,,Sandblasting,Sandblasting,Process,,0,20,0
+SA-BRV-CLB-CHA-34X34-FRAME,,Powder Coating Booth,Powder Coating Booth,Process,,0,13,48
+SA-BRV-CLB-CHA-34X34-FRAME,,Curing Oven,Curing Oven,Process,,0,20,0
+SA-BRV-LOV-SOF-60X34-CUSH,,Fabric Cutting,Fabric Cutting,Process,,0,2,54
+SA-BRV-LOV-SOF-60X34-CUSH,,Fabric Sewing,Fabric Sewing,Process,,0,13,48
+SA-BRV-LOV-SOF-60X34-CUSH,,Cushion Stuffing,Cushion Stuffing,Process,,0,4,0
+SA-BRV-LOV-SOF-60X34-CUSH,,Quality Control,Quality Control,Process,,0,8,0
+SA-BRV-LOV-SOF-60X34-FRAME,,Cold Saw Fabrication,Metal Cutting,Process,,0,6,54
+SA-BRV-LOV-SOF-60X34-FRAME,,Fabrication & Welding,FAB POD A,Process,,1,16,18
+SA-BRV-LOV-SOF-60X34-FRAME,,Sandblasting Setup,Sandblasting,Setup,,0,10,0
+SA-BRV-LOV-SOF-60X34-FRAME,,Sandblasting,Sandblasting,Process,,0,20,0
+SA-BRV-LOV-SOF-60X34-FRAME,,Powder Coating Booth,Powder Coating Booth,Process,,0,13,48
+SA-BRV-LOV-SOF-60X34-FRAME,,Curing Oven,Curing Oven,Process,,0,20,0
+SA-BRV-MIN-LOV-48X34-CUSH,,Fabric Cutting,Fabric Cutting,Process,,0,2,54
+SA-BRV-MIN-LOV-48X34-CUSH,,Fabric Sewing,Fabric Sewing,Process,,0,13,48
+SA-BRV-MIN-LOV-48X34-CUSH,,Cushion Stuffing,Cushion Stuffing,Process,,0,4,0
+SA-BRV-MIN-LOV-48X34-CUSH,,Quality Control,Quality Control,Process,,0,8,0
+SA-BRV-MIN-LOV-48X34-FRAME,,Cold Saw Fabrication,Metal Cutting,Process,,0,6,54
+SA-BRV-MIN-LOV-48X34-FRAME,,Fabrication & Welding,FAB POD A,Process,,1,16,18
+SA-BRV-MIN-LOV-48X34-FRAME,,Sandblasting Setup,Sandblasting,Setup,,0,10,0
+SA-BRV-MIN-LOV-48X34-FRAME,,Sandblasting,Sandblasting,Process,,0,20,0
+SA-BRV-MIN-LOV-48X34-FRAME,,Powder Coating Booth,Powder Coating Booth,Process,,0,13,48
+SA-BRV-MIN-LOV-48X34-FRAME,,Curing Oven,Curing Oven,Process,,0,20,0
+SA-BRV-SWV-CHA-34X34-CUSH,,Fabric Cutting,Fabric Cutting,Process,,0,2,54
+SA-BRV-SWV-CHA-34X34-CUSH,,Fabric Sewing,Fabric Sewing,Process,,0,13,48
+SA-BRV-SWV-CHA-34X34-CUSH,,Cushion Stuffing,Cushion Stuffing,Process,,0,4,0
+SA-BRV-SWV-CHA-34X34-CUSH,,Quality Control,Quality Control,Process,,0,8,0
+SA-BRV-SWV-CHA-34X34-FRAME,,Cold Saw Fabrication,Metal Cutting,Process,,0,6,54
+SA-BRV-SWV-CHA-34X34-FRAME,,Fabrication & Welding,FAB POD A,Process,,1,16,18
+SA-BRV-SWV-CHA-34X34-FRAME,,Sandblasting Setup,Sandblasting,Setup,,0,10,0
+SA-BRV-SWV-CHA-34X34-FRAME,,Sandblasting,Sandblasting,Process,,0,20,0
+SA-BRV-SWV-CHA-34X34-FRAME,,Powder Coating Booth,Powder Coating Booth,Process,,0,13,48
+SA-BRV-SWV-CHA-34X34-FRAME,,Curing Oven,Curing Oven,Process,,0,20,0
+SA-OCN-CLB-CHA-34X38-CUSH,,Fabric Cutting,Fabric Cutting,Process,,0,2,54
+SA-OCN-CLB-CHA-34X38-CUSH,,Fabric Sewing,Fabric Sewing,Process,,0,13,48
+SA-OCN-CLB-CHA-34X38-CUSH,,Cushion Stuffing,Cushion Stuffing,Process,,0,4,0
+SA-OCN-CLB-CHA-34X38-CUSH,,Quality Control,Quality Control,Process,,0,8,0
+SA-OCN-CLB-CHA-34X38-FRAME,,Cold Saw Fabrication,Metal Cutting,Process,,0,6,54
+SA-OCN-CLB-CHA-34X38-FRAME,,Fabrication & Welding,FAB POD A,Process,,1,16,18
+SA-OCN-CLB-CHA-34X38-FRAME,,Sandblasting Setup,Sandblasting,Setup,,0,10,0
+SA-OCN-CLB-CHA-34X38-FRAME,,Sandblasting,Sandblasting,Process,,0,20,0
+SA-OCN-CLB-CHA-34X38-FRAME,,Powder Coating Booth,Powder Coating Booth,Process,,0,13,48
+SA-OCN-CLB-CHA-34X38-FRAME,,Curing Oven,Curing Oven,Process,,0,20,0
+SA-OCN-DOU-CHS-58X79-CUSH,,Fabric Cutting,Fabric Cutting,Process,,0,2,54
+SA-OCN-DOU-CHS-58X79-CUSH,,Fabric Sewing,Fabric Sewing,Process,,0,13,48
+SA-OCN-DOU-CHS-58X79-CUSH,,Cushion Stuffing,Cushion Stuffing,Process,,0,4,0
+SA-OCN-DOU-CHS-58X79-CUSH,,Quality Control,Quality Control,Process,,0,8,0
+SA-OCN-DOU-CHS-58X79-FRAME,,Cold Saw Fabrication,Metal Cutting,Process,,0,6,54
+SA-OCN-DOU-CHS-58X79-FRAME,,Fabrication & Welding,FAB POD A,Process,,1,16,18
+SA-OCN-DOU-CHS-58X79-FRAME,,Sandblasting Setup,Sandblasting,Setup,,0,10,0
+SA-OCN-DOU-CHS-58X79-FRAME,,Sandblasting,Sandblasting,Process,,0,20,0
+SA-OCN-DOU-CHS-58X79-FRAME,,Powder Coating Booth,Powder Coating Booth,Process,,0,13,48
+SA-OCN-DOU-CHS-58X79-FRAME,,Curing Oven,Curing Oven,Process,,0,20,0
+SA-OCN-LOV-SOF-60X38-CUSH,,Fabric Cutting,Fabric Cutting,Process,,0,2,54
+SA-OCN-LOV-SOF-60X38-CUSH,,Fabric Sewing,Fabric Sewing,Process,,0,13,48
+SA-OCN-LOV-SOF-60X38-CUSH,,Cushion Stuffing,Cushion Stuffing,Process,,0,4,0
+SA-OCN-LOV-SOF-60X38-CUSH,,Quality Control,Quality Control,Process,,0,8,0
+SA-OCN-LOV-SOF-60X38-FRAME,,Cold Saw Fabrication,Metal Cutting,Process,,0,6,54
+SA-OCN-LOV-SOF-60X38-FRAME,,Fabrication & Welding,FAB POD A,Process,,1,16,18
+SA-OCN-LOV-SOF-60X38-FRAME,,Sandblasting Setup,Sandblasting,Setup,,0,10,0
+SA-OCN-LOV-SOF-60X38-FRAME,,Sandblasting,Sandblasting,Process,,0,20,0
+SA-OCN-LOV-SOF-60X38-FRAME,,Powder Coating Booth,Powder Coating Booth,Process,,0,13,48
+SA-OCN-LOV-SOF-60X38-FRAME,,Curing Oven,Curing Oven,Process,,0,20,0
+SA-OCN-MIN-LOV-60X48-CUSH,,Fabric Cutting,Fabric Cutting,Process,,0,2,54
+SA-OCN-MIN-LOV-60X48-CUSH,,Fabric Sewing,Fabric Sewing,Process,,0,13,48
+SA-OCN-MIN-LOV-60X48-CUSH,,Cushion Stuffing,Cushion Stuffing,Process,,0,4,0
+SA-OCN-MIN-LOV-60X48-CUSH,,Quality Control,Quality Control,Process,,0,8,0
+SA-OCN-MIN-LOV-60X48-FRAME,,Cold Saw Fabrication,Metal Cutting,Process,,0,6,54
+SA-OCN-MIN-LOV-60X48-FRAME,,Fabrication & Welding,FAB POD A,Process,,1,16,18
+SA-OCN-MIN-LOV-60X48-FRAME,,Sandblasting Setup,Sandblasting,Setup,,0,10,0
+SA-OCN-MIN-LOV-60X48-FRAME,,Sandblasting,Sandblasting,Process,,0,20,0
+SA-OCN-MIN-LOV-60X48-FRAME,,Powder Coating Booth,Powder Coating Booth,Process,,0,13,48
+SA-OCN-MIN-LOV-60X48-FRAME,,Curing Oven,Curing Oven,Process,,0,20,0
+SA-OCN-SGL-CHS-36X79-CUSH,,Fabric Cutting,Fabric Cutting,Process,,0,2,54
+SA-OCN-SGL-CHS-36X79-CUSH,,Fabric Sewing,Fabric Sewing,Process,,0,13,48
+SA-OCN-SGL-CHS-36X79-CUSH,,Cushion Stuffing,Cushion Stuffing,Process,,0,4,0
+SA-OCN-SGL-CHS-36X79-CUSH,,Quality Control,Quality Control,Process,,0,8,0
+SA-OCN-SGL-CHS-36X79-FRAME,,Cold Saw Fabrication,Metal Cutting,Process,,0,6,54
+SA-OCN-SGL-CHS-36X79-FRAME,,Fabrication & Welding,FAB POD A,Process,,1,16,18
+SA-OCN-SGL-CHS-36X79-FRAME,,Sandblasting Setup,Sandblasting,Setup,,0,10,0
+SA-OCN-SGL-CHS-36X79-FRAME,,Sandblasting,Sandblasting,Process,,0,20,0
+SA-OCN-SGL-CHS-36X79-FRAME,,Powder Coating Booth,Powder Coating Booth,Process,,0,13,48
+SA-OCN-SGL-CHS-36X79-FRAME,,Curing Oven,Curing Oven,Process,,0,20,0
+SA-OCN-SWV-CHA-34X34-CUSH,,Fabric Cutting,Fabric Cutting,Process,,0,2,54
+SA-OCN-SWV-CHA-34X34-CUSH,,Fabric Sewing,Fabric Sewing,Process,,0,13,48
+SA-OCN-SWV-CHA-34X34-CUSH,,Cushion Stuffing,Cushion Stuffing,Process,,0,4,0
+SA-OCN-SWV-CHA-34X34-CUSH,,Quality Control,Quality Control,Process,,0,8,0
+SA-OCN-SWV-CHA-34X34-FRAME,,Cold Saw Fabrication,Metal Cutting,Process,,0,6,54
+SA-OCN-SWV-CHA-34X34-FRAME,,Fabrication & Welding,FAB POD A,Process,,1,16,18
+SA-OCN-SWV-CHA-34X34-FRAME,,Sandblasting Setup,Sandblasting,Setup,,0,10,0
+SA-OCN-SWV-CHA-34X34-FRAME,,Sandblasting,Sandblasting,Process,,0,20,0
+SA-OCN-SWV-CHA-34X34-FRAME,,Powder Coating Booth,Powder Coating Booth,Process,,0,13,48
+SA-OCN-SWV-CHA-34X34-FRAME,,Curing Oven,Curing Oven,Process,,0,20,0

@@ -115,7 +115,7 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
     // --------------------------------------------------------------------------
     // PHASE 1 + 2 — God Mode session already injected; load the workbench.
     // --------------------------------------------------------------------------
-    const response = await page.goto("/admin/factory-bom");
+    const response = await page.goto(`/admin/factory-bom?sku=${E2E_FG_SKU}`);
     expect(response?.status()).toBeLessThan(400);
     await expect(page).toHaveURL(/\/admin\/factory-bom/);
     await expect(page.getByTestId("factory-bom-title")).toHaveText(/Factory BOM Builder/i);

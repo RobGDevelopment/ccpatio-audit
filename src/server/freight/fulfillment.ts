@@ -17,6 +17,7 @@ import type {
   Priority1QuoteResult,
 } from "@/types/freight";
 import type { RateQuote } from "@/types/priority1-ltl.generated";
+import { getFedExFreightQuote } from "@/lib/freight/fedex-freight";
 
 const RESIDENTIAL_DELIVERY: Priority1AccessorialCode[] = [
   "RESDEL",
@@ -63,31 +64,52 @@ async function priority1Option(
   accessorials: readonly Priority1AccessorialCode[],
   markupPct: number,
 ): Promise<FulfillmentOption> {
-  const quoted: Priority1QuoteResult = await getPriority1Quote(
-    skid,
-    CC_PATIO_PICKUP_ZIP,
-    destZip,
-    accessorials,
-  );
-  const carriers = (quoted.response.rateQuotes ?? [])
-    .map((quote) => carrierQuote(quote, markupPct))
-    .sort((left, right) => left.customerTotalUsd - right.customerTotalUsd);
+  const weightLb = shipmentWeightLb(skid);
+  const freightClass = skid.items[0]?.freightClass || "150";
+
+  const [p1Result, fedexResult] = await Promise.allSettled([
+    getPriority1Quote(skid, CC_PATIO_PICKUP_ZIP, destZip, accessorials),
+    getFedExFreightQuote(CC_PATIO_PICKUP_ZIP, destZip, weightLb, freightClass),
+  ]);
+
+  const carriers: FulfillmentCarrierQuote[] = [];
+
+  if (p1Result.status === "fulfilled") {
+    const quoted = p1Result.value;
+    const p1Carriers = (quoted.response.rateQuotes ?? [])
+      .map((quote) => carrierQuote(quote, markupPct));
+    carriers.push(...p1Carriers);
+  }
+
+  if (fedexResult.status === "fulfilled") {
+    const quote = fedexResult.value;
+    carriers.push({
+      id: Date.now(),
+      carrierName: quote.carrier,
+      carrierCode: quote.carrier.toUpperCase().replace(/\s+/g, "_"),
+      transitDays: quote.days,
+      serviceLevel: "STANDARD",
+      brokerTotalUsd: money(quote.rate),
+      customerTotalUsd: markedUp(quote.rate, markupPct),
+    });
+  }
+
+  carriers.sort((left, right) => left.customerTotalUsd - right.customerTotalUsd);
 
   if (carriers.length === 0) {
-    const reasons = (quoted.response.invalidRateQuotes ?? [])
-      .flatMap((quote) => quote.errorMessages ?? [])
-      .map((message) => message.text)
-      .filter((text): text is string => Boolean(text));
+    const reasons = [];
+    if (p1Result.status === "rejected") reasons.push(String(p1Result.reason));
+    if (fedexResult.status === "rejected") reasons.push(String(fedexResult.reason));
     const detail = reasons.length > 0 ? ` ${reasons.join(" ")}` : "";
-    throw new FreightRatingError(`Priority1 returned no rate quotes.${detail}`);
+    throw new FreightRatingError(`No carriers returned rate quotes.${detail}`);
   }
 
   const lowest = carriers[0];
   return {
-    method: "PRIORITY1_LTL",
+    method: "PRIORITY1_LTL", // Keeping existing method string to avoid breaking downstream
     priceUsd: lowest.customerTotalUsd,
     currency: "USD",
-    summary: `Priority1 LTL from ${lowest.carrierName} (${lowest.carrierCode}), broker $${lowest.brokerTotalUsd.toFixed(2)} plus ${markupPct}% handling.`,
+    summary: `LTL from ${lowest.carrierName} (${lowest.carrierCode}), broker $${lowest.brokerTotalUsd.toFixed(2)} plus ${markupPct}% handling.`,
     carriers,
   };
 }
@@ -157,3 +179,45 @@ export async function calculateFulfillmentOptions(
     options,
   };
 }
+
+/**
+ * Endpoint helper for Master Data Hub: fetches LTL quotes concurrently
+ * and returns a structured array of quote objects.
+ */
+export async function getMultiCarrierQuotes(
+  destZip: string,
+  skid: FreightSkid,
+  accessorials: readonly Priority1AccessorialCode[] = RESIDENTIAL_DELIVERY,
+) {
+  const weightLb = shipmentWeightLb(skid);
+  const freightClass = skid.items[0]?.freightClass || "150";
+
+  const [p1Result, fedexResult] = await Promise.allSettled([
+    getPriority1Quote(skid, CC_PATIO_PICKUP_ZIP, destZip, accessorials),
+    getFedExFreightQuote(CC_PATIO_PICKUP_ZIP, destZip, weightLb, freightClass),
+  ]);
+
+  const quotes = [];
+
+  if (p1Result.status === "fulfilled") {
+    const p1Rates = p1Result.value.response.rateQuotes ?? [];
+    for (const q of p1Rates) {
+      quotes.push({
+        carrier: q.carrierName || "Priority1",
+        rate: q.rateQuoteDetail?.total || 0,
+        days: q.transitDays || null,
+      });
+    }
+  }
+
+  if (fedexResult.status === "fulfilled") {
+    quotes.push({
+      carrier: fedexResult.value.carrier,
+      rate: fedexResult.value.rate,
+      days: fedexResult.value.days,
+    });
+  }
+
+  return quotes;
+}
+
