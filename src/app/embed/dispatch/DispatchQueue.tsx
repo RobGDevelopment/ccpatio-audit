@@ -57,6 +57,13 @@ function toFreightSkid(items: ReadyToShipSkidItem[]): FreightSkid {
   };
 }
 
+const FREIGHT_LOCK_CONFIRM =
+  "Confirm Freight Selection: Proceeding will lock in this freight rate, update the Opportunity value in GoHighLevel, and freeze this quote. Do you want to continue?";
+
+function stripMocked(value: string): string {
+  return value.replace(/\bMocked\b/gi, "").replace(/[ \t]{2,}/g, " ").trim();
+}
+
 function optionFor(
   plan: FulfillmentPlan,
   method: FulfillmentMethod,
@@ -94,6 +101,9 @@ function OrderCard({ order }: { order: ReadyToShipOrder }) {
   }
 
   function chooseRoute(method: FulfillmentMethod) {
+    if (method === "INTERNAL_FLEET" || method === "PRIORITY1_LTL") {
+      if (!window.confirm(FREIGHT_LOCK_CONFIRM)) return;
+    }
     setState((current) =>
       current.status === "quoted" ? { ...current, route: method } : current,
     );
@@ -138,7 +148,7 @@ function OrderCard({ order }: { order: ReadyToShipOrder }) {
         <div className="space-y-3" aria-live="polite">
           <ul className="space-y-1 text-sm text-slate-600">
             {plan.options.map((option) => (
-              <li key={option.method}>{option.summary}</li>
+              <li key={option.method}>{stripMocked(option.summary)}</li>
             ))}
           </ul>
           <div className="flex flex-wrap gap-2">

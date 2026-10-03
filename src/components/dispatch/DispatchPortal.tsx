@@ -60,8 +60,15 @@ function optionFor(
   return plan.options.find((option) => option.method === method);
 }
 
+const FREIGHT_LOCK_CONFIRM =
+  "Confirm Freight Selection: Proceeding will lock in this freight rate, update the Opportunity value in GoHighLevel, and freeze this quote. Do you want to continue?";
+
+function stripMocked(value: string): string {
+  return value.replace(/\bMocked\b/gi, "").replace(/[ \t]{2,}/g, " ").trim();
+}
+
 function carrierLabel(option: FulfillmentOption): string {
-  const name = option.carriers?.[0]?.carrierName?.trim();
+  const name = stripMocked(option.carriers?.[0]?.carrierName ?? "");
   return name || "Shadow Pricing Matrix";
 }
 
@@ -297,6 +304,9 @@ export function DispatchPortal() {
   }
 
   function chooseRoute(method: FulfillmentMethod) {
+    if (method === "INTERNAL_FLEET" || method === "PRIORITY1_LTL") {
+      if (!window.confirm(FREIGHT_LOCK_CONFIRM)) return;
+    }
     setQuote((current) =>
       current.status === "quoted" ? { ...current, route: method } : current,
     );
@@ -557,7 +567,7 @@ export function DispatchPortal() {
             </div>
             <ul className="space-y-1 text-sm text-slate-600">
               {plan.options.map((option) => (
-                <li key={option.method}>{option.summary}</li>
+                <li key={option.method}>{stripMocked(option.summary)}</li>
               ))}
             </ul>
 
