@@ -2,6 +2,9 @@
  * Family weldment templates — Bravada club chair North Star.
  * Collapses CUT-* drawing identities into bulk RM feet + chop-saw notes.
  * Shared ASM-BRV-ARM is collection-scoped (qty 2 on FG, children qty 1).
+ *
+ * Drawing size in this file is cut-list geometry. Freight rating and promise
+ * dates read packaged dims, NMFC class, and lead time from logistics_profiles.
  */
 import {
   DEFAULT_TUBE_SCRAP_FACTOR,

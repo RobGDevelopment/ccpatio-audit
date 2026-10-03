@@ -73,6 +73,8 @@ async function run() {
           process.env.KATANA_API_KEY ||
           process.env.KATANA_PERSONAL_ACCESS_TOKEN ||
           "e2e-mirror-token",
+        KATANA_WEBHOOK_SECRET:
+          process.env.KATANA_WEBHOOK_SECRET || "qa-katana-webhook-secret",
       },
     });
     child.unref();

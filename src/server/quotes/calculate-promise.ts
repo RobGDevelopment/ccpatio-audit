@@ -107,7 +107,8 @@ async function writePromise(
 /**
  * Estimate a delivery date for a draft. Reads zone capacity and does not book it.
  * Stock lines are ready on `executed_by` when the hold is active. Configured lines
- * add `lead_time_days`. Transit comes from the freight snapshot or fleet settings.
+ * add `logistics_profiles.lead_time_days`. Weight comes from that same profile.
+ * Transit comes from the freight snapshot or fleet settings.
  */
 export async function calculatePromiseById(
   quoteId: string,
@@ -186,7 +187,7 @@ export async function calculatePromiseById(
   for (const line of lines) {
     const profile = byVariant.get(line.katana_variant_id);
     const qty = Number(line.qty);
-    const weight = Number(profile?.weight_lb ?? line.weight_lb);
+    const weight = Number(profile?.weight_lb);
     if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(weight) || weight <= 0) {
       return fail(`Line ${line.sku} is missing weight.`);
     }

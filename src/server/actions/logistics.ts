@@ -6,6 +6,7 @@ import {
   indexLiveKatanaVariants,
   type KatanaVariantRow,
 } from "@/lib/hub-katana-sync";
+import { planKatanaLogisticsInserts } from "@/lib/logistics-katana-sync";
 import { KatanaApiError, katanaFetch } from "@/lib/katana";
 import {
   LTL_FREIGHT_CLASSES,
@@ -151,6 +152,9 @@ export type QuotingProduct = {
   collection: string;
   weightLb: number;
   ltlClass: string;
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number | null;
 };
 
 const QUOTEABLE_CLASSES = new Set<string>(LTL_FREIGHT_CLASSES);
@@ -212,16 +216,16 @@ function quotingName(sku: string): string {
   return human || sku;
 }
 
-function quoteableWeight(raw: string | null): number | null {
+function positiveMeasure(raw: string | null): number | null {
   if (!raw) return null;
-  const weight = Number(raw);
-  if (!Number.isFinite(weight) || weight <= 0) return null;
-  return weight;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return value;
 }
 
 /**
- * Products the shipping quote form can lock in. Incomplete profiles
- * (missing weight or a known freight class) are omitted.
+ * Products the shipping quote form can lock in. A profile needs a weight,
+ * a known NMFC class, and packaged length and width on logistics_profiles.
  */
 export async function getQuotingProducts(): Promise<QuotingProduct[]> {
   const session = await getPimSession();
@@ -235,27 +239,44 @@ export async function getQuotingProducts(): Promise<QuotingProduct[]> {
       variantSku: logistics_profiles.variant_sku,
       weightLb: logistics_profiles.weight_lb,
       ltlClass: logistics_profiles.ltl_class,
+      lengthIn: logistics_profiles.length_in,
+      widthIn: logistics_profiles.width_in,
+      heightIn: logistics_profiles.height_in,
     })
     .from(logistics_profiles)
     .where(
       and(
         isNotNull(logistics_profiles.weight_lb),
         isNotNull(logistics_profiles.ltl_class),
+        isNotNull(logistics_profiles.length_in),
+        isNotNull(logistics_profiles.width_in),
       ),
     )
     .orderBy(asc(logistics_profiles.variant_sku));
 
   const products: QuotingProduct[] = [];
   for (const row of rows) {
-    const weightLb = quoteableWeight(row.weightLb);
+    const weightLb = positiveMeasure(row.weightLb);
+    const lengthIn = positiveMeasure(row.lengthIn);
+    const widthIn = positiveMeasure(row.widthIn);
     const ltlClass = row.ltlClass?.trim() ?? "";
-    if (weightLb == null || !QUOTEABLE_CLASSES.has(ltlClass)) continue;
+    if (
+      weightLb == null ||
+      lengthIn == null ||
+      widthIn == null ||
+      !QUOTEABLE_CLASSES.has(ltlClass)
+    ) {
+      continue;
+    }
     products.push({
       variantSku: row.variantSku,
       name: quotingName(row.variantSku),
       collection: collectionFromSku(row.variantSku),
       weightLb,
       ltlClass,
+      lengthIn,
+      widthIn,
+      heightIn: positiveMeasure(row.heightIn),
     });
   }
   products.sort(
@@ -289,10 +310,8 @@ export async function upsertLogisticsProfile(
   const db = getDb();
   try {
     const [row] = await db
-      .insert(logistics_profiles)
-      .values({
-        katana_variant_id: normalized.katanaVariantId,
-        variant_sku: normalized.variantSku,
+      .update(logistics_profiles)
+      .set({
         length_in: normalized.lengthIn,
         width_in: normalized.widthIn,
         height_in: normalized.heightIn,
@@ -301,26 +320,21 @@ export async function upsertLogisticsProfile(
         asset_3d_url: normalized.asset3dUrl,
         is_modular_component: normalized.isModularComponent,
         lead_time_days: normalized.leadTimeDays,
+        updated_at: new Date(),
       })
-      .onConflictDoUpdate({
-        target: logistics_profiles.variant_sku,
-        set: {
-          katana_variant_id: normalized.katanaVariantId,
-          length_in: normalized.lengthIn,
-          width_in: normalized.widthIn,
-          height_in: normalized.heightIn,
-          weight_lb: normalized.weightLb,
-          ltl_class: normalized.ltlClass,
-          asset_3d_url: normalized.asset3dUrl,
-          is_modular_component: normalized.isModularComponent,
-          lead_time_days: normalized.leadTimeDays,
-          updated_at: new Date(),
-        },
-      })
+      .where(
+        and(
+          eq(logistics_profiles.variant_sku, normalized.variantSku),
+          eq(logistics_profiles.katana_variant_id, normalized.katanaVariantId),
+        ),
+      )
       .returning();
 
     if (!row) {
-      return { ok: false, error: "Logistics profile did not save" };
+      return {
+        ok: false,
+        error: "Sync this SKU from Katana before saving logistics data.",
+      };
     }
 
     revalidatePath(LOGISTICS_PATH);
@@ -332,6 +346,11 @@ export async function upsertLogisticsProfile(
   }
 }
 
+/**
+ * Pull live Katana variant identities into empty logistics rows.
+ * Existing profiles are left untouched, including dimensions, weight,
+ * NMFC class, and lead time.
+ */
 export async function syncKatanaLogisticsProfiles(): Promise<LogisticsSyncResult> {
   const operator = await requireOperator();
   if (!operator) {
@@ -361,35 +380,21 @@ export async function syncKatanaLogisticsProfiles(): Promise<LogisticsSyncResult
     })
     .from(logistics_profiles);
 
-  const skuSet = new Set(existing.map((row) => row.variantSku));
-  const idSet = new Set(existing.map((row) => row.katanaVariantId));
-  const conflicts: string[] = [];
-  const pending: Array<{
-    katana_variant_id: number;
-    variant_sku: string;
-  }> = [];
-
-  for (const live of indexed.bySku.values()) {
-    if (skuSet.has(live.sku)) continue;
-    if (idSet.has(live.variantId)) {
-      conflicts.push(live.sku);
-      continue;
-    }
-    pending.push({
-      katana_variant_id: live.variantId,
-      variant_sku: live.sku,
-    });
-    skuSet.add(live.sku);
-    idSet.add(live.variantId);
-  }
+  const plan = planKatanaLogisticsInserts(
+    [...indexed.bySku.values()].map((live) => ({
+      sku: live.sku,
+      variantId: live.variantId,
+    })),
+    existing,
+  );
 
   let created = 0;
-  for (let offset = 0; offset < pending.length; offset += INSERT_CHUNK) {
-    const chunk = pending.slice(offset, offset + INSERT_CHUNK);
+  for (let offset = 0; offset < plan.pending.length; offset += INSERT_CHUNK) {
+    const chunk = plan.pending.slice(offset, offset + INSERT_CHUNK);
     const inserted = await db
       .insert(logistics_profiles)
       .values(chunk)
-      .onConflictDoNothing({ target: logistics_profiles.variant_sku })
+      .onConflictDoNothing()
       .returning({ sku: logistics_profiles.variant_sku });
     created += inserted.length;
   }
@@ -399,8 +404,8 @@ export async function syncKatanaLogisticsProfiles(): Promise<LogisticsSyncResult
     ok: true,
     fetched: indexed.bySku.size,
     created,
-    skipped: indexed.bySku.size - created - conflicts.length,
-    conflicts,
+    skipped: indexed.bySku.size - created - plan.conflicts.length,
+    conflicts: plan.conflicts,
   };
 }
 

@@ -11,10 +11,8 @@ import type {
   FulfillmentPlan,
 } from "@/types/freight";
 
-/** Footprint used until Katana line dimensions replace this mock skid. */
-const MOCK_SKID_LENGTH_IN = 90;
-const MOCK_SKID_WIDTH_IN = 40;
-const MOCK_SKID_HEIGHT_IN = 40;
+/** Packed height for one mixed skid. Product heights are not stacked. */
+const PACKED_HEIGHT_IN = 40;
 
 type CardState =
   | { status: "idle" }
@@ -29,21 +27,33 @@ function money(amount: number): string {
 }
 
 function toFreightSkid(items: ReadyToShipSkidItem[]): FreightSkid {
-  const count = items.length;
-  const height =
-    count <= 1
-      ? MOCK_SKID_HEIGHT_IN
-      : Math.round((MOCK_SKID_HEIGHT_IN / count) * 100) / 100;
+  let length = 0;
+  let width = 0;
+  let weight = 0;
+  let best = items[0]?.freightClass ?? "";
+  let bestValue = Number(best);
+  for (const item of items) {
+    length = Math.max(length, item.lengthIn);
+    width = Math.max(width, item.widthIn);
+    weight += item.weightLb;
+    const value = Number(item.freightClass);
+    if (value > bestValue) {
+      bestValue = value;
+      best = item.freightClass;
+    }
+  }
   return {
-    items: items.map((item) => ({
-      freightClass: item.freightClass,
-      weight: item.weightLb,
-      length: MOCK_SKID_LENGTH_IN,
-      width: MOCK_SKID_WIDTH_IN,
-      height,
-      packagingType: "Pallet",
-      isStackable: true,
-    })),
+    items: [
+      {
+        freightClass: best,
+        weight,
+        length,
+        width,
+        height: PACKED_HEIGHT_IN,
+        packagingType: "Pallet",
+        isStackable: true,
+      },
+    ],
   };
 }
 

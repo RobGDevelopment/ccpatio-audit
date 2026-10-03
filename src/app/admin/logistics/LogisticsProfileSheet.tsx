@@ -125,7 +125,9 @@ export function LogisticsProfileSheet({
             {row.variantSku}
           </h2>
           <p className="mt-1 text-xs text-zinc-500">
-            Katana variant {row.katanaVariantId}
+            Katana variant {row.katanaVariantId}. SKU and variant id stay with
+            Katana. Saving writes length, width, height, weight, NMFC class, and
+            lead time on this profile.
           </p>
         </header>
 
@@ -140,21 +142,25 @@ export function LogisticsProfileSheet({
             <div className="grid grid-cols-2 gap-3">
               <Field
                 label="Length (in)"
+                name="length"
                 value={draft.lengthIn}
                 onChange={(lengthIn) => setDraft({ ...draft, lengthIn })}
               />
               <Field
                 label="Width (in)"
+                name="width"
                 value={draft.widthIn}
                 onChange={(widthIn) => setDraft({ ...draft, widthIn })}
               />
               <Field
                 label="Height (in)"
+                name="height"
                 value={draft.heightIn}
                 onChange={(heightIn) => setDraft({ ...draft, heightIn })}
               />
               <Field
                 label="Weight (lb)"
+                name="weight"
                 value={draft.weightLb}
                 onChange={(weightLb) => setDraft({ ...draft, weightLb })}
               />
@@ -163,6 +169,8 @@ export function LogisticsProfileSheet({
             <label className="block text-xs text-zinc-400">
               Lead time (days)
               <input
+                name="lead_time_days"
+                data-testid="logistics-lead-time"
                 value={draft.leadTimeDays}
                 onChange={(event) =>
                   setDraft({ ...draft, leadTimeDays: event.target.value })
@@ -173,8 +181,10 @@ export function LogisticsProfileSheet({
             </label>
 
             <label className="block text-xs text-zinc-400">
-              LTL class
+              NMFC class
               <select
+                name="nmfc_class"
+                data-testid="logistics-nmfc-class"
                 value={draft.ltlClass}
                 onChange={(event) =>
                   setDraft({ ...draft, ltlClass: event.target.value })
@@ -249,10 +259,12 @@ export function LogisticsProfileSheet({
 
 function Field({
   label,
+  name,
   value,
   onChange,
 }: {
   label: string;
+  name: string;
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -260,6 +272,8 @@ function Field({
     <label className="block text-xs text-zinc-400">
       {label}
       <input
+        name={name}
+        data-testid={`logistics-${name}`}
         type="text"
         inputMode="decimal"
         value={value}

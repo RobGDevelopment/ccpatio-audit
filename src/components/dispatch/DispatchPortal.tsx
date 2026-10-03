@@ -9,22 +9,17 @@ import {
   searchGhlOpportunities,
   type GhlDispatchOpportunity,
 } from "@/server/actions/dispatch";
-import { calculateFulfillmentOptions } from "@/server/actions/freight";
+import { rateProductsFromLogisticsProfiles } from "@/server/actions/freight";
 import {
   getQuotingProducts,
   type QuotingProduct,
 } from "@/server/actions/logistics";
 import type {
-  FreightSkid,
   FulfillmentMethod,
   FulfillmentOption,
   FulfillmentPlan,
 } from "@/types/freight";
 
-/** One physical pallet until Katana line dimensions replace this footprint. */
-const MOCK_SKID_LENGTH_IN = 90;
-const MOCK_SKID_WIDTH_IN = 40;
-const MOCK_SKID_HEIGHT_IN = 40;
 const PRODUCT_MATCH_LIMIT = 40;
 
 const floatCard = `${card} relative overflow-hidden border border-slate-100`;
@@ -37,6 +32,8 @@ type ProductDraft = {
   name: string;
   weightLb: string;
   freightClass: string;
+  lengthIn: number;
+  widthIn: number;
 };
 
 type QuoteState =
@@ -68,13 +65,20 @@ function carrierLabel(option: FulfillmentOption): string {
   return name || "Shadow Pricing Matrix";
 }
 
-function specLabel(weightLb: string, freightClass: string): string {
+function specLabel(
+  weightLb: string,
+  freightClass: string,
+  lengthIn?: number,
+  widthIn?: number,
+): string {
   const weight = Number(weightLb);
   const lbs = Number.isFinite(weight)
     ? `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(weight)} lbs`
     : "";
   const freight = freightClass ? `Class ${freightClass}` : "";
-  return [lbs, freight].filter(Boolean).join(" • ");
+  const footprint =
+    lengthIn != null && widthIn != null ? `${lengthIn} × ${widthIn} in` : "";
+  return [lbs, freight, footprint].filter(Boolean).join(" • ");
 }
 
 function matchesProduct(product: QuotingProduct, needle: string): boolean {
@@ -89,29 +93,6 @@ function matchesProduct(product: QuotingProduct, needle: string): boolean {
 
 function collectionSlug(collection: string): string {
   return collection.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-}
-
-/**
- * Products share one pallet. Packed height stays inside the 36–45 in band
- * the freight rater requires, matching the ready-to-ship queue.
- */
-function toFreightSkid(rows: ProductDraft[]): FreightSkid {
-  const count = rows.length;
-  const height =
-    count <= 1
-      ? MOCK_SKID_HEIGHT_IN
-      : Math.round((MOCK_SKID_HEIGHT_IN / count) * 100) / 100;
-  return {
-    items: rows.map((row) => ({
-      freightClass: row.freightClass,
-      weight: Number(row.weightLb),
-      length: MOCK_SKID_LENGTH_IN,
-      width: MOCK_SKID_WIDTH_IN,
-      height,
-      packagingType: "Pallet",
-      isStackable: true,
-    })),
-  };
 }
 
 function quoteIssue(destZip: string, rows: ProductDraft[]): string | null {
@@ -275,6 +256,8 @@ export function DispatchPortal() {
         name: product.name,
         weightLb: String(product.weightLb),
         freightClass: product.ltlClass,
+        lengthIn: product.lengthIn,
+        widthIn: product.widthIn,
       },
     ]);
     setCollection(null);
@@ -294,12 +277,15 @@ export function DispatchPortal() {
       return;
     }
     const zip = destZip.trim();
-    const skid = toFreightSkid(lines);
     setQuote({ status: "idle" });
     startTransition(async () => {
       try {
         const miles = await lookupDockMiles(zip);
-        const plan = await calculateFulfillmentOptions(zip, miles, skid);
+        const plan = await rateProductsFromLogisticsProfiles({
+          destZip: zip,
+          distanceMiles: miles,
+          variantSkus: lines.map((row) => row.variantSku),
+        });
         setQuote({ status: "quoted", plan, miles, route: null });
       } catch (error) {
         setQuote({
@@ -640,7 +626,7 @@ function CommittedProduct({
   index: number;
   onRemove: () => void;
 }) {
-  const spec = specLabel(row.weightLb, row.freightClass);
+  const spec = specLabel(row.weightLb, row.freightClass, row.lengthIn, row.widthIn);
   const showSku = row.name.trim().toUpperCase() !== row.variantSku.trim().toUpperCase();
 
   return (
@@ -743,7 +729,12 @@ function ProductPicker({
                 <span className="text-xs text-slate-500">
                   {product.variantSku}
                   {" · "}
-                  {specLabel(String(product.weightLb), product.ltlClass)}
+                  {specLabel(
+                    String(product.weightLb),
+                    product.ltlClass,
+                    product.lengthIn,
+                    product.widthIn,
+                  )}
                 </span>
               </button>
             </li>

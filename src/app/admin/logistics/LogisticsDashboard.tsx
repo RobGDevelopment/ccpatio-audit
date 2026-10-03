@@ -22,9 +22,20 @@ type Props = {
   operatorEmail: string | null;
 };
 
+function positive(value: string | null): boolean {
+  if (!value) return false;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0;
+}
+
 function isReady(row: LogisticsProfileRow): boolean {
-  return Boolean(
-    row.lengthIn && row.widthIn && row.heightIn && row.weightLb && row.ltlClass,
+  return (
+    positive(row.lengthIn) &&
+    positive(row.widthIn) &&
+    positive(row.heightIn) &&
+    positive(row.weightLb) &&
+    Boolean(row.ltlClass) &&
+    row.leadTimeDays != null
   );
 }
 
@@ -109,9 +120,10 @@ export function LogisticsDashboard({ rows, settings, operatorEmail }: Props) {
               Logistics &amp; Freight
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
-              Packaged dimensions, NMFC class, and PrimeView 3D assets for Katana
-              variants. WooCommerce and the configurator read this headless CPQ
-              layer instead of calculating LTL freight themselves.
+              Katana owns the variant list. This catalog owns packaged length,
+              width, height, weight, NMFC class, and lead time. Click a SKU to
+              edit those fields. Sync adds missing SKUs and does not replace
+              measurements already saved here.
             </p>
             <p className="mt-3 flex flex-wrap items-center gap-4 text-xs">
               <Link
@@ -202,14 +214,15 @@ export function LogisticsDashboard({ rows, settings, operatorEmail }: Props) {
 
       <div className="overflow-hidden rounded-lg border border-zinc-800">
         <div className="max-h-[min(75vh,62rem)] overflow-auto">
-          <table className="w-full min-w-[56rem] border-collapse text-left text-sm">
+          <table className="w-full min-w-[64rem] border-collapse text-left text-sm">
             <thead className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950">
               <tr className="text-[10px] uppercase tracking-wider text-zinc-500">
                 <th className="px-3 py-3 font-medium">SKU</th>
                 <th className="px-3 py-3 font-medium">Variant</th>
                 <th className="px-3 py-3 font-medium">L × W × H (in)</th>
                 <th className="px-3 py-3 font-medium">Weight</th>
-                <th className="px-3 py-3 font-medium">LTL</th>
+                <th className="px-3 py-3 font-medium">NMFC</th>
+                <th className="px-3 py-3 font-medium">Lead time</th>
                 <th className="px-3 py-3 font-medium">3D asset</th>
                 <th className="px-3 py-3 font-medium">Modular</th>
                 <th className="px-3 py-3 font-medium">Status</th>
@@ -218,7 +231,7 @@ export function LogisticsDashboard({ rows, settings, operatorEmail }: Props) {
             <tbody className="divide-y divide-zinc-800">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-zinc-500">
+                  <td colSpan={9} className="px-4 py-12 text-center text-zinc-500">
                     {localRows.length === 0
                       ? "No logistics profiles yet. Sync Katana variants to create placeholders."
                       : "No profiles match this filter."}
@@ -256,6 +269,9 @@ export function LogisticsDashboard({ rows, settings, operatorEmail }: Props) {
                       </td>
                       <td className="px-3 py-2.5 font-mono text-zinc-300">
                         {row.ltlClass ?? "—"}
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums text-zinc-300">
+                        {row.leadTimeDays == null ? "—" : `${row.leadTimeDays} d`}
                       </td>
                       <td className="max-w-[14rem] truncate px-3 py-2.5 font-mono text-[11px] text-zinc-500">
                         {row.asset3dUrl ?? "—"}

@@ -4,13 +4,19 @@ import { getPimSession } from "@/lib/pim-audit";
 import { lookupDockDistance } from "@/server/freight/distance";
 import { asGhlRecord, ghlGet, readGhlConfig } from "@/server/ghl/private-api";
 
-/** Weight and NMFC class for one product on a shared skid. */
+/** One line on a sample sales order. Catalog products are not rated from this list. */
 export type ReadyToShipSkidItem = {
   weightLb: number;
   freightClass: string;
+  lengthIn: number;
+  widthIn: number;
 };
 
-/** Sales order waiting on a freight decision. Katana will replace this mock. */
+/**
+ * Sample sales orders for the embed queue. Katana sales orders will replace
+ * this list. Each line already carries its own footprint. Catalog quotes use
+ * logistics_profiles instead.
+ */
 export type ReadyToShipOrder = {
   salesOrderNumber: string;
   customerName: string;
@@ -25,21 +31,21 @@ const READY_TO_SHIP_QUEUE: ReadyToShipOrder[] = [
     customerName: "John Doe",
     destZip: "90210",
     distanceMiles: 400,
-    skidItems: [{ weightLb: 150, freightClass: "175" }],
+    skidItems: [{ weightLb: 150, freightClass: "175", lengthIn: 72, widthIn: 34 }],
   },
   {
     salesOrderNumber: "SO-1002",
     customerName: "Jane Smith",
     destZip: "60606",
     distanceMiles: 1400,
-    skidItems: [{ weightLb: 200, freightClass: "175" }],
+    skidItems: [{ weightLb: 200, freightClass: "175", lengthIn: 84, widthIn: 36 }],
   },
   {
     salesOrderNumber: "SO-1003",
     customerName: "Bob Vance",
     destZip: "85255",
     distanceMiles: 15,
-    skidItems: [{ weightLb: 100, freightClass: "175" }],
+    skidItems: [{ weightLb: 100, freightClass: "175", lengthIn: 34, widthIn: 34 }],
   },
 ];
 
