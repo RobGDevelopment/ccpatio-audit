@@ -63,6 +63,19 @@ function isGhlFrameablePath(pathname: string): boolean {
   return isEmbedPath(pathname) || pathname === STOCK_CHECKER_PATH || isLogisticsPath(pathname);
 }
 
+/** Login redirect target. Only same-origin paths can inherit the embed allowlist. */
+function frameableLoginTarget(request: NextRequest): boolean {
+  const next = request.nextUrl.searchParams.get("next")?.trim() ?? "";
+  if (!next.startsWith("/") || next.startsWith("//") || next.includes("\\") || next.includes("//")) {
+    return false;
+  }
+  try {
+    return isGhlFrameablePath(new URL(next, request.nextUrl.origin).pathname);
+  } catch {
+    return false;
+  }
+}
+
 function isUnframeablePath(pathname: string): boolean {
   if (isLogisticsPath(pathname)) return false;
   return pathname === "/" || pathname === "/admin" || pathname.startsWith("/admin/");
@@ -80,9 +93,16 @@ function requiresSuperAdmin(pathname: string): boolean {
   );
 }
 
-function applyFramePolicy(response: NextResponse, pathname: string): NextResponse {
-  if (isGhlFrameablePath(pathname)) {
+function applyFramePolicy(
+  response: NextResponse,
+  pathname: string,
+  request: NextRequest,
+): NextResponse {
+  // GHL follows the unauthenticated redirect onto `/?next=/admin/logistics`.
+  // That login document must use the embed allowlist or the iframe refuses to connect.
+  if (isGhlFrameablePath(pathname) || (pathname === "/" && frameableLoginTarget(request))) {
     response.headers.set("Content-Security-Policy", GHL_FRAME_ANCESTORS);
+    response.headers.delete("X-Frame-Options");
     response.headers.set("Referrer-Policy", "no-referrer");
     return response;
   }
@@ -130,6 +150,7 @@ export async function proxy(request: NextRequest) {
     return applyFramePolicy(
       continueWithRequest(requestHeadersFor(request, pathname, null)),
       pathname,
+      request,
     );
   }
 
@@ -137,6 +158,7 @@ export async function proxy(request: NextRequest) {
     return applyFramePolicy(
       continueWithRequest(requestHeadersFor(request, pathname, null)),
       pathname,
+      request,
     );
   }
 
@@ -151,7 +173,7 @@ export async function proxy(request: NextRequest) {
     if (embedKey) {
       response.cookies.set(EMBED_AUTH_COOKIE, embedKey, embedAuthCookieOptions());
     }
-    return applyFramePolicy(response, pathname);
+    return applyFramePolicy(response, pathname, request);
   }
 
   const e2eToken =
@@ -159,7 +181,7 @@ export async function proxy(request: NextRequest) {
     request.headers.get("x-ccpatio-e2e-godmode");
   const e2e = await verifyE2eGodModeCookie(e2eToken, getE2eGodModeSecret());
   if (e2e) {
-    return applyFramePolicy(continueWithRequest(requestHeaders), pathname);
+    return applyFramePolicy(continueWithRequest(requestHeaders), pathname, request);
   }
 
   const supabaseUrl = getSupabaseUrl();
@@ -168,7 +190,7 @@ export async function proxy(request: NextRequest) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/";
     loginUrl.searchParams.set("next", pathname);
-    return applyFramePolicy(NextResponse.redirect(loginUrl), pathname);
+    return applyFramePolicy(NextResponse.redirect(loginUrl), pathname, request);
   }
 
   let supabaseResponse = continueWithRequest(requestHeaders);
@@ -204,7 +226,7 @@ export async function proxy(request: NextRequest) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/";
     loginUrl.searchParams.set("next", pathname);
-    return applyFramePolicy(NextResponse.redirect(loginUrl), pathname);
+    return applyFramePolicy(NextResponse.redirect(loginUrl), pathname, request);
   }
 
   if (requiresSuperAdmin(pathname)) {
@@ -217,11 +239,11 @@ export async function proxy(request: NextRequest) {
     if (error || !roleData || (roleData.role !== "SuperAdmin" && roleData.role !== "IT_Admin")) {
       const unauthorizedUrl = request.nextUrl.clone();
       unauthorizedUrl.pathname = "/admin";
-      return applyFramePolicy(NextResponse.redirect(unauthorizedUrl), pathname);
+      return applyFramePolicy(NextResponse.redirect(unauthorizedUrl), pathname, request);
     }
   }
 
-  return applyFramePolicy(supabaseResponse, pathname);
+  return applyFramePolicy(supabaseResponse, pathname, request);
 }
 
 export const config = {

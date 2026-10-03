@@ -6,7 +6,28 @@ import { createClient } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
+function safeInternalNext(value: string | undefined): string {
+  const nextPath = (value ?? "").trim();
+  if (
+    nextPath.startsWith("/") &&
+    !nextPath.startsWith("//") &&
+    !nextPath.includes("\\") &&
+    !nextPath.includes("//") &&
+    !nextPath.startsWith("/api")
+  ) {
+    return nextPath;
+  }
+  return "/admin/quarantine";
+}
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const rawNext = Array.isArray(params.next) ? params.next[0] : params.next;
+  const nextPath = safeInternalNext(rawNext);
   const session = await getPimSession();
 
   let isAdmin = false;
@@ -87,7 +108,7 @@ export default async function HomePage() {
               Register with your CC Patio email to unlock the module selector.
             </p>
             <div className="mt-6">
-              <LandingRegisterForm />
+              <LandingRegisterForm nextPath={nextPath} />
             </div>
             <p className="mt-6 text-center text-xs text-zinc-600">
               <Link href="/api/health" className="hover:text-zinc-400">

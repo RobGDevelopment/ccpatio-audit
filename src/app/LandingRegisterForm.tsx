@@ -3,7 +3,11 @@
 import { useActionState } from "react";
 import { registerPimOperator, staffSignUpAction } from "./register-actions";
 
-export function LandingRegisterForm() {
+export function LandingRegisterForm({
+  nextPath = "/admin/quarantine",
+}: {
+  nextPath?: string;
+}) {
   const [state, formAction, isPending] = useActionState(
     registerPimOperator,
     null,
@@ -18,7 +22,7 @@ export function LandingRegisterForm() {
 
   return (
     <form action={formAction} className="space-y-4">
-      <input type="hidden" name="next" value="/admin/quarantine" />
+      <input type="hidden" name="next" value={nextPath} />
       <label className="block">
         <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
           Work email
