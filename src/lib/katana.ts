@@ -173,6 +173,11 @@ export type KatanaSalesOrderRowInput = {
   sku: string;
   quantity: number;
   pricePerUnit: number;
+  /**
+   * Posted variant_id. Set when the caller already matched this SKU to
+   * logistics_profiles, because sku_mappings can still hold a retired id.
+   */
+  variantId?: number;
   /** When set, sent on the sales-order row so the line commits at this location. */
   locationId?: number;
 };
@@ -1754,7 +1759,10 @@ export async function createKatanaSalesOrder(
       );
     }
 
-    const variantId = await resolveVariantIdForSku(row.sku);
+    const variantId =
+      row.variantId != null && Number.isInteger(row.variantId) && row.variantId > 0
+        ? row.variantId
+        : await resolveVariantIdForSku(row.sku);
     resolvedRows.push({
       variant_id: variantId,
       quantity: row.quantity,

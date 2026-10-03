@@ -15,7 +15,7 @@ import {
 import { roundQty } from "@/lib/stock-display";
 import { withAdvisoryLock } from "@/server/db/advisory-lock";
 import { getDb } from "@/server/db/client";
-import { inventory_holds } from "@/server/db/schema";
+import { inventory_holds, logistics_profiles } from "@/server/db/schema";
 import { CC_MANUFACTURING_LOCATION_ID } from "@/server/ghl/hold-order";
 import type { HoldActor, HoldOpportunity } from "@/server/ghl/hold-actor";
 import { readCardInventory, readFactoryCommitted } from "@/server/stock/factory-inventory";
@@ -135,6 +135,20 @@ function validate(input: CreateHoldInput): CreateHoldResult | null {
   return null;
 }
 
+/**
+ * Freight and promise dates join logistics_profiles on katana_variant_id.
+ * That id can differ from sku_mappings when Katana reissued the variant.
+ * A hold for this SKU may use the profile's id so rating finds the real row.
+ */
+async function logisticsVariantForSku(sku: string, variantId: number): Promise<boolean> {
+  const [profile] = await getDb()
+    .select({ variantId: logistics_profiles.katana_variant_id })
+    .from(logistics_profiles)
+    .where(eq(logistics_profiles.variant_sku, sku))
+    .limit(1);
+  return profile?.variantId === variantId;
+}
+
 async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResult> {
   const sku = input.sku.trim().toUpperCase();
   const note = input.note.trim();
@@ -156,7 +170,10 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
     const message = error instanceof Error ? error.message : "Could not resolve the SKU.";
     return fail(message);
   }
-  if (resolvedVariantId !== input.variantId) {
+  if (
+    resolvedVariantId !== input.variantId &&
+    !(await logisticsVariantForSku(sku, input.variantId))
+  ) {
     return fail(`SKU ${sku} resolved to a different Katana variant.`);
   }
 
@@ -213,6 +230,7 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
       salesOrderRows: [
         {
           sku,
+          variantId: input.variantId,
           quantity: qty,
           pricePerUnit: 0,
           locationId: CC_MANUFACTURING_LOCATION_ID,
