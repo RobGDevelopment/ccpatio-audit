@@ -34,6 +34,7 @@ export type LogisticsProfileInput = {
   ltlClass?: string | null;
   asset3dUrl?: string | null;
   isModularComponent?: boolean;
+  leadTimeDays?: string | number | null;
 };
 
 export type NormalizedLogisticsProfile = {
@@ -46,7 +47,22 @@ export type NormalizedLogisticsProfile = {
   ltlClass: LtlFreightClass | null;
   asset3dUrl: string | null;
   isModularComponent: boolean;
+  leadTimeDays: number | null;
 };
+
+function parseLeadDays(raw: string | number | null | undefined): number | null {
+  if (raw == null) return null;
+  const text = String(raw).trim();
+  if (!text) return null;
+  if (!/^\d+$/.test(text)) {
+    throw new Error("Lead time must be a whole number of days, or blank");
+  }
+  const value = Number(text);
+  if (value > 365) {
+    throw new Error("Lead time must be 365 days or fewer");
+  }
+  return value;
+}
 
 function normalizeSku(raw: string): string {
   return raw.trim().toUpperCase();
@@ -119,5 +135,6 @@ export function normalizeLogisticsProfile(
     ltlClass: ltlRaw ? (ltlRaw as LtlFreightClass) : null,
     asset3dUrl: parseAssetUrl(input.asset3dUrl),
     isModularComponent: Boolean(input.isModularComponent),
+    leadTimeDays: parseLeadDays(input.leadTimeDays),
   };
 }

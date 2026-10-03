@@ -56,7 +56,7 @@ The VividWorks / PrimeView contract (Master SKU dictionary, Katana `POST /sales_
 - [`docs/CAPITAL_STACK_VENDOR_HANDOFF.md`](./CAPITAL_STACK_VENDOR_HANDOFF.md)
 - [`docs/CAPITAL_STACK_VENDOR_HANDOFF.pdf`](./CAPITAL_STACK_VENDOR_HANDOFF.pdf)
 
-That packet does **not** authorize a custom QBO mutex, Clover deposit matching, or WooCommerce order ingress. The only order path this repository may implement is the scoped GHL factory pipeline in §2.4. Every other commercial flow still hits Katana through native connectors. Catalog and BOM remain the hub's primary job.
+That packet does **not** authorize a custom QBO mutex, Clover deposit matching, or WooCommerce order ingress. The order paths this repository may implement are the scoped GHL factory pipeline in §2.4 and the commercial document lane in §2.5. Every other commercial flow still hits Katana through native connectors. Catalog and BOM remain the hub's primary job.
 
 ### 0.4 Repository location (do not recreate `/middleware`)
 
@@ -74,7 +74,7 @@ This application is a **headless Master Data Management (MDM) hub**:
 2. The hub **rejects** malformed payloads at the edge (Zod `400`) or **quarantines** valid drafts.  
 3. A human enriches MSRP, cost, and SEO, then clicks **Approve**.  
 4. Inngest fans out **catalog creation** to Katana MRP, WooCommerce, and Clover POS.  
-5. Daily operations (Woo orders, inventory ownership, COGS, invoicing) stay on **native vendor connectors**. The one exception is §2.4: a GHL opportunity in **Produce Factory Order** may be triaged by a person and written to Katana as a sales order plus Make-to-Order run.
+5. Daily operations (Woo orders, inventory ownership, COGS, invoicing) stay on **native vendor connectors**. Two exceptions are authorized. §2.4: a GHL opportunity in **Produce Factory Order** may be triaged by a person and written to Katana as a sales order plus Make-to-Order run. §2.5: the commercial document lane may store a quote for that opportunity, collect a Clover deposit, and, for a stock-only quote, create the Katana sales order without a manufacturing order.
 
 The exit criterion is fire-and-forget: client IT can rotate tokens, retry failed Inngest runs, and page a contractor only when a third-party API contract changes (a mapper file edit). No developer is required for 429s, partial channel failures, or Zod-rejected CAD exports.
 
@@ -84,7 +84,7 @@ The exit criterion is fire-and-forget: client IT can rotate tokens, retry failed
 
 ### 2.1 The Hub (IN SCOPE)
 
-This Next.js application is strictly **PIM + BOM translation + catalog fan-out**.
+This Next.js application is the **PIM + BOM translation + catalog fan-out** hub, plus the commercial document lane in §2.5.
 
 | Capability | Hub responsibility |
 |---|---|
@@ -93,11 +93,12 @@ This Next.js application is strictly **PIM + BOM translation + catalog fan-out**
 | Human quarantine | MSRP, cost, SEO, images, channel flags; Approve |
 | Katana | Create/update **products, materials, recipes, operations** (master data only) |
 | WooCommerce | Create/update **catalog products** (not orders) |
-| Clover | Create/update **POS items** (not payments) |
+| Clover catalog | Create/update **POS items** (not payments). Deposit collection is §2.5, not this fan-out |
+| Commercial document | One quote per open GHL opportunity, then a delivery stop | §2.5. Supabase stores the document. Katana stays the inventory engine |
 
 ### 2.2 The Spokes (OUT OF SCOPE — native connectors)
 
-**The Hub does not intercept Woo, QuickBooks, or Clover transactions.** GHL factory orders are the only exception (§2.4).
+**The Hub does not intercept Woo or QuickBooks transactions.** GHL factory orders (§2.4) and the commercial document lane (§2.5) are the authorized exceptions. Fuzzy Clover-to-QuickBooks matching stays out.
 
 | Flow | Owner | Hub rule |
 |---|---|---|
@@ -107,8 +108,9 @@ This Next.js application is strictly **PIM + BOM translation + catalog fan-out**
 | Live inventory deductions | Katana | No `POST /stock_adjustments`. Fabric relief is a line PATCH on the legacy hold (§2.4). |
 | Katana COGS / inventory → QuickBooks Online | Katana native QBO connector | No QBO invoice/mutex/Clover-match code |
 | Clover tender → accounting | Clover / QBO native | No fuzzy deposit matcher, no custom recon DLQ |
+| Quote → Clover deposit → Katana | This hub, §2.5 | Stock-only deposit may create `GHL-{opportunityId}` and delete `HOLD-` orders. Configured lines still wait for §2.4 triage. The payment path does not create a manufacturing order |
 
-GoHighLevel remains the staff CRM. The hub does not write invoices or move GHL pipeline stages. It writes a Katana sales order and Make-to-Order manufacturing order only after a person maps `FIN-*` and `FAB-*` SKUs.
+GoHighLevel remains the staff CRM. The hub does not write invoices or move GHL pipeline stages. It writes a Katana sales order and Make-to-Order manufacturing order only after a person maps `FIN-*` and `FAB-*` SKUs, except a stock-only quote under §2.5, which may create the sales order and still does not create a manufacturing order.
 
 ### 2.3 Why not WordPress middleware
 
@@ -129,6 +131,20 @@ Fully-welded multi-level BOMs cannot be stored in WooCommerce’s flat EAV (`wp_
 | Forbidden | `POST /stock_adjustments`, shipping, invoicing, or fulfilling either order from this pipeline |
 
 The hold already commits legacy reserved yards. The new manufacturing order also commits its fabric ingredient. The burn-down PATCHes (or DELETEs, when the remainder is zero) the matching hold line by the Hub BOM yardage so committed stock is not double-reserved. A retry reads `order_intake.hold_relief` and does not deduct twice.
+
+### 2.5 Scoped exception — commercial document lane
+
+`docs/COMMERCIAL_DOCUMENT_LANE.md` is the build contract for quotes, freight snapshots, promise dates, Clover deposit collection, and the delivery board. Decisions 1–36 in that document were accepted on 2026-10-02 with no changes.
+
+Supabase stores the quote and the truck stop. Katana stores stock, the sales order, and the manufacturing order. GoHighLevel stores the opportunity. Priority1 rates LTL. Clover takes the deposit. The hub does not read those systems back as the price or the route.
+
+The factory path in §2.4 is unchanged for configured goods. A collected deposit may insert `order_intake`. A person still maps `FIN-*` and `FAB-*`. Approve & Push is still the only writer of manufacturing orders, and only when `GHL_FACTORY_ORDERS=live`.
+
+A quote made entirely of showroom holds may, on that same deposit, create the `GHL-{opportunityId}` sales order and delete the `HOLD-` orders. It does not create a manufacturing order.
+
+Won still does not create a sales order. WooCommerce order intake stays closed. There is no QuickBooks mutex and no custom dead-letter screen. Delivery is not a manufacturing-order task. One opportunity has one factory intake.
+
+Manager overrides of freight, promise date, and hold expiry require `Ops_Manager` or `SuperAdmin` on a real operator session. The embed key is not that session.
 
 ---
 
@@ -528,7 +544,7 @@ Approve is a **Server Action** (cookie session), not a public API.
 
 ### 8.4 Success criteria — **met**
 
-- A new coding agent that reads the repo cannot justify Woo → Katana orders, QBO, Clover matching, or the unregistered `ghl/opportunity.won` auto-push. The only authorized GHL → Katana path is §2.4 (`order.approved`).  
+- A new coding agent that reads the repo cannot justify Woo → Katana orders, QBO, Clover matching, or the unregistered `ghl/opportunity.won` auto-push. The authorized GHL → Katana paths are §2.4 (`order.approved`) and the stock-only deposit conversion in §2.5. Won auto-push stays unregistered.  
 - Inngest Cloud does not receive `woo.order.validated` or `ghl/opportunity.won` **consumers** from this app.  
 - Historical docs display the do-not-implement banner above the fold.
 

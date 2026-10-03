@@ -1,6 +1,7 @@
 "use server";
 
 import { getPimSession } from "@/lib/pim-audit";
+import { lookupDockDistance } from "@/server/freight/distance";
 import { asGhlRecord, ghlGet, readGhlConfig } from "@/server/ghl/private-api";
 
 /** Weight and NMFC class for one product on a shared skid. */
@@ -70,15 +71,19 @@ async function requireDispatchSession(): Promise<void> {
 }
 
 /**
- * Mock road miles from the Scottsdale dock.
- * 85xxx is local, 90xxx is inside the fleet radius, everything else is LTL.
+ * Measured miles from the Scottsdale dock. An unknown ZIP has no distance.
  */
-export async function getEstimatedDistance(destZip: string): Promise<number> {
+export async function lookupDockMiles(destZip: string): Promise<number> {
   await requireDispatchSession();
   const zip = destZip.trim();
-  if (zip.startsWith("85")) return 45;
-  if (zip.startsWith("90")) return 400;
-  return 1200;
+  if (!/^\d{5}$/.test(zip)) {
+    throw new Error("Destination ZIP must be 5 digits.");
+  }
+  const measured = await lookupDockDistance(zip);
+  if (!measured) {
+    throw new Error("No measured miles for that ZIP.");
+  }
+  return measured.miles;
 }
 
 type OpportunityDraft = GhlDispatchOpportunity & { contactId: string };

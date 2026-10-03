@@ -13,6 +13,7 @@ import {
   type LogisticsProfileInput,
 } from "@/lib/logistics-profile";
 import { getPimSession } from "@/lib/pim-audit";
+import { humanNameForSaSku } from "@/lib/sa-display-name";
 import { getDb } from "@/server/db/client";
 import { logistics_profiles, logistics_settings } from "@/server/db/schema";
 
@@ -27,6 +28,7 @@ export type LogisticsProfileRow = {
   ltlClass: string | null;
   asset3dUrl: string | null;
   isModularComponent: boolean;
+  leadTimeDays: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -64,6 +66,7 @@ function mapRow(
     ltlClass: row.ltl_class,
     asset3dUrl: row.asset_3d_url,
     isModularComponent: row.is_modular_component,
+    leadTimeDays: row.lead_time_days,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
@@ -139,13 +142,75 @@ export async function getLogisticsProfiles(): Promise<LogisticsProfileRow[]> {
 /** Catalog row a sales rep can quote without typing weight or NMFC class. */
 export type QuotingProduct = {
   variantSku: string;
-  /** logistics_profiles has no descriptive name column, so this is the SKU. */
+  /** Readable label. logistics_profiles has no name column, so this is derived from the SKU. */
   name: string;
+  /**
+   * Sales collection. logistics_profiles has no collection column, so this
+   * comes from the SKU prefix (BRV = Bravada, BKN/BRK = Brooklyn, and so on).
+   */
+  collection: string;
   weightLb: number;
   ltlClass: string;
 };
 
 const QUOTEABLE_CLASSES = new Set<string>(LTL_FREIGHT_CLASSES);
+
+/** Whole SKU tokens, longest labels first so BRAVADA wins over BRA. */
+const COLLECTION_BY_TOKEN: ReadonlyArray<[string, string]> = [
+  ["BRAVADA", "Bravada"],
+  ["BROOKLYN", "Brooklyn"],
+  ["ACCESSORIES", "Accessories"],
+  ["ACCESSORY", "Accessories"],
+  ["OCEAN", "Ocean"],
+  ["MILAN", "Milan"],
+  ["CUSTOM", "Custom"],
+  ["BRV", "Bravada"],
+  ["BKN", "Brooklyn"],
+  ["BRK", "Brooklyn"],
+  ["BRA", "Bravada"],
+  ["BRO", "Brooklyn"],
+  ["OCN", "Ocean"],
+  ["OCE", "Ocean"],
+  ["MLN", "Milan"],
+  ["ACC", "Accessories"],
+  ["CUS", "Custom"],
+  ["TJM", "Tenjam"],
+  ["TAY", "Taylor"],
+  ["WFT", "Waterfall"],
+  ["DAI", "Daisy"],
+  ["FLY", "Fly"],
+  ["CAB", "Cabana"],
+];
+
+const COLLECTION_LOOKUP = new Map(COLLECTION_BY_TOKEN);
+
+const PREFERRED_COLLECTIONS = ["Bravada", "Brooklyn", "Ocean", "Milan", "Accessories"];
+
+function collectionFromSku(sku: string): string {
+  const tokens = sku.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  for (const token of tokens) {
+    const label = COLLECTION_LOOKUP.get(token);
+    if (label) return label;
+  }
+  return "Custom";
+}
+
+function collectionRank(collection: string): number {
+  if (collection === "Custom") return 2_000;
+  const preferred = PREFERRED_COLLECTIONS.indexOf(collection);
+  if (preferred >= 0) return preferred;
+  return 1_000;
+}
+
+function quotingName(sku: string): string {
+  const body = sku
+    .trim()
+    .toUpperCase()
+    .replace(/^(FIN|SA|ASM)-/, "")
+    .replace(/(^|-)BKN(?=-|$)/g, "$1BRK");
+  const human = humanNameForSaSku(body).trim();
+  return human || sku;
+}
 
 function quoteableWeight(raw: string | null): number | null {
   if (!raw) return null;
@@ -187,11 +252,19 @@ export async function getQuotingProducts(): Promise<QuotingProduct[]> {
     if (weightLb == null || !QUOTEABLE_CLASSES.has(ltlClass)) continue;
     products.push({
       variantSku: row.variantSku,
-      name: row.variantSku,
+      name: quotingName(row.variantSku),
+      collection: collectionFromSku(row.variantSku),
       weightLb,
       ltlClass,
     });
   }
+  products.sort(
+    (left, right) =>
+      collectionRank(left.collection) - collectionRank(right.collection) ||
+      left.collection.localeCompare(right.collection) ||
+      left.name.localeCompare(right.name) ||
+      left.variantSku.localeCompare(right.variantSku),
+  );
   return products;
 }
 
@@ -227,6 +300,7 @@ export async function upsertLogisticsProfile(
         ltl_class: normalized.ltlClass,
         asset_3d_url: normalized.asset3dUrl,
         is_modular_component: normalized.isModularComponent,
+        lead_time_days: normalized.leadTimeDays,
       })
       .onConflictDoUpdate({
         target: logistics_profiles.variant_sku,
@@ -239,6 +313,7 @@ export async function upsertLogisticsProfile(
           ltl_class: normalized.ltlClass,
           asset_3d_url: normalized.asset3dUrl,
           is_modular_component: normalized.isModularComponent,
+          lead_time_days: normalized.leadTimeDays,
           updated_at: new Date(),
         },
       })
@@ -335,6 +410,11 @@ export type LogisticsSettings = {
   localRadiusMiles: number;
   fleetMaxRadiusMiles: number;
   ltlHandlingMarkupPct: number;
+  fleetBaseFee: number | null;
+  fleetPerMile: number | null;
+  fleetPerPound: number | null;
+  fleetTransitDays: number;
+  depositPct: number;
   updatedAt: string;
 };
 
@@ -343,6 +423,11 @@ export type LogisticsSettingsInput = {
   localRadiusMiles: number;
   fleetMaxRadiusMiles: number;
   ltlHandlingMarkupPct: number;
+  fleetBaseFee: number | null;
+  fleetPerMile: number | null;
+  fleetPerPound: number | null;
+  fleetTransitDays: number;
+  depositPct: number;
 };
 
 export type LogisticsSettingsResult =
@@ -355,6 +440,11 @@ function moneyNumber(raw: string, label: string): number {
     throw new Error(`${label} is not a number`);
   }
   return value;
+}
+
+function optionalMoney(raw: string | null, label: string): number | null {
+  if (raw == null) return null;
+  return moneyNumber(raw, label);
 }
 
 function mapSettings(
@@ -372,6 +462,11 @@ function mapSettings(
       row.ltl_handling_markup_pct,
       "LTL handling markup",
     ),
+    fleetBaseFee: optionalMoney(row.fleet_base_fee, "Fleet base fee"),
+    fleetPerMile: optionalMoney(row.fleet_per_mile, "Fleet per mile"),
+    fleetPerPound: optionalMoney(row.fleet_per_pound, "Fleet per pound"),
+    fleetTransitDays: row.fleet_transit_days,
+    depositPct: moneyNumber(row.deposit_pct, "Deposit percent"),
     updatedAt: row.updated_at.toISOString(),
   };
 }
@@ -388,6 +483,33 @@ function parseMiles(value: number, label: string): number {
     throw new Error(`${label} must be a whole number of miles from 1 to 5000`);
   }
   return value;
+}
+
+function parseNullableFee(
+  value: number | null,
+  label: string,
+  max: number,
+  places: number,
+): string | null {
+  if (value == null) return null;
+  if (!Number.isFinite(value) || value < 0 || value > max) {
+    throw new Error(`${label} must be between 0 and ${max}, or blank`);
+  }
+  return value.toFixed(places);
+}
+
+function parseTransitDays(value: number): number {
+  if (!Number.isInteger(value) || value < 0 || value > 60) {
+    throw new Error("Fleet transit days must be a whole number from 0 to 60");
+  }
+  return value;
+}
+
+function parseDeposit(value: number): string {
+  if (!Number.isFinite(value) || value <= 0 || value > 100) {
+    throw new Error("Deposit percent must be greater than 0 and at most 100");
+  }
+  return (Math.round(value * 100) / 100).toFixed(2);
 }
 
 async function ensureLogisticsSettings(): Promise<LogisticsSettings> {
@@ -425,6 +547,11 @@ export async function updateLogisticsSettings(
   let markup: string;
   let localRadius: number;
   let fleetRadius: number;
+  let fleetBase: string | null;
+  let fleetMile: string | null;
+  let fleetPound: string | null;
+  let transitDays: number;
+  let deposit: string;
   try {
     fee = parseFee(data.localWhiteGloveFee, "Local white-glove fee", 100_000);
     markup = parseFee(data.ltlHandlingMarkupPct, "LTL handling markup", 100);
@@ -438,6 +565,16 @@ export async function updateLogisticsSettings(
         "Internal fleet max radius must be at least the local radius",
       );
     }
+    fleetBase = parseNullableFee(data.fleetBaseFee, "Fleet base fee", 100_000, 2);
+    fleetMile = parseNullableFee(data.fleetPerMile, "Fleet per mile", 100_000, 2);
+    fleetPound = parseNullableFee(
+      data.fleetPerPound,
+      "Fleet per pound",
+      100_000,
+      4,
+    );
+    transitDays = parseTransitDays(data.fleetTransitDays);
+    deposit = parseDeposit(data.depositPct);
   } catch (error) {
     return {
       ok: false,
@@ -454,6 +591,11 @@ export async function updateLogisticsSettings(
       local_radius_miles: localRadius,
       fleet_max_radius_miles: fleetRadius,
       ltl_handling_markup_pct: markup,
+      fleet_base_fee: fleetBase,
+      fleet_per_mile: fleetMile,
+      fleet_per_pound: fleetPound,
+      fleet_transit_days: transitDays,
+      deposit_pct: deposit,
       updated_at: new Date(),
     })
     .where(eq(logistics_settings.id, 1))

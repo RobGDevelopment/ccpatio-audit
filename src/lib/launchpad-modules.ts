@@ -47,6 +47,15 @@ export const LAUNCHPAD_MODULES: LaunchpadModule[] = [
     requiresAuth: true,
   },
   {
+    id: "logistics",
+    title: "Logistics & Freight",
+    description:
+      "Packaged dimensions, NMFC freight class, and PrimeView 3D assets for Katana variants.",
+    href: "/admin/logistics",
+    status: "Live",
+    requiresAuth: true,
+  },
+  {
     id: "raw-materials",
     title: "Raw Materials Catalog",
     description:

@@ -9,6 +9,7 @@
  *
  * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md §2.4 and docs/SOFT_HOLD_ARCHITECTURE.md §10.
  */
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
@@ -21,6 +22,7 @@ import {
 } from "@/server/ghl/factory-order.schema";
 import { isProduceFactoryOrderStage } from "@/server/ghl/factory-stage";
 import { verifyGhlWebhookRequest } from "@/server/ghl/ingress";
+import { voidOpenQuotesForOpportunity } from "@/server/quotes/draft";
 import { releaseHold } from "@/server/stock/release-hold";
 import { logIncomingWebhook } from "@/server/webhooks/incoming-log";
 
@@ -56,6 +58,13 @@ export async function POST(req: Request) {
   const release = readGhlOpportunityRelease(parsedJson);
   if (release) {
     const result = await releaseHold(release.opportunityId, release.status);
+    const quotes = await voidOpenQuotesForOpportunity(
+      release.opportunityId,
+      release.status,
+    );
+    if (quotes.voided > 0 || quotes.flagged > 0) {
+      revalidatePath("/embed/order-desk");
+    }
     await logIncomingWebhook({
       source: "ghl",
       eventName: release.status === "lost" ? "opportunity.lost" : "opportunity.abandoned",
@@ -73,6 +82,8 @@ export async function POST(req: Request) {
         released: result.released,
         alreadyTerminal: result.alreadyTerminal,
         failed: result.failed,
+        quotesVoided: quotes.voided,
+        quotesFlagged: quotes.flagged,
         opportunity_id: release.opportunityId,
         status: release.status,
       },

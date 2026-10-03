@@ -9,6 +9,8 @@ import {
   boolean,
   check,
   index,
+  char,
+  date,
   integer,
   jsonb,
   numeric,
@@ -20,6 +22,7 @@ import {
   uniqueIndex,
   uuid,
   varchar,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -696,6 +699,245 @@ export const inventory_holds = pgTable(
   ],
 );
 
+/** Commercial document statuses. Phase 1 writes `draft` and `void`. */
+export const quoteStatusEnum = pgEnum("quote_status", [
+  "draft",
+  "sent",
+  "deposit_paid",
+  "paid",
+  "converted",
+  "void",
+  "expired",
+]);
+
+export type QuoteStatus = (typeof quoteStatusEnum.enumValues)[number];
+
+export const quoteLineKindEnum = pgEnum("quote_line_kind", [
+  "stock_hold",
+  "configured",
+]);
+
+export type QuoteLineKind = (typeof quoteLineKindEnum.enumValues)[number];
+
+export const distanceSourceEnum = pgEnum("distance_source", [
+  "geocode",
+  "manual_override",
+]);
+
+export type DistanceSource = (typeof distanceSourceEnum.enumValues)[number];
+
+export const freightMethodEnum = pgEnum("freight_method", [
+  "LOCAL_WHITE_GLOVE",
+  "INTERNAL_FLEET",
+  "PRIORITY1_LTL",
+]);
+
+export type FreightMethodColumn = (typeof freightMethodEnum.enumValues)[number];
+
+export const quoteOverrideFieldEnum = pgEnum("quote_override_field", [
+  "freight_total",
+  "promise_date",
+  "distance_miles",
+  "hold_expires_at",
+]);
+
+export type QuoteOverrideField = (typeof quoteOverrideFieldEnum.enumValues)[number];
+
+/**
+ * One commercial document per open GoHighLevel opportunity.
+ * `current_revision_id` stays a plain uuid until `quote_revisions` exists.
+ * The browser never queries this table.
+ */
+export const quotes = pgTable(
+  "quotes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ghl_opportunity_id: text("ghl_opportunity_id").notNull(),
+    ghl_contact_id: text("ghl_contact_id").notNull(),
+    ghl_opportunity_name: text("ghl_opportunity_name").notNull(),
+    ghl_user_id: varchar("ghl_user_id", { length: 128 }).notNull(),
+    ghl_user_name: text("ghl_user_name").notNull(),
+    ghl_user_email: text("ghl_user_email"),
+    status: quoteStatusEnum("status").notNull().default("draft"),
+    version: integer("version").notNull().default(1),
+    dest_zip: char("dest_zip", { length: 5 }),
+    distance_miles: numeric("distance_miles", { precision: 8, scale: 2 }),
+    distance_source: distanceSourceEnum("distance_source"),
+    packed_height_in: numeric("packed_height_in", { precision: 6, scale: 2 })
+      .notNull()
+      .default("40.00"),
+    merchandise_total: numeric("merchandise_total", { precision: 12, scale: 2 }),
+    freight_method: freightMethodEnum("freight_method"),
+    freight_total: numeric("freight_total", { precision: 12, scale: 2 }),
+    calculated_freight_total: numeric("calculated_freight_total", {
+      precision: 12,
+      scale: 2,
+    }),
+    freight_snapshot: jsonb("freight_snapshot"),
+    freight_input_hash: char("freight_input_hash", { length: 64 }),
+    freight_quoted_at: timestamp("freight_quoted_at", { withTimezone: true }),
+    freight_error: text("freight_error"),
+    selected_carrier_code: text("selected_carrier_code"),
+    freight_override_id: uuid("freight_override_id").references(
+      (): AnyPgColumn => quote_overrides.id,
+      { onDelete: "set null" },
+    ),
+    executed_by: date("executed_by").notNull(),
+    promise_date: date("promise_date"),
+    calculated_promise_date: date("calculated_promise_date"),
+    promise_truck_code: text("promise_truck_code"),
+    promise_formula: text("promise_formula"),
+    promise_calculated_at: timestamp("promise_calculated_at", {
+      withTimezone: true,
+    }),
+    promise_error: text("promise_error"),
+    promise_override_id: uuid("promise_override_id").references(
+      (): AnyPgColumn => quote_overrides.id,
+      { onDelete: "set null" },
+    ),
+    deposit_pct: numeric("deposit_pct", { precision: 5, scale: 2 }),
+    current_revision_id: uuid("current_revision_id"),
+    order_intake_id: uuid("order_intake_id").references(() => order_intake.id),
+    katana_sales_order_id: integer("katana_sales_order_id"),
+    katana_order_no: text("katana_order_no"),
+    commercial_conflict: text("commercial_conflict"),
+    void_reason: text("void_reason"),
+    ghl_sync_error: text("ghl_sync_error"),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("quotes_open_opportunity_uidx")
+      .on(table.ghl_opportunity_id)
+      .where(sql`${table.status} in ('draft', 'sent')`),
+    index("quotes_opportunity_idx").on(table.ghl_opportunity_id),
+    check(
+      "quotes_packed_height_band",
+      sql`${table.packed_height_in} >= 36 and ${table.packed_height_in} <= 45`,
+    ),
+  ],
+);
+
+/** SKU lines on a quote. Freight is a header total, not a line. */
+export const quote_line_items = pgTable(
+  "quote_line_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    quote_id: uuid("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "cascade" }),
+    line_no: integer("line_no").notNull(),
+    line_kind: quoteLineKindEnum("line_kind").notNull(),
+    sku: text("sku").notNull(),
+    katana_variant_id: integer("katana_variant_id").notNull(),
+    qty: numeric("qty", { precision: 12, scale: 4 }).notNull(),
+    unit_price: numeric("unit_price", { precision: 12, scale: 2 }),
+    price_error: text("price_error"),
+    description: text("description").notNull(),
+    inventory_hold_id: uuid("inventory_hold_id").references(
+      () => inventory_holds.id,
+    ),
+    weight_lb: numeric("weight_lb", { precision: 12, scale: 4 }),
+    ltl_class: varchar("ltl_class", { length: 8 }),
+    length_in: numeric("length_in", { precision: 12, scale: 4 }),
+    width_in: numeric("width_in", { precision: 12, scale: 4 }),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("quote_line_items_quote_line_uidx").on(
+      table.quote_id,
+      table.line_no,
+    ),
+    index("quote_line_items_quote_idx").on(table.quote_id),
+    index("quote_line_items_hold_idx")
+      .on(table.inventory_hold_id)
+      .where(sql`${table.inventory_hold_id} is not null`),
+    check("quote_line_items_qty_positive", sql`${table.qty} > 0`),
+  ],
+);
+
+/**
+ * Insert-only manager overrides. A later row replaces the shown value.
+ * The browser never queries this table.
+ */
+export const quote_overrides = pgTable(
+  "quote_overrides",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    quote_id: uuid("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "cascade" }),
+    field: quoteOverrideFieldEnum("field").notNull(),
+    inventory_hold_id: uuid("inventory_hold_id").references(
+      () => inventory_holds.id,
+    ),
+    calculated_value: text("calculated_value").notNull(),
+    override_value: text("override_value"),
+    reason: text("reason").notNull(),
+    actor_id: uuid("actor_id").notNull(),
+    actor_role: text("actor_role").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("quote_overrides_quote_idx").on(table.quote_id),
+    check(
+      "quote_overrides_reason_length",
+      sql`char_length(${table.reason}) between 1 and 500`,
+    ),
+    check(
+      "quote_overrides_actor_role",
+      sql`${table.actor_role} in ('Ops_Manager', 'SuperAdmin')`,
+    ),
+  ],
+);
+
+/**
+ * One measured dock-to-ZIP distance. Reused for 30 days.
+ * A manager mile override is stored on the quote, not in this cache.
+ */
+export const dock_distances = pgTable(
+  "dock_distances",
+  {
+    dest_zip: char("dest_zip", { length: 5 }).primaryKey(),
+    origin_zip: char("origin_zip", { length: 5 }).notNull().default("85260"),
+    distance_miles: numeric("distance_miles", { precision: 8, scale: 2 }).notNull(),
+    source: text("source").notNull().default("geocode"),
+    fetched_at: timestamp("fetched_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check("dock_distances_miles_nonnegative", sql`${table.distance_miles} >= 0`),
+    check("dock_distances_source_geocode", sql`${table.source} = 'geocode'`),
+  ],
+);
+
+/**
+ * Priority1 / fleet plan keyed by the freight input hash.
+ * Success rows last 20 minutes. Failure rows last 60 seconds.
+ */
+export const freight_rate_cache = pgTable("freight_rate_cache", {
+  input_hash: char("input_hash", { length: 64 }).primaryKey(),
+  dest_zip: char("dest_zip", { length: 5 }).notNull(),
+  plan: jsonb("plan"),
+  error: text("error"),
+  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  created_at: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 /** Outbound catalog fan-out status per hub SKU × spoke. */
 export const channelSyncStatusEnum = pgEnum("channel_sync_status", [
   "pending",
@@ -851,6 +1093,8 @@ export const logistics_profiles = pgTable(
     is_modular_component: boolean("is_modular_component")
       .notNull()
       .default(false),
+    /** Calendar days after executed-by before a configured line can ship. Null blocks the promise. */
+    lead_time_days: integer("lead_time_days"),
     created_at: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -871,6 +1115,77 @@ export const logistics_profiles = pgTable(
     check(
       "logistics_profiles_ltl_class_known",
       sql`${table.ltl_class} is null or ${table.ltl_class} in ('50', '55', '60', '65', '70', '77.5', '85', '92.5', '100', '110', '125', '150', '175', '200', '250', '300', '400', '500')`,
+    ),
+    check(
+      "logistics_profiles_lead_time_nonnegative",
+      sql`${table.lead_time_days} is null or ${table.lead_time_days} >= 0`,
+    ),
+  ],
+);
+
+/**
+ * ZIP to delivery zone. Coordinates are filled when a zone row is created.
+ * The browser never queries this table.
+ */
+export const delivery_zones = pgTable(
+  "delivery_zones",
+  {
+    zip5: char("zip5", { length: 5 }).primaryKey(),
+    zone_code: text("zone_code").notNull(),
+    lat: numeric("lat", { precision: 9, scale: 6 }),
+    lng: numeric("lng", { precision: 9, scale: 6 }),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index("delivery_zones_zone_code_idx").on(table.zone_code)],
+);
+
+/**
+ * Truck-day capacity for a zone. A promise reads remaining room and does not book it.
+ * The browser never queries this table.
+ */
+export const delivery_days = pgTable(
+  "delivery_days",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    service_date: date("service_date").notNull(),
+    truck_code: text("truck_code").notNull(),
+    zone_code: text("zone_code").notNull(),
+    capacity_stops: integer("capacity_stops").notNull(),
+    capacity_weight_lb: numeric("capacity_weight_lb", {
+      precision: 12,
+      scale: 2,
+    }).notNull(),
+    stops_booked: integer("stops_booked").notNull().default(0),
+    weight_booked_lb: numeric("weight_booked_lb", {
+      precision: 12,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+  },
+  (table) => [
+    uniqueIndex("delivery_days_truck_day_uidx").on(
+      table.service_date,
+      table.truck_code,
+      table.zone_code,
+    ),
+    check(
+      "delivery_days_capacity_stops_positive",
+      sql`${table.capacity_stops} > 0`,
+    ),
+    check(
+      "delivery_days_capacity_weight_positive",
+      sql`${table.capacity_weight_lb} > 0`,
+    ),
+    check(
+      "delivery_days_stops_booked_band",
+      sql`${table.stops_booked} >= 0 and ${table.stops_booked} <= ${table.capacity_stops}`,
+    ),
+    check(
+      "delivery_days_weight_booked_nonnegative",
+      sql`${table.weight_booked_lb} >= 0`,
     ),
   ],
 );
@@ -903,6 +1218,13 @@ export const logistics_settings = pgTable(
     })
       .notNull()
       .default("15.00"),
+    fleet_base_fee: numeric("fleet_base_fee", { precision: 10, scale: 2 }),
+    fleet_per_mile: numeric("fleet_per_mile", { precision: 10, scale: 2 }),
+    fleet_per_pound: numeric("fleet_per_pound", { precision: 10, scale: 4 }),
+    fleet_transit_days: integer("fleet_transit_days").notNull().default(1),
+    deposit_pct: numeric("deposit_pct", { precision: 5, scale: 2 })
+      .notNull()
+      .default("50.00"),
     updated_at: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -916,6 +1238,22 @@ export const logistics_settings = pgTable(
     check(
       "logistics_settings_radii_ordered",
       sql`${table.local_radius_miles} > 0 and ${table.fleet_max_radius_miles} >= ${table.local_radius_miles}`,
+    ),
+    check(
+      "logistics_settings_fleet_fees_nonnegative",
+      sql`(
+        (${table.fleet_base_fee} is null or ${table.fleet_base_fee} >= 0) and
+        (${table.fleet_per_mile} is null or ${table.fleet_per_mile} >= 0) and
+        (${table.fleet_per_pound} is null or ${table.fleet_per_pound} >= 0)
+      )`,
+    ),
+    check(
+      "logistics_settings_fleet_transit_nonnegative",
+      sql`${table.fleet_transit_days} >= 0`,
+    ),
+    check(
+      "logistics_settings_deposit_pct_band",
+      sql`${table.deposit_pct} > 0 and ${table.deposit_pct} <= 100`,
     ),
   ],
 );

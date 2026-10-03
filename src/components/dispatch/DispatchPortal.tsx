@@ -5,7 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState, useTransition } from "reac
 import { card, eyebrow, softField } from "@/app/showroom/showroom-ui";
 import { LTL_FREIGHT_CLASSES } from "@/lib/logistics-profile";
 import {
-  getEstimatedDistance,
+  lookupDockMiles,
   searchGhlOpportunities,
   type GhlDispatchOpportunity,
 } from "@/server/actions/dispatch";
@@ -37,7 +37,6 @@ type ProductDraft = {
   name: string;
   weightLb: string;
   freightClass: string;
-  query: string;
 };
 
 type QuoteState =
@@ -55,17 +54,6 @@ function money(amount: number): string {
     style: "currency",
     currency: "USD",
   }).format(amount);
-}
-
-function freshProduct(key: string): ProductDraft {
-  return {
-    key,
-    variantSku: "",
-    name: "",
-    weightLb: "",
-    freightClass: "",
-    query: "",
-  };
 }
 
 function optionFor(
@@ -94,8 +82,13 @@ function matchesProduct(product: QuotingProduct, needle: string): boolean {
   if (!query) return true;
   return (
     product.variantSku.toLowerCase().includes(query) ||
-    product.name.toLowerCase().includes(query)
+    product.name.toLowerCase().includes(query) ||
+    product.collection.toLowerCase().includes(query)
   );
+}
+
+function collectionSlug(collection: string): string {
+  return collection.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 }
 
 /**
@@ -183,7 +176,7 @@ function RouteButton({
 export function DispatchPortal() {
   const titleId = useId();
   const searchRequest = useRef(0);
-  const nextProduct = useRef(2);
+  const nextProduct = useRef(1);
   const [mode, setMode] = useState<QuoteMode>("quick");
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -194,8 +187,10 @@ export function DispatchPortal() {
   const [products, setProducts] = useState<QuotingProduct[]>([]);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [catalogReady, setCatalogReady] = useState(false);
-  const [lines, setLines] = useState<ProductDraft[]>([freshProduct("product-1")]);
-  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [lines, setLines] = useState<ProductDraft[]>([]);
+  const [collection, setCollection] = useState<string | null>(null);
+  const [productQuery, setProductQuery] = useState("");
+  const [productMenuOpen, setProductMenuOpen] = useState(false);
   const [quote, setQuote] = useState<QuoteState>({ status: "idle" });
   const [pending, startTransition] = useTransition();
 
@@ -261,55 +256,35 @@ export function DispatchPortal() {
     setQuote({ status: "idle" });
   }
 
-  function updateQuery(key: string, value: string) {
-    setOpenKey(key);
-    setLines((current) =>
-      current.map((row) => {
-        if (row.key !== key) return row;
-        const stillSelected =
-          row.variantSku && value.trim().toLowerCase() === row.name.trim().toLowerCase();
-        if (stillSelected) return { ...row, query: value };
-        return {
-          ...row,
-          query: value,
-          variantSku: "",
-          name: "",
-          weightLb: "",
-          freightClass: "",
-        };
-      }),
-    );
-  }
-
-  function chooseProduct(key: string, product: QuotingProduct) {
-    setLines((current) =>
-      current.map((row) =>
-        row.key === key
-          ? {
-              ...row,
-              variantSku: product.variantSku,
-              name: product.name,
-              weightLb: String(product.weightLb),
-              freightClass: product.ltlClass,
-              query: product.name,
-            }
-          : row,
-      ),
-    );
-    setOpenKey(null);
+  function chooseCollection(next: string) {
+    const clearing = collection === next;
+    setCollection(clearing ? null : next);
+    setProductQuery("");
+    setProductMenuOpen(!clearing);
     setQuote({ status: "idle" });
   }
 
-  function addProduct() {
+  function commitProduct(product: QuotingProduct) {
     const key = `product-${nextProduct.current}`;
     nextProduct.current += 1;
-    setLines((current) => [...current, freshProduct(key)]);
-    setOpenKey(key);
+    setLines((current) => [
+      ...current,
+      {
+        key,
+        variantSku: product.variantSku,
+        name: product.name,
+        weightLb: String(product.weightLb),
+        freightClass: product.ltlClass,
+      },
+    ]);
+    setCollection(null);
+    setProductQuery("");
+    setProductMenuOpen(false);
+    setQuote({ status: "idle" });
   }
 
   function removeProduct(key: string) {
     setLines((current) => current.filter((row) => row.key !== key));
-    setOpenKey((current) => (current === key ? null : current));
   }
 
   function runQuote() {
@@ -323,7 +298,7 @@ export function DispatchPortal() {
     setQuote({ status: "idle" });
     startTransition(async () => {
       try {
-        const miles = await getEstimatedDistance(zip);
+        const miles = await lookupDockMiles(zip);
         const plan = await calculateFulfillmentOptions(zip, miles, skid);
         setQuote({ status: "quoted", plan, miles, route: null });
       } catch (error) {
@@ -350,6 +325,22 @@ export function DispatchPortal() {
   const showLtlOnly = Boolean(ltl && !local && !fleet);
   const showOpportunityList =
     !opportunity && query.trim().length >= 2 && (searching || settledQuery === query.trim());
+  const collections = useMemo(() => {
+    const seen = new Set<string>();
+    const names: string[] = [];
+    for (const product of products) {
+      if (seen.has(product.collection)) continue;
+      seen.add(product.collection);
+      names.push(product.collection);
+    }
+    return names;
+  }, [products]);
+  const collectionProducts = useMemo(() => {
+    if (!collection) return [];
+    return products
+      .filter((product) => product.collection === collection && matchesProduct(product, productQuery))
+      .slice(0, PRODUCT_MATCH_LIMIT);
+  }, [products, collection, productQuery]);
 
   return (
     <section
@@ -364,7 +355,7 @@ export function DispatchPortal() {
             Shipping Quote
           </h1>
           <p className="mt-2 max-w-xl text-sm text-slate-500">
-            Pick a product from the catalog and a destination. Weight and freight class come from the product.
+            Choose a collection, then a product. Weight and freight class come from the catalog.
           </p>
         </header>
 
@@ -485,7 +476,7 @@ export function DispatchPortal() {
             />
           </div>
 
-          <fieldset className="space-y-3">
+          <fieldset className="space-y-4">
             <legend className="text-xs uppercase tracking-widest text-slate-500">Products</legend>
             <p className="text-xs text-slate-500">Rated together as one pallet.</p>
             {catalogError ? (
@@ -493,33 +484,64 @@ export function DispatchPortal() {
                 {catalogError}
               </p>
             ) : null}
+            {!catalogReady && !catalogError ? (
+              <p className="text-sm text-slate-500">Loading products…</p>
+            ) : null}
             {catalogReady && !catalogError && products.length === 0 ? (
               <p className="text-sm text-slate-500">No quoteable products are in the logistics catalog yet.</p>
             ) : null}
-            {lines.map((row, index) => (
-              <ProductLine
-                key={row.key}
-                row={row}
-                index={index}
-                titleId={titleId}
-                products={products}
-                open={openKey === row.key}
-                catalogReady={catalogReady}
-                onQuery={(value) => updateQuery(row.key, value)}
-                onOpen={() => setOpenKey(row.key)}
-                onClose={() => setOpenKey((current) => (current === row.key ? null : current))}
-                onSelect={(product) => chooseProduct(row.key, product)}
-                onRemove={() => removeProduct(row.key)}
-              />
-            ))}
-            <button
-              type="button"
-              data-testid="dispatch-add-skid"
-              onClick={addProduct}
-              className="rounded-xl border border-slate-100 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:bg-slate-50"
-            >
-              + Add Product
-            </button>
+            {lines.length > 0 ? (
+              <ul className="space-y-2">
+                {lines.map((row, index) => (
+                  <CommittedProduct
+                    key={row.key}
+                    row={row}
+                    index={index}
+                    onRemove={() => removeProduct(row.key)}
+                  />
+                ))}
+              </ul>
+            ) : null}
+            {collections.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-xs uppercase tracking-widest text-slate-500">Collection</p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="Collection">
+                  {collections.map((name) => {
+                    const selected = collection === name;
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        aria-pressed={selected}
+                        data-testid={`dispatch-collection-${collectionSlug(name)}`}
+                        onClick={() => chooseCollection(name)}
+                        className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
+                          selected
+                            ? "border-blue-600 bg-blue-600 text-white shadow-[0_8px_30px_rgb(0,0,0,0.06)]"
+                            : "border-zinc-200 bg-zinc-100 text-zinc-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-zinc-300 hover:bg-white"
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                </div>
+                {collection ? (
+                  <ProductPicker
+                    titleId={titleId}
+                    collection={collection}
+                    query={productQuery}
+                    open={productMenuOpen}
+                    catalogReady={catalogReady}
+                    products={collectionProducts}
+                    onQuery={setProductQuery}
+                    onOpen={() => setProductMenuOpen(true)}
+                    onClose={() => setProductMenuOpen(false)}
+                    onSelect={commitProduct}
+                  />
+                ) : null}
+              </div>
+            ) : null}
           </fieldset>
 
           {quote.status === "error" ? (
@@ -571,7 +593,9 @@ export function DispatchPortal() {
                   onClick={() => chooseRoute("INTERNAL_FLEET")}
                   className="bg-white text-slate-900 ring-slate-900 ring-1 ring-slate-100 hover:bg-slate-50"
                   title="Route to CC Patio Fleet"
-                  detail="Company truck"
+                  detail={
+                    fleet.priceUsd != null ? money(fleet.priceUsd) : "Company truck"
+                  }
                 />
                 <RouteButton
                   testId="dispatch-ltl"
@@ -607,120 +631,125 @@ export function DispatchPortal() {
   );
 }
 
-function ProductLine({
+function CommittedProduct({
   row,
   index,
-  titleId,
-  products,
-  open,
-  catalogReady,
-  onQuery,
-  onOpen,
-  onClose,
-  onSelect,
   onRemove,
 }: {
   row: ProductDraft;
   index: number;
-  titleId: string;
-  products: QuotingProduct[];
-  open: boolean;
-  catalogReady: boolean;
-  onQuery: (value: string) => void;
-  onOpen: () => void;
-  onClose: () => void;
-  onSelect: (product: QuotingProduct) => void;
   onRemove: () => void;
 }) {
-  const listId = `${titleId}-products-${row.key}`;
-  const locked = Boolean(row.variantSku) && !open;
-  const matches = useMemo(() => {
-    return products.filter((product) => matchesProduct(product, row.query)).slice(0, PRODUCT_MATCH_LIMIT);
-  }, [products, row.query]);
   const spec = specLabel(row.weightLb, row.freightClass);
+  const showSku = row.name.trim().toUpperCase() !== row.variantSku.trim().toUpperCase();
 
   return (
-    <div className="flex items-start gap-2">
-      <div className="relative min-w-0 flex-1">
-        {locked ? (
-          <div className="rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-            <button
-              type="button"
-              className="block w-full text-left"
-              data-testid={`dispatch-product-${index}`}
-              onClick={onOpen}
-            >
-              <span className="block text-sm font-medium text-slate-900">{row.name}</span>
-              {spec ? (
-                <span className="mt-0.5 block text-xs text-slate-500" data-testid={`dispatch-product-spec-${index}`}>
-                  {spec}
-                </span>
-              ) : null}
-            </button>
-          </div>
-        ) : (
-          <>
-            <input
-              data-testid={`dispatch-product-${index}`}
-              value={row.query}
-              onChange={(event) => onQuery(event.target.value)}
-              onFocus={onOpen}
-              onBlur={() => window.setTimeout(onClose, 150)}
-              role="combobox"
-              aria-expanded={open}
-              aria-controls={listId}
-              aria-autocomplete="list"
-              autoComplete="off"
-              placeholder={catalogReady ? "Search products" : "Loading products…"}
-              className={softField}
-            />
-            {open && row.variantSku && spec ? (
-              <p className="mt-1 text-xs text-slate-500" data-testid={`dispatch-product-spec-${index}`}>
-                {spec}
-              </p>
-            ) : null}
-            {open ? (
-              <ul
-                id={listId}
-                role="listbox"
-                className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
-              >
-                {!catalogReady ? <li className="px-3 py-2 text-sm text-slate-500">Loading products…</li> : null}
-                {catalogReady && matches.length === 0 ? (
-                  <li className="px-3 py-2 text-sm text-slate-500">No matching products.</li>
-                ) : null}
-                {matches.map((product) => (
-                  <li key={product.variantSku} role="presentation">
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={product.variantSku === row.variantSku}
-                      data-testid={`dispatch-product-option-${product.variantSku}`}
-                      className="flex w-full flex-col px-3 py-2 text-left hover:bg-slate-50"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => onSelect(product)}
-                    >
-                      <span className="text-sm text-slate-900">{product.name}</span>
-                      <span className="text-xs text-slate-500">
-                        {specLabel(String(product.weightLb), product.ltlClass)}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </>
-        )}
+    <li className="flex items-start gap-2">
+      <div
+        className="min-w-0 flex-1 rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+        data-testid={`dispatch-product-${index}`}
+      >
+        <p className="text-sm font-medium text-slate-900">{row.name}</p>
+        {showSku ? <p className="mt-0.5 font-mono text-xs text-slate-500">{row.variantSku}</p> : null}
+        {spec ? (
+          <p className="mt-0.5 text-xs text-slate-500" data-testid={`dispatch-product-spec-${index}`}>
+            {spec}
+          </p>
+        ) : null}
       </div>
       <button
         type="button"
-        aria-label={`Remove product ${index + 1}`}
+        aria-label={`Remove ${row.name}`}
         data-testid={`dispatch-remove-product-${index}`}
         onClick={onRemove}
         className="rounded-xl p-3 text-slate-400 hover:bg-white hover:text-rose-600"
       >
         <Trash2 className="h-4 w-4" aria-hidden="true" />
       </button>
+    </li>
+  );
+}
+
+function ProductPicker({
+  titleId,
+  collection,
+  query,
+  open,
+  catalogReady,
+  products,
+  onQuery,
+  onOpen,
+  onClose,
+  onSelect,
+}: {
+  titleId: string;
+  collection: string;
+  query: string;
+  open: boolean;
+  catalogReady: boolean;
+  products: QuotingProduct[];
+  onQuery: (value: string) => void;
+  onOpen: () => void;
+  onClose: () => void;
+  onSelect: (product: QuotingProduct) => void;
+}) {
+  const listId = `${titleId}-products`;
+
+  return (
+    <div className="relative">
+      <label className="block text-xs uppercase tracking-widest text-slate-500" htmlFor={listId}>
+        {collection} products
+      </label>
+      <input
+        id={listId}
+        data-testid="dispatch-product-search"
+        value={query}
+        onChange={(event) => {
+          onQuery(event.target.value);
+          onOpen();
+        }}
+        onFocus={onOpen}
+        onBlur={() => window.setTimeout(onClose, 150)}
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={`${listId}-list`}
+        aria-autocomplete="list"
+        autoComplete="off"
+        placeholder={`Search ${collection}`}
+        className={`${softField} mt-1`}
+      />
+      {open ? (
+        <ul
+          id={`${listId}-list`}
+          role="listbox"
+          className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
+        >
+          {!catalogReady ? <li className="px-3 py-2 text-sm text-slate-500">Loading products…</li> : null}
+          {catalogReady && products.length === 0 ? (
+            <li className="px-3 py-2 text-sm text-slate-500">No matching products.</li>
+          ) : null}
+          {products.map((product) => (
+            <li key={product.variantSku} role="presentation">
+              <button
+                type="button"
+                role="option"
+                aria-selected={false}
+                data-testid={`dispatch-product-option-${product.variantSku}`}
+                className="flex w-full flex-col px-3 py-2 text-left hover:bg-slate-50"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => onSelect(product)}
+              >
+                <span className="text-sm text-slate-900">{product.name}</span>
+                <span className="text-xs text-slate-500">
+                  {product.variantSku}
+                  {" · "}
+                  {specLabel(String(product.weightLb), product.ltlClass)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

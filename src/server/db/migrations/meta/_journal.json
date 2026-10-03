@@ -218,6 +218,27 @@
       "when": 1790981008961,
       "tag": "0030_smart_hold_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790986038127,
+      "tag": "0031_blushing_the_hood",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790991536636,
+      "tag": "0032_freight_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790992908402,
+      "tag": "0033_promise_date",
+      "breakpoints": true
     }
   ]
 }

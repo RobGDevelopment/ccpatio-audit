@@ -149,6 +149,12 @@ export default async function DictionaryPage() {
                   Factory BOM Builder →
                 </Link>
                 <Link
+                  href="/admin/logistics"
+                  className="text-zinc-400 transition hover:text-zinc-200"
+                >
+                  Logistics &amp; Freight →
+                </Link>
+                <Link
                   href="/admin/audit"
                   className="text-zinc-400 transition hover:text-zinc-200"
                 >

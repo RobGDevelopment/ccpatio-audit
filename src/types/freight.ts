@@ -74,7 +74,7 @@ export type FulfillmentCarrierQuote = {
 
 export type FulfillmentOption = {
   method: FulfillmentMethod;
-  /** Null for the company truck, which has no broker rate. */
+  /** Customer price. Fleet uses the logistics tariff. Null only when a price was not produced. */
   priceUsd: number | null;
   currency: "USD";
   summary: string;

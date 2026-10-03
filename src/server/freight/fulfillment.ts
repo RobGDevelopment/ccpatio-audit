@@ -1,5 +1,9 @@
 import { getLogisticsSettings } from "@/server/actions/logistics";
 import {
+  fleetCustomerTotal,
+  requireFleetTariff,
+} from "@/server/freight/fleet-tariff";
+import {
   CC_PATIO_PICKUP_ZIP,
   FreightRatingError,
   getPriority1Quote,
@@ -47,6 +51,10 @@ function carrierQuote(
     brokerTotalUsd: money(brokerTotal),
     customerTotalUsd: markedUp(brokerTotal, markupPct),
   };
+}
+
+function shipmentWeightLb(skid: FreightSkid): number {
+  return skid.items.reduce((sum, item) => sum + item.weight, 0);
 }
 
 async function priority1Option(
@@ -112,11 +120,16 @@ export async function calculateFulfillmentOptions(
       summary: `Local white-glove inside ${settings.localRadiusMiles} miles.`,
     });
   } else if (distanceMiles <= settings.fleetMaxRadiusMiles) {
+    const priceUsd = fleetCustomerTotal(
+      requireFleetTariff(settings),
+      distanceMiles,
+      shipmentWeightLb(skid),
+    );
     options.push({
       method: "INTERNAL_FLEET",
-      priceUsd: null,
+      priceUsd,
       currency: "USD",
-      summary: `CC Patio truck inside the ${settings.fleetMaxRadiusMiles}-mile fleet radius.`,
+      summary: `CC Patio truck inside the ${settings.fleetMaxRadiusMiles}-mile fleet radius at $${priceUsd.toFixed(2)}.`,
     });
     options.push(
       await priority1Option(

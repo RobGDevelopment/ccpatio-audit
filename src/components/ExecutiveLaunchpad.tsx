@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 const HIGHLIGHTED_PIM_TITLES = new Set([
   "Global SKU Dictionary",
   "Raw Materials Catalog",
+  "Logistics & Freight",
 ]);
 
 type ExecutiveLaunchpadProps = {

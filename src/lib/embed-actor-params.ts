@@ -5,6 +5,7 @@
 
 const USER_ID_KEYS = ["ghluserid", "userid", "user_id"] as const;
 const EMAIL_KEYS = ["ghluseremail", "useremail", "user_email"] as const;
+const OPPORTUNITY_KEYS = ["opportunityid", "opportunity_id"] as const;
 
 export type EmbedActorParams = {
   ghlUserId?: string;
@@ -49,8 +50,13 @@ export function readActorFromSearchRecord(
   };
 }
 
-/** Browser URL, including a query string parked in the hash. */
-export function readActorFromHref(href: string): EmbedActorParams {
+export function readOpportunityIdFromSearchRecord(
+  input: Record<string, string | string[] | undefined>,
+): string | undefined {
+  return pick(pairsFromRecord(input), OPPORTUNITY_KEYS);
+}
+
+function pairsFromHref(href: string): [string, string][] {
   const url = new URL(href, "https://ccpatio.local");
   const pairs: [string, string][] = [...url.searchParams.entries()];
   const hash = url.hash.replace(/^#/, "");
@@ -58,8 +64,18 @@ export function readActorFromHref(href: string): EmbedActorParams {
     const hashQuery = hash.startsWith("?") ? hash.slice(1) : hash;
     pairs.push(...new URLSearchParams(hashQuery).entries());
   }
+  return pairs;
+}
+
+/** Browser URL, including a query string parked in the hash. */
+export function readActorFromHref(href: string): EmbedActorParams {
+  const pairs = pairsFromHref(href);
   return {
     ghlUserId: pick(pairs, USER_ID_KEYS),
     ghlUserEmail: pick(pairs, EMAIL_KEYS),
   };
+}
+
+export function readOpportunityIdFromHref(href: string): string | undefined {
+  return pick(pairsFromHref(href), OPPORTUNITY_KEYS);
 }
