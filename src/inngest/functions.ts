@@ -17,6 +17,7 @@ import {
 } from "@/lib/katana";
 import { sendOhCrapAlert } from "@/server/alerts/oh-crap";
 import { GHL_OPPORTUNITY_WON_EVENT, ghlOpportunityIdempotencyKey } from "@/server/ghl/ingress";
+import { syncCloverPayment } from "./clover-sync";
 import {
   ghlOpportunitySyncSchema,
   type GhlOpportunitySync,
@@ -689,6 +690,7 @@ export const inngestFunctions = [
   sweepExpiredInventoryHolds,
   sendHoldExpirationWarnings,
   autoReleaseExpiredHolds,
+  syncCloverPayment,
 ];
 
 /**
