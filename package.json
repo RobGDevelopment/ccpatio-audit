@@ -115,6 +115,7 @@
     "ops:katana-post-missing-materials:confirm": "npx dotenv -e .env.local -- tsx scripts/ops/katana-post-missing-materials.ts --confirm",
     "ops:katana-post-missing-products": "npx dotenv -e .env.local -- tsx scripts/ops/katana-post-missing-products.ts",
     "ops:katana-post-missing-products:confirm": "npx dotenv -e .env.local -- tsx scripts/ops/katana-post-missing-products.ts --confirm",
+    "ops:sandbox-priority1": "tsx scripts/ops/sandbox-priority1.ts",
     "db:backfill-katana": "tsx scripts/backfill-katana-ids.ts",
     "db:backfill-attributes": "tsx scripts/backfill-attributes.ts",
     "db:backfill-attributes:dry": "tsx scripts/backfill-attributes.ts --dry-run",

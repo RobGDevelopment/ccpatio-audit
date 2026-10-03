@@ -26,7 +26,7 @@ export type GhlResult =
   | { ok: false; error: string };
 
 async function ghlFetch(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PUT",
   path: string,
   payload?: unknown,
 ): Promise<GhlResult> {
@@ -77,4 +77,39 @@ export function ghlGet(path: string): Promise<GhlResult> {
 
 export function ghlPost(path: string, body: unknown): Promise<GhlResult> {
   return ghlFetch("POST", path, body);
+}
+
+export function ghlPut(path: string, body: unknown): Promise<GhlResult> {
+  return ghlFetch("PUT", path, body);
+}
+
+/**
+ * Mirror a quote total onto the opportunity. The quote is never read back
+ * from this value. Write scope is opportunities.write on the private token.
+ */
+export async function updateOpportunityValue(
+  opportunityId: string,
+  value: number,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const id = opportunityId.trim();
+  if (!id) return { ok: false, error: "Opportunity id is required." };
+  if (!Number.isFinite(value) || value < 0) {
+    return { ok: false, error: "Opportunity value must be zero or greater." };
+  }
+
+  const loaded = await ghlGet(`/opportunities/${encodeURIComponent(id)}`);
+  if (!loaded.ok) return { ok: false, error: loaded.error };
+  const record = asGhlRecord(loaded.body);
+  const opportunity = asGhlRecord(record?.opportunity) ?? record;
+  const locationId =
+    typeof opportunity?.locationId === "string" ? opportunity.locationId.trim() : "";
+  if (locationId && locationId !== loaded.locationId) {
+    return { ok: false, error: "That opportunity is in a different location." };
+  }
+
+  const updated = await ghlPut(`/opportunities/${encodeURIComponent(id)}`, {
+    monetaryValue: Number(value.toFixed(2)),
+  });
+  if (!updated.ok) return { ok: false, error: updated.error };
+  return { ok: true };
 }

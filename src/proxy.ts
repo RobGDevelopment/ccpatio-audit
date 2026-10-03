@@ -24,6 +24,7 @@ import {
 
 const PUBLIC_PATHS = new Set(["/", "/api/health"]);
 const STOCK_CHECKER_PATH = "/tools/stock-checker";
+const LOGISTICS_PATH = "/admin/logistics";
 const EMBED_PREFIX = "/embed";
 const PROTECTED_PREFIXES = [
   "/admin",
@@ -54,7 +55,16 @@ function isEmbedPath(pathname: string): boolean {
   return pathname === EMBED_PREFIX || pathname.startsWith(`${EMBED_PREFIX}/`);
 }
 
+function isLogisticsPath(pathname: string): boolean {
+  return pathname === LOGISTICS_PATH || pathname.startsWith(`${LOGISTICS_PATH}/`);
+}
+
+function isGhlFrameablePath(pathname: string): boolean {
+  return isEmbedPath(pathname) || pathname === STOCK_CHECKER_PATH || isLogisticsPath(pathname);
+}
+
 function isUnframeablePath(pathname: string): boolean {
+  if (isLogisticsPath(pathname)) return false;
   return pathname === "/" || pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
@@ -71,7 +81,7 @@ function requiresSuperAdmin(pathname: string): boolean {
 }
 
 function applyFramePolicy(response: NextResponse, pathname: string): NextResponse {
-  if (isEmbedPath(pathname) || pathname === STOCK_CHECKER_PATH) {
+  if (isGhlFrameablePath(pathname)) {
     response.headers.set("Content-Security-Policy", GHL_FRAME_ANCESTORS);
     response.headers.set("Referrer-Policy", "no-referrer");
     return response;

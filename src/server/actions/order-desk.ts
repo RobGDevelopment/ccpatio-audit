@@ -21,6 +21,12 @@ import {
 } from "@/server/quotes/freight-override";
 import { loadOrderDesk, refreshDraftSnapshot } from "@/server/quotes/load-order-desk";
 import {
+  freezeQuote,
+  revertQuoteToDraft,
+  type RevertQuoteError,
+  type SendQuoteError,
+} from "@/server/quotes/send-quote";
+import {
   rateQuoteById,
   selectQuoteFreightMethodById,
   type RateQuoteFreightResult,
@@ -316,6 +322,88 @@ export async function overrideQuotePromise(input: {
   const saved = await overrideQuotePromiseDate({ ...input, actor });
   if (saved.ok) revalidateQuoteSurfaces();
   return saved;
+}
+
+function presentSendError(error: SendQuoteError | RevertQuoteError): string {
+  switch (error) {
+    case "stale_version":
+      return "This draft was saved somewhere else. Reload to see the current version.";
+    case "not_draft":
+      return "This quote is no longer a draft.";
+    case "not_sent":
+      return "Only a sent quote can return to draft.";
+    case "quote_missing":
+      return "That quote could not be found.";
+    case "no_lines":
+      return "Add at least one line before sending.";
+    case "unpriced_line":
+      return "Every line needs a price before this quote can be sent.";
+    case "freight_missing":
+      return "Freight must be rated before sending.";
+    case "promise_missing":
+      return "An estimated delivery date is required before sending.";
+    case "dest_zip_invalid":
+      return "Destination ZIP must be five digits.";
+    case "opportunity_already_ordered":
+      return "This opportunity already has a factory order.";
+    default:
+      return error;
+  }
+}
+
+export async function sendQuote(
+  quoteId: string,
+  expectedVersion: number,
+  actorHintInput?: { ghlUserId?: string | null; ghlUserEmail?: string | null },
+): Promise<
+  | {
+      ok: true;
+      version: number;
+      revisionId: string;
+      status: "sent";
+      amountDue: string;
+      ghlSyncError: string | null;
+    }
+  | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Sign in to send this quote." };
+
+  const actor = await resolveHoldActor(actorHint(actorHintInput));
+  if (!actor.ok) return { ok: false, error: actor.error };
+
+  const frozen = await freezeQuote({
+    quoteId,
+    expectedVersion,
+    actor,
+  });
+  if (!frozen.ok) return { ok: false, error: presentSendError(frozen.error) };
+
+  revalidateQuoteSurfaces();
+  return {
+    ok: true,
+    version: frozen.version,
+    revisionId: frozen.revisionId,
+    status: frozen.status,
+    amountDue: frozen.amountDue,
+    ghlSyncError: frozen.ghlSyncError,
+  };
+}
+
+export async function revertToDraft(
+  quoteId: string,
+  expectedVersion: number,
+): Promise<
+  { ok: true; version: number; status: "draft" } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Sign in to edit this quote." };
+
+  const reverted = await revertQuoteToDraft({ quoteId, expectedVersion });
+  if (!reverted.ok) return { ok: false, error: presentSendError(reverted.error) };
+
+  revalidateQuoteSurfaces();
+  return reverted;
 }
 
 export async function overrideQuoteMiles(input: {

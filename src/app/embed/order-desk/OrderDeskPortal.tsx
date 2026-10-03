@@ -14,9 +14,11 @@ import {
   rateQuoteFreight,
   releasePreviousHold,
   removeQuoteLine,
+  revertToDraft,
   saveOrderDeskDraft,
   searchOrderDeskProducts,
   selectQuoteFreightMethod,
+  sendQuote,
   swapQuoteLine,
   type OrderDeskCatalogProduct,
 } from "@/server/actions/order-desk";
@@ -134,7 +136,7 @@ export function OrderDeskPortal({
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [pendingAction, setPendingAction] = useState<
-    "save" | "remove" | "swap" | "release" | null
+    "save" | "remove" | "swap" | "release" | "send" | "edit" | null
   >(null);
   const [searching, startSearch] = useTransition();
   const [removeLine, setRemoveLine] = useState<OrderDeskLine | null>(null);
@@ -416,6 +418,74 @@ export function OrderDeskPortal({
     });
   }
 
+  function freezeProposal() {
+    if (model.state !== "quote" || model.readOnly || model.status !== "draft") return;
+    setNotice(null);
+    setPendingAction("send");
+    const actor = actorFromWindow();
+    startTransition(async () => {
+      try {
+        const result = await sendQuote(model.quoteId, model.version, actor);
+        if (!result.ok) {
+          setNotice(result.error);
+          return;
+        }
+        setSwapLineId(null);
+        setRemoveLine(null);
+        setPendingProduct(null);
+        setModel((current) =>
+          current.state === "quote"
+            ? {
+                ...current,
+                status: "sent",
+                readOnly: true,
+                version: result.version,
+                ghlSyncError: result.ghlSyncError,
+              }
+            : current,
+        );
+        setNotice(
+          result.ghlSyncError
+            ? `Quote frozen. GoHighLevel was not updated. ${result.ghlSyncError}`
+            : "Quote Frozen. GHL Opportunity Updated.",
+        );
+        router.refresh();
+      } finally {
+        setPendingAction(null);
+      }
+    });
+  }
+
+  function editSentQuote() {
+    if (model.state !== "quote" || model.status !== "sent") return;
+    setNotice(null);
+    setPendingAction("edit");
+    startTransition(async () => {
+      try {
+        const result = await revertToDraft(model.quoteId, model.version);
+        if (!result.ok) {
+          setNotice(result.error);
+          return;
+        }
+        setModel((current) =>
+          current.state === "quote"
+            ? {
+                ...current,
+                status: "draft",
+                readOnly: current.closedOpportunity,
+                version: result.version,
+                ghlSyncError: null,
+              }
+            : current,
+        );
+        setNotice("Quote returned to draft.");
+        router.refresh();
+      } finally {
+        setPendingAction(null);
+      }
+    });
+  }
+
   function retryPreviousHold() {
     if (!orphanHoldId) return;
     const holdId = orphanHoldId;
@@ -447,6 +517,16 @@ export function OrderDeskPortal({
       !quote.readOnly &&
       quote.freightOptions.some((option) => option.method === "INTERNAL_FLEET") &&
       quote.freightOptions.some((option) => option.method === "PRIORITY1_LTL"),
+  );
+  const canSend = Boolean(
+    quote &&
+      quote.status === "draft" &&
+      !quote.readOnly &&
+      quote.lines.length > 0 &&
+      quote.merchandiseTotal != null &&
+      quote.freightTotal != null &&
+      quote.promiseDate &&
+      /^\d{5}$/.test(quote.destZip ?? ""),
   );
 
   return (
@@ -793,6 +873,49 @@ export function OrderDeskPortal({
             >
               {quote.freightError}
             </p>
+          ) : null}
+          {quote.status === "sent" && !quote.ghlSyncError ? (
+            <p
+              className="mt-4 text-sm font-medium text-blue-800"
+              role="status"
+              data-testid="order-desk-frozen"
+            >
+              Quote Frozen. GHL Opportunity Updated.
+            </p>
+          ) : null}
+          {quote.ghlSyncError ? (
+            <p className="mt-4 text-sm text-rose-700" role="status" data-testid="order-desk-ghl-sync-error">
+              Quote frozen. GoHighLevel was not updated. {quote.ghlSyncError}
+            </p>
+          ) : null}
+          {quote.status === "draft" ? (
+            <div className="mt-5">
+              <button
+                type="button"
+                data-testid="order-desk-send"
+                onClick={freezeProposal}
+                disabled={!canSend || pending}
+                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-base font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {pendingAction === "send" ? "Sending…" : "Freeze & Send Proposal"}
+              </button>
+              {canSend ? null : (
+                <p className="mt-2 text-xs text-slate-500">
+                  A priced line, freight, a delivery date, and a five-digit ZIP are required.
+                </p>
+              )}
+            </div>
+          ) : null}
+          {quote.status === "sent" && !quote.closedOpportunity ? (
+            <button
+              type="button"
+              data-testid="order-desk-edit"
+              onClick={editSentQuote}
+              disabled={pending}
+              className="mt-3 w-full rounded-xl px-4 py-3 text-base font-semibold text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
+            >
+              {pendingAction === "edit" ? "Returning to draft…" : "Edit Quote"}
+            </button>
           ) : null}
           {canSwitchFreight ? (
             <div className="mt-4 flex flex-col gap-2">

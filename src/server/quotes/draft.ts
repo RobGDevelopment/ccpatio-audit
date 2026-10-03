@@ -136,6 +136,7 @@ export async function loadQuoteDocument(
       : null,
     promiseTruckCode: quote.promise_truck_code,
     promiseError: quote.promise_error,
+    ghlSyncError: quote.ghl_sync_error,
     voidReason: quote.void_reason,
     lines: lines.map((line) => ({
       id: line.id,

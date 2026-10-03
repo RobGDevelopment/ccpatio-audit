@@ -69,6 +69,7 @@ export type OrderDeskQuote = {
   calculatedPromiseDate: string | null;
   promiseTruckCode: string | null;
   promiseError: string | null;
+  ghlSyncError: string | null;
   voidReason: string | null;
   lines: OrderDeskLine[];
   suggestions: OrderDeskSuggestion[];

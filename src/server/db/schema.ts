@@ -745,7 +745,7 @@ export type QuoteOverrideField = (typeof quoteOverrideFieldEnum.enumValues)[numb
 
 /**
  * One commercial document per open GoHighLevel opportunity.
- * `current_revision_id` stays a plain uuid until `quote_revisions` exists.
+ * `current_revision_id` points at the live sent revision.
  * The browser never queries this table.
  */
 export const quotes = pgTable(
@@ -796,7 +796,10 @@ export const quotes = pgTable(
       { onDelete: "set null" },
     ),
     deposit_pct: numeric("deposit_pct", { precision: 5, scale: 2 }),
-    current_revision_id: uuid("current_revision_id"),
+    current_revision_id: uuid("current_revision_id").references(
+      (): AnyPgColumn => quote_revisions.id,
+      { onDelete: "set null" },
+    ),
     order_intake_id: uuid("order_intake_id").references(() => order_intake.id),
     katana_sales_order_id: integer("katana_sales_order_id"),
     katana_order_no: text("katana_order_no"),
@@ -862,6 +865,39 @@ export const quote_line_items = pgTable(
       .on(table.inventory_hold_id)
       .where(sql`${table.inventory_hold_id} is not null`),
     check("quote_line_items_qty_positive", sql`${table.qty} > 0`),
+  ],
+);
+
+/**
+ * Immutable send snapshot. The only update is `voided_at` when a sent
+ * quote returns to draft. The browser never queries this table.
+ */
+export const quote_revisions = pgTable(
+  "quote_revisions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    quote_id: uuid("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "cascade" }),
+    revision_no: integer("revision_no").notNull(),
+    payload: jsonb("payload").notNull(),
+    merchandise_total: numeric("merchandise_total", {
+      precision: 12,
+      scale: 2,
+    }).notNull(),
+    freight_total: numeric("freight_total", { precision: 12, scale: 2 }).notNull(),
+    deposit_pct: numeric("deposit_pct", { precision: 5, scale: 2 }).notNull(),
+    amount_due: numeric("amount_due", { precision: 12, scale: 2 }).notNull(),
+    voided_at: timestamp("voided_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("quote_revisions_quote_revision_uidx").on(
+      table.quote_id,
+      table.revision_no,
+    ),
   ],
 );
 
