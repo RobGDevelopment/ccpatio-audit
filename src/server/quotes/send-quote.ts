@@ -11,6 +11,7 @@ import {
 } from "@/server/db/schema";
 import type { HoldActor } from "@/server/ghl/hold-actor";
 import { updateOpportunityValue } from "@/server/ghl/private-api";
+import { isDiscountType, quoteGrandTotal } from "@/lib/quote-financials";
 import { merchandiseTotal } from "@/server/quotes/msrp";
 
 const DEFAULT_DEPOSIT_PCT = "50.00";
@@ -24,6 +25,7 @@ export type SendQuoteError =
   | "freight_missing"
   | "promise_missing"
   | "dest_zip_invalid"
+  | "opportunity_missing"
   | "opportunity_already_ordered";
 
 export type RevertQuoteError = "quote_missing" | "stale_version" | "not_sent";
@@ -38,7 +40,7 @@ export type QuoteRevisionLine = {
   lineNo: number;
   lineKind: QuoteLineKind;
   sku: string;
-  katanaVariantId: number;
+  katanaVariantId: number | null;
   qty: string;
   unitPrice: string;
   description: string;
@@ -199,6 +201,10 @@ export async function freezeQuote(input: {
     if (quote.version !== input.expectedVersion) {
       return { ok: false as const, error: "stale_version" as const };
     }
+    const opportunityId = quote.ghl_opportunity_id;
+    if (!opportunityId) {
+      return { ok: false as const, error: "opportunity_missing" as const };
+    }
 
     const lines = await tx
       .select()
@@ -224,15 +230,24 @@ export async function freezeQuote(input: {
     const [intake] = await tx
       .select({ id: order_intake.id })
       .from(order_intake)
-      .where(eq(order_intake.ghl_opportunity_id, quote.ghl_opportunity_id))
+      .where(eq(order_intake.ghl_opportunity_id, opportunityId))
       .limit(1);
     if (intake) {
       return { ok: false as const, error: "opportunity_already_ordered" as const };
     }
 
     const depositPct = await resolveDepositPct(tx, quote.deposit_pct);
-    const due = amountDue(priced, quote.freight_total, depositPct);
-    const mirror = opportunityMirrorValue(priced, quote.freight_total);
+    const discountType = isDiscountType(quote.discount_type) ? quote.discount_type : "FLAT";
+    const totals = quoteGrandTotal({
+      subtotal: Number(priced),
+      discountAmount: Number(quote.discount_amount),
+      discountType,
+      tax: Number(quote.tax_amount),
+      shipping: Number(quote.freight_total),
+    });
+    const netGoods = (totals.total - totals.shipping).toFixed(2);
+    const due = amountDue(netGoods, quote.freight_total, depositPct);
+    const mirror = opportunityMirrorValue(netGoods, quote.freight_total);
     if (!due || !mirror) {
       return { ok: false as const, error: "freight_missing" as const };
     }
@@ -308,7 +323,7 @@ export async function freezeQuote(input: {
       ok: true as const,
       alreadySent: false as const,
       quoteId: quote.id,
-      opportunityId: quote.ghl_opportunity_id,
+      opportunityId,
       version: updated.version,
       revisionId: revision.id,
       amountDue: due,

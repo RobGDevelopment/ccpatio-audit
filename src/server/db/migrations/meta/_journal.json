@@ -246,6 +246,27 @@
       "when": 1790994324371,
       "tag": "0034_quote_revisions",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1791051465044,
+      "tag": "0035_walkin_nullable_opportunity",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791054353728,
+      "tag": "0036_quote_customer_financials",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791068285458,
+      "tag": "0037_omniscient_wolfpack",
+      "breakpoints": true
     }
   ]
 }

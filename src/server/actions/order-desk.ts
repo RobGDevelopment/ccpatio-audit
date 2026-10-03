@@ -19,6 +19,9 @@ import {
   overrideQuotePromiseDate,
   requireCommercialOverride,
 } from "@/server/quotes/freight-override";
+import { addCustomQuoteLine } from "@/server/quotes/custom-line";
+import { createWalkInDraft, saveQuoteCommercials, stampEstimateFreight } from "@/server/quotes/draft";
+import { parseQuoteCommercials, type QuoteCommercialInput } from "@/lib/quote-financials";
 import { loadOrderDesk, refreshDraftSnapshot } from "@/server/quotes/load-order-desk";
 import {
   freezeQuote,
@@ -32,7 +35,7 @@ import {
   type RateQuoteFreightResult,
 } from "@/server/quotes/rate-freight";
 import type { CalculatedPromise } from "@/server/quotes/calculate-promise";
-import type { OrderDeskModel } from "@/server/quotes/view";
+import type { OrderDeskLine, OrderDeskModel } from "@/server/quotes/view";
 import type { FulfillmentMethod } from "@/types/freight";
 
 export type { OrderDeskCatalogProduct, QuoteHoldMutation };
@@ -127,6 +130,96 @@ function revalidateQuoteSurfaces() {
   revalidatePath("/embed/order-desk");
 }
 
+const DISPATCH_FREIGHT_METHODS = new Set<FulfillmentMethod>([
+  "LOCAL_WHITE_GLOVE",
+  "INTERNAL_FLEET",
+  "INTERNAL_FLEET_CURBSIDE",
+  "INTERNAL_FLEET_WHITE_GLOVE",
+  "INTERNAL_FLEET_FLAT_RATE",
+  "PRIORITY1_LTL",
+]);
+
+/**
+ * Save a dispatch selection onto an Order Desk draft without freezing the
+ * GoHighLevel opportunity. Walk-ins with no opportunity get a new quote.
+ */
+export async function createDispatchEstimate(input: {
+  opportunityId?: string | null;
+  destZip: string;
+  distanceMiles: number;
+  method: FulfillmentMethod;
+  label: string;
+  freightUsd: number;
+  variantSkus?: readonly string[];
+  ghlUserId?: string | null;
+  ghlUserEmail?: string | null;
+}): Promise<
+  | { ok: true; quoteId: string; opportunityId: string | null }
+  | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Sign in to add this estimate." };
+
+  const destZip = input.destZip.trim();
+  if (!/^\d{5}$/.test(destZip)) return { ok: false, error: "Enter a 5-digit ZIP code." };
+  if (!Number.isFinite(input.distanceMiles) || input.distanceMiles < 0) {
+    return { ok: false, error: "Freight quote is missing a distance." };
+  }
+  if (!DISPATCH_FREIGHT_METHODS.has(input.method)) {
+    return { ok: false, error: "Choose a freight option." };
+  }
+  if (!Number.isFinite(input.freightUsd) || input.freightUsd < 0) {
+    return { ok: false, error: "The selected freight option has no customer total." };
+  }
+  const label = input.label.trim();
+  if (!label) return { ok: false, error: "Choose a freight option." };
+
+  const actor = await resolveHoldActor({
+    ghlUserId: input.ghlUserId,
+    ghlUserEmail: input.ghlUserEmail,
+  });
+  if (!actor.ok) return { ok: false, error: actor.error };
+
+  const opportunityId = input.opportunityId?.trim() ?? "";
+  if (opportunityId) {
+    const model = await loadOrderDesk({
+      opportunityId,
+      ghlUserId: input.ghlUserId,
+      ghlUserEmail: input.ghlUserEmail,
+    });
+    if (model.state !== "quote") {
+      return {
+        ok: false,
+        error: model.state === "error" ? model.message : "No opportunity is selected.",
+      };
+    }
+    const stamped = await stampEstimateFreight({
+      quoteId: model.quoteId,
+      destZip,
+      distanceMiles: input.distanceMiles,
+      method: input.method,
+      label,
+      freightUsd: input.freightUsd,
+    });
+    if (!stamped.ok) return stamped;
+    revalidateQuoteSurfaces();
+    return { ok: true, quoteId: model.quoteId, opportunityId };
+  }
+
+  const created = await createWalkInDraft({
+    actor,
+    destZip,
+    distanceMiles: input.distanceMiles,
+    method: input.method,
+    label,
+    freightUsd: input.freightUsd,
+    variantSkus: input.variantSkus ?? [],
+  });
+  if (!created.ok) return created;
+  revalidateQuoteSurfaces();
+  return { ok: true, quoteId: created.quoteId, opportunityId: null };
+}
+
 export async function openOrderDesk(input: {
   opportunityId: string;
   ghlUserId?: string | null;
@@ -135,13 +228,15 @@ export async function openOrderDesk(input: {
   return loadOrderDesk(input);
 }
 
-export async function saveOrderDeskDraft(input: {
-  quoteId: string;
-  version: number;
-  opportunityId: string;
-  ghlUserId?: string | null;
-  ghlUserEmail?: string | null;
-}): Promise<{ ok: true; version: number } | { ok: false; error: string }> {
+export async function saveOrderDeskDraft(
+  input: {
+    quoteId: string;
+    version: number;
+    opportunityId: string | null;
+    ghlUserId?: string | null;
+    ghlUserEmail?: string | null;
+  } & QuoteCommercialInput,
+): Promise<{ ok: true; version: number } | { ok: false; error: string }> {
   const session = await getPimSession();
   if (!session) return { ok: false, error: "Sign in to save this draft." };
 
@@ -151,15 +246,74 @@ export async function saveOrderDeskDraft(input: {
   });
   if (!actor.ok) return { ok: false, error: actor.error };
 
-  const saved = await refreshDraftSnapshot({
+  const commercial = parseQuoteCommercials(input);
+  if (!commercial.ok) return commercial;
+
+  const saved = await saveQuoteCommercials({
     quoteId: input.quoteId,
     version: input.version,
-    opportunityId: input.opportunityId,
+    patch: commercial.patch,
   });
-  if (!saved.ok) return saved;
+  if (!saved.ok) {
+    return {
+      ok: false,
+      error:
+        saved.error === "stale_version"
+          ? "This draft was saved somewhere else. Reload to see the current version."
+          : "This quote is no longer a draft.",
+    };
+  }
+
+  const opportunityId = input.opportunityId?.trim() ?? "";
+  if (!opportunityId) {
+    revalidateQuoteSurfaces();
+    return saved;
+  }
+
+  const refreshed = await refreshDraftSnapshot({
+    quoteId: input.quoteId,
+    version: saved.version,
+    opportunityId,
+  });
+  if (!refreshed.ok) return refreshed;
 
   revalidateQuoteSurfaces();
-  return saved;
+  return refreshed;
+}
+
+export async function addCustomLine(input: {
+  quoteId: string;
+  expectedVersion: number;
+  description: string;
+  unitPrice: number;
+  ghlUserId?: string | null;
+  ghlUserEmail?: string | null;
+}): Promise<
+  | {
+      ok: true;
+      version: number;
+      merchandiseTotal: string | null;
+      line: OrderDeskLine;
+    }
+  | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Sign in to add a line." };
+
+  const actor = await resolveHoldActor({
+    ghlUserId: input.ghlUserId,
+    ghlUserEmail: input.ghlUserEmail,
+  });
+  if (!actor.ok) return { ok: false, error: actor.error };
+
+  const added = await addCustomQuoteLine({
+    quoteId: input.quoteId,
+    expectedVersion: input.expectedVersion,
+    description: input.description,
+    unitPrice: input.unitPrice,
+  });
+  if (added.ok) revalidateQuoteSurfaces();
+  return added;
 }
 
 export async function searchOrderDeskProducts(
@@ -344,6 +498,8 @@ function presentSendError(error: SendQuoteError | RevertQuoteError): string {
       return "An estimated delivery date is required before sending.";
     case "dest_zip_invalid":
       return "Destination ZIP must be five digits.";
+    case "opportunity_missing":
+      return "A GoHighLevel opportunity is required before this quote can be sent.";
     case "opportunity_already_ordered":
       return "This opportunity already has a factory order.";
     default:

@@ -362,7 +362,10 @@ export async function rateQuoteById(
     .select()
     .from(quote_line_items)
     .where(eq(quote_line_items.quote_id, quote.id));
-  if (lines.length === 0) {
+  const shippable = lines.filter(
+    (line) => line.line_kind !== "custom" && line.katana_variant_id != null,
+  );
+  if (shippable.length === 0) {
     return refuse(quote, "Add a shippable line before rating freight.", now, {
       destZip,
       miles: quote.distance_miles,
@@ -376,18 +379,18 @@ export async function rateQuoteById(
     .where(
       inArray(
         logistics_profiles.katana_variant_id,
-        lines.map((line) => line.katana_variant_id),
+        shippable.map((line) => line.katana_variant_id as number),
       ),
     );
   const byVariant = new Map(
     profiles.map((profile) => [profile.katana_variant_id, profile]),
   );
-  const anyParent = lines.some((line) => {
-    const profile = byVariant.get(line.katana_variant_id);
+  const anyParent = shippable.some((line) => {
+    const profile = byVariant.get(line.katana_variant_id as number);
     return profile != null && !profile.is_modular_component;
   });
-  const included = lines.filter((line) => {
-    const profile = byVariant.get(line.katana_variant_id);
+  const included = shippable.filter((line) => {
+    const profile = byVariant.get(line.katana_variant_id as number);
     return !(profile?.is_modular_component && anyParent);
   });
   if (included.length === 0) {
@@ -400,7 +403,7 @@ export async function rateQuoteById(
 
   const rated: RatedLineInput[] = [];
   for (const line of included) {
-    const parsed = lineInput(line, byVariant.get(line.katana_variant_id));
+    const parsed = lineInput(line, byVariant.get(line.katana_variant_id as number));
     if (!parsed.ok) {
       return refuse(quote, parsed.error, now, {
         destZip,
@@ -537,9 +540,13 @@ export async function rateQuoteById(
   const calculated = applied.priceUsd;
   const shown = await shownFreightTotal(quote, calculated);
   const goods = merchandiseTotal(
-    included.map((line) => ({ unitPrice: line.unit_price, qty: line.qty })),
+    [...included, ...lines.filter((line) => line.line_kind === "custom")].map((line) => ({
+      unitPrice: line.unit_price,
+      qty: line.qty,
+    })),
   );
   const snapshots = lines.flatMap((line) => {
+    if (line.katana_variant_id == null) return [];
     const profile = byVariant.get(line.katana_variant_id);
     return profile ? [{ lineId: line.id, profile }] : [];
   });

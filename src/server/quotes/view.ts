@@ -1,4 +1,10 @@
-import type { DistanceSource, FreightMethodColumn, QuoteStatus } from "@/server/db/schema";
+import type { DiscountType } from "@/lib/quote-financials";
+import type {
+  DistanceSource,
+  FreightMethodColumn,
+  QuoteLineKind,
+  QuoteStatus,
+} from "@/server/db/schema";
 import type { FulfillmentMethod, FulfillmentPlan } from "@/types/freight";
 
 export type OrderDeskFreightOption = {
@@ -31,6 +37,7 @@ export function readFreightOptions(snapshot: unknown): OrderDeskFreightOption[] 
 export type OrderDeskLine = {
   id: string;
   lineNo: number;
+  lineKind: QuoteLineKind;
   sku: string;
   qty: string;
   unitPrice: string | null;
@@ -54,8 +61,16 @@ export type OrderDeskQuote = {
   quoteId: string;
   version: number;
   status: QuoteStatus;
-  opportunityId: string;
-  opportunityName: string;
+  opportunityId: string | null;
+  opportunityName: string | null;
+  customerName: string | null;
+  customerEmail: string | null;
+  billToAddress: string | null;
+  shipToAddress: string | null;
+  discountAmount: string;
+  discountType: DiscountType;
+  taxAmount: string;
+  selectedCarrierCode: string | null;
   destZip: string | null;
   distanceMiles: string | null;
   distanceSource: DistanceSource | null;

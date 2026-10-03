@@ -9,6 +9,13 @@ import {
   readOpportunityIdFromHref,
 } from "@/lib/embed-actor-params";
 import {
+  lineExtended,
+  quoteGrandTotal,
+  type DiscountType,
+} from "@/lib/quote-financials";
+import { generateQuotePdf } from "@/server/actions/generatePdf";
+import {
+  addCustomLine,
   openOrderDesk,
   overrideQuotePromise,
   rateQuoteFreight,
@@ -31,10 +38,46 @@ function money(amount: string | null): string {
   if (amount == null) return "—";
   const value = Number(amount);
   if (!Number.isFinite(value)) return "—";
+  return moneyNumber(value);
+}
+
+function moneyNumber(amount: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(value);
+  }).format(amount);
+}
+
+function amountField(value: string): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "";
+  return String(amount);
+}
+
+function commercialOf(quote: OrderDeskQuote) {
+  return {
+    customerName: quote.customerName ?? "",
+    customerEmail: quote.customerEmail ?? "",
+    billToAddress: quote.billToAddress ?? "",
+    shipToAddress: quote.shipToAddress ?? "",
+    discountAmount: amountField(quote.discountAmount),
+    discountType: quote.discountType,
+    taxAmount: amountField(quote.taxAmount),
+  };
+}
+
+function savePdfFile(pdfBase64: string, filename: string) {
+  const binary = atob(pdfBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function qtyLabel(qty: string): string {
@@ -53,14 +96,20 @@ function statusLabel(status: string): string {
   return status.replace(/_/g, " ");
 }
 
-function freightMethodLabel(method: string | null): string {
+function freightMethodLabel(method: string | null, carrier: string | null): string {
   switch (method) {
     case "LOCAL_WHITE_GLOVE":
       return "Local white-glove";
     case "INTERNAL_FLEET":
       return "Company truck";
+    case "INTERNAL_FLEET_CURBSIDE":
+      return "CC Patio Fleet Curbside";
+    case "INTERNAL_FLEET_WHITE_GLOVE":
+      return "CC Patio Fleet White Glove";
+    case "INTERNAL_FLEET_FLAT_RATE":
+      return "CC Patio Fleet Admin Flat Rate";
     case "PRIORITY1_LTL":
-      return "LTL";
+      return carrier ? `LTL - ${carrier}` : "LTL";
     default:
       return "—";
   }
@@ -89,6 +138,8 @@ function applyFreight(current: OrderDeskQuote, result: {
     merchandiseTotal: result.merchandiseTotal,
     freightMethod: result.freightMethod,
     freightTotal: result.freightTotal,
+    selectedCarrierCode:
+      result.freightMethod === current.freightMethod ? current.selectedCarrierCode : null,
     freightError: result.freightError,
     freightOptions: result.freightOptions,
     ...(result.executedBy !== undefined ? { executedBy: result.executedBy } : {}),
@@ -136,8 +187,21 @@ export function OrderDeskPortal({
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [pendingAction, setPendingAction] = useState<
-    "save" | "remove" | "swap" | "release" | "send" | "edit" | null
+    "save" | "remove" | "swap" | "release" | "send" | "edit" | "custom" | "pdf" | null
   >(null);
+  const initialCommercial = initial.state === "quote" ? commercialOf(initial) : null;
+  const [customerName, setCustomerName] = useState(initialCommercial?.customerName ?? "");
+  const [customerEmail, setCustomerEmail] = useState(initialCommercial?.customerEmail ?? "");
+  const [billToAddress, setBillToAddress] = useState(initialCommercial?.billToAddress ?? "");
+  const [shipToAddress, setShipToAddress] = useState(initialCommercial?.shipToAddress ?? "");
+  const [discountDraft, setDiscountDraft] = useState(initialCommercial?.discountAmount ?? "0");
+  const [discountType, setDiscountType] = useState<DiscountType>(
+    initialCommercial?.discountType ?? "FLAT",
+  );
+  const [taxDraft, setTaxDraft] = useState(initialCommercial?.taxAmount ?? "0");
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customDescription, setCustomDescription] = useState("");
+  const [customPrice, setCustomPrice] = useState("");
   const [searching, startSearch] = useTransition();
   const [removeLine, setRemoveLine] = useState<OrderDeskLine | null>(null);
   const [swapLineId, setSwapLineId] = useState<string | null>(null);
@@ -159,6 +223,7 @@ export function OrderDeskPortal({
   const [overrideReason, setOverrideReason] = useState("");
   const zipQuoteId = useRef(initial.state === "quote" ? initial.quoteId : null);
   const executedQuoteId = useRef(initial.state === "quote" ? initial.quoteId : null);
+  const commercialQuoteId = useRef(initial.state === "quote" ? initial.quoteId : null);
 
   useEffect(() => {
     setModel(initial);
@@ -176,6 +241,20 @@ export function OrderDeskPortal({
     if (executedQuoteId.current === model.quoteId) return;
     executedQuoteId.current = model.quoteId;
     setExecutedDraft(model.executedBy);
+  }, [model]);
+
+  useEffect(() => {
+    if (model.state !== "quote") return;
+    if (commercialQuoteId.current === model.quoteId) return;
+    commercialQuoteId.current = model.quoteId;
+    const next = commercialOf(model);
+    setCustomerName(next.customerName);
+    setCustomerEmail(next.customerEmail);
+    setBillToAddress(next.billToAddress);
+    setShipToAddress(next.shipToAddress);
+    setDiscountDraft(next.discountAmount);
+    setDiscountType(next.discountType);
+    setTaxDraft(next.taxAmount);
   }, [model]);
 
   useEffect(() => {
@@ -221,9 +300,27 @@ export function OrderDeskPortal({
     model.state === "quote"
       ? model.lines.map((line) => `${line.id}:${line.sku}:${line.qty}`).join("|")
       : "";
+  const preservedFreight = useRef(
+    initial.state === "quote" && initial.freightTotal != null && initial.freightMethod != null
+      ? {
+          quoteId: initial.quoteId,
+          lineKey: initial.lines.map((line) => `${line.id}:${line.sku}:${line.qty}`).join("|"),
+          zip: initial.destZip ?? "",
+        }
+      : null,
+  );
 
   useEffect(() => {
     if (!quoteId || quoteReadOnly || quoteStatus !== "draft") return;
+    const preserved = preservedFreight.current;
+    if (
+      preserved &&
+      preserved.quoteId === quoteId &&
+      preserved.lineKey === lineKey &&
+      preserved.zip === zipDraft.trim()
+    ) {
+      return;
+    }
     const handle = window.setTimeout(() => {
       setRating(true);
       void rateQuoteFreight(quoteId, zipDraft, executedDraft)
@@ -257,6 +354,18 @@ export function OrderDeskPortal({
     );
   }
 
+  function commercialInput() {
+    return {
+      customerName,
+      customerEmail,
+      billToAddress,
+      shipToAddress,
+      discountAmount: discountDraft,
+      discountType,
+      taxAmount: taxDraft,
+    };
+  }
+
   function save() {
     if (model.state !== "quote" || model.readOnly) return;
     setNotice(null);
@@ -270,13 +379,101 @@ export function OrderDeskPortal({
           opportunityId: model.opportunityId,
           ghlUserId: actor.ghlUserId,
           ghlUserEmail: actor.ghlUserEmail,
+          ...commercialInput(),
         });
         if (!result.ok) {
           setNotice(result.error);
           return;
         }
+        applyVersion(result.version);
         setNotice("Draft saved.");
         router.refresh();
+      } finally {
+        setPendingAction(null);
+      }
+    });
+  }
+
+  function addCustom() {
+    if (model.state !== "quote" || model.readOnly) return;
+    const description = customDescription.trim();
+    const price = Number(customPrice.replace(/[$,\s]/g, ""));
+    if (!description) {
+      setNotice("Enter a description.");
+      return;
+    }
+    if (!Number.isFinite(price) || price < 0) {
+      setNotice("Enter a price of zero or more.");
+      return;
+    }
+    setNotice(null);
+    setPendingAction("custom");
+    const actor = actorFromWindow();
+    startTransition(async () => {
+      try {
+        const result = await addCustomLine({
+          quoteId: model.quoteId,
+          expectedVersion: model.version,
+          description,
+          unitPrice: price,
+          ghlUserId: actor.ghlUserId,
+          ghlUserEmail: actor.ghlUserEmail,
+        });
+        if (!result.ok) {
+          setNotice(result.error);
+          return;
+        }
+        setModel((current) => {
+          if (current.state !== "quote") return current;
+          return {
+            ...current,
+            version: result.version,
+            merchandiseTotal: result.merchandiseTotal,
+            lines: [...current.lines, result.line],
+          };
+        });
+        setCustomDescription("");
+        setCustomPrice("");
+        setCustomOpen(false);
+        setNotice("Custom line added.");
+        router.refresh();
+      } finally {
+        setPendingAction(null);
+      }
+    });
+  }
+
+  function downloadEstimate() {
+    if (model.state !== "quote") return;
+    setNotice(null);
+    setPendingAction("pdf");
+    const actor = actorFromWindow();
+    const quoteId = model.quoteId;
+    const version = model.version;
+    const readOnly = model.readOnly;
+    startTransition(async () => {
+      try {
+        if (!readOnly) {
+          const saved = await saveOrderDeskDraft({
+            quoteId,
+            version,
+            opportunityId: model.opportunityId,
+            ghlUserId: actor.ghlUserId,
+            ghlUserEmail: actor.ghlUserEmail,
+            ...commercialInput(),
+          });
+          if (!saved.ok) {
+            setNotice(saved.error);
+            return;
+          }
+          applyVersion(saved.version);
+        }
+        const pdf = await generateQuotePdf(quoteId);
+        if (!pdf.ok) {
+          setNotice(pdf.error);
+          return;
+        }
+        savePdfFile(pdf.pdfBase64, pdf.filename);
       } finally {
         setPendingAction(null);
       }
@@ -518,8 +715,22 @@ export function OrderDeskPortal({
       quote.freightOptions.some((option) => option.method === "INTERNAL_FLEET") &&
       quote.freightOptions.some((option) => option.method === "PRIORITY1_LTL"),
   );
+  const subtotal = quote
+    ? quote.lines.reduce((sum, line) => sum + (lineExtended(line.unitPrice, line.qty) ?? 0), 0)
+    : 0;
+  const shippingAmount = quote?.freightTotal != null ? Number(quote.freightTotal) : 0;
+  const discountValue = Number(discountDraft);
+  const taxValue = Number(taxDraft);
+  const summary = quoteGrandTotal({
+    subtotal,
+    discountAmount: Number.isFinite(discountValue) ? discountValue : 0,
+    discountType,
+    tax: Number.isFinite(taxValue) ? taxValue : 0,
+    shipping: Number.isFinite(shippingAmount) ? shippingAmount : 0,
+  });
   const canSend = Boolean(
     quote &&
+      quote.opportunityId &&
       quote.status === "draft" &&
       !quote.readOnly &&
       quote.lines.length > 0 &&
@@ -535,7 +746,7 @@ export function OrderDeskPortal({
         <div>
           <p className={eyebrow}>Order Desk</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-            {model.state === "quote" ? model.opportunityName : "Draft"}
+            {model.state === "quote" ? model.opportunityName ?? "Walk-in estimate" : "Draft"}
           </h1>
         </div>
         {model.state === "quote" ? (
@@ -623,7 +834,8 @@ export function OrderDeskPortal({
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-900">{line.description}</p>
                       <p className="text-xs text-slate-500">
-                        {line.sku} · Qty {qtyLabel(line.qty)}
+                        {line.lineKind === "custom" ? "Custom line" : line.sku} · Qty{" "}
+                        {qtyLabel(line.qty)}
                       </p>
                       {line.priceError ? (
                         <p className="mt-1 text-xs text-amber-800">{line.priceError}</p>
@@ -710,6 +922,56 @@ export function OrderDeskPortal({
             </ul>
           )}
 
+          {model.readOnly ? null : (
+            <div className="mt-4">
+              <button
+                type="button"
+                data-testid="order-desk-add-custom"
+                onClick={() => setCustomOpen((open) => !open)}
+                disabled={pending}
+                className="rounded-full px-3 py-2 text-sm font-medium text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
+              >
+                + Add Custom Line Item
+              </button>
+              {customOpen ? (
+                <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
+                  <label className="block text-xs text-slate-500" htmlFor="order-desk-custom-description">
+                    Description
+                    <input
+                      id="order-desk-custom-description"
+                      data-testid="order-desk-custom-description"
+                      value={customDescription}
+                      onChange={(event) => setCustomDescription(event.target.value)}
+                      placeholder="Custom Dekton Insert"
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    />
+                  </label>
+                  <label className="block text-xs text-slate-500" htmlFor="order-desk-custom-price">
+                    Price
+                    <input
+                      id="order-desk-custom-price"
+                      data-testid="order-desk-custom-price"
+                      value={customPrice}
+                      onChange={(event) => setCustomPrice(event.target.value)}
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    data-testid="order-desk-custom-save"
+                    onClick={addCustom}
+                    disabled={pending}
+                    className="self-end rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                  >
+                    {pendingAction === "custom" ? "Adding…" : "Add line"}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+
           {orphanHoldId ? (
             <div
               data-testid="order-desk-orphan-hold"
@@ -771,12 +1033,81 @@ export function OrderDeskPortal({
           data-testid="order-desk-invoice"
           className={`${card} h-fit px-5 py-5 lg:sticky lg:top-4`}
         >
-          <p className={eyebrow}>Invoice Summary</p>
+          <div data-testid="order-desk-customer" className="grid gap-3">
+            <label className="block text-xs text-slate-500" htmlFor="order-desk-customer-name">
+              Name
+              {quote.readOnly ? (
+                <span className="mt-1 block text-sm font-medium text-slate-900">
+                  {customerName || "—"}
+                </span>
+              ) : (
+                <input
+                  id="order-desk-customer-name"
+                  data-testid="order-desk-customer-name"
+                  value={customerName}
+                  onChange={(event) => setCustomerName(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                />
+              )}
+            </label>
+            <label className="block text-xs text-slate-500" htmlFor="order-desk-customer-email">
+              Email
+              {quote.readOnly ? (
+                <span className="mt-1 block text-sm font-medium text-slate-900">
+                  {customerEmail || "—"}
+                </span>
+              ) : (
+                <input
+                  id="order-desk-customer-email"
+                  data-testid="order-desk-customer-email"
+                  type="email"
+                  value={customerEmail}
+                  onChange={(event) => setCustomerEmail(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                />
+              )}
+            </label>
+            <label className="block text-xs text-slate-500" htmlFor="order-desk-bill-to">
+              Bill To
+              {quote.readOnly ? (
+                <span className="mt-1 block whitespace-pre-wrap text-sm font-medium text-slate-900">
+                  {billToAddress || "—"}
+                </span>
+              ) : (
+                <textarea
+                  id="order-desk-bill-to"
+                  data-testid="order-desk-bill-to"
+                  value={billToAddress}
+                  onChange={(event) => setBillToAddress(event.target.value)}
+                  rows={3}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                />
+              )}
+            </label>
+            <label className="block text-xs text-slate-500" htmlFor="order-desk-ship-to">
+              Ship To
+              {quote.readOnly ? (
+                <span className="mt-1 block whitespace-pre-wrap text-sm font-medium text-slate-900">
+                  {shipToAddress || "—"}
+                </span>
+              ) : (
+                <textarea
+                  id="order-desk-ship-to"
+                  data-testid="order-desk-ship-to"
+                  value={shipToAddress}
+                  onChange={(event) => setShipToAddress(event.target.value)}
+                  rows={3}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                />
+              )}
+            </label>
+          </div>
+          <p className={`${eyebrow} mt-5`}>Invoice Summary</p>
           <dl className="mt-4 space-y-3 text-sm">
             <div>
               <dt className="text-slate-500">Freight method</dt>
               <dd className="font-medium text-slate-900" data-testid="order-desk-freight-method">
-                {freightMethodLabel(quote.freightMethod)}
+                {freightMethodLabel(quote.freightMethod, quote.selectedCarrierCode)}
               </dd>
             </div>
             <div>
@@ -899,11 +1230,16 @@ export function OrderDeskPortal({
               >
                 {pendingAction === "send" ? "Sending…" : "Freeze & Send Proposal"}
               </button>
-              {canSend ? null : (
+              {quote.opportunityId ? null : (
+                <p className="mt-2 text-xs text-slate-500">
+                  A GoHighLevel opportunity is required before Freeze & Send.
+                </p>
+              )}
+              {quote.opportunityId && !canSend ? (
                 <p className="mt-2 text-xs text-slate-500">
                   A priced line, freight, a delivery date, and a five-digit ZIP are required.
                 </p>
-              )}
+              ) : null}
             </div>
           ) : null}
           {quote.status === "sent" && !quote.closedOpportunity ? (
@@ -917,6 +1253,117 @@ export function OrderDeskPortal({
               {pendingAction === "edit" ? "Returning to draft…" : "Edit Quote"}
             </button>
           ) : null}
+          <div
+            data-testid="order-desk-financials"
+            className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"
+          >
+            <p className={eyebrow}>Financial Summary</p>
+            <dl className="mt-3 space-y-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-slate-500">Subtotal</dt>
+                <dd className="font-medium text-slate-900" data-testid="order-desk-subtotal">
+                  {moneyNumber(subtotal)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Discount</dt>
+                <dd className="mt-1">
+                  {quote.readOnly ? (
+                    <span className="font-medium text-slate-900" data-testid="order-desk-discount-dollars">
+                      {discountType === "PERCENTAGE"
+                        ? `${discountDraft || "0"}% (${moneyNumber(summary.discount)})`
+                        : moneyNumber(summary.discount)}
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="order-desk-discount"
+                        data-testid="order-desk-discount"
+                        value={discountDraft}
+                        onChange={(event) => setDiscountDraft(event.target.value)}
+                        inputMode="decimal"
+                        aria-label="Discount"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      />
+                      <button
+                        type="button"
+                        data-testid="order-desk-discount-percent"
+                        aria-pressed={discountType === "PERCENTAGE"}
+                        onClick={() => setDiscountType("PERCENTAGE")}
+                        className={`rounded-full px-3 py-2 text-xs font-medium ring-1 ${
+                          discountType === "PERCENTAGE"
+                            ? "bg-slate-900 text-white ring-slate-900"
+                            : "text-slate-700 ring-slate-200"
+                        }`}
+                      >
+                        %
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="order-desk-discount-flat"
+                        aria-pressed={discountType === "FLAT"}
+                        onClick={() => setDiscountType("FLAT")}
+                        className={`rounded-full px-3 py-2 text-xs font-medium ring-1 ${
+                          discountType === "FLAT"
+                            ? "bg-slate-900 text-white ring-slate-900"
+                            : "text-slate-700 ring-slate-200"
+                        }`}
+                      >
+                        $
+                      </button>
+                    </div>
+                  )}
+                  {quote.readOnly ? null : (
+                    <p className="mt-1 text-xs text-slate-500" data-testid="order-desk-discount-dollars">
+                      {moneyNumber(summary.discount)} off subtotal
+                    </p>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">
+                  <label htmlFor="order-desk-tax">Tax</label>
+                </dt>
+                <dd className="mt-1">
+                  {quote.readOnly ? (
+                    <span className="font-medium text-slate-900" data-testid="order-desk-tax">
+                      {moneyNumber(summary.tax)}
+                    </span>
+                  ) : (
+                    <input
+                      id="order-desk-tax"
+                      data-testid="order-desk-tax"
+                      value={taxDraft}
+                      onChange={(event) => setTaxDraft(event.target.value)}
+                      inputMode="decimal"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    />
+                  )}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-slate-500">Shipping</dt>
+                <dd className="font-medium text-slate-900" data-testid="order-desk-shipping">
+                  {moneyNumber(summary.shipping)}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
+                <dt className="font-medium text-slate-900">Total</dt>
+                <dd className="text-base font-semibold text-slate-900" data-testid="order-desk-grand-total">
+                  {moneyNumber(summary.total)}
+                </dd>
+              </div>
+            </dl>
+            <button
+              type="button"
+              data-testid="order-desk-download-pdf"
+              onClick={downloadEstimate}
+              disabled={pending}
+              className="mt-4 w-full rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
+            >
+              {pendingAction === "pdf" ? "Preparing PDF…" : "Download PDF Estimate"}
+            </button>
+          </div>
           {canSwitchFreight ? (
             <div className="mt-4 flex flex-col gap-2">
               <button

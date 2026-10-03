@@ -44,14 +44,14 @@ type QuoteRow = {
   id: string;
   status: string;
   version: number;
-  opportunityId: string;
+  opportunityId: string | null;
 };
 
 type LineRow = {
   id: string;
   holdId: string | null;
   sku: string;
-  variantId: number;
+  variantId: number | null;
   qty: string;
 };
 
@@ -250,6 +250,15 @@ export async function removeHeldQuoteLine(
   const line = await loadLine(input.quoteId, input.lineId);
   if (!line) return { ok: false, error: "line_missing" };
 
+  if (line.variantId == null) {
+    return deleteLine({
+      quoteId: input.quoteId,
+      lineId: input.lineId,
+      holdId: line.holdId,
+      expectedVersion: input.expectedVersion,
+    });
+  }
+
   return withAdvisoryLocks([line.variantId], async () => {
     const freshQuote = await loadQuote(input.quoteId);
     const freshBlocked = draftError(freshQuote, input.expectedVersion);
@@ -356,9 +365,10 @@ export async function swapHeldQuoteLine(
   if (blocked) return { ok: false, error: blocked };
   const line = await loadLine(input.quoteId, input.lineId);
   if (!line) return { ok: false, error: "line_missing" };
-  if (!line.holdId) return { ok: false, error: "no_hold" };
+  if (!line.holdId || line.variantId == null) return { ok: false, error: "no_hold" };
+  if (!quote?.opportunityId) return { ok: false, error: "not_on_opportunity" };
   const hold = await loadHold(line.holdId);
-  const problem = holdProblem(hold, quote!.opportunityId);
+  const problem = holdProblem(hold, quote.opportunityId);
   if (problem) return { ok: false, error: problem };
 
   return withAdvisoryLocks([line.variantId, input.newVariantId], async () => {
@@ -370,6 +380,7 @@ export async function swapHeldQuoteLine(
     const freshLine = await loadLine(input.quoteId, input.lineId);
     if (!freshLine) return { ok: false, error: "line_missing" };
     if (!freshLine.holdId) return { ok: false, error: "no_hold" };
+    if (!freshQuote.opportunityId) return { ok: false, error: "not_on_opportunity" };
     const freshHold = await loadHold(freshLine.holdId);
     const freshProblem = holdProblem(freshHold, freshQuote.opportunityId);
     if (freshProblem) return { ok: false, error: freshProblem };

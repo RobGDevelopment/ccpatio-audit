@@ -73,8 +73,8 @@ export async function shadowPriority1RateQuote(
     rateQuotes: [
       {
         id: 900002,
-        carrierName: "Mocked Freight Line",
-        carrierCode: "MOCK",
+        carrierName: "Priority1",
+        carrierCode: "P1",
         serviceLevel: "STANDARD",
         serviceLevelDescription: lane.region,
         transitDays: lane.transitDays,
@@ -85,7 +85,7 @@ export async function shadowPriority1RateQuote(
         totalNewCarrierLiabilityAmount: 0,
         totalUsedCarrierLiabilityAmount: 0,
         totalMachineryCarrierLiabilityAmount: 0,
-        carrierQuoteNumber: `MOCK-${lane.estimatedCost.toFixed(0)}`,
+        carrierQuoteNumber: `P1-${lane.estimatedCost.toFixed(0)}`,
         rateQuoteDetail: {
           total: lane.estimatedCost,
           baseCost: lane.estimatedCost,

@@ -27,6 +27,9 @@ export type {
 export type FulfillmentMethod =
   | "LOCAL_WHITE_GLOVE"
   | "INTERNAL_FLEET"
+  | "INTERNAL_FLEET_CURBSIDE"
+  | "INTERNAL_FLEET_WHITE_GLOVE"
+  | "INTERNAL_FLEET_FLAT_RATE"
   | "PRIORITY1_LTL";
 
 /**

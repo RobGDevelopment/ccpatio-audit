@@ -109,7 +109,7 @@ async function priority1Option(
     method: "PRIORITY1_LTL", // Keeping existing method string to avoid breaking downstream
     priceUsd: lowest.customerTotalUsd,
     currency: "USD",
-    summary: `LTL from ${lowest.carrierName} (${lowest.carrierCode}), broker $${lowest.brokerTotalUsd.toFixed(2)} plus ${markupPct}% handling.`,
+    summary: `LTL from ${lowest.carrierName} · Standard Curbside Delivery`,
     carriers,
   };
 }
@@ -134,24 +134,29 @@ export async function calculateFulfillmentOptions(
   const destinationZip = destZip.trim();
   const options: FulfillmentOption[] = [];
 
-  if (distanceMiles <= settings.localRadiusMiles) {
-    options.push({
-      method: "LOCAL_WHITE_GLOVE",
-      priceUsd: settings.localWhiteGloveFee,
-      currency: "USD",
-      summary: `Local white-glove inside ${settings.localRadiusMiles} miles.`,
-    });
-  } else if (distanceMiles <= settings.fleetMaxRadiusMiles) {
+  if (distanceMiles <= settings.fleetMaxRadiusMiles) {
     const priceUsd = fleetCustomerTotal(
       requireFleetTariff(settings),
       distanceMiles,
       shipmentWeightLb(skid),
     );
     options.push({
-      method: "INTERNAL_FLEET",
+      method: "INTERNAL_FLEET_CURBSIDE",
       priceUsd,
       currency: "USD",
-      summary: `CC Patio truck inside the ${settings.fleetMaxRadiusMiles}-mile fleet radius at $${priceUsd.toFixed(2)}.`,
+      summary: `CC Patio Fleet · Standard Curbside Delivery`,
+    });
+    options.push({
+      method: "INTERNAL_FLEET_WHITE_GLOVE",
+      priceUsd: priceUsd + 250,
+      currency: "USD",
+      summary: `CC Patio Fleet · Full White Glove Delivery`,
+    });
+    options.push({
+      method: "INTERNAL_FLEET_FLAT_RATE",
+      priceUsd: settings.localWhiteGloveFee,
+      currency: "USD",
+      summary: `CC Patio Fleet · Admin Flat Rate`,
     });
     options.push(
       await priority1Option(

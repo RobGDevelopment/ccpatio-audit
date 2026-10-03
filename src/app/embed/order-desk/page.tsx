@@ -2,6 +2,7 @@ import { OrderDeskPortal } from "@/app/embed/order-desk/OrderDeskPortal";
 import {
   readActorFromSearchRecord,
   readOpportunityIdFromSearchRecord,
+  readQuoteIdFromSearchRecord,
 } from "@/lib/embed-actor-params";
 import { getPimSession } from "@/lib/pim-audit";
 import { loadOrderDesk } from "@/server/quotes/load-order-desk";
@@ -36,6 +37,7 @@ export default async function EmbedOrderDeskPage({
   const actor = readActorFromSearchRecord(params);
   const model = await loadOrderDesk({
     opportunityId: readOpportunityIdFromSearchRecord(params),
+    quoteId: readQuoteIdFromSearchRecord(params),
     ghlUserId: actor.ghlUserId,
     ghlUserEmail: actor.ghlUserEmail,
   });

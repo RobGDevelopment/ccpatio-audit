@@ -6,6 +6,7 @@
 const USER_ID_KEYS = ["ghluserid", "userid", "user_id"] as const;
 const EMAIL_KEYS = ["ghluseremail", "useremail", "user_email"] as const;
 const OPPORTUNITY_KEYS = ["opportunityid", "opportunity_id"] as const;
+const QUOTE_KEYS = ["quoteid", "quote_id"] as const;
 
 export type EmbedActorParams = {
   ghlUserId?: string;
@@ -56,6 +57,12 @@ export function readOpportunityIdFromSearchRecord(
   return pick(pairsFromRecord(input), OPPORTUNITY_KEYS);
 }
 
+export function readQuoteIdFromSearchRecord(
+  input: Record<string, string | string[] | undefined>,
+): string | undefined {
+  return pick(pairsFromRecord(input), QUOTE_KEYS);
+}
+
 function pairsFromHref(href: string): [string, string][] {
   const url = new URL(href, "https://ccpatio.local");
   const pairs: [string, string][] = [...url.searchParams.entries()];
@@ -78,4 +85,29 @@ export function readActorFromHref(href: string): EmbedActorParams {
 
 export function readOpportunityIdFromHref(href: string): string | undefined {
   return pick(pairsFromHref(href), OPPORTUNITY_KEYS);
+}
+
+/** Order Desk URL that keeps the current embed key and actor params. */
+export function orderDeskPathFromHref(
+  href: string,
+  target: { quoteId: string; opportunityId: string | null },
+): string {
+  const url = new URL(href, "https://ccpatio.local");
+  const params = new URLSearchParams(url.search);
+  const hash = url.hash.replace(/^#/, "");
+  if (hash.includes("=")) {
+    const hashQuery = hash.startsWith("?") ? hash.slice(1) : hash;
+    for (const [key, value] of new URLSearchParams(hashQuery)) {
+      if (!params.has(key)) params.set(key, value);
+    }
+  }
+  if (target.opportunityId) {
+    params.set("opportunityId", target.opportunityId);
+    params.delete("quoteId");
+  } else {
+    params.set("quoteId", target.quoteId);
+    params.delete("opportunityId");
+  }
+  const query = params.toString();
+  return query ? `/embed/order-desk?${query}` : "/embed/order-desk";
 }

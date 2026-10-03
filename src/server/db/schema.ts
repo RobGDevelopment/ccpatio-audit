@@ -68,6 +68,9 @@ export const sku_mappings = pgTable("sku_mappings", {
   base_cost: numeric("base_cost", { precision: 12, scale: 4 }),
   katana_variant_id: integer("katana_variant_id"),
   katana_material_id: integer("katana_material_id"),
+  woo_product_id: varchar("woo_product_id", { length: 255 }),
+  clover_item_id: varchar("clover_item_id", { length: 255 }),
+  qbo_item_id: varchar("qbo_item_id", { length: 255 }),
   woo_attribute_slug: text("woo_attribute_slug"),
   ghl_dropdown_value: text("ghl_dropdown_value"),
   qbo_accounts: jsonb("qbo_accounts").$type<QboAccounts>().notNull().default({}),
@@ -112,10 +115,27 @@ export const finished_goods_catalog = pgTable("finished_goods_catalog", {
    * arm_height | sit_height | image
    */
   na_fields: jsonb("na_fields").$type<string[]>().notNull().default([]),
+  is_web_visible: boolean("is_web_visible").default(false),
   /** Operator / device label for multi-browser audit trail. */
   updated_by: text("updated_by"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const quarantine_catalog = pgTable("quarantine_catalog", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  sheet_description: varchar("sheet_description", { length: 255 }).notNull(),
+  target_msrp: numeric("target_msrp", { precision: 10, scale: 2 }),
+  is_web_visible: boolean("is_web_visible").default(false),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const qbo_auth_tokens = pgTable("qbo_auth_tokens", {
+  id: boolean("id").primaryKey().default(true),
+  realm_id: varchar("realm_id", { length: 255 }),
+  access_token: text("access_token"),
+  refresh_token: text("refresh_token"),
+  expires_at: timestamp("expires_at"),
 });
 
 /**
@@ -715,6 +735,7 @@ export type QuoteStatus = (typeof quoteStatusEnum.enumValues)[number];
 export const quoteLineKindEnum = pgEnum("quote_line_kind", [
   "stock_hold",
   "configured",
+  "custom",
 ]);
 
 export type QuoteLineKind = (typeof quoteLineKindEnum.enumValues)[number];
@@ -729,6 +750,9 @@ export type DistanceSource = (typeof distanceSourceEnum.enumValues)[number];
 export const freightMethodEnum = pgEnum("freight_method", [
   "LOCAL_WHITE_GLOVE",
   "INTERNAL_FLEET",
+  "INTERNAL_FLEET_CURBSIDE",
+  "INTERNAL_FLEET_WHITE_GLOVE",
+  "INTERNAL_FLEET_FLAT_RATE",
   "PRIORITY1_LTL",
 ]);
 
@@ -745,19 +769,24 @@ export type QuoteOverrideField = (typeof quoteOverrideFieldEnum.enumValues)[numb
 
 /**
  * One commercial document per open GoHighLevel opportunity.
- * `current_revision_id` points at the live sent revision.
- * The browser never queries this table.
+ * Walk-in estimates leave the opportunity, contact, and name null until a
+ * GoHighLevel opportunity exists. `current_revision_id` points at the live
+ * sent revision. The browser never queries this table.
  */
 export const quotes = pgTable(
   "quotes",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    ghl_opportunity_id: text("ghl_opportunity_id").notNull(),
-    ghl_contact_id: text("ghl_contact_id").notNull(),
-    ghl_opportunity_name: text("ghl_opportunity_name").notNull(),
+    ghl_opportunity_id: text("ghl_opportunity_id"),
+    ghl_contact_id: text("ghl_contact_id"),
+    ghl_opportunity_name: text("ghl_opportunity_name"),
     ghl_user_id: varchar("ghl_user_id", { length: 128 }).notNull(),
     ghl_user_name: text("ghl_user_name").notNull(),
     ghl_user_email: text("ghl_user_email"),
+    customer_name: text("customer_name"),
+    customer_email: text("customer_email"),
+    bill_to_address: text("bill_to_address"),
+    ship_to_address: text("ship_to_address"),
     status: quoteStatusEnum("status").notNull().default("draft"),
     version: integer("version").notNull().default(1),
     dest_zip: char("dest_zip", { length: 5 }),
@@ -767,6 +796,13 @@ export const quotes = pgTable(
       .notNull()
       .default("40.00"),
     merchandise_total: numeric("merchandise_total", { precision: 12, scale: 2 }),
+    discount_amount: numeric("discount_amount", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    discount_type: varchar("discount_type", { length: 16 }).notNull().default("FLAT"),
+    tax_amount: numeric("tax_amount", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
     freight_method: freightMethodEnum("freight_method"),
     freight_total: numeric("freight_total", { precision: 12, scale: 2 }),
     calculated_freight_total: numeric("calculated_freight_total", {
@@ -822,6 +858,15 @@ export const quotes = pgTable(
       "quotes_packed_height_band",
       sql`${table.packed_height_in} >= 36 and ${table.packed_height_in} <= 45`,
     ),
+    check(
+      "quotes_discount_type",
+      sql`${table.discount_type} in ('PERCENTAGE', 'FLAT')`,
+    ),
+    check(
+      "quotes_discount_amount_nonnegative",
+      sql`${table.discount_amount} >= 0`,
+    ),
+    check("quotes_tax_amount_nonnegative", sql`${table.tax_amount} >= 0`),
   ],
 );
 
@@ -836,7 +881,8 @@ export const quote_line_items = pgTable(
     line_no: integer("line_no").notNull(),
     line_kind: quoteLineKindEnum("line_kind").notNull(),
     sku: text("sku").notNull(),
-    katana_variant_id: integer("katana_variant_id").notNull(),
+    /** Null on custom lines, which are not catalog or Katana variants. */
+    katana_variant_id: integer("katana_variant_id"),
     qty: numeric("qty", { precision: 12, scale: 4 }).notNull(),
     unit_price: numeric("unit_price", { precision: 12, scale: 2 }),
     price_error: text("price_error"),

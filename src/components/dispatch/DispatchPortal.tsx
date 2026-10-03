@@ -1,8 +1,11 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { card, eyebrow, softField } from "@/app/showroom/showroom-ui";
+import { FreightEstimateNote } from "@/components/dispatch/FreightEstimateNote";
+import { orderDeskPathFromHref, readActorFromHref } from "@/lib/embed-actor-params";
 import { LTL_FREIGHT_CLASSES } from "@/lib/logistics-profile";
 import {
   lookupDockMiles,
@@ -11,6 +14,7 @@ import {
   type GhlDispatchOpportunity,
 } from "@/server/actions/dispatch";
 import { rateProductsFromLogisticsProfiles } from "@/server/actions/freight";
+import { createDispatchEstimate } from "@/server/actions/order-desk";
 import {
   getQuotingProducts,
   type QuotingProduct,
@@ -60,6 +64,20 @@ function optionFor(
 ): FulfillmentOption | undefined {
   return plan.options.find((option) => option.method === method);
 }
+
+function defaultFleetMethod(plan: FulfillmentPlan): FulfillmentMethod | null {
+  if (optionFor(plan, "INTERNAL_FLEET_CURBSIDE")) return "INTERNAL_FLEET_CURBSIDE";
+  if (optionFor(plan, "INTERNAL_FLEET_WHITE_GLOVE")) return "INTERNAL_FLEET_WHITE_GLOVE";
+  if (optionFor(plan, "INTERNAL_FLEET_FLAT_RATE")) return "INTERNAL_FLEET_FLAT_RATE";
+  return null;
+}
+
+type FleetChoice = {
+  method: FulfillmentMethod;
+  name: string;
+  freezeName: string;
+  priceUsd: number | null;
+};
 
 const FREIGHT_LOCK_CONFIRM =
   "Confirm Freight Selection: Proceeding will lock in this freight rate, update the Opportunity value in GoHighLevel, and freeze this quote. Do you want to continue?";
@@ -163,6 +181,7 @@ function RouteButton({
 }
 
 export function DispatchPortal() {
+  const router = useRouter();
   const titleId = useId();
   const searchRequest = useRef(0);
   const nextProduct = useRef(1);
@@ -178,11 +197,13 @@ export function DispatchPortal() {
   const [catalogReady, setCatalogReady] = useState(false);
   const [lines, setLines] = useState<ProductDraft[]>([]);
   const [collection, setCollection] = useState<string | null>(null);
-  const [productQuery, setProductQuery] = useState("");
-  const [productMenuOpen, setProductMenuOpen] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
   const [quote, setQuote] = useState<QuoteState>({ status: "idle" });
   const [selectedLtlCarrierId, setSelectedLtlCarrierId] = useState<number | null>(null);
+  const [selectedFleetMethod, setSelectedFleetMethod] = useState<FulfillmentMethod | null>(null);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [handoffPending, startHandoff] = useTransition();
 
   useEffect(() => {
     let active = true;
@@ -236,6 +257,8 @@ export function DispatchPortal() {
   function chooseMode(next: QuoteMode) {
     setMode(next);
     setQuote({ status: "idle" });
+    setSelectedFleetMethod(null);
+    setHandoffError(null);
   }
 
   function chooseOpportunity(hit: GhlDispatchOpportunity) {
@@ -249,8 +272,7 @@ export function DispatchPortal() {
   function chooseCollection(next: string) {
     const clearing = collection === next;
     setCollection(clearing ? null : next);
-    setProductQuery("");
-    setProductMenuOpen(!clearing);
+    setGlobalFilter("");
     setQuote({ status: "idle" });
   }
 
@@ -270,8 +292,7 @@ export function DispatchPortal() {
       },
     ]);
     setCollection(null);
-    setProductQuery("");
-    setProductMenuOpen(false);
+    setGlobalFilter("");
     setQuote({ status: "idle" });
   }
 
@@ -301,6 +322,8 @@ export function DispatchPortal() {
         } else {
           setSelectedLtlCarrierId(null);
         }
+        setSelectedFleetMethod(defaultFleetMethod(plan));
+        setHandoffError(null);
         setQuote({ status: "quoted", plan, miles, route: null });
       } catch (error) {
         setQuote({
@@ -312,7 +335,7 @@ export function DispatchPortal() {
   }
 
   function chooseRoute(method: FulfillmentMethod, selectedCarrierUsd?: number, selectedCarrierName?: string) {
-    if (method === "INTERNAL_FLEET" || method === "PRIORITY1_LTL") {
+    if (method.startsWith("INTERNAL_FLEET") || method === "PRIORITY1_LTL") {
       if (!window.confirm(FREIGHT_LOCK_CONFIRM)) return;
       
       if (opportunity?.id && selectedCarrierUsd != null && selectedCarrierName) {
@@ -337,11 +360,70 @@ export function DispatchPortal() {
     );
   }
 
+  function addToEstimate(method: FulfillmentMethod, label: string, freightUsd: number) {
+    if (quote.status !== "quoted") return;
+    setHandoffError(null);
+    const miles = quote.miles;
+    const zip = destZip.trim();
+    startHandoff(async () => {
+      try {
+        const actor = readActorFromHref(window.location.href);
+        const result = await createDispatchEstimate({
+          opportunityId: opportunity?.id ?? null,
+          destZip: zip,
+          distanceMiles: miles,
+          method,
+          label,
+          freightUsd,
+          variantSkus: lines.map((row) => row.variantSku),
+          ghlUserId: actor.ghlUserId,
+          ghlUserEmail: actor.ghlUserEmail,
+        });
+        if (!result.ok) {
+          setHandoffError(result.error);
+          return;
+        }
+        router.push(orderDeskPathFromHref(window.location.href, result));
+      } catch (error) {
+        setHandoffError(error instanceof Error ? error.message : "Could not add this estimate.");
+      }
+    });
+  }
+
   const plan = quote.status === "quoted" ? quote.plan : null;
   const local = plan ? optionFor(plan, "LOCAL_WHITE_GLOVE") : undefined;
-  const fleet = plan ? optionFor(plan, "INTERNAL_FLEET") : undefined;
+  const fleetCurbside = plan ? optionFor(plan, "INTERNAL_FLEET_CURBSIDE") : undefined;
+  const fleetWhiteGlove = plan ? optionFor(plan, "INTERNAL_FLEET_WHITE_GLOVE") : undefined;
+  const fleetFlatRate = plan ? optionFor(plan, "INTERNAL_FLEET_FLAT_RATE") : undefined;
+  const fleet = fleetCurbside || fleetWhiteGlove || fleetFlatRate;
   const ltl = plan ? optionFor(plan, "PRIORITY1_LTL") : undefined;
   const chosen = quote.status === "quoted" ? quote.route : null;
+  const fleetChoices: FleetChoice[] = [];
+  if (fleetCurbside) {
+    fleetChoices.push({
+      method: "INTERNAL_FLEET_CURBSIDE",
+      name: "Curbside",
+      freezeName: "CC Patio Fleet Curbside",
+      priceUsd: fleetCurbside.priceUsd,
+    });
+  }
+  if (fleetWhiteGlove) {
+    fleetChoices.push({
+      method: "INTERNAL_FLEET_WHITE_GLOVE",
+      name: "White Glove",
+      freezeName: "CC Patio Fleet White Glove",
+      priceUsd: fleetWhiteGlove.priceUsd,
+    });
+  }
+  if (fleetFlatRate) {
+    fleetChoices.push({
+      method: "INTERNAL_FLEET_FLAT_RATE",
+      name: "Admin Flat Rate",
+      freezeName: "CC Patio Fleet Admin Flat Rate",
+      priceUsd: fleetFlatRate.priceUsd,
+    });
+  }
+  const selectedFleet = fleetChoices.find((choice) => choice.method === selectedFleetMethod) ?? null;
   const showPair = Boolean(fleet && ltl && !local);
   const showLtlOnly = Boolean(ltl && !local && !fleet);
   const showOpportunityList =
@@ -356,12 +438,17 @@ export function DispatchPortal() {
     }
     return names;
   }, [products]);
-  const collectionProducts = useMemo(() => {
+  const filteredProducts = useMemo(() => {
+    if (globalFilter) {
+      return products
+        .filter((p) => matchesProduct(p, globalFilter))
+        .slice(0, PRODUCT_MATCH_LIMIT);
+    }
     if (!collection) return [];
     return products
-      .filter((product) => product.collection === collection && matchesProduct(product, productQuery))
+      .filter((product) => product.collection === collection)
       .slice(0, PRODUCT_MATCH_LIMIT);
-  }, [products, collection, productQuery]);
+  }, [products, collection, globalFilter]);
 
   return (
     <section
@@ -438,8 +525,22 @@ export function DispatchPortal() {
                 aria-controls={`${titleId}-opps`}
                 aria-autocomplete="list"
                 placeholder="Search contacts"
-                className={`${softField} mt-1`}
+                className={`${softField} mt-1 pr-8 focus:ring-2 focus:ring-blue-500`}
               />
+              {opportunity ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpportunity(null);
+                    setQuery("");
+                    setResults([]);
+                  }}
+                  className="absolute right-2 top-8 text-slate-400 hover:text-slate-600"
+                  aria-label="Clear opportunity"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
               {opportunity ? (
                 <p className="mt-2 text-xs text-slate-500" data-testid="dispatch-opportunity-selected">
                   {opportunity.contactName}
@@ -451,7 +552,7 @@ export function DispatchPortal() {
                 <ul
                   id={`${titleId}-opps`}
                   role="listbox"
-                  className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
+                  className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-100 bg-white py-1 shadow-xl"
                 >
                   {searching ? <li className="px-3 py-2 text-sm text-slate-500">Searching…</li> : null}
                   {!searching && results.length === 0 ? (
@@ -525,42 +626,74 @@ export function DispatchPortal() {
             ) : null}
             {collections.length > 0 ? (
               <div className="space-y-3">
-                <p className="text-xs uppercase tracking-widest text-slate-500">Collection</p>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="Collection">
-                  {collections.map((name) => {
-                    const selected = collection === name;
-                    return (
-                      <button
-                        key={name}
-                        type="button"
-                        aria-pressed={selected}
-                        data-testid={`dispatch-collection-${collectionSlug(name)}`}
-                        onClick={() => chooseCollection(name)}
-                        className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
-                          selected
-                            ? "border-blue-600 bg-blue-600 text-white shadow-[0_8px_30px_rgb(0,0,0,0.06)]"
-                            : "border-zinc-200 bg-zinc-100 text-zinc-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-zinc-300 hover:bg-white"
-                        }`}
-                      >
-                        {name}
-                      </button>
-                    );
-                  })}
-                </div>
-                {collection ? (
-                  <ProductPicker
-                    titleId={titleId}
-                    collection={collection}
-                    query={productQuery}
-                    open={productMenuOpen}
-                    catalogReady={catalogReady}
-                    products={collectionProducts}
-                    onQuery={setProductQuery}
-                    onOpen={() => setProductMenuOpen(true)}
-                    onClose={() => setProductMenuOpen(false)}
-                    onSelect={commitProduct}
-                  />
-                ) : null}
+                <input
+                  type="text"
+                  placeholder="Filter products..."
+                  value={globalFilter}
+                  onChange={(e) => {
+                    setGlobalFilter(e.target.value);
+                    if (e.target.value) setCollection(null);
+                  }}
+                  className={`${softField} mt-1`}
+                />
+                
+                {!globalFilter && (
+                  <>
+                    <p className="text-xs uppercase tracking-widest text-slate-500">Collection</p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="Collection">
+                      {collections.map((name) => {
+                        const selected = collection === name;
+                        return (
+                          <button
+                            key={name}
+                            type="button"
+                            aria-pressed={selected}
+                            data-testid={`dispatch-collection-${collectionSlug(name)}`}
+                            onClick={() => chooseCollection(name)}
+                            className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
+                              selected
+                                ? "border-blue-600 bg-blue-600 text-white shadow-[0_8px_30px_rgb(0,0,0,0.06)]"
+                                : "border-zinc-200 bg-zinc-100 text-zinc-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-zinc-300 hover:bg-white"
+                            }`}
+                          >
+                            {name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {(globalFilter || collection) && (
+                  <div className="max-h-[400px] overflow-y-auto overscroll-contain scrollbar-thin mt-4">
+                    <ul className="space-y-1">
+                      {filteredProducts.map((product) => (
+                        <li key={product.variantSku}>
+                          <button
+                            type="button"
+                            className="flex w-full flex-col px-3 py-2 text-left hover:bg-slate-50 rounded-lg border border-slate-100 bg-white shadow-sm"
+                            onClick={() => commitProduct(product)}
+                          >
+                            <span className="text-sm text-slate-900">{product.name}</span>
+                            <span className="text-xs text-slate-500">
+                              {product.variantSku}
+                              {" · "}
+                              {specLabel(
+                                String(product.weightLb),
+                                product.ltlClass,
+                                product.lengthIn,
+                                product.widthIn,
+                              )}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                      {filteredProducts.length === 0 && (
+                        <li className="px-3 py-2 text-sm text-slate-500">No matching products.</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
               </div>
             ) : null}
           </fieldset>
@@ -571,14 +704,16 @@ export function DispatchPortal() {
             </p>
           ) : null}
 
-          <button
-            type="submit"
-            data-testid="dispatch-run-quote"
-            disabled={pending}
-            className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition hover:bg-blue-500 disabled:cursor-wait disabled:opacity-60"
-          >
-            {pending ? "Quoting…" : "Run Freight Quote"}
-          </button>
+          <div className="sticky bottom-0 z-10 bg-white border-t border-gray-100 pt-4 pb-2 mt-4">
+            <button
+              type="submit"
+              data-testid="dispatch-run-quote"
+              disabled={pending}
+              className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition hover:bg-blue-500 disabled:cursor-wait disabled:opacity-60"
+            >
+              {pending ? "Quoting…" : "Run Freight Quote"}
+            </button>
+          </div>
         </form>
 
         {plan && quote.status === "quoted" ? (
@@ -606,22 +741,92 @@ export function DispatchPortal() {
               />
             ) : null}
 
-            {showPair && fleet && ltl && ltl.priceUsd != null ? (
-              <RouteButton
-                testId="dispatch-fleet"
-                pressed={chosen === "INTERNAL_FLEET"}
-                onClick={() => chooseRoute("INTERNAL_FLEET")}
-                className="w-full bg-white text-slate-900 ring-slate-900 ring-1 ring-slate-100 hover:bg-slate-50"
-                title="Route to CC Patio Fleet"
-                detail={
-                  fleet.priceUsd != null ? money(fleet.priceUsd) : "Company truck"
-                }
-              />
+            {showPair && fleetCurbside && fleetWhiteGlove && fleetFlatRate ? (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-slate-900">CC Patio Fleet Delivery</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <RouteButton
+                    testId="dispatch-fleet-curbside"
+                    pressed={selectedFleetMethod === "INTERNAL_FLEET_CURBSIDE"}
+                    onClick={() => setSelectedFleetMethod("INTERNAL_FLEET_CURBSIDE")}
+                    className="bg-white text-slate-900 ring-slate-900 ring-1 ring-slate-100 hover:bg-slate-50"
+                    title="Curbside"
+                    detail={fleetCurbside.priceUsd != null ? money(fleetCurbside.priceUsd) : "CC Patio Truck"}
+                  />
+                  <RouteButton
+                    testId="dispatch-fleet-wg"
+                    pressed={selectedFleetMethod === "INTERNAL_FLEET_WHITE_GLOVE"}
+                    onClick={() => setSelectedFleetMethod("INTERNAL_FLEET_WHITE_GLOVE")}
+                    className="bg-white text-slate-900 ring-slate-900 ring-1 ring-slate-100 hover:bg-slate-50"
+                    title="White Glove"
+                    detail={fleetWhiteGlove.priceUsd != null ? money(fleetWhiteGlove.priceUsd) : "Full Service"}
+                  />
+                  <RouteButton
+                    testId="dispatch-fleet-flat"
+                    pressed={selectedFleetMethod === "INTERNAL_FLEET_FLAT_RATE"}
+                    onClick={() => setSelectedFleetMethod("INTERNAL_FLEET_FLAT_RATE")}
+                    className="bg-white text-slate-900 ring-slate-900 ring-1 ring-slate-100 hover:bg-slate-50"
+                    title="Admin Flat Rate"
+                    detail={fleetFlatRate.priceUsd != null ? money(fleetFlatRate.priceUsd) : "Promo Rate"}
+                  />
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-600 space-y-2">
+                  {selectedFleetMethod === "INTERNAL_FLEET_CURBSIDE" ? (
+                    <p><strong>Curbside:</strong> Delivered by CC Patio truck to the driveway or curb. Driver unloads to the ground; customer handles backyard placement and packaging disposal.</p>
+                  ) : selectedFleetMethod === "INTERNAL_FLEET_WHITE_GLOVE" ? (
+                    <p><strong>White Glove:</strong> Dedicated two-man CC Patio crew brings furniture directly to your patio, unpacks, stages the layout, inspects all pieces, and removes all pallets and debris.</p>
+                  ) : selectedFleetMethod === "INTERNAL_FLEET_FLAT_RATE" ? (
+                    <p><strong>Admin Flat Rate:</strong> Pre-approved promotional flat rate. Note: True calculated delivery overhead is shown above for margin awareness.</p>
+                  ) : (
+                    <>
+                      <p><strong>Curbside:</strong> Delivered by CC Patio truck to the driveway or curb. Driver unloads to the ground; customer handles backyard placement and packaging disposal.</p>
+                      <p><strong>White Glove:</strong> Dedicated two-man CC Patio crew brings furniture directly to your patio, unpacks, stages the layout, inspects all pieces, and removes all pallets and debris.</p>
+                      <p><strong>Admin Flat Rate:</strong> Pre-approved promotional flat rate. Note: True calculated delivery overhead is shown above for margin awareness.</p>
+                    </>
+                  )}
+                </div>
+                {selectedFleet && selectedFleet.priceUsd != null ? (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                    <div className="min-w-0 flex-1">
+                      <RouteButton
+                        testId="dispatch-fleet-book"
+                        pressed={chosen === selectedFleet.method}
+                        onClick={() =>
+                          chooseRoute(
+                            selectedFleet.method,
+                            selectedFleet.priceUsd ?? undefined,
+                            selectedFleet.freezeName,
+                          )
+                        }
+                        className="w-full bg-sky-700 text-white ring-sky-900 hover:bg-sky-600"
+                        title={`Book Fleet - ${selectedFleet.name}`}
+                        detail={money(selectedFleet.priceUsd)}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      data-testid="dispatch-fleet-estimate"
+                      disabled={handoffPending}
+                      onClick={() =>
+                        addToEstimate(selectedFleet.method, selectedFleet.freezeName, selectedFleet.priceUsd ?? 0)
+                      }
+                      className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      Add to Estimate
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             ) : null}
 
             {(showPair || showLtlOnly) && ltl && ltl.carriers && ltl.carriers.length > 0 ? (
               <div className="space-y-3 pt-4 border-t border-slate-100">
-                <p className="text-sm font-medium text-slate-900">Multi-Carrier LTL Options</p>
+                <p className="text-sm font-medium text-slate-900 flex items-center justify-between">
+                  Multi-Carrier LTL Options
+                  <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20">
+                    LTL Curbside Delivery Only
+                  </span>
+                </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {ltl.carriers.map((carrier) => (
                     <button
@@ -649,16 +854,34 @@ export function DispatchPortal() {
                    const selected = ltl.carriers?.find(c => c.id === selectedLtlCarrierId);
                    if (!selected) return null;
                    return (
-                     <RouteButton
-                       testId="dispatch-ltl-book"
-                       pressed={chosen === "PRIORITY1_LTL"}
-                       onClick={() => chooseRoute("PRIORITY1_LTL", selected.customerTotalUsd, selected.carrierName)}
-                       className="w-full bg-sky-700 text-white ring-sky-900 hover:bg-sky-600"
-                       title={`Book LTL - ${selected.carrierName}`}
-                       detail={money(selected.customerTotalUsd)}
-                     />
+                     <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                       <div className="min-w-0 flex-1">
+                         <RouteButton
+                           testId="dispatch-ltl-book"
+                           pressed={chosen === "PRIORITY1_LTL"}
+                           onClick={() => chooseRoute("PRIORITY1_LTL", selected.customerTotalUsd, selected.carrierName)}
+                           className="w-full bg-sky-700 text-white ring-sky-900 hover:bg-sky-600"
+                           title={`Book LTL - ${selected.carrierName}`}
+                           detail={money(selected.customerTotalUsd)}
+                         />
+                       </div>
+                       <button
+                         type="button"
+                         data-testid="dispatch-ltl-estimate"
+                         disabled={handoffPending}
+                         onClick={() =>
+                           addToEstimate("PRIORITY1_LTL", selected.carrierName, selected.customerTotalUsd)
+                         }
+                         className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60"
+                       >
+                         Add to Estimate
+                       </button>
+                     </div>
                    );
                 })() : null}
+                <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-600 mt-2">
+                  <p><strong>Note:</strong> Third-party freight delivery via liftgate to curb or driveway only. Carrier drivers will not enter property, navigate steps, or remove pallets/debris.</p>
+                </div>
               </div>
             ) : null}
 
@@ -667,6 +890,12 @@ export function DispatchPortal() {
                 Route selected.
               </p>
             ) : null}
+            {handoffError ? (
+              <p className="text-sm text-rose-700" role="alert" data-testid="dispatch-estimate-error">
+                {handoffError}
+              </p>
+            ) : null}
+            <FreightEstimateNote />
           </div>
         ) : null}
       </div>
@@ -713,91 +942,4 @@ function CommittedProduct({
   );
 }
 
-function ProductPicker({
-  titleId,
-  collection,
-  query,
-  open,
-  catalogReady,
-  products,
-  onQuery,
-  onOpen,
-  onClose,
-  onSelect,
-}: {
-  titleId: string;
-  collection: string;
-  query: string;
-  open: boolean;
-  catalogReady: boolean;
-  products: QuotingProduct[];
-  onQuery: (value: string) => void;
-  onOpen: () => void;
-  onClose: () => void;
-  onSelect: (product: QuotingProduct) => void;
-}) {
-  const listId = `${titleId}-products`;
 
-  return (
-    <div className="relative">
-      <label className="block text-xs uppercase tracking-widest text-slate-500" htmlFor={listId}>
-        {collection} products
-      </label>
-      <input
-        id={listId}
-        data-testid="dispatch-product-search"
-        value={query}
-        onChange={(event) => {
-          onQuery(event.target.value);
-          onOpen();
-        }}
-        onFocus={onOpen}
-        onBlur={() => window.setTimeout(onClose, 150)}
-        role="combobox"
-        aria-expanded={open}
-        aria-controls={`${listId}-list`}
-        aria-autocomplete="list"
-        autoComplete="off"
-        placeholder={`Search ${collection}`}
-        className={`${softField} mt-1`}
-      />
-      {open ? (
-        <ul
-          id={`${listId}-list`}
-          role="listbox"
-          className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
-        >
-          {!catalogReady ? <li className="px-3 py-2 text-sm text-slate-500">Loading products…</li> : null}
-          {catalogReady && products.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-slate-500">No matching products.</li>
-          ) : null}
-          {products.map((product) => (
-            <li key={product.variantSku} role="presentation">
-              <button
-                type="button"
-                role="option"
-                aria-selected={false}
-                data-testid={`dispatch-product-option-${product.variantSku}`}
-                className="flex w-full flex-col px-3 py-2 text-left hover:bg-slate-50"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => onSelect(product)}
-              >
-                <span className="text-sm text-slate-900">{product.name}</span>
-                <span className="text-xs text-slate-500">
-                  {product.variantSku}
-                  {" · "}
-                  {specLabel(
-                    String(product.weightLb),
-                    product.ltlClass,
-                    product.lengthIn,
-                    product.widthIn,
-                  )}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}

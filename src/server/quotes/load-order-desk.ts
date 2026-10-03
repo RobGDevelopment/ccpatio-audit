@@ -7,6 +7,7 @@ import { asGhlRecord, ghlGet } from "@/server/ghl/private-api";
 import {
   createDraftFromResolved,
   loadQuoteDocument,
+  loadQuoteDocumentById,
   saveDraftVersion,
 } from "@/server/quotes/draft";
 import { postalZip } from "@/server/quotes/postal-zip";
@@ -94,6 +95,7 @@ async function loadOpportunity(
 
 export async function loadOrderDesk(input: {
   opportunityId?: string | null;
+  quoteId?: string | null;
   ghlUserId?: string | null;
   ghlUserEmail?: string | null;
 }): Promise<OrderDeskModel> {
@@ -101,6 +103,17 @@ export async function loadOrderDesk(input: {
   if (!session) return { state: "error", message: "Sign in to open Order Desk." };
 
   const opportunityId = input.opportunityId?.trim() ?? "";
+  const quoteId = input.quoteId?.trim() ?? "";
+  if (!opportunityId && quoteId) {
+    const actor = await resolveHoldActor({
+      ghlUserId: input.ghlUserId,
+      ghlUserEmail: input.ghlUserEmail,
+    });
+    if (!actor.ok) return { state: "error", message: actor.error };
+    const quote = await loadQuoteDocumentById(quoteId);
+    if (!quote) return { state: "error", message: "That quote could not be found." };
+    return quote;
+  }
   if (!opportunityId) return { state: "needs-opportunity" };
 
   const actor = await resolveHoldActor({

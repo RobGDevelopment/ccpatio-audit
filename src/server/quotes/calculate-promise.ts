@@ -153,6 +153,12 @@ export async function calculatePromiseById(
     .from(quote_line_items)
     .where(eq(quote_line_items.quote_id, quote.id));
   if (lines.length === 0) return fail("Add a line before estimating delivery.");
+  const shippable = lines.filter(
+    (line) => line.line_kind !== "custom" && line.katana_variant_id != null,
+  );
+  if (shippable.length === 0) {
+    return fail("Add a shippable line before estimating delivery.");
+  }
 
   const profiles = await db
     .select()
@@ -160,7 +166,7 @@ export async function calculatePromiseById(
     .where(
       inArray(
         logistics_profiles.katana_variant_id,
-        lines.map((line) => line.katana_variant_id),
+        shippable.map((line) => line.katana_variant_id as number),
       ),
     );
   const byVariant = new Map(
@@ -184,8 +190,8 @@ export async function calculatePromiseById(
 
   let shipmentReady = executedBy;
   let shipmentWeight = 0;
-  for (const line of lines) {
-    const profile = byVariant.get(line.katana_variant_id);
+  for (const line of shippable) {
+    const profile = byVariant.get(line.katana_variant_id as number);
     const qty = Number(line.qty);
     const weight = Number(profile?.weight_lb);
     if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(weight) || weight <= 0) {
