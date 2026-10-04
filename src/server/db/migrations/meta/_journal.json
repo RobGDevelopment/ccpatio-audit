@@ -267,6 +267,13 @@
       "when": 1791068285458,
       "tag": "0037_omniscient_wolfpack",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791113856716,
+      "tag": "0038_abnormal_magik",
+      "breakpoints": true
     }
   ]
 }

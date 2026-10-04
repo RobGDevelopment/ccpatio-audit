@@ -1351,3 +1351,61 @@ export const vendor_credentials = pgTable("vendor_credentials", {
   updated_by: uuid("updated_by").references(() => user_roles.id),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
+
+/**
+ * E-Commerce roster (Master Catalog blueprint) — one row per Katana roster
+ * product name whose hub SKU exists in sku_mappings. A hub SKU can back several
+ * listings (e.g. FIN-TJM-MIS), so global_sku is a non-unique FK and identity is
+ * the uuid `id`. product_name is the raw workbook name (NOT normalized: two
+ * armless-sofa names differ only by whitespace and carry different prices) and
+ * is the seed upsert target.
+ */
+export const ecommerce_listings = pgTable(
+  "ecommerce_listings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    global_sku: text("global_sku")
+      .notNull()
+      .references(() => sku_mappings.global_sku, { onUpdate: "cascade" }),
+    /** Workbook Original Name / Memo (raw). */
+    product_name: text("product_name").notNull(),
+    /** Grid price (steel frame). Edited here, not on finished_goods_catalog. */
+    steel_msrp: numeric("steel_msrp", { precision: 10, scale: 2 }),
+    legacy_base_sku: text("legacy_base_sku"),
+    /** True when another listing uses the same legacy base SKU. */
+    legacy_sku_shared: boolean("legacy_sku_shared").notNull().default(false),
+    /** True when another listing uses the same canonical hub SKU. */
+    canonical_sku_shared: boolean("canonical_sku_shared")
+      .notNull()
+      .default(false),
+    product_url: text("product_url"),
+    /** 'row' | 'sibling' | 'missing' */
+    url_source: text("url_source").notNull().default("missing"),
+    /** Product-type facet (workbook Drawing section header). */
+    drawing_section: text("drawing_section").notNull(),
+    collection_label: text("collection_label").notNull(),
+    aluminum_msrp: numeric("aluminum_msrp", { precision: 10, scale: 2 }),
+    marketing_description: text("marketing_description"),
+    construction_details: text("construction_details"),
+    sheet_order: integer("sheet_order").notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("ecommerce_listings_global_sku_idx").on(table.global_sku),
+    uniqueIndex("ecommerce_listings_product_name_uidx").on(table.product_name),
+  ],
+);
+
+/**
+ * Roster names whose hub SKU is absent from sku_mappings. Keyed by product_name
+ * because several missing names can share one absent hub SKU.
+ */
+export const ecommerce_roster_gaps = pgTable("ecommerce_roster_gaps", {
+  product_name: text("product_name").primaryKey(),
+  global_sku: text("global_sku").notNull(),
+  reason: text("reason").notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type EcommerceListingRow = typeof ecommerce_listings.$inferSelect;
+export type EcommerceRosterGapRow = typeof ecommerce_roster_gaps.$inferSelect;
