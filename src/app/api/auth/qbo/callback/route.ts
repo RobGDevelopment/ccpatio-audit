@@ -15,28 +15,30 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing code or realmId" }, { status: 400 });
   }
 
-  const clientId = process.env.QBO_CLIENT_ID;
-  const clientSecret = process.env.QBO_CLIENT_SECRET;
-  const redirectUri = process.env.QBO_REDIRECT_URI;
+  const clientId = process.env.QBO_CLIENT_ID?.trim().replace(/^["']|["']$/g, "");
+  const clientSecret = process.env.QBO_CLIENT_SECRET?.trim().replace(/^["']|["']$/g, "");
+  const redirectUri = process.env.QBO_OAUTH_REDIRECT_URI?.trim().replace(/^["']|["']$/g, "");
 
   if (!clientId || !clientSecret || !redirectUri) {
     return NextResponse.json({ error: "Missing QBO environment variables" }, { status: 500 });
   }
 
-  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const authHeader = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
+
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code: code,
+    redirect_uri: redirectUri,
+  });
 
   const tokenRes = await fetch("https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer", {
     method: "POST",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Basic ${basicAuth}`,
       Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: authHeader,
     },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: redirectUri,
-    }),
+    body: body.toString(),
   });
 
   if (!tokenRes.ok) {
