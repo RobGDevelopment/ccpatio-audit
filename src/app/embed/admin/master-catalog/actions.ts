@@ -7,8 +7,19 @@ import {
   quarantine_catalog,
   ecommerce_listings,
   ecommerce_roster_gaps,
+  cad_uploads,
+  product_bom,
+  product_bom_draft,
+  channel_sync,
+  pim_audit_log,
 } from "@/server/db/schema";
-import { eq, desc, asc, count } from "drizzle-orm";
+import { eq, desc, asc, count, and, inArray } from "drizzle-orm";
+import {
+  buildFactoryEvidence,
+  deriveFactoryReadiness,
+  relatedParents,
+  type FactoryReadiness,
+} from "@/server/factory-bom/derive-readiness";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -184,6 +195,8 @@ export interface EcommerceListing {
   marketingDescription: string | null;
   constructionDetails: string | null;
   sheetOrder: number;
+  /** Read-only factory readiness, computed once per hub SKU. */
+  factory: FactoryReadiness;
 }
 
 export interface EcommerceRosterGap {
@@ -196,6 +209,18 @@ export interface EcommerceRoster {
   listings: EcommerceListing[];
   gaps: EcommerceRosterGap[];
 }
+
+/** Safe default if a hub SKU is ever missing from the readiness map. */
+const UNKNOWN_FACTORY_READINESS: FactoryReadiness = {
+  state: "missing_cad",
+  sublabel: "Unknown",
+  cadFilename: null,
+  cadStatus: null,
+  draftRollup: "none",
+  liveRecipe: false,
+  katanaStatus: null,
+  recipePublished: false,
+};
 
 // 6. E-Commerce roster (listings ⨝ sku_mappings) + gaps. Price is the listing's
 // own steel_msrp: finished_goods_catalog.msrp is one number per hub SKU and
@@ -233,6 +258,67 @@ export async function getEcommerceRoster(): Promise<EcommerceRoster> {
       .orderBy(asc(ecommerce_roster_gaps.product_name)),
   ]);
 
+  // Five set queries (read-only), reduced in memory per distinct hub SKU.
+  const hubSkus = [...new Set(rows.map((r) => r.globalSku))];
+  const parentSkus = [...new Set(hubSkus.flatMap(relatedParents))];
+  const [cadRows, draftRows, liveRows, katanaRows, auditRows] =
+    hubSkus.length === 0
+      ? [[], [], [], [], []]
+      : await Promise.all([
+          db
+            .select({
+              global_sku: cad_uploads.global_sku,
+              ext: cad_uploads.ext,
+              status: cad_uploads.status,
+              original_filename: cad_uploads.original_filename,
+              created_at: cad_uploads.created_at,
+            })
+            .from(cad_uploads)
+            .where(inArray(cad_uploads.global_sku, hubSkus)),
+          db
+            .select({
+              parent_sku: product_bom_draft.parent_sku,
+              status: product_bom_draft.status,
+            })
+            .from(product_bom_draft)
+            .where(inArray(product_bom_draft.parent_sku, parentSkus)),
+          db
+            .selectDistinct({ parent_sku: product_bom.parent_sku })
+            .from(product_bom)
+            .where(inArray(product_bom.parent_sku, parentSkus)),
+          db
+            .select({
+              global_sku: channel_sync.global_sku,
+              status: channel_sync.status,
+            })
+            .from(channel_sync)
+            .where(
+              and(
+                eq(channel_sync.channel, "katana"),
+                inArray(channel_sync.global_sku, hubSkus),
+              ),
+            ),
+          db
+            .selectDistinct({ global_sku: pim_audit_log.global_sku })
+            .from(pim_audit_log)
+            .where(
+              and(
+                eq(pim_audit_log.action, "factory_bom_katana_recipes"),
+                inArray(pim_audit_log.global_sku, hubSkus),
+              ),
+            ),
+        ]);
+
+  const evidence = buildFactoryEvidence(hubSkus, {
+    cadRows,
+    draftRows,
+    liveParents: liveRows.map((r) => r.parent_sku),
+    katanaRows,
+    auditSkus: auditRows.flatMap((r) => (r.global_sku ? [r.global_sku] : [])),
+  });
+  const readiness = new Map<string, FactoryReadiness>();
+  for (const [sku, ev] of evidence) readiness.set(sku, deriveFactoryReadiness(ev));
+
   const listings: EcommerceListing[] = rows.map((r) => ({
     id: r.id,
     globalSku: r.globalSku,
@@ -251,6 +337,7 @@ export async function getEcommerceRoster(): Promise<EcommerceRoster> {
     marketingDescription: r.marketingDescription,
     constructionDetails: r.constructionDetails,
     sheetOrder: r.sheetOrder,
+    factory: readiness.get(r.globalSku) ?? UNKNOWN_FACTORY_READINESS,
   }));
 
   const gaps: EcommerceRosterGap[] = gapRows.map((g) => ({

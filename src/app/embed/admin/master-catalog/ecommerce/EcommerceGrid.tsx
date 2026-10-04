@@ -7,28 +7,25 @@ import {
   ChevronRight,
   ArrowUp,
   ArrowDown,
-  ExternalLink,
+  Search,
 } from "lucide-react";
 import type { EcommerceListing, EcommerceRosterGap } from "../actions";
 import EcommerceFilters, {
   applyEcommerceFilters,
   type EcommerceFilterState,
 } from "./EcommerceFilters";
-import EcommerceExpandedRow from "./EcommerceExpandedRow";
+import EcommerceExpandedRow, { FactoryBadge } from "./EcommerceExpandedRow";
 
 type SortKey = "name" | "sku" | "legacy" | "msrp";
 type SortDir = "asc" | "desc";
+type PillKey =
+  | "listings"
+  | "gaps"
+  | "missing_links"
+  | "missing_legacy"
+  | "not_published";
 
-const COLUMN_COUNT = 6; // chevron, name, canonical SKU, legacy SKU, MSRP, link
-
-function linkLabel(url: string): string {
-  try {
-    const u = new URL(url);
-    return u.pathname.replace(/\/$/, "") || u.host;
-  } catch {
-    return url;
-  }
-}
+const COLUMN_COUNT = 7; // chevron, name, canonical SKU, legacy SKU, MSRP, factory, link
 
 function SortHeader({
   label,
@@ -68,18 +65,45 @@ function SortHeader({
   );
 }
 
-function Stat({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
+function StatPill({
+  label,
+  value,
+  warn,
+  pressed,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  warn?: boolean;
+  pressed: boolean;
+  onClick: () => void;
+}) {
   return (
-    <div className="flex items-baseline gap-1.5">
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={pressed}
+      className={`flex items-baseline gap-1.5 px-3 py-1.5 rounded-full border transition-all ${
+        pressed
+          ? "bg-sky-600 border-sky-600 shadow-sm"
+          : "bg-white border-slate-200 hover:border-sky-300"
+      }`}
+    >
       <span
         className={`text-lg font-bold ${
-          warn && value > 0 ? "text-amber-600" : "text-slate-800"
+          pressed
+            ? "text-white"
+            : warn && value > 0
+              ? "text-amber-600"
+              : "text-slate-800"
         }`}
       >
         {value}
       </span>
-      <span className="text-xs text-slate-500">{label}</span>
-    </div>
+      <span className={`text-xs ${pressed ? "text-sky-100" : "text-slate-500"}`}>
+        {label}
+      </span>
+    </button>
   );
 }
 
@@ -103,14 +127,40 @@ export default function EcommerceGrid({
     dir: "asc",
   });
   const [expandedId, setExpandedId] = useState<string | null>(null); // one at a time
+  const [pill, setPill] = useState<PillKey>("listings"); // exclusive; re-click returns to listings
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
 
+  // Pill slice first; search + facets then narrow within it.
+  const slice = useMemo(() => {
+    switch (pill) {
+      case "missing_links":
+        return listings.filter((l) => l.urlSource === "missing");
+      case "missing_legacy":
+        return listings.filter((l) => !l.legacyBaseSku);
+      case "not_published":
+        return listings.filter((l) => l.factory.state !== "published");
+      default:
+        return listings;
+    }
+  }, [listings, pill]);
+
+  const gapRows = useMemo(() => {
+    const q = filters.search.trim().toLowerCase();
+    if (!q) return gaps;
+    return gaps.filter(
+      (g) =>
+        g.productName.toLowerCase().includes(q) ||
+        g.globalSku.toLowerCase().includes(q) ||
+        g.reason.toLowerCase().includes(q),
+    );
+  }, [gaps, filters.search]);
+
   const rows = useMemo(() => {
-    const filtered = applyEcommerceFilters(listings, filters);
+    const filtered = applyEcommerceFilters(slice, filters);
     const dir = sort.dir === "asc" ? 1 : -1;
     const str = (a: string, b: string) =>
       a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }) * dir;
@@ -131,10 +181,18 @@ export default function EcommerceGrid({
           return (a.msrpValue - b.msrpValue) * dir; // numeric parse, not string
       }
     });
-  }, [listings, filters, sort]);
+  }, [slice, filters, sort]);
 
   const missingLinks = listings.filter((l) => l.urlSource === "missing").length;
   const missingLegacy = listings.filter((l) => !l.legacyBaseSku).length;
+  const notPublished = listings.filter((l) => l.factory.state !== "published").length;
+  const gapsView = pill === "gaps";
+
+  function togglePill(next: PillKey) {
+    setPill((cur) => (cur === next ? "listings" : next));
+    setExpandedId(null);
+    setEditingId(null);
+  }
 
   function handleSort(key: SortKey) {
     setSort((s) =>
@@ -162,21 +220,99 @@ export default function EcommerceGrid({
 
   return (
     <div className="rounded-2xl border border-slate-100 bg-white/90 backdrop-blur shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col flex-1 min-h-0 overflow-hidden">
-      {/* Header: stats + filters */}
+      {/* Header: exclusive toggle pills + filters */}
       <div className="p-5 border-b border-slate-100 flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
-          <Stat label="in roster" value={listings.length} />
-          <Stat label="hub gaps" value={gaps.length} warn />
-          <Stat label="missing links" value={missingLinks} warn />
-          <Stat label="missing legacy SKU" value={missingLegacy} warn />
+        <div className="flex flex-wrap items-center gap-2">
+          <StatPill
+            label="listings"
+            value={listings.length}
+            pressed={pill === "listings"}
+            onClick={() => togglePill("listings")}
+          />
+          <StatPill
+            label="hub gaps"
+            value={gaps.length}
+            warn
+            pressed={pill === "gaps"}
+            onClick={() => togglePill("gaps")}
+          />
+          <StatPill
+            label="missing links"
+            value={missingLinks}
+            warn
+            pressed={pill === "missing_links"}
+            onClick={() => togglePill("missing_links")}
+          />
+          <StatPill
+            label="missing legacy SKU"
+            value={missingLegacy}
+            warn
+            pressed={pill === "missing_legacy"}
+            onClick={() => togglePill("missing_legacy")}
+          />
+          <StatPill
+            label="not published"
+            value={notPublished}
+            warn
+            pressed={pill === "not_published"}
+            onClick={() => togglePill("not_published")}
+          />
           <span className="ml-auto text-xs text-slate-400">
-            Showing {rows.length} of {listings.length}
+            {gapsView
+              ? `Showing ${gapRows.length} of ${gaps.length}`
+              : `Showing ${rows.length} of ${slice.length}`}
           </span>
         </div>
-        <EcommerceFilters listings={listings} filters={filters} onChange={setFilters} />
+        {gapsView ? (
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              placeholder="Search name, missing SKU, or reason..."
+              aria-label="Search hub gaps"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 transition-all placeholder:text-slate-400"
+            />
+          </div>
+        ) : (
+          <EcommerceFilters listings={slice} filters={filters} onChange={setFilters} />
+        )}
       </div>
 
-      {/* Scroll container with sticky header */}
+      {gapsView ? (
+        <div className="flex-1 overflow-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-slate-100">
+              <tr className="uppercase text-[11px] font-semibold tracking-wider text-slate-400">
+                <th className="py-3 px-4">Product Name</th>
+                <th className="py-3 px-4">Missing SKU</th>
+                <th className="py-3 px-4">Reason</th>
+              </tr>
+            </thead>
+            <tbody className="text-sm">
+              {gapRows.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="py-16 text-center text-slate-400">
+                    No hub gaps match this search.
+                  </td>
+                </tr>
+              )}
+              {gapRows.map((g) => (
+                <tr
+                  key={`${g.globalSku}|${g.productName}`}
+                  className="border-b border-slate-100 hover:bg-slate-50/80"
+                >
+                  <td className="py-3 px-4 font-medium text-slate-800">{g.productName}</td>
+                  <td className="py-3 px-4 font-mono text-xs text-slate-600">{g.globalSku}</td>
+                  <td className="py-3 px-4 text-slate-600">{g.reason}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+      /* Scroll container with sticky header */
       <div className="flex-1 overflow-auto">
         <table className="w-full text-left border-collapse">
           <thead className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-slate-100">
@@ -197,6 +333,9 @@ export default function EcommerceGrid({
                 onSort={handleSort}
                 className="w-36"
               />
+              <th className="py-3 px-4 uppercase text-[11px] font-semibold tracking-wider text-slate-400">
+                Factory
+              </th>
               <th className="py-3 px-4 uppercase text-[11px] font-semibold tracking-wider text-slate-400">
                 Product Link
               </th>
@@ -311,6 +450,10 @@ export default function EcommerceGrid({
                       )}
                     </td>
 
+                    <td className="py-3 px-4">
+                      <FactoryBadge factory={l.factory} />
+                    </td>
+
                     <td className="py-3 px-4 text-xs">
                       {l.productUrl ? (
                         <span className="inline-flex items-center gap-2">
@@ -318,10 +461,9 @@ export default function EcommerceGrid({
                             href={l.productUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-sky-700 hover:underline"
+                            className="text-sky-700 hover:underline whitespace-nowrap"
                           >
-                            {linkLabel(l.productUrl)}
-                            <ExternalLink className="h-3 w-3" />
+                            ↗ View Live
                           </a>
                           {l.urlSource === "sibling" && (
                             <span className="text-[10px] text-slate-400">shared page</span>
@@ -339,6 +481,7 @@ export default function EcommerceGrid({
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
