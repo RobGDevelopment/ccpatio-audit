@@ -89,10 +89,37 @@ describe("Server Actions: Master Catalog", () => {
       expect(cols).toHaveLength(1);
     });
     
-    it("rejects reserved codes", async () => {
+    it("rejects reserved codes and strict prefixes", async () => {
       await expect(createDictionaryCode("collection", "FIN", "Finished")).rejects.toThrow("reserved system code");
       await expect(createDictionaryCode("collection", "MIS", "Miscellaneous")).rejects.toThrow("reserved system code");
+      await expect(createDictionaryCode("token", "PWD-BASE", "Powder Base")).rejects.toThrow("reserved system code");
+      await expect(createDictionaryCode("token", "SA-CUSHION", "Cushion")).rejects.toThrow("reserved system code");
     });
+
+  describe("getDictionaries", () => {
+    it("extracts tokens cleanly avoiding hyphens in category or collection", async () => {
+      const db = getDb();
+      // Insert collection TSTB, category TST-ARM-CHR
+      await db.insert(nomenclature_collections).values({ code: "TSTB", label: "TSTB", created_by: "test@ccpatio.com" }).onConflictDoNothing();
+      await db.insert(nomenclature_categories).values({ code: "TST-ARM-CHR", label: "TST ARM CHR", created_by: "test@ccpatio.com" }).onConflictDoNothing();
+      // Insert mapping 3P-TSTB-TST-ARM-CHR-BLK
+      await db.insert(sku_mappings).values({
+        global_sku: "3P-TSTB-TST-ARM-CHR-BLK",
+        product_origin: "third_party",
+        category: "Test"
+      }).onConflictDoNothing();
+
+      const { getDictionaries } = await import("@/app/embed/admin/master-catalog/actions");
+      const { tokens } = await getDictionaries();
+      expect(tokens.map(t => t.code)).toContain("BLK");
+      expect(tokens.map(t => t.code)).not.toContain("CHR-BLK");
+      
+      // Cleanup
+      await db.delete(sku_mappings).where(eq(sku_mappings.global_sku, "3P-TSTB-TST-ARM-CHR-BLK"));
+      await db.delete(nomenclature_categories).where(eq(nomenclature_categories.code, "TST-ARM-CHR"));
+      await db.delete(nomenclature_collections).where(eq(nomenclature_collections.code, "TSTB"));
+    });
+  });
   });
 
   describe("createNewProduct", () => {

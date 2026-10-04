@@ -95,6 +95,7 @@ export function FreightPanel({
             <option value="ltl">LTL (Palletized Freight)</option>
             <option value="parcel">Parcel (FedEx/UPS)</option>
             <option value="white_glove_only">White Glove Only</option>
+            <option value="not_shipped">Not Shipped</option>
           </select>
         </div>
 

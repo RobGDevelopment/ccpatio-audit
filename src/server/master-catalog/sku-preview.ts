@@ -93,6 +93,10 @@ export async function previewSku(
   if (origin === "third_party") {
     const safeToken = (token || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
     if (!safeToken) throw new Error("Missing token for 3rd party product");
+    const RESERVED_PREFIXES = ["RM", "PWD", "FAB", "ASM", "SA"];
+    if (RESERVED_PREFIXES.some(prefix => safeToken === prefix || safeToken.startsWith(prefix + "-"))) {
+      throw new Error(`Token ${safeToken} uses a reserved prefix.`);
+    }
     generatedSku = `3P-${dbCol.code}-${dbCat.code}-${safeToken}`;
   } else {
     // manufactured

@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { previewSku } from "@/server/master-catalog/sku-preview";
+import { matchHubSku } from "@/lib/hub-sku-codes";
 import { getDb } from "@/server/db/client";
 import { sku_mappings, ecommerce_listings, nomenclature_collections, nomenclature_categories } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
@@ -100,5 +101,47 @@ describe("previewSku", () => {
     expect(result.sku).toBe(existingSku);
     expect(result.isCollision).toBe(false);
     expect(result.isSaved).toBe(true);
+  });
+});
+
+describe("matchHubSku", () => {
+  const collections = ["BRV", "TSTB", "TST"];
+  const categories = ["ARM", "ARM-CHR", "CHR"];
+
+  it("keeps a hyphenated category and leaves the token", () => {
+    expect(matchHubSku("3P-BRV-ARM-CHR-BLK", collections, categories)).toEqual({
+      collectionCode: "BRV",
+      categoryCode: "ARM-CHR",
+      token: "BLK",
+    });
+    expect(matchHubSku("3P-BRV-ARM-CHR-BLK-L", collections, categories)).toEqual({
+      collectionCode: "BRV",
+      categoryCode: "ARM-CHR",
+      token: "BLK-L",
+    });
+  });
+
+  it("prefers the longer collection and category codes", () => {
+    expect(matchHubSku("3P-TSTB-TST-ARM-CHR-BLK", ["TSTB", "TST"], ["TST-ARM-CHR", "ARM-CHR"])).toEqual({
+      collectionCode: "TSTB",
+      categoryCode: "TST-ARM-CHR",
+      token: "BLK",
+    });
+  });
+
+  it("uses the first segment when the collection is not in the dictionary", () => {
+    expect(matchHubSku("FIN-BRV-ARM-SOF-72X34", ["BRK"], ["SOF", "ARM-SOF"])).toEqual({
+      collectionCode: "BRV",
+      categoryCode: "ARM-SOF",
+      token: "72X34",
+    });
+  });
+
+  it("returns blanks when the sku is not a hub sku", () => {
+    expect(matchHubSku("RM-FOAM", collections, categories)).toEqual({
+      collectionCode: "",
+      categoryCode: "",
+      token: "",
+    });
   });
 });

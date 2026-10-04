@@ -10,7 +10,7 @@ import {
   ArrowDown,
   Search,
 } from "lucide-react";
-import type { EcommerceListing, EcommerceRosterGap } from "../actions";
+import { getHubProductForDrawer, type EcommerceListing, type EcommerceRosterGap } from "../actions";
 import EcommerceFilters, {
   applyEcommerceFilters,
   type EcommerceFilterState,
@@ -181,7 +181,43 @@ export default function EcommerceGrid({
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const activeDrawerId = searchParams.get("listing");
-  const activeListing = useMemo(() => listings.find(l => l.id === activeDrawerId), [listings, activeDrawerId]);
+  const hubOnlySku = searchParams.get("hubOnly");
+  const [hubSeed, setHubSeed] = useState<EcommerceListing | null>(null);
+  const [hubLoadError, setHubLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeDrawerId || !hubOnlySku) {
+      setHubSeed(null);
+      setHubLoadError(null);
+      return;
+    }
+    const live = listings.find((l) => l.globalSku === hubOnlySku && !l.archivedAt);
+    if (live) {
+      setHubSeed(live);
+      setHubLoadError(null);
+      return;
+    }
+    let cancelled = false;
+    setHubLoadError(null);
+    getHubProductForDrawer(hubOnlySku)
+      .then((row) => {
+        if (cancelled) return;
+        setHubSeed(row);
+        if (!row) setHubLoadError(`No hub product found for ${hubOnlySku}`);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setHubSeed(null);
+        setHubLoadError(err instanceof Error ? err.message : "Could not open this product");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeDrawerId, hubOnlySku, listings]);
+
+  const activeListing = activeDrawerId
+    ? listings.find((l) => l.id === activeDrawerId)
+    : hubSeed ?? undefined;
 
   function openDrawer(id: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -192,6 +228,7 @@ export default function EcommerceGrid({
   function closeDrawer() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("listing");
+    params.delete("hubOnly");
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
@@ -330,7 +367,7 @@ export default function EcommerceGrid({
   function renderEditorInput(placeholder: string) {
     if (!editor) return null;
     return (
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
         <input
           ref={inputRef}
           autoFocus
@@ -372,7 +409,7 @@ export default function EcommerceGrid({
     return (
       <button
         type="button"
-        onClick={() => openEditor(id, field)}
+        onClick={(e) => { e.stopPropagation(); openEditor(id, field); }}
         disabled={editor?.saving === true}
         className="px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-[11px] font-semibold text-slate-400 hover:border-sky-400 hover:text-sky-700 transition-colors disabled:opacity-50"
       >
@@ -559,17 +596,25 @@ export default function EcommerceGrid({
             {rows.map((l) => {
               const open = expandedId === l.id;
               const flash = justSavedId === l.id;
+              const ringClass = l.status === "red" ? "border-l-[4px] border-l-red-500" :
+                                l.status === "amber" ? "border-l-[4px] border-l-amber-500" :
+                                l.status === "green" ? "border-l-[4px] border-l-emerald-500" : "";
               return (
                 <React.Fragment key={l.id}>
                   <tr
-                    className={`border-b border-slate-100 transition-colors ${
+                    onClick={() => openDrawer(l.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") openDrawer(l.id);
+                    }}
+                    tabIndex={0}
+                    className={`border-b border-slate-100 transition-colors cursor-pointer focus:outline-none focus:bg-slate-50 ${
                       flash ? "bg-emerald-50" : open ? "bg-sky-50/40" : "hover:bg-slate-50/80"
                     }`}
                   >
-                    <td className="py-3 px-4">
+                    <td className={`py-3 px-4 ${ringClass}`}>
                       <button
                         type="button"
-                        onClick={() => setExpandedId(open ? null : l.id)}
+                        onClick={(e) => { e.stopPropagation(); setExpandedId(open ? null : l.id); }}
                         aria-expanded={open}
                         aria-label={open ? "Collapse row" : "Expand row"}
                         className="text-slate-400 hover:text-sky-600 transition-colors"
@@ -584,7 +629,7 @@ export default function EcommerceGrid({
 
                     <td className="py-3 px-4 font-medium text-slate-800">
                       <button
-                        onClick={() => openDrawer(l.id)}
+                        onClick={(e) => { e.stopPropagation(); openDrawer(l.id); }}
                         className="hover:underline hover:text-sky-600 text-left font-medium"
                       >
                         {l.productName}
@@ -629,7 +674,7 @@ export default function EcommerceGrid({
 
                     <td className="py-3 px-4">
                       {editingId === l.id ? (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <input
                             autoFocus
                             type="text"
@@ -652,7 +697,8 @@ export default function EcommerceGrid({
                         </div>
                       ) : (
                         <span
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setEditingId(l.id);
                             setEditPrice(l.msrpValue === null ? "" : l.msrp);
                           }}
@@ -672,7 +718,7 @@ export default function EcommerceGrid({
                       {isEditing(l.id, "url") ? (
                         renderEditorInput("https://…")
                       ) : l.productUrl ? (
-                        <span className="inline-flex items-center gap-2">
+                        <span className="inline-flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <a
                             href={l.productUrl}
                             target="_blank"
@@ -699,9 +745,15 @@ export default function EcommerceGrid({
       </div>
       )}
 
+      {hubLoadError && (
+        <div className="mb-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {hubLoadError}
+        </div>
+      )}
       {activeListing && (
         <ProductDrawer
           listing={activeListing}
+          hubOnly={activeListing.id === ""}
           onClose={closeDrawer}
           onSaveListing={onSaveListingDrawer}
           onSaveHub={onSaveHubDrawer}

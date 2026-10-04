@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { X, AlertCircle, Plus } from "lucide-react";
-import { previewSkuAction, getDictionaries, createDictionaryCode, canEditDictionary } from "../actions";
+import { X, AlertCircle, Plus, Lock } from "lucide-react";
+import { previewSkuAction, getDictionaries, createDictionaryCode, canEditDictionary, getHubProductForDrawer, getListingScoreAction, updateHubInDrawer } from "../actions";
 import { SkuPreviewResult } from "@/server/master-catalog/sku-preview";
 import { usePathname } from "next/navigation";
 import { ListingContentPanels } from "./ListingContentPanels";
+import { FreightPanel } from "./FreightPanel";
 
 type DictRow = { code: string; label: string; aliases?: string[] | null };
 type DictOption = { key: string; code: string; label: string; display: string };
@@ -40,6 +41,14 @@ export default function NewProductDrawer({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedListingId, setSavedListingId] = useState<string | null>(null);
+  const [hubVersion, setHubVersion] = useState(1);
+  const [syncToWoo, setSyncToWoo] = useState(false);
+  const [syncToClover, setSyncToClover] = useState(false);
+  const [channelError, setChannelError] = useState<string | null>(null);
+  const [channelSaving, setChannelSaving] = useState(false);
+  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
+  const [canSyncWoo, setCanSyncWoo] = useState(false);
+  const [canSyncClover, setCanSyncClover] = useState(false);
 
   const [origin, setOrigin] = useState<"manufactured" | "third_party">("manufactured");
   const [productName, setProductName] = useState("");
@@ -59,6 +68,7 @@ export default function NewProductDrawer({
 
   const [collections, setCollections] = useState<DictRow[]>([]);
   const [categories, setCategories] = useState<DictRow[]>([]);
+  const [tokens, setTokens] = useState<DictRow[]>([]);
   // Selected option keys (label/alias specific); the submitted value is always the canonical code.
   const [collectionOptKey, setCollectionOptKey] = useState("");
   const [categoryOptKey, setCategoryOptKey] = useState("");
@@ -76,6 +86,7 @@ export default function NewProductDrawer({
     getDictionaries().then((res) => {
       setCollections(res.collections);
       setCategories(res.categories);
+      setTokens(res.tokens);
       if (res.collections.length > 0 && !collectionCode) {
         setCollectionCode(res.collections[0].code);
         setCollectionOptKey(`${res.collections[0].code}::0`);
@@ -91,6 +102,63 @@ export default function NewProductDrawer({
     loadDictionaries();
     canEditDictionary().then(setCanEdit);
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "channels" || !savedListingId || !preview?.sku) return;
+    let cancelled = false;
+    const sku = preview.sku;
+    const listingId = savedListingId;
+    getHubProductForDrawer(sku)
+      .then((hub) => getListingScoreAction(sku, listingId, hub?.factory.state ?? "missing_cad"))
+      .then((score) => {
+        if (cancelled || !score) return;
+        setCanSyncWoo(Boolean(score.canSyncWoo));
+        setCanSyncClover(Boolean(score.canSyncClover));
+      })
+      .catch((err) => {
+        if (!cancelled) setChannelError(err instanceof Error ? err.message : "Could not load channel status");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, savedListingId, preview?.sku]);
+
+  async function saveChannels(confirmedPublish: boolean) {
+    if (!savedListingId || !preview?.sku) return;
+    if (!confirmedPublish && syncToWoo) {
+      setPublishConfirmOpen(true);
+      return;
+    }
+    setPublishConfirmOpen(false);
+    setChannelSaving(true);
+    setChannelError(null);
+    try {
+      await updateHubInDrawer(savedListingId, preview.sku, hubVersion, {
+        syncToWoo,
+        syncToClover,
+        publishConfirmed: confirmedPublish,
+      });
+      setHubVersion((v) => v + 1);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Channel save failed";
+      try {
+        const parsed = JSON.parse(message) as { error?: string; score?: number; failing?: string[] };
+        if (parsed.error === "publish_unconfirmed") {
+          setPublishConfirmOpen(true);
+          return;
+        }
+        if (parsed.error === "sync_blocked") {
+          setChannelError(`Sync blocked. Completeness score is ${parsed.score}%. Failing gates: ${(parsed.failing ?? []).join(", ")}`);
+          return;
+        }
+      } catch {
+        // not a structured gate error
+      }
+      setChannelError(message);
+    } finally {
+      setChannelSaving(false);
+    }
+  }
 
   // The EXACT label/alias the operator selected (server re-validates it against the code's row).
   const currentCollectionLabel = collectionOptions.find(o => o.key === collectionOptKey && o.code === collectionCode)?.label || "";
@@ -236,20 +304,34 @@ export default function NewProductDrawer({
                   </button>
                 )}
               </div>
-              <select
-                value={collectionOptKey}
-                onChange={e => {
-                  const opt = collectionOptions.find(o => o.key === e.target.value);
-                  if (!opt) return;
-                  setCollectionOptKey(opt.key);
-                  setCollectionCode(opt.code);
-                }}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
-              >
-                {collectionOptions.map(o => (
-                  <option key={o.key} value={o.key}>{o.display}</option>
-                ))}
-              </select>
+              {savedListingId ? (
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={collectionCode}
+                    disabled
+                    className="w-full p-2 pl-9 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-500 font-mono cursor-not-allowed"
+                  />
+                </div>
+              ) : (
+                <select
+                  value={collectionOptKey}
+                  onChange={e => {
+                    const opt = collectionOptions.find(o => o.key === e.target.value);
+                    if (!opt) return;
+                    setCollectionOptKey(opt.key);
+                    setCollectionCode(opt.code);
+                  }}
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                >
+                  {collectionOptions.map(o => (
+                    <option key={o.key} value={o.key}>{o.display}</option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>
@@ -261,20 +343,34 @@ export default function NewProductDrawer({
                   </button>
                 )}
               </div>
-              <select
-                value={categoryOptKey}
-                onChange={e => {
-                  const opt = categoryOptions.find(o => o.key === e.target.value);
-                  if (!opt) return;
-                  setCategoryOptKey(opt.key);
-                  setCategoryCode(opt.code);
-                }}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
-              >
-                {categoryOptions.map(o => (
-                  <option key={o.key} value={o.key}>{o.display}</option>
-                ))}
-              </select>
+              {savedListingId ? (
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={categoryCode}
+                    disabled
+                    className="w-full p-2 pl-9 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-500 font-mono cursor-not-allowed"
+                  />
+                </div>
+              ) : (
+                <select
+                  value={categoryOptKey}
+                  onChange={e => {
+                    const opt = categoryOptions.find(o => o.key === e.target.value);
+                    if (!opt) return;
+                    setCategoryOptKey(opt.key);
+                    setCategoryCode(opt.code);
+                  }}
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                >
+                  {categoryOptions.map(o => (
+                    <option key={o.key} value={o.key}>{o.display}</option>
+                  ))}
+                </select>
+              )}
             </div>
             
             <div>
@@ -283,9 +379,9 @@ export default function NewProductDrawer({
                 type="text"
                 value={productName}
                 onChange={e => setProductName(e.target.value)}
-                placeholder="e.g. Lounge Chair"
                 className="w-full mt-1.5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
               />
+              <p className="text-[10px] text-slate-500 mt-1">Customer-facing Display Name (e.g., 'Bravada Armless Sofa 34"').</p>
             </div>
 
             {origin === "third_party" ? (
@@ -293,12 +389,24 @@ export default function NewProductDrawer({
                 <div>
                   <label className="text-xs font-semibold text-amber-700 uppercase">SKU Token</label>
                   <input
+                    list="token-options"
                     type="text"
                     value={token}
                     onChange={e => setToken(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
-                    placeholder="e.g. BLK-L"
+                    onBlur={() => {
+                      if (token && !tokens.find(t => t.code === token)) {
+                        createDictionaryCode("token", token, token)
+                          .then(() => loadDictionaries())
+                          .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+                      }
+                    }}
                     className="w-full mt-1.5 p-2 bg-white border border-amber-200 rounded-lg text-sm"
                   />
+                  <datalist id="token-options">
+                    {tokens.map(t => (
+                      <option key={t.code} value={t.code}>{t.label !== t.code ? `${t.label} (${t.code})` : t.code}</option>
+                    ))}
+                  </datalist>
                   <p className="text-[10px] text-amber-600 mt-1">Short unique token for this product.</p>
                 </div>
                 <div>
@@ -407,8 +515,26 @@ export default function NewProductDrawer({
                  active={activeTab === 'asset_vault' || activeTab === 'story' || activeTab === 'seo' ? activeTab : null}
                />
              )}
-             {activeTab === 'freight' && <div className="text-sm text-slate-500 italic p-4 text-center">Freight tab unlocked</div>}
-             {activeTab === 'channels' && <div className="text-sm text-slate-500 italic p-4 text-center">Channels tab unlocked</div>}
+             {activeTab === 'freight' && preview?.sku && savedListingId && <FreightPanel globalSku={preview.sku} />}
+             {activeTab === 'freight' && !savedListingId && (
+               <p className="text-sm text-slate-500 p-4 text-center">Save the product before setting freight.</p>
+             )}
+             {activeTab === 'channels' && !savedListingId && (
+               <p className="text-sm text-slate-500 p-4 text-center">Save the product before setting channels.</p>
+             )}
+             {activeTab === 'channels' && preview?.sku && savedListingId && (
+               <MintChannelPanel
+                 syncToWoo={syncToWoo}
+                 syncToClover={syncToClover}
+                 canSyncWoo={canSyncWoo}
+                 canSyncClover={canSyncClover}
+                 saving={channelSaving}
+                 error={channelError}
+                 onToggleWoo={setSyncToWoo}
+                 onToggleClover={setSyncToClover}
+                 onSave={(confirmed) => saveChannels(confirmed)}
+               />
+             )}
           </div>
         ) : (
           <div className="opacity-50 pointer-events-none filter grayscale transition-all">
@@ -448,9 +574,10 @@ export default function NewProductDrawer({
                 type="text"
                 value={dictCode}
                 onChange={e => setDictCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
-                placeholder="e.g. NEW"
+                placeholder="Enter 2-4 letter code (e.g., BRV)"
                 className="w-full mt-1.5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
               />
+              <p className="text-[10px] text-slate-500 mt-1">This code is permanent once any global SKU contains it.</p>
             </div>
             
             <div>
@@ -482,7 +609,81 @@ export default function NewProductDrawer({
           </div>
         </div>
       )}
+
+      {publishConfirmOpen && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/50" onClick={() => setPublishConfirmOpen(false)} />
+          <div
+            className="relative bg-white rounded-xl shadow-2xl max-w-sm w-full p-6"
+            role="dialog"
+            aria-modal="true"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setPublishConfirmOpen(false);
+            }}
+          >
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Publish Live</h3>
+            <p className="text-sm text-slate-600 mb-6 font-medium">
+              WARNING: This action will publish this product live to the public e-commerce store. Are you sure you want to proceed?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button type="button" autoFocus onClick={() => setPublishConfirmOpen(false)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-md">
+                Cancel
+              </button>
+              <button type="button" onClick={() => saveChannels(true)} className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-md">
+                Publish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </>
+  );
+}
+
+function MintChannelPanel({
+  syncToWoo,
+  syncToClover,
+  canSyncWoo,
+  canSyncClover,
+  saving,
+  error,
+  onToggleWoo,
+  onToggleClover,
+  onSave,
+}: {
+  syncToWoo: boolean;
+  syncToClover: boolean;
+  canSyncWoo: boolean;
+  canSyncClover: boolean;
+  saving: boolean;
+  error: string | null;
+  onToggleWoo: (value: boolean) => void;
+  onToggleClover: (value: boolean) => void;
+  onSave: (confirmed: boolean) => void;
+}) {
+  return (
+    <div className="space-y-3 text-sm">
+      {error && <div className="text-xs text-rose-600 bg-rose-50 p-2 rounded border border-rose-100">{error}</div>}
+      <label className="flex items-center gap-2 text-slate-700">
+        <input type="checkbox" checked={canSyncWoo ? syncToWoo : false} disabled={!canSyncWoo || saving} onChange={(e) => onToggleWoo(e.target.checked)} />
+        Sync to WooCommerce
+      </label>
+      <label className="flex items-center gap-2 text-slate-700">
+        <input type="checkbox" checked={canSyncClover ? syncToClover : false} disabled={!canSyncClover || saving} onChange={(e) => onToggleClover(e.target.checked)} />
+        Sync to Clover
+      </label>
+      {!canSyncWoo && (
+        <p className="text-xs text-slate-500">Woo sync stays off until this product scores 100 and is web visible with a primary image.</p>
+      )}
+      <button
+        type="button"
+        onClick={() => onSave(false)}
+        disabled={saving}
+        className="px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md disabled:opacity-50"
+      >
+        {saving ? "Saving..." : "Save Channels"}
+      </button>
+    </div>
   );
 }

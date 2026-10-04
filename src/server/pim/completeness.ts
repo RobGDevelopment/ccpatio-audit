@@ -1,6 +1,6 @@
 import { type FactoryReadiness } from "@/server/factory-bom/derive-readiness";
 import { getDb } from "@/server/db/client";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   sku_mappings,
   finished_goods_catalog,
@@ -11,6 +11,34 @@ import {
 } from "@/server/db/schema";
 import { getVaultStorage } from "@/lib/supabase-storage";
 import sharp from "sharp";
+
+/** Hero gate: longest side at least 1200px. A failed download does not count. */
+async function primaryImageQualifies(storagePath: string): Promise<boolean> {
+  try {
+    const storage = getVaultStorage();
+    const res = await storage.download("product-images", storagePath);
+    if (!("bytes" in res) || !res.bytes) return false;
+    const meta = await sharp(Buffer.from(res.bytes)).metadata();
+    return Math.max(meta.width || 0, meta.height || 0) >= 1200;
+  } catch (err) {
+    console.error("Failed to check primary image size", err);
+    return false;
+  }
+}
+
+async function mapPool<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  if (items.length === 0) return out;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      out[index] = await fn(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
 
 export type CompletenessSnapshot = {
   globalSku: string;
@@ -59,7 +87,9 @@ export async function buildCompletenessSnapshot(tx: any, globalSku: string, list
   const [[map], [cat], [list], [ship], [tp], assets] = await Promise.all([
     tx.select().from(sku_mappings).where(eq(sku_mappings.global_sku, globalSku)),
     tx.select().from(finished_goods_catalog).where(eq(finished_goods_catalog.global_sku, globalSku)),
-    tx.select().from(ecommerce_listings).where(eq(ecommerce_listings.id, listingId)),
+    listingId
+      ? tx.select().from(ecommerce_listings).where(eq(ecommerce_listings.id, listingId))
+      : Promise.resolve([]),
     tx.select().from(catalog_ship_profiles).where(eq(catalog_ship_profiles.global_sku, globalSku)),
     tx.select().from(third_party_sources).where(eq(third_party_sources.global_sku, globalSku)),
     tx.select().from(product_assets).where(eq(product_assets.global_sku, globalSku)),
@@ -68,25 +98,8 @@ export async function buildCompletenessSnapshot(tx: any, globalSku: string, list
   // Merge payload overrides for things that change in the same request
   const mergedCat = { ...cat, ...payload }; // naFields, height, weight etc might be in payload
 
-  // Check primary image 1200px
-  let hasPrimary = false;
   const primaryImage = assets.find((a: any) => a.kind === "primary_image" && a.is_current);
-  if (primaryImage) {
-    try {
-      const storage = getVaultStorage();
-      const res = await storage.download("product-images", primaryImage.storage_path);
-      if ('bytes' in res && res.bytes) {
-        const meta = await sharp(Buffer.from(res.bytes)).metadata();
-        const width = meta.width || 0;
-        const height = meta.height || 0;
-        if (Math.max(width, height) >= 1200) {
-          hasPrimary = true;
-        }
-      }
-    } catch (err) {
-      console.error("Failed to check primary image size", err);
-    }
-  }
+  const hasPrimary = primaryImage ? await primaryImageQualifies(primaryImage.storage_path) : false;
 
   return {
     globalSku,
@@ -130,6 +143,101 @@ export async function buildCompletenessSnapshot(tx: any, globalSku: string, list
       hasAssembly: assets.some((a: any) => a.kind === "assembly" && a.is_current),
     },
   };
+}
+
+export async function batchCompletenessSnapshots(
+  tx: any,
+  items: { globalSku: string, listingId: string, factoryState: string, payload?: any }[]
+): Promise<CompletenessSnapshot[]> {
+  if (items.length === 0) return [];
+  const skus = items.map(i => i.globalSku);
+  const listingIds = items.map(i => i.listingId).filter(Boolean);
+
+  const [maps, cats, lists, ships, tps, assets] = await Promise.all([
+    tx.select().from(sku_mappings).where(inArray(sku_mappings.global_sku, skus)),
+    tx.select().from(finished_goods_catalog).where(inArray(finished_goods_catalog.global_sku, skus)),
+    listingIds.length ? tx.select().from(ecommerce_listings).where(inArray(ecommerce_listings.id, listingIds)) : Promise.resolve([]),
+    tx.select().from(catalog_ship_profiles).where(inArray(catalog_ship_profiles.global_sku, skus)),
+    tx.select().from(third_party_sources).where(inArray(third_party_sources.global_sku, skus)),
+    tx.select().from(product_assets).where(inArray(product_assets.global_sku, skus)),
+  ]);
+
+  const mapBySku = new Map(maps.map((m: any) => [m.global_sku, m]));
+  const catBySku = new Map(cats.map((c: any) => [c.global_sku, c]));
+  const listById = new Map(lists.map((l: any) => [l.id, l]));
+  const shipBySku = new Map(ships.map((s: any) => [s.global_sku, s]));
+  const tpBySku = new Map(tps.map((t: any) => [t.global_sku, t]));
+  const assetsBySku = new Map<string, any[]>();
+  for (const a of assets) {
+    if (!assetsBySku.has(a.global_sku)) assetsBySku.set(a.global_sku, []);
+    assetsBySku.get(a.global_sku)!.push(a);
+  }
+
+  const heroOk = await mapPool(items, 8, async (item) => {
+    const itemAssets = assetsBySku.get(item.globalSku) || [];
+    const primaryImage = itemAssets.find((a: any) => a.kind === "primary_image" && a.is_current);
+    return primaryImage ? primaryImageQualifies(primaryImage.storage_path) : false;
+  });
+
+  const results: CompletenessSnapshot[] = [];
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index];
+    const map = mapBySku.get(item.globalSku) || {} as any;
+    const cat = catBySku.get(item.globalSku) || {} as any;
+    const list = listById.get(item.listingId) || {} as any;
+    const ship = shipBySku.get(item.globalSku) || {} as any;
+    const tp = tpBySku.get(item.globalSku) || {} as any;
+    const itemAssets = assetsBySku.get(item.globalSku) || [];
+
+    const payload = item.payload || {};
+    const mergedCat = { ...cat, ...payload };
+    const hasPrimary = heroOk[index];
+
+    results.push({
+      globalSku: item.globalSku,
+      origin: map?.product_origin ?? null,
+      productName: list?.product_name ?? null,
+      collectionLabel: list?.collection_label ?? null,
+      steelMsrp: list?.steel_msrp ?? null,
+      aluminumMsrp: list?.aluminum_msrp ?? null,
+      retailMsrp: list?.steel_msrp ?? null,
+      marketingDescription: list?.marketing_description ?? null,
+      seoTitle: list?.seo_title ?? null,
+      seoDescription: list?.seo_description ?? null,
+      slug: list?.slug ?? null,
+      isWebVisible: Boolean(mergedCat?.is_web_visible),
+      length: mergedCat?.length ?? null,
+      depth: mergedCat?.depth ?? null,
+      height: mergedCat?.height ?? null,
+      armHeight: mergedCat?.arm_height ?? null,
+      sitHeight: mergedCat?.sit_height ?? null,
+      assemblyRequired: Boolean(mergedCat?.assembly_required),
+      warrantyTermMonths: mergedCat?.warranty_term_months ?? null,
+      naFields: Array.isArray(mergedCat?.na_fields) ? mergedCat.na_fields : [],
+      shipProfile: Object.keys(ship).length ? {
+        weightLb: ship.weight_lb ?? null,
+        ltlClass: ship.ltl_class ?? null,
+        shipMode: ship.ship_mode ?? null,
+        lengthIn: ship.length_in ?? null,
+        widthIn: ship.width_in ?? null,
+        heightIn: ship.height_in ?? null,
+      } : null,
+      thirdParty: Object.keys(tp).length ? {
+        vendorName: tp.vendor_name ?? null,
+        vendorSku: tp.vendor_sku ?? null,
+        wholesaleCost: tp.wholesale_cost ?? null,
+      } : null,
+      factoryState: item.factoryState,
+      assets: {
+        hasPrimary,
+        hasCare: itemAssets.some((a: any) => a.kind === "care_guide" && a.is_current),
+        hasWarranty: itemAssets.some((a: any) => a.kind === "warranty" && a.is_current),
+        hasAssembly: itemAssets.some((a: any) => a.kind === "assembly" && a.is_current),
+      }
+    });
+  }
+
+  return results;
 }
 
 export function scoreProduct(snap: CompletenessSnapshot): {

@@ -1410,6 +1410,8 @@ export const ecommerce_listings = pgTable(
     slug: text("slug"),
     tags: jsonb("tags").$type<string[]>().notNull().default([]),
     sheet_order: integer("sheet_order").notNull(),
+    sale_price: numeric("sale_price", { precision: 10, scale: 2 }),
+    sale_ends_at: timestamp("sale_ends_at", { withTimezone: true }),
     version: integer("version").notNull().default(1),
     archived_at: timestamp("archived_at"),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
@@ -1512,6 +1514,15 @@ export const nomenclature_categories = pgTable("nomenclature_categories", {
   code: text("code").notNull().unique(), // ^[A-Z0-9]+(-[A-Z0-9]+)*$ max 24
   label: text("label").notNull().unique(),
   aliases: text("aliases").array(),
+  is_active: boolean("is_active").notNull().default(true),
+  created_by: text("created_by"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const nomenclature_sku_tokens = pgTable("nomenclature_sku_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  code: text("code").notNull().unique(), // ^[A-Z0-9-]+$ max 24
+  label: text("label").notNull(),
   is_active: boolean("is_active").notNull().default(true),
   created_by: text("created_by"),
   created_at: timestamp("created_at").defaultNow().notNull(),

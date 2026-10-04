@@ -521,6 +521,20 @@ export default function MasterCatalogAdmin() {
     setEcommerce((prev) => patchListings(prev, [{ id, ...patch }]));
   }
 
+  function openCatalogDrawer(globalSku: string) {
+    const match = ecommerce?.listings.find((l) => l.globalSku === globalSku && !l.archivedAt);
+    const params = new URLSearchParams(window.location.search);
+    if (match) {
+      params.set("listing", match.id);
+      params.delete("hubOnly");
+    } else {
+      params.set("hubOnly", globalSku);
+      params.delete("listing");
+    }
+    router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+    setView("ecommerce");
+  }
+
   async function handleEcommerceHubDrawer(listingId: string, globalSku: string, expectedVersion: number, payload: any) {
     await updateHubInDrawer(listingId, globalSku, expectedVersion, payload);
     setEcommerce((prev) => {
@@ -860,16 +874,26 @@ export default function MasterCatalogAdmin() {
                         // Card styling lives on the <td>s: with border-separate,
                         // <tr> can't render borders/radius/shadow.
                         const flash = justSavedId === item.id;
-                        const cell = `mc-card-cell py-3 px-4 border-y border-slate-200/70 shadow-sm transition-all group-hover/row:shadow-md group-hover/row:border-sky-200 ${
-                          flash ? "bg-emerald-50" : "bg-white"
-                        }`;
+                        const cellColor = flash ? "bg-emerald-50" : "bg-white";
+                        const ringClass = item.status === "red" ? "border-l-[4px] border-l-red-500" :
+                                          item.status === "amber" ? "border-l-[4px] border-l-amber-500" :
+                                          item.status === "green" ? "border-l-[4px] border-l-emerald-500" : "border-l";
+                        const toggleRing = item.status === "red" ? "ring-2 ring-red-500 ring-offset-1" :
+                                           item.status === "amber" ? "ring-2 ring-amber-500 ring-offset-1" :
+                                           item.status === "green" ? "ring-2 ring-emerald-500 ring-offset-1" : "";
+                        const cell = `mc-card-cell py-3 px-4 border-y border-slate-200/70 shadow-sm transition-all group-hover/row:shadow-md group-hover/row:border-sky-200 ${cellColor}`;
                         return (
                           <tr
                             key={item.id}
-                            className="group/row break-inside-avoid"
+                            tabIndex={0}
+                            className="group/row break-inside-avoid cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500"
+                            onClick={() => openCatalogDrawer(item.globalSku)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") openCatalogDrawer(item.globalSku);
+                            }}
                           >
                             <td
-                              className={`${cell} border-l rounded-l-xl`}
+                              className={`${cell} ${ringClass} rounded-l-xl`}
                             >
                               {item.imageUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
@@ -880,7 +904,8 @@ export default function MasterCatalogAdmin() {
                                 />
                               ) : (
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setActiveUploadId(item.id);
                                     fileInputRef.current?.click();
                                   }}
@@ -904,7 +929,7 @@ export default function MasterCatalogAdmin() {
 
                             <td className={cell}>
                               {editingId === item.id ? (
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                   <input
                                     autoFocus
                                     type="text"
@@ -918,7 +943,7 @@ export default function MasterCatalogAdmin() {
                                     className="w-24 px-2 py-1 bg-white border border-sky-400 rounded-md text-sm font-semibold text-slate-800 focus:outline-none ring-2 ring-sky-500/20"
                                   />
                                   <button
-                                    onClick={() => handlePriceSave(item.id)}
+                                    onClick={(e) => { e.stopPropagation(); handlePriceSave(item.id); }}
                                     className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
                                   >
                                     <Check className="h-4 w-4" />
@@ -926,7 +951,8 @@ export default function MasterCatalogAdmin() {
                                 </div>
                               ) : (
                                 <span
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setEditingId(item.id);
                                     setEditPrice(item.msrp);
                                   }}
@@ -940,10 +966,11 @@ export default function MasterCatalogAdmin() {
 
                             <td className={`${cell} text-center print:hidden`}>
                               <button
-                                onClick={() =>
-                                  handleToggleWeb(item.id, item.isWebVisible)
-                                }
-                                className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors mx-auto ${
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleWeb(item.id, item.isWebVisible);
+                                }}
+                                className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors mx-auto ${toggleRing} ${
                                   item.isWebVisible ? "bg-sky-600" : "bg-slate-200"
                                 }`}
                                 aria-label="Toggle web visibility"

@@ -18,6 +18,7 @@ import {
   third_party_sources,
   nomenclature_collections,
   nomenclature_categories,
+  nomenclature_sku_tokens,
   user_roles,
   catalog_ship_profiles,
 } from "@/server/db/schema";
@@ -37,7 +38,7 @@ import {
 import { createAssetSignedUpload, createAssetSignedDownload, getVaultStorage } from "@/lib/supabase-storage";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { buildCompletenessSnapshot, scoreProduct } from "@/server/pim/completeness";
+import { buildCompletenessSnapshot, scoreProduct, batchCompletenessSnapshots } from "@/server/pim/completeness";
 import { getPimSession, logPimAudit, isEmbedPrincipal, type PimSession } from "@/lib/pim-audit";
 import {
   planAssetUpload,
@@ -86,6 +87,7 @@ export interface CatalogItem {
   dbSynced: boolean;
   katanaSynced: boolean;
   wooSynced: boolean;
+  status?: "red" | "amber" | "green";
 }
 
 export interface QuarantineItem {
@@ -118,6 +120,7 @@ export async function getActiveCatalog(): Promise<CatalogItem[]> {
       imageUrl: finished_goods_catalog.image_url,
       katanaVariantId: sku_mappings.katana_variant_id,
       wooProductId: sku_mappings.woo_product_id,
+      syncToWoo: sku_mappings.sync_to_woo,
     })
     .from(finished_goods_catalog)
     .innerJoin(
@@ -126,17 +129,48 @@ export async function getActiveCatalog(): Promise<CatalogItem[]> {
     )
     .orderBy(sku_mappings.original_name);
 
-  return rows.map((r) => ({
-    id: r.globalSku,
-    productName: r.productName || "Unnamed Product",
+  const listingRows = await db
+    .select({ globalSku: ecommerce_listings.global_sku, id: ecommerce_listings.id })
+    .from(ecommerce_listings);
+  const listingsBySku = new Map<string, string>();
+  for (const r of listingRows) {
+    if (!listingsBySku.has(r.globalSku)) listingsBySku.set(r.globalSku, r.id);
+  }
+
+  const itemsForBatch = rows.map(r => ({
     globalSku: r.globalSku,
-    msrp: formatMoney(r.msrp),
-    isWebVisible: Boolean(r.isWebVisible),
-    imageUrl: r.imageUrl ?? null,
-    dbSynced: true,
-    katanaSynced: Boolean(r.katanaVariantId),
-    wooSynced: Boolean(r.wooProductId),
+    listingId: listingsBySku.get(r.globalSku) || "",
+    factoryState: "published",
   }));
+
+  const snaps = await batchCompletenessSnapshots(db, itemsForBatch);
+
+  return rows.map((r, idx) => {
+    const snap = snaps[idx];
+    const { score, canSyncWoo } = scoreProduct(snap);
+
+    let status: "red" | "amber" | "green" | undefined;
+    if (canSyncWoo && r.syncToWoo) {
+      status = "green";
+    } else if (score === 100 && snap.assets.hasPrimary && r.isWebVisible && !r.syncToWoo) {
+      status = "amber";
+    } else if (r.isWebVisible || r.syncToWoo) {
+      status = "red";
+    }
+
+    return {
+      id: r.globalSku,
+      productName: r.productName || "Unnamed Product",
+      globalSku: r.globalSku,
+      msrp: formatMoney(r.msrp),
+      isWebVisible: Boolean(r.isWebVisible),
+      imageUrl: r.imageUrl ?? null,
+      dbSynced: true,
+      katanaSynced: Boolean(r.katanaVariantId),
+      wooSynced: Boolean(r.wooProductId),
+      status,
+    };
+  });
 }
 
 // 2. Fetch Quarantine Queue
@@ -252,6 +286,9 @@ export interface EcommerceListing {
   hubLength: string | null;
   hubDepth: string | null;
   hubWeight: string | null;
+  hubHeight: string | null;
+  hubArmHeight: string | null;
+  hubSitHeight: string | null;
   hubNaFields: string[];
   imageUrl: string | null;
   archivedAt: Date | null;
@@ -261,6 +298,18 @@ export interface EcommerceListing {
   qboItemId: string | null;
   baseCost: string | null;
   cost: string | null;
+  salePrice: string | null;
+  saleEndsAt: string | null;
+  isWebVisible: boolean;
+  assemblyRequired: boolean;
+  warrantyTermMonths: number | null;
+  warrantyCovers: string | null;
+  thirdParty: {
+    vendorName: string | null;
+    vendorSku: string | null;
+    wholesaleCost: string | null;
+  } | null;
+  status?: "red" | "amber" | "green";
 }
 
 export interface EcommerceRosterGap {
@@ -304,6 +353,18 @@ interface ListingFields {
   qboItemId: string | null;
   baseCost: string | null;
   cost: string | null;
+  salePrice: string | null;
+  saleEndsAt: Date | null;
+  hubHeight: string | null;
+  hubArmHeight: string | null;
+  hubSitHeight: string | null;
+  isWebVisible: boolean;
+  assemblyRequired: boolean;
+  warrantyTermMonths: number | null;
+  warrantyCovers: string | null;
+  vendorName: string | null;
+  vendorSku: string | null;
+  wholesaleCost: string | null;
 }
 
 /** A null steel MSRP displays as an em dash and sorts last (never "$0.00"). */
@@ -342,6 +403,112 @@ function toListing(r: ListingFields, factory: FactoryReadiness): EcommerceListin
     qboItemId: r.qboItemId,
     baseCost: r.baseCost,
     cost: r.cost,
+    salePrice: r.salePrice,
+    saleEndsAt: r.saleEndsAt ? r.saleEndsAt.toISOString() : null,
+    hubHeight: r.hubHeight,
+    hubArmHeight: r.hubArmHeight,
+    hubSitHeight: r.hubSitHeight,
+    isWebVisible: r.isWebVisible,
+    assemblyRequired: r.assemblyRequired,
+    warrantyTermMonths: r.warrantyTermMonths,
+    warrantyCovers: r.warrantyCovers,
+    thirdParty: (r.vendorName || r.vendorSku || r.wholesaleCost) ? {
+      vendorName: r.vendorName,
+      vendorSku: r.vendorSku,
+      wholesaleCost: r.wholesaleCost,
+    } : null,
+  };
+}
+
+/**
+ * Hub fields for a finished good that has no ecommerce listing.
+ * `id` is empty so hub save does not look up a listing row.
+ */
+export async function getHubProductForDrawer(globalSku: string): Promise<EcommerceListing | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      globalSku: sku_mappings.global_sku,
+      productName: sku_mappings.original_name,
+      hubVersion: sku_mappings.version,
+      syncToWoo: sku_mappings.sync_to_woo,
+      syncToClover: sku_mappings.sync_to_clover,
+      cloverItemId: sku_mappings.clover_item_id,
+      qboItemId: sku_mappings.qbo_item_id,
+      baseCost: sku_mappings.base_cost,
+      length: finished_goods_catalog.length,
+      depth: finished_goods_catalog.depth,
+      height: finished_goods_catalog.height,
+      armHeight: finished_goods_catalog.arm_height,
+      sitHeight: finished_goods_catalog.sit_height,
+      weight: finished_goods_catalog.weight,
+      naFields: finished_goods_catalog.na_fields,
+      imageUrl: finished_goods_catalog.image_url,
+      isWebVisible: finished_goods_catalog.is_web_visible,
+      assemblyRequired: finished_goods_catalog.assembly_required,
+      warrantyTermMonths: finished_goods_catalog.warranty_term_months,
+      warrantyCovers: finished_goods_catalog.warranty_covers,
+      cost: finished_goods_catalog.cost,
+      vendorName: third_party_sources.vendor_name,
+      vendorSku: third_party_sources.vendor_sku,
+      wholesaleCost: third_party_sources.wholesale_cost,
+    })
+    .from(sku_mappings)
+    .leftJoin(finished_goods_catalog, eq(finished_goods_catalog.global_sku, sku_mappings.global_sku))
+    .leftJoin(third_party_sources, eq(third_party_sources.global_sku, sku_mappings.global_sku))
+    .where(eq(sku_mappings.global_sku, globalSku))
+    .limit(1);
+  if (!row) return null;
+
+  const readiness = await getFactoryReadinessMap([globalSku]);
+  return {
+    id: "",
+    globalSku: row.globalSku,
+    productName: row.productName || "Unnamed Product",
+    legacyBaseSku: null,
+    legacySkuShared: false,
+    canonicalSkuShared: false,
+    productUrl: null,
+    urlSource: "missing",
+    drawingSection: "",
+    collectionLabel: "",
+    msrp: "—",
+    msrpValue: null,
+    aluminumMsrp: null,
+    marketingDescription: null,
+    constructionDetails: null,
+    sheetOrder: 0,
+    factory: readiness.get(globalSku) ?? UNKNOWN_FACTORY_READINESS,
+    version: 0,
+    hubVersion: row.hubVersion,
+    hubLength: row.length,
+    hubDepth: row.depth,
+    hubWeight: row.weight,
+    hubHeight: row.height,
+    hubArmHeight: row.armHeight,
+    hubSitHeight: row.sitHeight,
+    hubNaFields: row.naFields ?? [],
+    imageUrl: row.imageUrl,
+    archivedAt: null,
+    syncToWoo: Boolean(row.syncToWoo),
+    syncToClover: Boolean(row.syncToClover),
+    cloverItemId: row.cloverItemId,
+    qboItemId: row.qboItemId,
+    baseCost: row.baseCost,
+    cost: row.cost,
+    salePrice: null,
+    saleEndsAt: null,
+    isWebVisible: Boolean(row.isWebVisible),
+    assemblyRequired: Boolean(row.assemblyRequired),
+    warrantyTermMonths: row.warrantyTermMonths,
+    warrantyCovers: row.warrantyCovers,
+    thirdParty: row.vendorName || row.vendorSku || row.wholesaleCost
+      ? {
+          vendorName: row.vendorName,
+          vendorSku: row.vendorSku,
+          wholesaleCost: row.wholesaleCost,
+        }
+      : null,
   };
 }
 
@@ -457,6 +624,18 @@ export async function getEcommerceRoster(): Promise<EcommerceRoster> {
         qboItemId: sku_mappings.qbo_item_id,
         baseCost: sku_mappings.base_cost,
         cost: finished_goods_catalog.cost,
+        salePrice: ecommerce_listings.sale_price,
+        saleEndsAt: ecommerce_listings.sale_ends_at,
+        hubHeight: finished_goods_catalog.height,
+        hubArmHeight: finished_goods_catalog.arm_height,
+        hubSitHeight: finished_goods_catalog.sit_height,
+        isWebVisible: finished_goods_catalog.is_web_visible,
+        assemblyRequired: finished_goods_catalog.assembly_required,
+        warrantyTermMonths: finished_goods_catalog.warranty_term_months,
+        warrantyCovers: finished_goods_catalog.warranty_covers,
+        vendorName: third_party_sources.vendor_name,
+        vendorSku: third_party_sources.vendor_sku,
+        wholesaleCost: third_party_sources.wholesale_cost,
       })
       .from(ecommerce_listings)
       .innerJoin(
@@ -466,6 +645,10 @@ export async function getEcommerceRoster(): Promise<EcommerceRoster> {
       .leftJoin(
         finished_goods_catalog,
         eq(sku_mappings.global_sku, finished_goods_catalog.global_sku),
+      )
+      .leftJoin(
+        third_party_sources,
+        eq(sku_mappings.global_sku, third_party_sources.global_sku),
       )
       .orderBy(asc(ecommerce_listings.sheet_order)),
     db
@@ -477,9 +660,36 @@ export async function getEcommerceRoster(): Promise<EcommerceRoster> {
   const hubSkus = [...new Set(rows.map((r) => r.globalSku))];
   const readiness = await getFactoryReadinessMap(hubSkus);
 
-  const listings: EcommerceListing[] = rows.map((r) =>
-    toListing({ ...r, hubNaFields: r.hubNaFields || [] }, readiness.get(r.globalSku) ?? UNKNOWN_FACTORY_READINESS),
-  );
+  const itemsForBatch = rows.map(r => ({
+    globalSku: r.globalSku,
+    listingId: r.id,
+    factoryState: readiness.get(r.globalSku)?.state ?? "unknown",
+  }));
+
+  const snaps = await batchCompletenessSnapshots(db, itemsForBatch);
+
+  const listings: EcommerceListing[] = rows.map((r, idx) => {
+    const listing = toListing({ 
+      ...r, 
+      hubNaFields: r.hubNaFields || [],
+      isWebVisible: Boolean(r.isWebVisible),
+      assemblyRequired: Boolean(r.assemblyRequired)
+    }, readiness.get(r.globalSku) ?? UNKNOWN_FACTORY_READINESS);
+    
+    const snap = snaps[idx];
+    const { score, canSyncWoo } = scoreProduct(snap);
+    
+    let status: "red" | "amber" | "green" | undefined;
+    if (canSyncWoo && r.syncToWoo) {
+      status = "green";
+    } else if (score === 100 && snap.assets.hasPrimary && r.isWebVisible && !r.syncToWoo) {
+      status = "amber";
+    } else if (r.isWebVisible || r.syncToWoo) {
+      status = "red";
+    }
+
+    return { ...listing, status };
+  });
 
   const gaps: EcommerceRosterGap[] = gapRows.map((g) => ({
     globalSku: g.global_sku,
@@ -658,6 +868,18 @@ export async function mintHubSkuFromGap(
           qboItemId: null,
           baseCost: null,
           cost: null,
+          salePrice: null,
+          saleEndsAt: null,
+          hubHeight: null,
+          hubArmHeight: null,
+          hubSitHeight: null,
+          isWebVisible: false,
+          assemblyRequired: false,
+          warrantyTermMonths: null,
+          warrantyCovers: null,
+          vendorName: null,
+          vendorSku: null,
+          wholesaleCost: null,
         },
         factory,
       ),
@@ -674,13 +896,39 @@ export async function updateListingInDrawer(
   payload: {
     collectionLabel: string;
     steelMsrp: string | null; // formatted or raw, will parse
+    aluminumMsrp: string | null;
     legacyBaseSku: string | null;
     productUrl: string | null;
+    salePrice: string | null;
+    saleEndsAt: string | null;
   }
 ) {
   const db = getDb();
   const parsedPrice = payload.steelMsrp ? parsePrice(payload.steelMsrp) : null;
   const fixedPrice = parsedPrice !== null && !Number.isNaN(parsedPrice) ? parsedPrice.toFixed(2) : null;
+  
+  const parsedAlumPrice = payload.aluminumMsrp ? parsePrice(payload.aluminumMsrp) : null;
+  
+  const parsedSalePrice = payload.salePrice ? parsePrice(payload.salePrice) : null;
+  const fixedSalePrice = parsedSalePrice !== null && !Number.isNaN(parsedSalePrice) ? parsedSalePrice.toFixed(2) : null;
+
+  if (parsedSalePrice !== null && !Number.isNaN(parsedSalePrice)) {
+    if (parsedSalePrice <= 0) {
+      throw new Error("Sale price must be greater than zero.");
+    }
+    if (!payload.saleEndsAt) {
+      throw new Error("Sale price requires an end date.");
+    }
+    if (parsedPrice !== null && parsedSalePrice >= parsedPrice) {
+      throw new Error("Sale price must be less than Steel MSRP.");
+    }
+    if (parsedAlumPrice !== null && parsedSalePrice >= parsedAlumPrice) {
+      throw new Error("Sale price must be less than Aluminum MSRP.");
+    }
+  } else {
+    // If salePrice is cleared, force saleEndsAt to null
+    payload.saleEndsAt = null;
+  }
   
   const legacyNormal = payload.legacyBaseSku ? normalizeLegacySku(payload.legacyBaseSku) : ({ ok: true, value: null } as const);
   if (!legacyNormal.ok) throw new Error(legacyNormal.error);
@@ -694,6 +942,9 @@ export async function updateListingInDrawer(
       .set({
         collection_label: payload.collectionLabel,
         steel_msrp: fixedPrice,
+        aluminum_msrp: payload.aluminumMsrp ? parsePrice(payload.aluminumMsrp).toFixed(2) : null,
+        sale_price: fixedSalePrice,
+        sale_ends_at: payload.saleEndsAt ? new Date(payload.saleEndsAt) : null,
         legacy_base_sku: legacyNormal.value,
         legacy_operator_set: legacyNormal.value ? true : false,
         product_url: urlNormal.value,
@@ -776,6 +1027,13 @@ export async function updateHubInDrawer(
     syncToWoo?: boolean;
     syncToClover?: boolean;
     naFields?: string[];
+    publishConfirmed?: boolean;
+    assemblyRequired?: boolean;
+    warrantyTermMonths?: number | null;
+    warrantyCovers?: string | null;
+    vendorName?: string | null;
+    vendorSku?: string | null;
+    wholesaleCost?: string | null;
   }
 ) {
   const session = await getPimSession();
@@ -787,20 +1045,24 @@ export async function updateHubInDrawer(
   
   try {
     await db.transaction(async (tx) => {
-    // 1. Calculate Completeness Score to enforce sync toggles
-    const [listing] = await tx
-      .select()
-      .from(ecommerce_listings)
-      .where(eq(ecommerce_listings.id, listingId));
-    
-    if (!listing) throw new Error("Listing not found");
+    // 1. Calculate Completeness Score to enforce sync toggles.
+    // An empty listing id is hub-only: the finished good has no ecommerce_listings row.
+    const hubOnly = listingId.length === 0;
+    const [listing] = hubOnly
+      ? [undefined]
+      : await tx
+          .select()
+          .from(ecommerce_listings)
+          .where(eq(ecommerce_listings.id, listingId));
+
+    if (!hubOnly && !listing) throw new Error("Listing not found");
 
     const readinessMap = await getFactoryReadinessMap([globalSku]);
     const factoryState = (readinessMap.get(globalSku) ?? UNKNOWN_FACTORY_READINESS).state;
 
-    const snap = await buildCompletenessSnapshot(tx, globalSku, listingId, factoryState, payload);
+    const snap = await buildCompletenessSnapshot(tx, globalSku, listing?.id ?? "", factoryState, payload);
     const { score, gates, canSyncWoo, canSyncClover } = scoreProduct(snap);
-    const isArchived = !!listing.archived_at;
+    const isArchived = !!listing?.archived_at;
     const isComplete = score === 100;
     const canSyncW = canSyncWoo && !isArchived;
     const canSyncC = canSyncClover && !isArchived;
@@ -808,6 +1070,18 @@ export async function updateHubInDrawer(
     // Check for sync block
     const requestedWoo = "syncToWoo" in payload && payload.syncToWoo === true;
     const requestedClover = "syncToClover" in payload && payload.syncToClover === true;
+    
+    let wooJustEnabled = false;
+    if (requestedWoo) {
+      const [currentMapping] = await tx.select({ sync_to_woo: sku_mappings.sync_to_woo }).from(sku_mappings).where(eq(sku_mappings.global_sku, globalSku));
+      if (currentMapping && !currentMapping.sync_to_woo) {
+        if (!payload.publishConfirmed) {
+          throw new Error(JSON.stringify({ ok: false, error: "publish_unconfirmed" }));
+        }
+        wooJustEnabled = true;
+      }
+    }
+
     if ((requestedWoo && !canSyncW) || (requestedClover && !canSyncC)) {
       const failing = gates ? gates.filter((g: any) => !g.passed).map((g: any) => g.id) : [];
       // The Woo sentence is only for a complete product blocked by the hero/visibility mask.
@@ -860,6 +1134,9 @@ export async function updateHubInDrawer(
     if ("isWebVisible" in payload) catalogSet.is_web_visible = payload.isWebVisible;
     if ("cost" in payload) catalogSet.cost = payload.cost ? parsePrice(payload.cost).toFixed(2) : null;
     if ("naFields" in payload) catalogSet.na_fields = payload.naFields;
+    if ("assemblyRequired" in payload) catalogSet.assembly_required = payload.assemblyRequired;
+    if ("warrantyTermMonths" in payload) catalogSet.warranty_term_months = payload.warrantyTermMonths;
+    if ("warrantyCovers" in payload) catalogSet.warranty_covers = payload.warrantyCovers;
 
     await tx
       .insert(finished_goods_catalog)
@@ -868,6 +1145,31 @@ export async function updateHubInDrawer(
         target: finished_goods_catalog.global_sku,
         set: catalogSet,
       });
+
+    // 3. Update third_party_sources if vendor fields are present
+    if ("vendorName" in payload || "vendorSku" in payload || "wholesaleCost" in payload) {
+      const tpSet: any = { updated_at: new Date() };
+      if ("vendorName" in payload) tpSet.vendor_name = payload.vendorName;
+      if ("vendorSku" in payload) tpSet.vendor_sku = payload.vendorSku;
+      if ("wholesaleCost" in payload) tpSet.wholesale_cost = payload.wholesaleCost ? parsePrice(payload.wholesaleCost).toFixed(2) : null;
+      
+      await tx
+        .insert(third_party_sources)
+        .values({ global_sku: globalSku, ...tpSet })
+        .onConflictDoUpdate({
+          target: third_party_sources.global_sku,
+          set: tpSet,
+        });
+    }
+      
+    if (wooJustEnabled) {
+      await tx.insert(pim_audit_log).values({
+        operator_email: session.email,
+        action: "publish_live_confirmed",
+        global_sku: globalSku,
+        new_value: JSON.stringify({ score: 100 }),
+      });
+    }
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "";
@@ -903,6 +1205,7 @@ export async function updateHubInDrawer(
 
 // 13. Create a brand new product from the empty drawer
 import { previewSku } from "@/server/master-catalog/sku-preview";
+import { matchHubSku } from "@/lib/hub-sku-codes";
 
 export async function previewSkuAction(name: string, collectionLabel: string, categoryCode: string, length: string, depth: string, existingSku?: string | null, origin: "manufactured" | "third_party" = "manufactured", token?: string, collectionCode?: string, categoryLabel?: string) {
   return previewSku(name, collectionLabel, categoryCode, length, depth, existingSku, origin, token, collectionCode, categoryLabel);
@@ -1020,7 +1323,7 @@ export async function createNewProduct(payload: {
 }
 
 export async function createDictionaryCode(
-  type: "collection" | "category",
+  type: "collection" | "category" | "token",
   code: string,
   label: string
 ) {
@@ -1051,8 +1354,9 @@ export async function createDictionaryCode(
     throw new Error("Code and label are required");
   }
 
-  const RESERVED_CODES = new Set(["FIN", "FAB", "MIS", "RM", "PWD", "3P"]);
-  if (RESERVED_CODES.has(safeCode)) {
+  const exactReserved = ["FIN", "FAB", "MIS", "RM", "PWD", "3P", "ASM", "SA"];
+  const prefixReserved = ["RM-", "PWD-", "FAB-", "ASM-", "SA-"];
+  if (exactReserved.includes(safeCode) || prefixReserved.some(p => safeCode.startsWith(p))) {
     throw new Error(`Code ${safeCode} is a reserved system code.`);
   }
 
@@ -1065,7 +1369,7 @@ export async function createDictionaryCode(
       label: safeLabel,
       created_by: email,
     });
-  } else {
+  } else if (type === "category") {
     if (safeCode.length > 24 || !/^[A-Z0-9]+(-[A-Z0-9]+)*$/.test(safeCode)) {
       throw new Error("Category code format invalid: use A-Z/0-9 segments separated by hyphens, max 24 characters.");
     }
@@ -1073,6 +1377,18 @@ export async function createDictionaryCode(
       code: safeCode,
       label: safeLabel,
       created_by: email,
+    });
+  } else if (type === "token") {
+    if (safeCode.length > 24 || !/^[A-Z0-9-]+$/.test(safeCode)) {
+      throw new Error("Token format invalid: use A-Z, 0-9, and hyphens, max 24 characters.");
+    }
+    await db.insert(nomenclature_sku_tokens).values({
+      code: safeCode,
+      label: safeLabel,
+      created_by: email,
+    }).onConflictDoUpdate({
+      target: nomenclature_sku_tokens.code,
+      set: { label: safeLabel }
     });
   }
 }
@@ -1517,7 +1833,29 @@ export async function getDictionaries() {
   const db = getDb();
   const collections = await db.select().from(nomenclature_collections).where(eq(nomenclature_collections.is_active, true));
   const categories = await db.select().from(nomenclature_categories).where(eq(nomenclature_categories.is_active, true));
-  return { collections, categories };
+  const dictionaryTokens = await db.select().from(nomenclature_sku_tokens).where(eq(nomenclature_sku_tokens.is_active, true));
+
+  const live3pMappings = await db.select({ sku: sku_mappings.global_sku }).from(sku_mappings).where(and(eq(sku_mappings.product_origin, "third_party"), sql`global_sku LIKE '3P-%'`));
+  const liveTokens = new Set<string>();
+  const collectionCodes = collections.map((c) => c.code);
+  const categoryCodes = categories.map((c) => c.code);
+
+  for (const m of live3pMappings) {
+    const token = matchHubSku(m.sku, collectionCodes, categoryCodes).token;
+    if (token) liveTokens.add(token);
+  }
+
+  const mergedTokens = new Map<string, typeof dictionaryTokens[0]>();
+  for (const t of dictionaryTokens) {
+    mergedTokens.set(t.code, t);
+  }
+  for (const t of liveTokens) {
+    if (!mergedTokens.has(t)) {
+      mergedTokens.set(t, { id: '', code: t, label: t, is_active: true, created_by: null, created_at: new Date() });
+    }
+  }
+
+  return { collections, categories, tokens: Array.from(mergedTokens.values()) };
 }
 
 export type ShipProfileData = {
