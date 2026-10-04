@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "ecommerce_listings_slug_active_uidx" ON "ecommerce_listings" USING btree ("slug") WHERE "ecommerce_listings"."archived_at" IS NULL AND "ecommerce_listings"."slug" IS NOT NULL;

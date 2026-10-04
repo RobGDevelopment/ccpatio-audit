@@ -7,6 +7,7 @@ import {
 
 export const CAD_MODELS_BUCKET = "cad-models";
 export const PRODUCT_IMAGES_BUCKET = "product-images";
+export const PRODUCT_DOCUMENTS_BUCKET = "product-documents";
 /** Soft gate for v1 CAD uploads (25 MiB). */
 export const CAD_MAX_BYTES = 25 * 1024 * 1024;
 
@@ -47,6 +48,58 @@ export async function createCadSignedUpload(input: {
     throw new Error(error?.message ?? "Failed to create signed CAD upload URL");
   }
   return { path, token: data.token, signedUrl: data.signedUrl };
+}
+
+/**
+ * Signs an upload to a SERVER-generated object key. `upsert: false` so a signed URL
+ * can never overwrite an existing object (revisions are append-only).
+ */
+export async function createAssetSignedUpload(input: {
+  bucket: string;
+  path: string;
+}): Promise<{ path: string; token: string; signedUrl: string }> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase.storage
+    .from(input.bucket)
+    .createSignedUploadUrl(input.path, { upsert: false });
+  if (error || !data) {
+    throw new Error(error?.message ?? `Failed to create signed upload URL for ${input.bucket}`);
+  }
+  return { path: input.path, token: data.token, signedUrl: data.signedUrl };
+}
+
+/** Service-role storage adapter used by the asset vault confirm step. */
+export function getVaultStorage() {
+  return {
+    async download(bucket: string, path: string) {
+      const { data, error } = await getSupabaseAdmin().storage.from(bucket).download(path);
+      if (error || !data) throw new Error(error?.message ?? `Failed to download ${path}`);
+      return {
+        bytes: new Uint8Array(await data.arrayBuffer()),
+        contentType: data.type || null,
+      };
+    },
+    async remove(bucket: string, path: string) {
+      const { error } = await getSupabaseAdmin().storage.from(bucket).remove([path]);
+      if (error) throw new Error(error.message);
+    },
+    publicUrl(bucket: string, path: string) {
+      return getSupabaseAdmin().storage.from(bucket).getPublicUrl(path).data.publicUrl;
+    },
+  };
+}
+
+/** Short-lived download link for private (document) buckets. */
+export async function createAssetSignedDownload(
+  bucket: string,
+  path: string,
+  expiresInSeconds = 300,
+): Promise<string | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .storage.from(bucket)
+    .createSignedUrl(path, expiresInSeconds);
+  if (error || !data) return null;
+  return data.signedUrl;
 }
 
 export async function downloadCadObject(storagePath: string): Promise<Buffer> {

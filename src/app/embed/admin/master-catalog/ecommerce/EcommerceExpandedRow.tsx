@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { EcommerceListing } from "../actions";
+import { SafeHtml } from "./SafeHtml";
 import type {
   FactoryReadiness,
   FactoryState,
@@ -67,19 +68,19 @@ export default function EcommerceExpandedRow({
           <div className="grid gap-6 md:grid-cols-[2fr_2fr_1fr]">
             <section>
               <h4 className={TITLE}>Marketing</h4>
-              <p className={BODY}>
-                {listing.marketingDescription ?? (
-                  <span className="text-slate-400">No description on file.</span>
-                )}
-              </p>
+              <SafeHtml
+                html={listing.marketingDescription}
+                className={BODY}
+                empty={<p className={BODY}><span className="text-slate-400">No description on file.</span></p>}
+              />
             </section>
             <section>
               <h4 className={TITLE}>Construction</h4>
-              <p className={BODY}>
-                {listing.constructionDetails ?? (
-                  <span className="text-slate-400">No details on file.</span>
-                )}
-              </p>
+              <SafeHtml
+                html={listing.constructionDetails}
+                className={BODY}
+                empty={<p className={BODY}><span className="text-slate-400">No details on file.</span></p>}
+              />
             </section>
             <section>
               <h4 className={TITLE}>Pricing</h4>

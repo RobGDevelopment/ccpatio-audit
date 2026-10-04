@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Database,
@@ -28,6 +29,9 @@ import {
   updateProductMSRP,
   toggleWebVisibility,
   mintProductFromQuarantine,
+  updateListingInDrawer,
+  updateHubInDrawer,
+  createNewProduct,
   type CatalogItem,
   type QuarantineItem,
   type EcommerceListing,
@@ -39,6 +43,7 @@ import {
   sharedLegacyPatches,
 } from "@/lib/ecommerce-roster";
 import EcommerceGrid from "./ecommerce/EcommerceGrid";
+import NewProductDrawer from "./ecommerce/NewProductDrawer";
 
 /** Applies per-listing patches to roster state (no-op while the roster is unloaded). */
 function patchListings(
@@ -152,6 +157,7 @@ function StatusPill({
 /* ───────────────────────── page ───────────────────────── */
 
 export default function MasterCatalogAdmin() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"active" | "quarantine">("active");
   const [view, setView] = useState<ViewMode>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -179,6 +185,7 @@ export default function MasterCatalogAdmin() {
 
   // Minting modal
   const [modalOpen, setModalOpen] = useState(false);
+  const [creatingNewProduct, setCreatingNewProduct] = useState(false);
   const [selectedQuarantine, setSelectedQuarantine] =
     useState<QuarantineItem | null>(null);
   const [collection, setCollection] = useState("BRV");
@@ -376,8 +383,9 @@ export default function MasterCatalogAdmin() {
    */
   async function handleEcommerceMsrp(listingId: string, rawPrice: string) {
     let mirroredSku: string | null = null;
+    let version: number;
     try {
-      ({ mirroredSku } = await updateListingMsrp(listingId, rawPrice));
+      ({ mirroredSku, version } = await updateListingMsrp(listingId, rawPrice));
     } catch (err) {
       setToast("Failed to save price");
       throw err;
@@ -389,7 +397,7 @@ export default function MasterCatalogAdmin() {
         ? {
             ...prev,
             listings: prev.listings.map((l) =>
-              l.id === listingId ? { ...l, msrp: formatted, msrpValue: n } : l,
+              l.id === listingId ? { ...l, msrp: formatted, msrpValue: n, version } : l,
             ),
           }
         : prev,
@@ -416,9 +424,9 @@ export default function MasterCatalogAdmin() {
       patchListings(prev, [{ id: listingId, productUrl: n.value, urlSource: "row" }]),
     );
     try {
-      const { url } = await updateListingUrl(listingId, raw);
+      const { url, version } = await updateListingUrl(listingId, raw);
       setEcommerce((prev) =>
-        patchListings(prev, [{ id: listingId, productUrl: url, urlSource: "row" }]),
+        patchListings(prev, [{ id: listingId, productUrl: url, urlSource: "row", version }]),
       );
       setToast("Link saved");
     } catch (err) {
@@ -456,7 +464,7 @@ export default function MasterCatalogAdmin() {
       setEcommerce((prev) =>
         patchListings(prev, [
           ...flagsBefore,
-          { id: listingId, legacyBaseSku: res.legacyBaseSku },
+          { id: listingId, legacyBaseSku: res.legacyBaseSku, version: res.version },
           ...res.sharedPatches,
         ]),
       );
@@ -491,6 +499,45 @@ export default function MasterCatalogAdmin() {
     setToast(
       `${r.listings.length} listing${r.listings.length === 1 ? "" : "s"} joined the roster`,
     );
+  }
+
+  async function handleEcommerceListingDrawer(id: string, expectedVersion: number, payload: any) {
+    const res = await updateListingInDrawer(id, expectedVersion, payload);
+    setEcommerce((prev) => {
+      const patched = patchListings(prev, res.sharedPatches);
+      return patchListings(patched, [{
+        id,
+        collectionLabel: payload.collectionLabel,
+        msrp: payload.steelMsrp ? `$${parseMsrp(payload.steelMsrp).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—",
+        legacyBaseSku: payload.legacyBaseSku,
+        productUrl: payload.productUrl,
+        version: expectedVersion + 1,
+      }]);
+    });
+    setToast("Listing saved");
+  }
+
+  function handleListingPatched(id: string, patch: Partial<EcommerceListing>) {
+    setEcommerce((prev) => patchListings(prev, [{ id, ...patch }]));
+  }
+
+  async function handleEcommerceHubDrawer(listingId: string, globalSku: string, expectedVersion: number, payload: any) {
+    await updateHubInDrawer(listingId, globalSku, expectedVersion, payload);
+    setEcommerce((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        listings: prev.listings.map(l => l.globalSku === globalSku ? {
+          ...l,
+          hubLength: payload.length !== undefined ? payload.length : l.hubLength,
+          hubDepth: payload.depth !== undefined ? payload.depth : l.hubDepth,
+          syncToWoo: payload.syncToWoo !== undefined ? payload.syncToWoo : l.syncToWoo,
+          syncToClover: payload.syncToClover !== undefined ? payload.syncToClover : l.syncToClover,
+          hubVersion: expectedVersion + 1,
+        } : l)
+      };
+    });
+    setToast("Hub saved");
   }
 
   function handlePrint() {
@@ -636,6 +683,14 @@ export default function MasterCatalogAdmin() {
             </div>
 
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setCreatingNewProduct(true)}
+                className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-sm"
+              >
+                <PlusCircle className="h-4 w-4" />
+                Add New Product
+              </button>
+
               <div
                 className={`relative min-w-[260px] md:min-w-[340px] ${
                   activeTab === "active" && view === "ecommerce" ? "hidden" : ""
@@ -747,6 +802,9 @@ export default function MasterCatalogAdmin() {
                 onSaveUrl={handleEcommerceUrl}
                 onSaveLegacy={handleEcommerceLegacy}
                 onMintHub={handleMintHub}
+                onSaveListingDrawer={handleEcommerceListingDrawer}
+                onSaveHubDrawer={handleEcommerceHubDrawer}
+                onListingPatched={handleListingPatched}
               />
             )}
           </div>
@@ -1092,6 +1150,26 @@ export default function MasterCatalogAdmin() {
             </div>
           </div>
         </div>
+      )}
+
+      {creatingNewProduct && (
+        <>
+          <NewProductDrawer
+            onClose={() => setCreatingNewProduct(false)}
+            onCreate={async (payload) => {
+              const res = await createNewProduct(payload);
+              setToast("New product minted successfully");
+              // Force roster refresh in background
+              getEcommerceRoster().then(roster => {
+                setEcommerce(roster);
+              });
+              
+              // Switch to ecommerce view
+              setView("ecommerce");
+              return res.id;
+            }}
+          />
+        </>
       )}
     </div>
   );

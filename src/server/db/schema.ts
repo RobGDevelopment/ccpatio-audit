@@ -34,6 +34,11 @@ export const itemTypeEnum = pgEnum("item_type", [
   "service",
 ]);
 
+export const productOriginEnum = pgEnum("product_origin", [
+  "manufactured",
+  "third_party",
+]);
+
 export const userRoleEnum = pgEnum("user_role", [
   "SuperAdmin",
   "IT_Admin",
@@ -54,6 +59,7 @@ export type QboAccounts = {
 /** Canonical join: Global E2E SKU → Katana IDs + Woo/GHL display values. */
 export const sku_mappings = pgTable("sku_mappings", {
   global_sku: text("global_sku").primaryKey(),
+  product_origin: productOriginEnum("product_origin"),
   category: text("category").notNull(),
   item_type: itemTypeEnum("item_type").notNull().default("raw_material"),
   original_name: text("original_name").notNull().default(""),
@@ -83,7 +89,12 @@ export const sku_mappings = pgTable("sku_mappings", {
   version: integer("version").notNull().default(1),
   updated_by: text("updated_by"),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  check(
+    "origin_check",
+    sql`(product_origin = \'manufactured\' AND global_sku LIKE \'FIN-%\') OR (product_origin = \'third_party\' AND global_sku LIKE \'3P-%\') OR (product_origin IS NULL)`
+  )
+]);
 
 /**
  * PIM commerce attributes for finished goods (MSRP, dims, copy).
@@ -116,6 +127,9 @@ export const finished_goods_catalog = pgTable("finished_goods_catalog", {
    */
   na_fields: jsonb("na_fields").$type<string[]>().notNull().default([]),
   is_web_visible: boolean("is_web_visible").default(false),
+  assembly_required: boolean("assembly_required").notNull().default(false),
+  warranty_term_months: integer("warranty_term_months"),
+  warranty_covers: text("warranty_covers"),
   /** Operator / device label for multi-browser audit trail. */
   updated_by: text("updated_by"),
   created_at: timestamp("created_at").defaultNow().notNull(),
@@ -1391,12 +1405,22 @@ export const ecommerce_listings = pgTable(
     aluminum_msrp: numeric("aluminum_msrp", { precision: 10, scale: 2 }),
     marketing_description: text("marketing_description"),
     construction_details: text("construction_details"),
+    seo_title: text("seo_title"),
+    seo_description: text("seo_description"),
+    slug: text("slug"),
+    tags: jsonb("tags").$type<string[]>().notNull().default([]),
     sheet_order: integer("sheet_order").notNull(),
+    version: integer("version").notNull().default(1),
+    archived_at: timestamp("archived_at"),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     index("ecommerce_listings_global_sku_idx").on(table.global_sku),
     uniqueIndex("ecommerce_listings_product_name_uidx").on(table.product_name),
+    /** Slugs are unique among live (non-archived) listings. */
+    uniqueIndex("ecommerce_listings_slug_active_uidx")
+      .on(table.slug)
+      .where(sql`${table.archived_at} IS NULL AND ${table.slug} IS NOT NULL`),
   ],
 );
 
@@ -1413,3 +1437,140 @@ export const ecommerce_roster_gaps = pgTable("ecommerce_roster_gaps", {
 
 export type EcommerceListingRow = typeof ecommerce_listings.$inferSelect;
 export type EcommerceRosterGapRow = typeof ecommerce_roster_gaps.$inferSelect;
+
+export const productAssetKindEnum = pgEnum("product_asset_kind", [
+  "tear_sheet",
+  "assembly",
+  "gallery",
+  "primary_image",
+  "care_guide",
+  "warranty",
+]);
+
+export type ProductAssetKind = (typeof productAssetKindEnum.enumValues)[number];
+
+export const product_assets = pgTable(
+  "product_assets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    global_sku: text("global_sku")
+      .notNull()
+      .references(() => sku_mappings.global_sku, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
+    kind: productAssetKindEnum("kind").notNull(),
+    storage_path: text("storage_path").notNull(),
+    original_filename: text("original_filename").notNull(),
+    content_type: text("content_type").notNull(),
+    byte_size: integer("byte_size").notNull(),
+    revision: integer("revision").notNull().default(1),
+    sha256: text("sha256"),
+    effective_on: date("effective_on", { mode: 'string' }).defaultNow().notNull(),
+    is_current: boolean("is_current").notNull().default(true),
+    superseded_at: timestamp("superseded_at"),
+    sort_order: integer("sort_order"),
+    alt_text: text("alt_text"),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("product_assets_global_sku_idx").on(table.global_sku),
+    index("product_assets_kind_idx").on(table.kind),
+    // One current revision per (sku, kind) for every kind except gallery.
+    uniqueIndex("product_assets_one_current_uidx")
+      .on(table.global_sku, table.kind)
+      .where(sql`${table.is_current} AND ${table.kind} <> 'gallery'`),
+    // Revision numbers are unique per (sku, kind) for every kind except gallery.
+    uniqueIndex("product_assets_revision_uidx")
+      .on(table.global_sku, table.kind, table.revision)
+      .where(sql`${table.kind} <> 'gallery'`),
+  ]
+);
+
+export type ProductAssetRow = typeof product_assets.$inferSelect;
+
+
+
+
+
+
+
+
+export const nomenclature_collections = pgTable("nomenclature_collections", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  code: text("code").notNull().unique(), // ^[A-Z0-9]{2,4}$
+  label: text("label").notNull().unique(),
+  aliases: text("aliases").array(),
+  is_active: boolean("is_active").notNull().default(true),
+  created_by: text("created_by"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const nomenclature_categories = pgTable("nomenclature_categories", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  code: text("code").notNull().unique(), // ^[A-Z0-9]+(-[A-Z0-9]+)*$ max 24
+  label: text("label").notNull().unique(),
+  aliases: text("aliases").array(),
+  is_active: boolean("is_active").notNull().default(true),
+  created_by: text("created_by"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const thirdPartyFulfillmentEnum = pgEnum("third_party_fulfillment", [
+  "showroom_stock",
+  "special_order",
+]);
+
+export const third_party_sources = pgTable("third_party_sources", {
+  global_sku: text("global_sku").primaryKey().references(() => sku_mappings.global_sku, { onUpdate: "cascade", onDelete: "cascade" }),
+  vendor_name: text("vendor_name").notNull(),
+  vendor_sku: text("vendor_sku").notNull(),
+  wholesale_cost: numeric("wholesale_cost", { precision: 12, scale: 4 }).notNull(),
+  country_of_origin: text("country_of_origin"),
+  fulfillment: thirdPartyFulfillmentEnum("fulfillment"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const shipModeEnum = pgEnum("ship_mode", [
+  "ltl",
+  "parcel",
+  "white_glove_only",
+  "not_shipped"
+]);
+
+export const catalog_ship_profiles = pgTable("catalog_ship_profiles", {
+  global_sku: text("global_sku").primaryKey().references(() => sku_mappings.global_sku, { onUpdate: "cascade", onDelete: "cascade" }),
+  length_in: numeric("length_in", { precision: 10, scale: 2 }),
+  width_in: numeric("width_in", { precision: 10, scale: 2 }),
+  height_in: numeric("height_in", { precision: 10, scale: 2 }),
+  weight_lb: numeric("weight_lb", { precision: 10, scale: 2 }),
+  dim_weight_lb: numeric("dim_weight_lb", { precision: 10, scale: 2 }),
+  billable_weight_lb: numeric("billable_weight_lb", { precision: 10, scale: 2 }),
+  ltl_class: text("ltl_class"),
+  nmfc_item: text("nmfc_item"),
+  ship_mode: shipModeEnum("ship_mode"),
+  stackable: boolean("stackable").notNull().default(false),
+  assembly_required: boolean("assembly_required").notNull().default(false),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const productRelationRoleEnum = pgEnum("product_relation_role", [
+  "composes_with",
+  "requires",
+  "accessory",
+  "successor"
+]);
+
+export const product_relations = pgTable("product_relations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  from_sku: text("from_sku").notNull().references(() => sku_mappings.global_sku, { onUpdate: "cascade", onDelete: "cascade" }),
+  to_sku: text("to_sku").notNull().references(() => sku_mappings.global_sku, { onUpdate: "cascade", onDelete: "cascade" }),
+  role: productRelationRoleEnum("role").notNull(),
+  note: varchar("note", { length: 200 }),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("product_relations_unq").on(table.from_sku, table.to_sku, table.role),
+]);

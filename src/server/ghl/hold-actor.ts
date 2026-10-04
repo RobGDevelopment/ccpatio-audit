@@ -1,6 +1,8 @@
 import { GHL_EMBED_PRINCIPAL_EMAIL, getPimSession } from "@/lib/pim-audit";
 import { createClient } from "@/utils/supabase/server";
 import { asGhlRecord, ghlGet } from "./private-api";
+import { headers } from "next/headers";
+import { EMBED_CONTEXT_HEADER } from "@/lib/embed-auth";
 
 export type HoldActor = {
   ghlUserId: string;
@@ -70,7 +72,18 @@ export async function resolveHoldActor(input: {
   const session = await getPimSession();
   if (!session) return { ok: false, error: "Sign in to place a hold." };
 
-  if (session.email !== GHL_EMBED_PRINCIPAL_EMAIL) {
+  const userId = input.ghlUserId?.trim() ?? "";
+  let isEmbed = false;
+  try {
+    const hdrs = await headers();
+    if (hdrs.get(EMBED_CONTEXT_HEADER) === "1") {
+      isEmbed = true;
+    }
+  } catch {
+    // outside request scope
+  }
+
+  if (session.email !== GHL_EMBED_PRINCIPAL_EMAIL && !(isEmbed && userId)) {
     return {
       ok: true,
       ghlUserId: await directActorId(session.email),
@@ -79,7 +92,6 @@ export async function resolveHoldActor(input: {
     };
   }
 
-  const userId = input.ghlUserId?.trim() ?? "";
   if (!userId) {
     return { ok: false, error: "This embed link has no GoHighLevel user id." };
   }

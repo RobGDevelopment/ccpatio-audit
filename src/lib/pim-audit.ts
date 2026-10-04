@@ -24,10 +24,23 @@ export type PimSession = {
   name: string;
 };
 
+/** True only for the synthetic iframe principal (never for a human operator). */
+export function isEmbedPrincipal(session: PimSession | null | undefined): boolean {
+  return !!session && session.email === GHL_EMBED_PRINCIPAL_EMAIL;
+}
+
+/**
+ * Resolution order (a real person always outranks the synthetic iframe principal):
+ *   1. signed e2e god-mode cookie (test harness only)
+ *   2. a valid Supabase Auth user (`supabase.auth.getUser()`), even inside the GHL iframe
+ *   3. a valid GHL embed key -> `ghl-embed@ccpatio.com`
+ */
 export async function getPimSession(): Promise<PimSession | null> {
+  let jar: Awaited<ReturnType<typeof cookies>> | null = null;
+  let hdrs: Awaited<ReturnType<typeof headers>> | null = null;
   try {
-    const jar = await cookies();
-    const hdrs = await headers();
+    jar = await cookies();
+    hdrs = await headers();
     const e2e = await verifyE2eGodModeCookie(
       jar.get(E2E_GODMODE_COOKIE)?.value ?? hdrs.get("x-ccpatio-e2e-godmode"),
       getE2eGodModeSecret(),
@@ -35,15 +48,8 @@ export async function getPimSession(): Promise<PimSession | null> {
     if (e2e) {
       return { email: e2e.email, name: e2e.email };
     }
-    if (hdrs.get(EMBED_CONTEXT_HEADER) === "1") {
-      const presented =
-        hdrs.get(EMBED_KEY_HEADER) ?? jar.get(EMBED_AUTH_COOKIE)?.value ?? null;
-      if (embedKeyIsValid(presented, getGhlEmbedSecret())) {
-        return { email: GHL_EMBED_PRINCIPAL_EMAIL, name: "GHL Embed" };
-      }
-    }
   } catch {
-    // fall through to Supabase Auth
+    // outside a request scope: fall through to Supabase Auth
   }
 
   try {
@@ -51,6 +57,18 @@ export async function getPimSession(): Promise<PimSession | null> {
     const { data: { user } } = await supabase.auth.getUser();
     if (user && user.email) {
       return { email: user.email, name: user.email };
+    }
+  } catch {
+    // no/invalid Supabase session: the embed principal may still apply
+  }
+
+  try {
+    if (jar && hdrs && hdrs.get(EMBED_CONTEXT_HEADER) === "1") {
+      const presented =
+        hdrs.get(EMBED_KEY_HEADER) ?? jar.get(EMBED_AUTH_COOKIE)?.value ?? null;
+      if (embedKeyIsValid(presented, getGhlEmbedSecret())) {
+        return { email: GHL_EMBED_PRINCIPAL_EMAIL, name: "GHL Embed" };
+      }
     }
   } catch {
     return null;

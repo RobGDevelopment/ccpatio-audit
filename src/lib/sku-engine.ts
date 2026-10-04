@@ -25,6 +25,7 @@ const COLLECTION_CODES: ReadonlyArray<[string, string]> = [
   ["KING", "KIN"],
   ["LED", "LED"],
   ["FLEX", "FLE"],
+  ["CANTILEVER", "CTL"],
   ["CANOPY", "CAN"],
   ["OCCASIONAL", "OCC"],
   ["CABANA", "CAB"],
@@ -163,9 +164,23 @@ export function generateFinishedGoodSku(
   collection: string,
   length: string,
   depth: string,
+  explicitCategoryCode?: string,
+  origin: "manufactured" | "third_party" = "manufactured",
+  token?: string,
+  explicitCollectionCode?: string
 ): string {
-  const colCode = resolveColCode(collection, nameOrMemo);
-  const catCode = resolveCatCode(nameOrMemo);
+  const colCode = explicitCollectionCode || resolveColCode(collection, nameOrMemo);
+  const catCode = explicitCategoryCode || resolveCatCode(nameOrMemo);
+  
+  if (origin === "third_party") {
+    // 3P-{col}-{cat}-{token}
+    const safeToken = (token || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
+    if (safeToken) {
+      return `3P-${colCode}-${catCode}-${safeToken}`;
+    }
+    return `3P-${colCode}-${catCode}`;
+  }
+
   const healed = healDimensions(nameOrMemo, length, depth);
   const size = formatSize(healed.length, healed.depth);
 

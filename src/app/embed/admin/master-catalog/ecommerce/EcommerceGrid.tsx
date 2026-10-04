@@ -16,6 +16,8 @@ import EcommerceFilters, {
   type EcommerceFilterState,
 } from "./EcommerceFilters";
 import EcommerceExpandedRow, { FactoryBadge } from "./EcommerceExpandedRow";
+import ProductDrawer, { ListingDrawerPayload, HubDrawerPayload } from "./ProductDrawer";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 type SortKey = "name" | "sku" | "legacy" | "msrp";
 type SortDir = "asc" | "desc";
@@ -124,6 +126,9 @@ export default function EcommerceGrid({
   onSaveUrl,
   onSaveLegacy,
   onMintHub,
+  onSaveListingDrawer,
+  onSaveHubDrawer,
+  onListingPatched,
 }: {
   listings: EcommerceListing[];
   gaps: EcommerceRosterGap[];
@@ -135,6 +140,10 @@ export default function EcommerceGrid({
   onSaveLegacy: (listingId: string, raw: string) => Promise<void>;
   /** Mints the hub SKU for a gap group; resolves after the transaction commits. */
   onMintHub: (globalSku: string) => Promise<void>;
+  onSaveListingDrawer: (id: string, expectedVersion: number, payload: ListingDrawerPayload) => Promise<void>;
+  onSaveHubDrawer: (listingId: string, globalSku: string, expectedVersion: number, payload: HubDrawerPayload) => Promise<void>;
+  /** Story / SEO / asset-vault saves inside the drawer report their results here. */
+  onListingPatched?: (id: string, patch: Partial<EcommerceListing>) => void;
 }) {
   const [filters, setFilters] = useState<EcommerceFilterState>({
     search: "",
@@ -167,6 +176,24 @@ export default function EcommerceGrid({
   const [mintError, setMintError] = useState<{ sku: string; message: string } | null>(
     null,
   );
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const activeDrawerId = searchParams.get("listing");
+  const activeListing = useMemo(() => listings.find(l => l.id === activeDrawerId), [listings, activeDrawerId]);
+
+  function openDrawer(id: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("listing", id);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function closeDrawer() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("listing");
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
 
   // Pill slice first; search + facets then narrow within it.
   const slice = useMemo(() => {
@@ -556,7 +583,12 @@ export default function EcommerceGrid({
                     </td>
 
                     <td className="py-3 px-4 font-medium text-slate-800">
-                      {l.productName}
+                      <button
+                        onClick={() => openDrawer(l.id)}
+                        className="hover:underline hover:text-sky-600 text-left font-medium"
+                      >
+                        {l.productName}
+                      </button>
                     </td>
 
                     <td className="py-3 px-4 text-xs">
@@ -665,6 +697,16 @@ export default function EcommerceGrid({
           </tbody>
         </table>
       </div>
+      )}
+
+      {activeListing && (
+        <ProductDrawer
+          listing={activeListing}
+          onClose={closeDrawer}
+          onSaveListing={onSaveListingDrawer}
+          onSaveHub={onSaveHubDrawer}
+          onListingPatched={onListingPatched}
+        />
       )}
     </div>
   );
