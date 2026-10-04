@@ -20,7 +20,7 @@
  */
 import path from "node:path";
 import * as xlsx from "xlsx";
-import { inArray, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { getDb, closeDb } from "../../src/server/db/client";
 import {
   ecommerce_listings,
@@ -35,6 +35,7 @@ import {
   inheritFamilyUrls,
   normalizeText,
   parseMoney,
+  sharedLegacyPatches,
   type LinkRow,
 } from "../../src/lib/ecommerce-roster";
 
@@ -300,11 +301,12 @@ async function main() {
           set: {
             global_sku: sql`excluded.global_sku`,
             steel_msrp: sql`excluded.steel_msrp`,
-            legacy_base_sku: sql`excluded.legacy_base_sku`,
+            // Operator-set values (inline edits) survive a re-seed.
+            legacy_base_sku: sql`CASE WHEN ${ecommerce_listings.legacy_operator_set} THEN ${ecommerce_listings.legacy_base_sku} ELSE excluded.legacy_base_sku END`,
             legacy_sku_shared: sql`excluded.legacy_sku_shared`,
             canonical_sku_shared: sql`excluded.canonical_sku_shared`,
-            product_url: sql`excluded.product_url`,
-            url_source: sql`excluded.url_source`,
+            product_url: sql`CASE WHEN ${ecommerce_listings.url_operator_set} THEN ${ecommerce_listings.product_url} ELSE excluded.product_url END`,
+            url_source: sql`CASE WHEN ${ecommerce_listings.url_operator_set} THEN ${ecommerce_listings.url_source} ELSE excluded.url_source END`,
             drawing_section: sql`excluded.drawing_section`,
             collection_label: sql`excluded.collection_label`,
             aluminum_msrp: sql`excluded.aluminum_msrp`,
@@ -353,6 +355,22 @@ async function main() {
       await tx
         .delete(ecommerce_listings)
         .where(inArray(ecommerce_listings.product_name, gaps.map((g) => g.name)));
+    }
+    // Operator-kept legacy SKUs may differ from the workbook, so the shared
+    // flag is recomputed from the rows actually stored (all listings).
+    const stored = await tx
+      .select({
+        id: ecommerce_listings.id,
+        productName: ecommerce_listings.product_name,
+        legacyBaseSku: ecommerce_listings.legacy_base_sku,
+        legacySkuShared: ecommerce_listings.legacy_sku_shared,
+      })
+      .from(ecommerce_listings);
+    for (const p of sharedLegacyPatches(stored)) {
+      await tx
+        .update(ecommerce_listings)
+        .set({ legacy_sku_shared: p.legacySkuShared })
+        .where(eq(ecommerce_listings.id, p.id));
     }
   });
 

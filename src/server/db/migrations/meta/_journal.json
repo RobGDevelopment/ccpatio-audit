@@ -274,6 +274,13 @@
       "when": 1791113856716,
       "tag": "0038_abnormal_magik",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791121800670,
+      "tag": "0039_inline_editing",
+      "breakpoints": true
     }
   ]
 }

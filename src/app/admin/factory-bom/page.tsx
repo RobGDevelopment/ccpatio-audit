@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import Link from "next/link";
 import { getPimSession } from "@/lib/pim-audit";
 import { listFactoryProducts } from "@/server/factory-bom/list-factory-products";
+import { resolveLinkedFinishedGood } from "@/server/factory-bom/resolve-linked-sku";
 import { FactoryBomWorkbench } from "./FactoryBomWorkbench";
 import { canvas } from "./factory-bom-ui";
 
@@ -24,6 +25,10 @@ export default async function FactoryBomPage({
     (row) => row.reviewStatus === "factory_approved",
   ).length;
   const initialSku = params.sku?.trim().toUpperCase() || undefined;
+  const linkedProduct =
+    initialSku && !products.some((row) => row.sku === initialSku)
+      ? await resolveLinkedFinishedGood(initialSku)
+      : null;
 
   return (
     <div className={`flex h-screen w-full flex-col font-sans ${canvas}`}>
@@ -59,7 +64,11 @@ export default async function FactoryBomPage({
           ) : null}
         </div>
       </header>
-      <FactoryBomWorkbench products={products} initialSku={initialSku} />
+      <FactoryBomWorkbench
+        products={products}
+        initialSku={initialSku}
+        linkedProduct={linkedProduct}
+      />
     </div>
   );
 }

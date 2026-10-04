@@ -22,14 +22,40 @@ import {
   getQuarantineQueue,
   getEcommerceRoster,
   updateListingMsrp,
+  updateListingUrl,
+  updateListingLegacySku,
+  mintHubSkuFromGap,
   updateProductMSRP,
   toggleWebVisibility,
   mintProductFromQuarantine,
   type CatalogItem,
   type QuarantineItem,
+  type EcommerceListing,
   type EcommerceRoster,
 } from "./actions";
+import {
+  normalizeLegacySku,
+  normalizeProductUrl,
+  sharedLegacyPatches,
+} from "@/lib/ecommerce-roster";
 import EcommerceGrid from "./ecommerce/EcommerceGrid";
+
+/** Applies per-listing patches to roster state (no-op while the roster is unloaded). */
+function patchListings(
+  prev: EcommerceRoster | null,
+  patches: (Partial<EcommerceListing> & { id: string })[],
+): EcommerceRoster | null {
+  if (!prev) return prev;
+  const byId = new Map<string, Partial<EcommerceListing>>();
+  for (const p of patches) byId.set(p.id, { ...byId.get(p.id), ...p });
+  return {
+    ...prev,
+    listings: prev.listings.map((l) => {
+      const p = byId.get(l.id);
+      return p ? { ...l, ...p } : l;
+    }),
+  };
+}
 
 /* ───────────────────────── helpers ───────────────────────── */
 
@@ -377,6 +403,96 @@ export default function MasterCatalogAdmin() {
     }
   }
 
+  /**
+   * Inline link save. Patch state first, call the action, restore the row if it
+   * throws (the grid keeps its input open and shows the message).
+   */
+  async function handleEcommerceUrl(listingId: string, raw: string) {
+    const n = normalizeProductUrl(raw);
+    if (!n.ok) throw new Error(n.error);
+    const before = ecommerce?.listings.find((l) => l.id === listingId);
+    if (!before) throw new Error("Listing not found");
+    setEcommerce((prev) =>
+      patchListings(prev, [{ id: listingId, productUrl: n.value, urlSource: "row" }]),
+    );
+    try {
+      const { url } = await updateListingUrl(listingId, raw);
+      setEcommerce((prev) =>
+        patchListings(prev, [{ id: listingId, productUrl: url, urlSource: "row" }]),
+      );
+      setToast("Link saved");
+    } catch (err) {
+      setEcommerce((prev) =>
+        patchListings(prev, [
+          { id: listingId, productUrl: before.productUrl, urlSource: before.urlSource },
+        ]),
+      );
+      throw err;
+    }
+  }
+
+  /**
+   * Inline legacy SKU save. The shared chip is predicted locally, then replaced
+   * by the server's patches (which include a previous twin that lost its chip).
+   */
+  async function handleEcommerceLegacy(listingId: string, raw: string) {
+    const n = normalizeLegacySku(raw);
+    if (!n.ok) throw new Error(n.error);
+    const all = ecommerce?.listings ?? [];
+    const before = all.find((l) => l.id === listingId);
+    if (!before) throw new Error("Listing not found");
+    const predicted = sharedLegacyPatches(
+      all.map((l) => (l.id === listingId ? { ...l, legacyBaseSku: n.value } : l)),
+    );
+    const flagsBefore = predicted.map((p) => ({
+      id: p.id,
+      legacySkuShared: all.find((l) => l.id === p.id)?.legacySkuShared ?? false,
+    }));
+    setEcommerce((prev) =>
+      patchListings(prev, [{ id: listingId, legacyBaseSku: n.value }, ...predicted]),
+    );
+    try {
+      const res = await updateListingLegacySku(listingId, raw);
+      setEcommerce((prev) =>
+        patchListings(prev, [
+          ...flagsBefore,
+          { id: listingId, legacyBaseSku: res.legacyBaseSku },
+          ...res.sharedPatches,
+        ]),
+      );
+      setToast("Legacy SKU saved");
+    } catch (err) {
+      setEcommerce((prev) =>
+        patchListings(prev, [
+          { id: listingId, legacyBaseSku: before.legacyBaseSku },
+          ...flagsBefore,
+        ]),
+      );
+      throw err;
+    }
+  }
+
+  /**
+   * Mint a hub SKU for a gap group. No optimistic delete: wait for the
+   * transaction, then drop the promoted gaps and append the new listings.
+   */
+  async function handleMintHub(globalSku: string) {
+    const r = await mintHubSkuFromGap(globalSku);
+    setEcommerce((prev) => {
+      if (!prev) return prev;
+      const promoted = new Set(r.promotedGapNames);
+      const known = new Set(prev.listings.map((l) => l.id));
+      const patched = patchListings(prev, r.sharedPatches)!.listings;
+      return {
+        listings: [...patched, ...r.listings.filter((l) => !known.has(l.id))],
+        gaps: prev.gaps.filter((g) => !promoted.has(g.productName)),
+      };
+    });
+    setToast(
+      `${r.listings.length} listing${r.listings.length === 1 ? "" : "s"} joined the roster`,
+    );
+  }
+
   function handlePrint() {
     setMenuOpen(false);
     setPrintMode(true);
@@ -420,7 +536,7 @@ export default function MasterCatalogAdmin() {
           csvCell(l.id),
           csvCell(l.productName),
           csvCell(l.globalSku),
-          csvCell(`${l.msrpValue.toFixed(2)} USD`),
+          csvCell(l.msrpValue === null ? "" : `${l.msrpValue.toFixed(2)} USD`),
           csvCell("in stock"),
           csvCell(imageBySku.get(l.globalSku) ?? null),
           csvCell(l.productUrl),
@@ -628,6 +744,9 @@ export default function MasterCatalogAdmin() {
                 listings={ecommerce.listings}
                 gaps={ecommerce.gaps}
                 onSaveMsrp={handleEcommerceMsrp}
+                onSaveUrl={handleEcommerceUrl}
+                onSaveLegacy={handleEcommerceLegacy}
+                onMintHub={handleMintHub}
               />
             )}
           </div>

@@ -1381,6 +1381,10 @@ export const ecommerce_listings = pgTable(
     product_url: text("product_url"),
     /** 'row' | 'sibling' | 'missing' */
     url_source: text("url_source").notNull().default("missing"),
+    /** True once an operator saved product_url inline; the seed must keep it. */
+    url_operator_set: boolean("url_operator_set").notNull().default(false),
+    /** True once an operator saved legacy_base_sku inline; the seed must keep it. */
+    legacy_operator_set: boolean("legacy_operator_set").notNull().default(false),
     /** Product-type facet (workbook Drawing section header). */
     drawing_section: text("drawing_section").notNull(),
     collection_label: text("collection_label").notNull(),

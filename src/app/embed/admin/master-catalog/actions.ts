@@ -20,6 +20,12 @@ import {
   relatedParents,
   type FactoryReadiness,
 } from "@/server/factory-bom/derive-readiness";
+import { mintHubSkuInTx } from "@/server/master-catalog/mint-hub-sku";
+import {
+  normalizeLegacySku,
+  normalizeProductUrl,
+  sharedLegacyPatches,
+} from "@/lib/ecommerce-roster";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -188,9 +194,10 @@ export interface EcommerceListing {
   drawingSection: string;
   collectionLabel: string;
   /** Steel MSRP from ecommerce_listings.steel_msrp, formatted for display. */
+  /** Display string; an em dash when steel_msrp is null. */
   msrp: string;
-  /** Numeric steel MSRP for sorting. */
-  msrpValue: number;
+  /** Numeric steel MSRP for sorting; null sorts last. */
+  msrpValue: number | null;
   aluminumMsrp: string | null;
   marketingDescription: string | null;
   constructionDetails: string | null;
@@ -208,6 +215,48 @@ export interface EcommerceRosterGap {
 export interface EcommerceRoster {
   listings: EcommerceListing[];
   gaps: EcommerceRosterGap[];
+}
+
+interface ListingFields {
+  id: string;
+  globalSku: string;
+  productName: string;
+  legacyBaseSku: string | null;
+  legacySkuShared: boolean;
+  canonicalSkuShared: boolean;
+  productUrl: string | null;
+  urlSource: string;
+  drawingSection: string;
+  collectionLabel: string;
+  aluminumMsrp: string | null;
+  marketingDescription: string | null;
+  constructionDetails: string | null;
+  sheetOrder: number;
+  msrp: string | null;
+}
+
+/** A null steel MSRP displays as an em dash and sorts last (never "$0.00"). */
+function toListing(r: ListingFields, factory: FactoryReadiness): EcommerceListing {
+  return {
+    id: r.id,
+    globalSku: r.globalSku,
+    productName: r.productName,
+    legacyBaseSku: r.legacyBaseSku,
+    legacySkuShared: r.legacySkuShared,
+    canonicalSkuShared: r.canonicalSkuShared,
+    productUrl: r.productUrl,
+    urlSource:
+      r.urlSource === "row" || r.urlSource === "sibling" ? r.urlSource : "missing",
+    drawingSection: r.drawingSection,
+    collectionLabel: r.collectionLabel,
+    msrp: r.msrp === null ? "—" : formatMoney(r.msrp),
+    msrpValue: r.msrp === null ? null : parsePrice(r.msrp) || 0,
+    aluminumMsrp: r.aluminumMsrp ? formatMoney(r.aluminumMsrp) : null,
+    marketingDescription: r.marketingDescription,
+    constructionDetails: r.constructionDetails,
+    sheetOrder: r.sheetOrder,
+    factory,
+  };
 }
 
 /** Safe default if a hub SKU is ever missing from the readiness map. */
@@ -319,26 +368,9 @@ export async function getEcommerceRoster(): Promise<EcommerceRoster> {
   const readiness = new Map<string, FactoryReadiness>();
   for (const [sku, ev] of evidence) readiness.set(sku, deriveFactoryReadiness(ev));
 
-  const listings: EcommerceListing[] = rows.map((r) => ({
-    id: r.id,
-    globalSku: r.globalSku,
-    productName: r.productName,
-    legacyBaseSku: r.legacyBaseSku,
-    legacySkuShared: r.legacySkuShared,
-    canonicalSkuShared: r.canonicalSkuShared,
-    productUrl: r.productUrl,
-    urlSource:
-      r.urlSource === "row" || r.urlSource === "sibling" ? r.urlSource : "missing",
-    drawingSection: r.drawingSection,
-    collectionLabel: r.collectionLabel,
-    msrp: formatMoney(r.msrp),
-    msrpValue: parsePrice(r.msrp ?? "") || 0,
-    aluminumMsrp: r.aluminumMsrp ? formatMoney(r.aluminumMsrp) : null,
-    marketingDescription: r.marketingDescription,
-    constructionDetails: r.constructionDetails,
-    sheetOrder: r.sheetOrder,
-    factory: readiness.get(r.globalSku) ?? UNKNOWN_FACTORY_READINESS,
-  }));
+  const listings: EcommerceListing[] = rows.map((r) =>
+    toListing(r, readiness.get(r.globalSku) ?? UNKNOWN_FACTORY_READINESS),
+  );
 
   const gaps: EcommerceRosterGap[] = gapRows.map((g) => ({
     globalSku: g.global_sku,
@@ -381,4 +413,126 @@ export async function updateListingMsrp(id: string, newPriceRaw: string) {
 
   revalidatePath("/embed/admin/master-catalog");
   return { success: true, mirroredSku: mirrored };
+}
+
+// 8. Inline link. Writes product_url + url_source=row + the operator flag so a
+// re-seed keeps it. Never copies the URL onto sibling listings.
+export async function updateListingUrl(
+  id: string,
+  raw: string,
+): Promise<{ url: string }> {
+  const n = normalizeProductUrl(raw);
+  if (!n.ok) throw new Error(n.error);
+  const db = getDb();
+  const [row] = await db
+    .update(ecommerce_listings)
+    .set({
+      product_url: n.value,
+      url_source: "row",
+      url_operator_set: true,
+      updated_at: new Date(),
+    })
+    .where(eq(ecommerce_listings.id, id))
+    .returning({ id: ecommerce_listings.id });
+  if (!row) throw new Error("Listing not found");
+  revalidatePath("/embed/admin/master-catalog");
+  return { url: n.value };
+}
+
+// 9. Inline legacy base SKU. Recomputes legacy_sku_shared for every listing and
+// returns each flag that changed (including a previous twin that lost its chip).
+export async function updateListingLegacySku(
+  id: string,
+  raw: string,
+): Promise<{
+  legacyBaseSku: string;
+  sharedPatches: { id: string; legacySkuShared: boolean }[];
+}> {
+  const n = normalizeLegacySku(raw);
+  if (!n.ok) throw new Error(n.error);
+  const db = getDb();
+  const sharedPatches = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(ecommerce_listings)
+      .set({
+        legacy_base_sku: n.value,
+        legacy_operator_set: true,
+        updated_at: new Date(),
+      })
+      .where(eq(ecommerce_listings.id, id))
+      .returning({ id: ecommerce_listings.id });
+    if (!row) throw new Error("Listing not found");
+
+    const all = await tx
+      .select({
+        id: ecommerce_listings.id,
+        productName: ecommerce_listings.product_name,
+        legacyBaseSku: ecommerce_listings.legacy_base_sku,
+        legacySkuShared: ecommerce_listings.legacy_sku_shared,
+      })
+      .from(ecommerce_listings);
+    const patches = sharedLegacyPatches(all);
+    for (const p of patches) {
+      await tx
+        .update(ecommerce_listings)
+        .set({ legacy_sku_shared: p.legacySkuShared })
+        .where(eq(ecommerce_listings.id, p.id));
+    }
+    return patches;
+  });
+  revalidatePath("/embed/admin/master-catalog");
+  return { legacyBaseSku: n.value, sharedPatches };
+}
+
+export interface MintHubSkuResult {
+  globalSku: string;
+  listings: EcommerceListing[];
+  sharedPatches: { id: string; canonicalSkuShared: boolean }[];
+  promotedGapNames: string[];
+}
+
+// 10. Mint a hub SKU from a gap group in ONE transaction (see mintHubSkuInTx).
+// No Katana / WooCommerce / CAD call.
+export async function mintHubSkuFromGap(
+  globalSku: string,
+): Promise<MintHubSkuResult> {
+  const db = getDb();
+  const result = await db.transaction((tx) => mintHubSkuInTx(tx, globalSku));
+  revalidatePath("/embed/admin/master-catalog");
+
+  // A brand-new hub SKU has no CAD, drafts, recipe or Katana row.
+  const factory = deriveFactoryReadiness({
+    liveRecipe: false,
+    draftStatuses: [],
+    latestDae: null,
+    katanaStatus: null,
+    recipePublished: false,
+  });
+  return {
+    globalSku: globalSku.trim().toUpperCase(),
+    listings: result.inserted.map((r) =>
+      toListing(
+        {
+          id: r.id,
+          globalSku: r.global_sku,
+          productName: r.product_name,
+          legacyBaseSku: r.legacy_base_sku,
+          legacySkuShared: r.legacy_sku_shared,
+          canonicalSkuShared: r.canonical_sku_shared,
+          productUrl: r.product_url,
+          urlSource: r.url_source,
+          drawingSection: r.drawing_section,
+          collectionLabel: r.collection_label,
+          aluminumMsrp: r.aluminum_msrp,
+          marketingDescription: r.marketing_description,
+          constructionDetails: r.construction_details,
+          sheetOrder: r.sheet_order,
+          msrp: r.steel_msrp,
+        },
+        factory,
+      ),
+    ),
+    sharedPatches: result.sharedPatches,
+    promotedGapNames: result.promotedGapNames,
+  };
 }

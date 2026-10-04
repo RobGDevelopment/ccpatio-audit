@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { normalizeLegacySku, normalizeProductUrl } from "@/lib/ecommerce-roster";
 import {
   Check,
   ChevronDown,
@@ -26,6 +27,15 @@ type PillKey =
   | "not_published";
 
 const COLUMN_COUNT = 7; // chevron, name, canonical SKU, legacy SKU, MSRP, factory, link
+
+type EditorField = "url" | "legacy";
+interface InlineEditor {
+  id: string;
+  field: EditorField;
+  value: string;
+  error: string | null;
+  saving: boolean;
+}
 
 function SortHeader({
   label,
@@ -111,11 +121,20 @@ export default function EcommerceGrid({
   listings,
   gaps,
   onSaveMsrp,
+  onSaveUrl,
+  onSaveLegacy,
+  onMintHub,
 }: {
   listings: EcommerceListing[];
   gaps: EcommerceRosterGap[];
   /** Persists a steel MSRP edit for a listing id (parent calls updateListingMsrp + updates state). */
   onSaveMsrp: (listingId: string, rawPrice: string) => Promise<void>;
+  /** Optimistic link save; the parent patches state and rolls back + throws on failure. */
+  onSaveUrl: (listingId: string, raw: string) => Promise<void>;
+  /** Optimistic legacy SKU save; same contract as onSaveUrl. */
+  onSaveLegacy: (listingId: string, raw: string) => Promise<void>;
+  /** Mints the hub SKU for a gap group; resolves after the transaction commits. */
+  onMintHub: (globalSku: string) => Promise<void>;
 }) {
   const [filters, setFilters] = useState<EcommerceFilterState>({
     search: "",
@@ -133,6 +152,21 @@ export default function EcommerceGrid({
   const [editPrice, setEditPrice] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
+
+  // Inline link / legacy SKU editor. Lives here (not in the cell) so a failed
+  // save keeps the input open with its error even after the row is restored.
+  const [editor, setEditor] = useState<InlineEditor | null>(null);
+  const settledRef = useRef(false); // ignores the blur that follows Enter
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (editor && !editor.saving && editor.error) inputRef.current?.focus();
+  }, [editor]);
+
+  // Hub gap mint: wait for the server; no optimistic delete.
+  const [mintingSku, setMintingSku] = useState<string | null>(null);
+  const [mintError, setMintError] = useState<{ sku: string; message: string } | null>(
+    null,
+  );
 
   // Pill slice first; search + facets then narrow within it.
   const slice = useMemo(() => {
@@ -177,8 +211,13 @@ export default function EcommerceGrid({
           if (!b.legacyBaseSku) return -1;
           return str(a.legacyBaseSku, b.legacyBaseSku);
         }
-        case "msrp":
+        case "msrp": {
+          // Null prices always sort last, regardless of direction.
+          if (a.msrpValue === null && b.msrpValue === null) return 0;
+          if (a.msrpValue === null) return 1;
+          if (b.msrpValue === null) return -1;
           return (a.msrpValue - b.msrpValue) * dir; // numeric parse, not string
+        }
       }
     });
   }, [slice, filters, sort]);
@@ -197,6 +236,121 @@ export default function EcommerceGrid({
   function handleSort(key: SortKey) {
     setSort((s) =>
       s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+    );
+  }
+
+  function openEditor(id: string, field: EditorField) {
+    if (editor?.saving) return;
+    settledRef.current = false;
+    setEditor({ id, field, value: "", error: null, saving: false });
+  }
+
+  function cancelEditor() {
+    if (editor?.saving) return;
+    settledRef.current = true;
+    setEditor(null);
+  }
+
+  async function commitEditor() {
+    if (!editor || editor.saving || settledRef.current) return;
+    const check =
+      editor.field === "url"
+        ? normalizeProductUrl(editor.value)
+        : normalizeLegacySku(editor.value);
+    if (!check.ok) {
+      setEditor({ ...editor, error: check.error });
+      return;
+    }
+    settledRef.current = true;
+    const { id, field, value } = editor;
+    setEditor({ ...editor, error: null, saving: true });
+    try {
+      await (field === "url" ? onSaveUrl(id, value) : onSaveLegacy(id, value));
+      setEditor(null);
+    } catch (err) {
+      settledRef.current = false;
+      setEditor((cur) =>
+        cur
+          ? {
+              ...cur,
+              saving: false,
+              error: err instanceof Error ? err.message : "Save failed.",
+            }
+          : cur,
+      );
+    }
+  }
+
+  async function mint(globalSku: string) {
+    if (mintingSku) return;
+    setMintingSku(globalSku);
+    setMintError(null);
+    try {
+      await onMintHub(globalSku);
+    } catch (err) {
+      setMintError({
+        sku: globalSku,
+        message: err instanceof Error ? err.message : "Mint failed.",
+      });
+    } finally {
+      setMintingSku(null);
+    }
+  }
+
+  const isEditing = (id: string, field: EditorField) =>
+    editor?.id === id && editor.field === field;
+
+  function renderEditorInput(placeholder: string) {
+    if (!editor) return null;
+    return (
+      <div className="flex flex-col gap-1">
+        <input
+          ref={inputRef}
+          autoFocus
+          type="text"
+          value={editor.value}
+          disabled={editor.saving}
+          placeholder={placeholder}
+          aria-label={placeholder}
+          aria-invalid={editor.error ? true : undefined}
+          onChange={(e) => setEditor({ ...editor, value: e.target.value, error: null })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void commitEditor();
+            }
+            if (e.key === "Escape") cancelEditor();
+          }}
+          onBlur={() => {
+            if (settledRef.current) return; // Enter already handled this edit
+            if (!editor.value.trim()) cancelEditor();
+            else void commitEditor();
+          }}
+          className={`w-44 px-2 py-1 bg-white border rounded-md text-xs text-slate-800 focus:outline-none ring-2 disabled:opacity-60 ${
+            editor.error
+              ? "border-rose-400 ring-rose-500/20"
+              : "border-sky-400 ring-sky-500/20"
+          }`}
+        />
+        {editor.error && (
+          <span role="alert" className="text-[10px] text-rose-600 max-w-[16rem]">
+            {editor.error}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  function renderGhost(id: string, field: EditorField, label: string) {
+    return (
+      <button
+        type="button"
+        onClick={() => openEditor(id, field)}
+        disabled={editor?.saving === true}
+        className="px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-[11px] font-semibold text-slate-400 hover:border-sky-400 hover:text-sky-700 transition-colors disabled:opacity-50"
+      >
+        {label}
+      </button>
     );
   }
 
@@ -288,26 +442,52 @@ export default function EcommerceGrid({
                 <th className="py-3 px-4">Product Name</th>
                 <th className="py-3 px-4">Missing SKU</th>
                 <th className="py-3 px-4">Reason</th>
+                <th className="py-3 px-4">Resolution</th>
               </tr>
             </thead>
             <tbody className="text-sm">
               {gapRows.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="py-16 text-center text-slate-400">
+                  <td colSpan={4} className="py-16 text-center text-slate-400">
                     No hub gaps match this search.
                   </td>
                 </tr>
               )}
-              {gapRows.map((g) => (
-                <tr
-                  key={`${g.globalSku}|${g.productName}`}
-                  className="border-b border-slate-100 hover:bg-slate-50/80"
-                >
-                  <td className="py-3 px-4 font-medium text-slate-800">{g.productName}</td>
-                  <td className="py-3 px-4 font-mono text-xs text-slate-600">{g.globalSku}</td>
-                  <td className="py-3 px-4 text-slate-600">{g.reason}</td>
-                </tr>
-              ))}
+              {gapRows.map((g) => {
+                const minting = mintingSku === g.globalSku;
+                return (
+                  <tr
+                    key={`${g.globalSku}|${g.productName}`}
+                    className={`border-b border-slate-100 ${
+                      minting ? "opacity-60" : "hover:bg-slate-50/80"
+                    }`}
+                  >
+                    <td className="py-3 px-4 font-medium text-slate-800">{g.productName}</td>
+                    <td className="py-3 px-4 font-mono text-xs text-slate-600">{g.globalSku}</td>
+                    <td className="py-3 px-4 text-slate-600">{g.reason}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-col items-start gap-1.5">
+                        <span className="text-xs text-slate-500">
+                          Hub SKU is not in the hub. Mint it here before a CAD drop will stick.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void mint(g.globalSku)}
+                          disabled={mintingSku !== null}
+                          className="px-3 py-1 rounded-full text-xs font-semibold bg-sky-600 text-white hover:bg-sky-700 transition-colors disabled:opacity-50"
+                        >
+                          {minting ? "Minting…" : "Mint hub SKU"}
+                        </button>
+                        {mintError?.sku === g.globalSku && (
+                          <span role="alert" className="text-[11px] text-rose-600">
+                            {mintError.message}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -394,7 +574,9 @@ export default function EcommerceGrid({
                     </td>
 
                     <td className="py-3 px-4 text-xs">
-                      {l.legacyBaseSku ? (
+                      {isEditing(l.id, "legacy") ? (
+                        renderEditorInput("LEGACY-SKU")
+                      ) : l.legacyBaseSku ? (
                         <span className="inline-flex items-center gap-2">
                           <span className="font-mono text-slate-500">
                             {l.legacyBaseSku}
@@ -409,7 +591,7 @@ export default function EcommerceGrid({
                           )}
                         </span>
                       ) : (
-                        <span className="text-slate-300">—</span>
+                        renderGhost(l.id, "legacy", "+ Add Legacy SKU")
                       )}
                     </td>
 
@@ -440,7 +622,7 @@ export default function EcommerceGrid({
                         <span
                           onClick={() => {
                             setEditingId(l.id);
-                            setEditPrice(l.msrp);
+                            setEditPrice(l.msrpValue === null ? "" : l.msrp);
                           }}
                           className="cursor-pointer hover:underline font-semibold text-slate-700 hover:text-sky-700"
                           title="Click to edit steel MSRP"
@@ -455,7 +637,9 @@ export default function EcommerceGrid({
                     </td>
 
                     <td className="py-3 px-4 text-xs">
-                      {l.productUrl ? (
+                      {isEditing(l.id, "url") ? (
+                        renderEditorInput("https://…")
+                      ) : l.productUrl ? (
                         <span className="inline-flex items-center gap-2">
                           <a
                             href={l.productUrl}
@@ -470,7 +654,7 @@ export default function EcommerceGrid({
                           )}
                         </span>
                       ) : (
-                        <span className="text-slate-300">—</span>
+                        renderGhost(l.id, "url", "+ Add Link")
                       )}
                     </td>
                   </tr>

@@ -2,6 +2,7 @@ import { getPimSession } from "@/lib/pim-audit";
 import { FactoryBomWorkbench } from "@/app/admin/factory-bom/FactoryBomWorkbench";
 import { canvas } from "@/app/admin/factory-bom/factory-bom-ui";
 import { listFactoryProducts } from "@/server/factory-bom/list-factory-products";
+import { resolveLinkedFinishedGood } from "@/server/factory-bom/resolve-linked-sku";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +23,19 @@ export default async function EmbedFactoryBomPage({
 
   const products = await listFactoryProducts();
   const initialSku = params.sku?.trim().toUpperCase() || undefined;
+  const linkedProduct =
+    initialSku && !products.some((row) => row.sku === initialSku)
+      ? await resolveLinkedFinishedGood(initialSku)
+      : null;
 
   return (
     <div className={`flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden font-sans ${canvas}`}>
-      <FactoryBomWorkbench products={products} initialSku={initialSku} embedded />
+      <FactoryBomWorkbench
+        products={products}
+        initialSku={initialSku}
+        linkedProduct={linkedProduct}
+        embedded
+      />
     </div>
   );
 }

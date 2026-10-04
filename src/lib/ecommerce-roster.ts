@@ -134,6 +134,99 @@ export function flagSharedCanonical(
   return out;
 }
 
+/**
+ * Legacy-SKU shared flags that differ from the stored ones, as `{ id,
+ * legacySkuShared }` patches. Includes rows that LOST the chip (the previous
+ * twin of a changed SKU), so one write never leaves a stale chip.
+ */
+export function sharedLegacyPatches(
+  items: {
+    id: string;
+    productName: string;
+    legacyBaseSku: string | null;
+    legacySkuShared: boolean;
+  }[],
+): { id: string; legacySkuShared: boolean }[] {
+  const next = flagSharedLegacy(items);
+  const out: { id: string; legacySkuShared: boolean }[] = [];
+  for (const i of items) {
+    const want = next.get(i.productName) ?? false;
+    if (want !== i.legacySkuShared) out.push({ id: i.id, legacySkuShared: want });
+  }
+  return out;
+}
+
+/** Same as sharedLegacyPatches, for the canonical hub SKU flag. */
+export function sharedCanonicalPatches(
+  items: {
+    id: string;
+    productName: string;
+    globalSku: string;
+    canonicalSkuShared: boolean;
+  }[],
+): { id: string; canonicalSkuShared: boolean }[] {
+  const next = flagSharedCanonical(items);
+  const out: { id: string; canonicalSkuShared: boolean }[] = [];
+  for (const i of items) {
+    const want = next.get(i.productName) ?? false;
+    if (want !== i.canonicalSkuShared) {
+      out.push({ id: i.id, canonicalSkuShared: want });
+    }
+  }
+  return out;
+}
+
+/* ───────────────────── inline-edit normalizers ───────────────────── */
+
+export type Normalized = { ok: true; value: string } | { ok: false; error: string };
+
+const MAX_URL_LENGTH = 2000;
+
+/** Product link: trim, http(s) only, parseable, <= 2000 chars. No scheme is invented. */
+export function normalizeProductUrl(raw: string | null | undefined): Normalized {
+  const v = (raw ?? "").trim();
+  if (!v) return { ok: false, error: "Enter a link." };
+  if (v.length > MAX_URL_LENGTH) {
+    return { ok: false, error: `Link is too long (max ${MAX_URL_LENGTH} characters).` };
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(v);
+  } catch {
+    return { ok: false, error: "Enter a full link starting with http:// or https://." };
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { ok: false, error: "Link must start with http:// or https://." };
+  }
+  return { ok: true, value: v };
+}
+
+const HUB_SKU_PREFIXES = ["FIN-", "ASM-", "SA-", "RM-", "CUT-"] as const;
+
+/**
+ * Legacy base SKU: trim, uppercase, A-Z 0-9 and hyphen, 2-40 chars. Hub SKU
+ * prefixes are rejected so a canonical SKU is never pasted into the legacy column.
+ */
+export function normalizeLegacySku(raw: string | null | undefined): Normalized {
+  const v = (raw ?? "").trim().toUpperCase();
+  if (!v) return { ok: false, error: "Enter a legacy SKU." };
+  if (v.length < 2 || v.length > 40) {
+    return { ok: false, error: "Legacy SKU must be 2 to 40 characters." };
+  }
+  if (!/^[A-Z0-9-]+$/.test(v)) {
+    return { ok: false, error: "Legacy SKU may only use letters, numbers and hyphens." };
+  }
+  const prefix = HUB_SKU_PREFIXES.find((p) => v.startsWith(p));
+  if (prefix) {
+    return {
+      ok: false,
+      error: `That looks like a hub SKU (${prefix}…). Enter the legacy base SKU instead.`,
+    };
+  }
+  return { ok: true, value: v };
+}
+
+
 /* ───────────────────── collection derivation ───────────────────── */
 
 /** Product lines recognised at the start of a memo (longest first). */

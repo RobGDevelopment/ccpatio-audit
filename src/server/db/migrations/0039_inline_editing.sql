@@ -1,0 +1,2 @@
+ALTER TABLE "ecommerce_listings" ADD COLUMN "url_operator_set" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "ecommerce_listings" ADD COLUMN "legacy_operator_set" boolean DEFAULT false NOT NULL;

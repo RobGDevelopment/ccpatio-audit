@@ -207,18 +207,32 @@ type AssemblyBundle = {
 export function FactoryBomWorkbench({
   products,
   initialSku,
+  linkedProduct = null,
   embedded = false,
 }: {
   products: FactoryProductRow[];
   initialSku?: string;
+  /**
+   * A valid hub finished_good requested via ?sku= that is absent from the
+   * (vividworks-only) sidebar list. Selected and held, not added to the list.
+   */
+  linkedProduct?: FactoryProductRow | null;
   /** Fill the parent (GHL iframe) instead of assuming a 56px page header. */
   embedded?: boolean;
 }) {
   const toast = useToast();
-  const resolvedInitial =
-    initialSku && products.some((row) => row.sku === initialSku)
-      ? initialSku
-      : (products[0]?.sku ?? "");
+  const inSidebar = Boolean(initialSku && products.some((row) => row.sku === initialSku));
+  const heldLinked = !inSidebar && linkedProduct ? linkedProduct : null;
+  // A ?sku= that is neither listed nor a hub finished good must NOT fall
+  // through to another product.
+  const unknownRequestedSku = Boolean(initialSku) && !inSidebar && !heldLinked;
+  const resolvedInitial = inSidebar
+    ? (initialSku as string)
+    : heldLinked
+      ? heldLinked.sku
+      : unknownRequestedSku
+        ? ""
+        : (products[0]?.sku ?? "");
   const [query, setQuery] = useState("");
   const [phase, setPhase] = useState<"all" | "1" | "2">("all");
   const [selectedSku, setSelectedSku] = useState(resolvedInitial);
@@ -228,12 +242,15 @@ export function FactoryBomWorkbench({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [bannerStatus, setBannerStatus] = useState<RecipeReviewStatus | "none">(
-    products.find((row) => row.sku === resolvedInitial)?.reviewStatus ?? "none",
+    (products.find((row) => row.sku === resolvedInitial) ?? heldLinked)
+      ?.reviewStatus ?? "none",
   );
   const [liveCopied, setLiveCopied] = useState(false);
   const [estimate, setEstimate] = useState<RecipeEstimateRow | null>(null);
 
-  const selected = products.find((row) => row.sku === selectedSku) ?? null;
+  const selected =
+    products.find((row) => row.sku === selectedSku) ??
+    (heldLinked && heldLinked.sku === selectedSku ? heldLinked : null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -286,11 +303,13 @@ export function FactoryBomWorkbench({
   }
 
   useEffect(() => {
-    const row = products.find((item) => item.sku === selectedSku);
+    const row =
+      products.find((item) => item.sku === selectedSku) ??
+      (heldLinked && heldLinked.sku === selectedSku ? heldLinked : null);
     if (!row) return;
     setBannerStatus(row.reviewStatus);
     setLiveCopied(Boolean(row.liveBom));
-  }, [products, selectedSku]);
+  }, [products, selectedSku, heldLinked]);
 
   useEffect(() => {
     if (!selectedSku) return;
@@ -588,9 +607,21 @@ export function FactoryBomWorkbench({
 
       <section className={`${card} flex min-w-0 flex-1 flex-col overflow-hidden p-6 sm:p-8`}>
         {!selected ? (
-          <div className="text-slate-500">Select a finished good.</div>
+          <div className="text-slate-500">
+            {unknownRequestedSku && !selectedSku
+              ? `This SKU is not in the hub (${initialSku}).`
+              : "Select a finished good."}
+          </div>
         ) : (
           <>
+            {heldLinked && heldLinked.sku === selectedSku ? (
+              <p
+                data-testid="factory-bom-opened-from-catalog"
+                className="mb-3 text-xs font-medium text-sky-700"
+              >
+                Opened from Master Catalog
+              </p>
+            ) : null}
             <RecipeHeader
               selected={selected}
               bannerStatus={bannerStatus}
