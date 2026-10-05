@@ -3,11 +3,20 @@
 import { useEffect, useState, useTransition } from "react";
 import { Loader2, Save } from "lucide-react";
 import { getFreightProfile, saveFreightProfile, type ShipProfileData } from "../actions";
+import { mapDisplayToFreight } from "@/lib/freight-utils";
 
 export function FreightPanel({
   globalSku,
+  hubLength,
+  hubDepth,
+  hubHeight,
+  hubWeight,
 }: {
   globalSku: string;
+  hubLength?: string | null;
+  hubDepth?: string | null;
+  hubHeight?: string | null;
+  hubWeight?: string | null;
 }) {
   const [data, setData] = useState<ShipProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,6 +90,21 @@ export function FreightPanel({
       </div>
 
       {error && <div className="p-3 bg-rose-50 text-rose-700 text-sm rounded-md border border-rose-100">{error}</div>}
+
+      {!data.lengthIn && !data.widthIn && !data.heightIn && !data.weightLb && (hubLength || hubDepth || hubHeight || hubWeight) && (
+        <div className="p-3 bg-sky-50 text-sky-800 text-sm rounded-md border border-sky-100 flex items-center justify-between">
+          <span>
+            <strong>Suggested Dimensions:</strong> L: {hubLength || '-'} x W: {hubDepth || '-'} x H: {hubHeight || '-'} / {hubWeight || '-'} lbs
+          </span>
+          <button 
+            type="button" 
+            onClick={() => setData(prev => prev ? { ...prev, ...mapDisplayToFreight({ length: hubLength, depth: hubDepth, height: hubHeight, weight: hubWeight }) } : null)}
+            className="px-3 py-1 bg-white text-sky-600 hover:bg-sky-50 text-xs font-semibold rounded border border-sky-200 transition-colors"
+          >
+            Apply display dimensions
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">

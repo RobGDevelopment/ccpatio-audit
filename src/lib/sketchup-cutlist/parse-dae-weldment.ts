@@ -104,8 +104,8 @@ function aabbFromPositions(values: number[]): Vec3 | null {
   return [maxX - minX, maxY - minY, maxZ - minZ];
 }
 
-function loadGeometries($: cheerio.CheerioAPI): Map<string, Vec3> {
-  const map = new Map<string, Vec3>();
+function loadGeometries($: cheerio.CheerioAPI): Map<string, { size: Vec3, raw: number[] }> {
+  const map = new Map<string, { size: Vec3, raw: number[] }>();
   $("library_geometries geometry").each((_, el) => {
     const id = $(el).attr("id");
     if (!id) return;
@@ -116,16 +116,18 @@ function loadGeometries($: cheerio.CheerioAPI): Map<string, Vec3> {
       .map(Number)
       .filter((n) => Number.isFinite(n));
     const size = aabbFromPositions(values);
-    if (size) map.set(id, size);
+    if (size) map.set(id, { size, raw: values });
   });
   return map;
 }
 
 function walkScene(
   $: cheerio.CheerioAPI,
-  geometries: Map<string, Vec3>,
-): InstanceHit[] {
+  geometries: Map<string, { size: Vec3, raw: number[] }>,
+): { hits: InstanceHit[], globalAabb: Vec3 | null } {
   const hits: InstanceHit[] = [];
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
   function walk(node: unknown, parentMat: Mat4, pathParts: string[]): void {
     // cheerio's Element type is not exported from the package namespace in v1.
@@ -142,8 +144,23 @@ function walkScene(
     const nextPath = [...pathParts, name];
     $node.children("instance_geometry").each((_, ig) => {
       const url = ($(ig).attr("url") || "").replace(/^#/, "");
-      const localSize = geometries.get(url);
-      if (!localSize) return;
+      const geo = geometries.get(url);
+      if (!geo) return;
+      const { size: localSize, raw } = geo;
+      
+      for (let i = 0; i < raw.length; i += 3) {
+        const lx = raw[i]!, ly = raw[i+1]!, lz = raw[i+2]!;
+        const gx = lx*mat[0]! + ly*mat[4]! + lz*mat[8]! + mat[12]!;
+        const gy = lx*mat[1]! + ly*mat[5]! + lz*mat[9]! + mat[13]!;
+        const gz = lx*mat[2]! + ly*mat[6]! + lz*mat[10]! + mat[14]!;
+        minX = Math.min(minX, gx);
+        minY = Math.min(minY, gy);
+        minZ = Math.min(minZ, gz);
+        maxX = Math.max(maxX, gx);
+        maxY = Math.max(maxY, gy);
+        maxZ = Math.max(maxZ, gz);
+      }
+
       const scale = matScale(mat);
       const scaledSize: Vec3 = [
         localSize[0] * scale[0],
@@ -169,7 +186,9 @@ function walkScene(
   $("library_visual_scenes visual_scene > node").each((_, el) => {
     walk(el, IDENTITY, []);
   });
-  return hits;
+  
+  const globalAabb = minX === Infinity ? null : [maxX - minX, maxY - minY, maxZ - minZ] as Vec3;
+  return { hits, globalAabb };
 }
 
 export function classifyExtrusion(size: Vec3): {
@@ -226,6 +245,7 @@ function toWalkerExport(
   hits: InstanceHit[],
   rollup: TubeRollup[],
   unitName: string,
+  globalAabb: Vec3 | null,
 ): WalkerExport {
   const sticks: WalkerStick[] = [];
   for (const hit of hits) {
@@ -257,14 +277,18 @@ function toWalkerExport(
 
   const base = path.basename(sourceLabel);
   const overallHint = base.match(/(\d+)X(\d+)/i);
+  const l = globalAabb ? roundHalf(globalAabb[0]) : (overallHint ? Number(overallHint[1]) : null);
+  const d = globalAabb ? roundHalf(globalAabb[1]) : (overallHint ? Number(overallHint[2]) : null);
+  const h = globalAabb ? roundHalf(globalAabb[2]) : null;
+
   return {
     sourceFile: sourceLabel,
     exportedAt: new Date().toISOString(),
     productHint: path.basename(base, path.extname(base)),
     overall: {
-      lengthIn: overallHint ? Number(overallHint[1]) : null,
-      depthIn: overallHint ? Number(overallHint[2]) : null,
-      heightIn: null,
+      lengthIn: l,
+      depthIn: d,
+      heightIn: h,
     },
     assemblies: [],
     sticks: [...byDef.values()],
@@ -285,9 +309,20 @@ export function parseDaeWeldmentFromXml(
   const xml =
     typeof xmlInput === "string" ? xmlInput : xmlInput.toString("utf8");
   const $ = cheerio.load(xml, { xml: { xmlMode: true } });
-  const unitName = $("asset unit").attr("name") || "unknown";
+  const unitNode = $("asset unit");
+  const unitName = unitNode.attr("name") || "unknown";
+  const meterVal = Number(unitNode.attr("meter")) || 0.0254;
+  const inchesPerUnit = meterVal * 39.3701;
+
   const geometries = loadGeometries($);
-  const hits = walkScene($, geometries);
+  const { hits, globalAabb } = walkScene($, geometries);
+  
+  const scaledGlobalAabb = globalAabb ? [
+    globalAabb[0] * inchesPerUnit,
+    globalAabb[1] * inchesPerUnit,
+    globalAabb[2] * inchesPerUnit,
+  ] as Vec3 : null;
+
   const rollup = rollupTubes(hits);
   return {
     unit: unitName,
@@ -300,7 +335,7 @@ export function parseDaeWeldmentFromXml(
       length: r.length,
       qty: r.qty,
     })),
-    walker: toWalkerExport(sourceLabel, hits, rollup, unitName),
+    walker: toWalkerExport(sourceLabel, hits, rollup, unitName, scaledGlobalAabb),
   };
 }
 

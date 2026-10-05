@@ -5,7 +5,7 @@
   "scripts": {
     "qa:clean": "node -e \"const fs=require('fs'); fs.rmSync('.next', {recursive:true, force:true}); fs.rmSync('node_modules/.cache', {recursive:true, force:true});\"",
     "setup:vault-buckets": "tsx scripts/setup-vault-buckets.ts",
-    "qa:phase0-unit": "npx dotenv -e .env.test.local -e .env.local -- vitest run tests/sku-preview.test.ts tests/asset-vault.test.ts tests/confirm-asset.test.ts tests/story-seo.test.ts tests/pim-session.test.ts tests/seo-listing.test.ts tests/vault-buckets.test.ts tests/actions.test.ts",
+    "qa:phase0-unit": "npx dotenv -e .env.test.local -e .env.local -- vitest run tests/sku-preview.test.ts tests/asset-vault.test.ts tests/confirm-asset.test.ts tests/story-seo.test.ts tests/pim-session.test.ts tests/seo-listing.test.ts tests/vault-buckets.test.ts tests/actions.test.ts tests/dae-weldment.test.ts",
     "qa:phase1-build": "npm run qa:clean && tsc --noEmit && npx cross-env NEXT_TELEMETRY_DISABLED=1 NODE_ENV=production next build",
     "qa:phase2-db": "npx dotenv -e .env.test.local -e .env.local -- tsx scripts/qa/proof-of-life.runner.ts",
     "qa:phase3-e2e": "npx dotenv -e .env.test.local -e .env.local -- playwright test tests/e2e",

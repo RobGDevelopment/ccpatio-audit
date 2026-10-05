@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
-import { createDictionaryCode, createNewProduct, previewSkuAction } from "@/app/embed/admin/master-catalog/actions";
+import { createDictionaryCode, createNewProduct, previewSkuAction, getActiveCatalog } from "@/app/embed/admin/master-catalog/actions";
+import { mapDisplayToFreight } from "@/lib/freight-utils";
 import { getDb } from "@/server/db/client";
 import { 
   nomenclature_collections, 
@@ -78,6 +79,10 @@ describe("Server Actions: Master Catalog", () => {
       await expect(createDictionaryCode("category", "-BAD", "Ok")).rejects.toThrow("format"); 
       await expect(createDictionaryCode("category", "BAD--CAT", "Ok")).rejects.toThrow("format");
       await expect(createDictionaryCode("category", "A".repeat(25), "Ok")).rejects.toThrow("format");
+      
+      await db.delete(nomenclature_collections).where(eq(nomenclature_collections.code, "TST"));
+      await db.delete(nomenclature_categories).where(eq(nomenclature_categories.code, "TST-CAT"));
+      await db.delete(nomenclature_categories).where(eq(nomenclature_categories.code, "TST-MUL-SEG"));
       
       // Valid insertions (incl. multi-segment legacy-style category)
       await createDictionaryCode("collection", "TST", "Actions Suite Collection");
@@ -218,6 +223,51 @@ describe("Server Actions: Master Catalog", () => {
         expect(stored.collection_label).toBe("Marina");
         expect(stored.drawing_section).toBe(ALIAS_CAT_LABEL);
       });
+    });
+  });
+
+  describe("getActiveCatalog", () => {
+    it("SQL filter rejects 3P-RM-TEST", async () => {
+      // Use createNewProduct to mint a valid third_party raw material
+      const sku = "3P-RM-TEST"; 
+      
+      await db.insert(sku_mappings).values({
+        global_sku: sku,
+        product_origin: 'third_party',
+        category: 'raw_material',
+        item_type: 'raw_material',
+        original_name: 'Test 3P RM'
+      }).onConflictDoNothing();
+
+      await db.insert(finished_goods_catalog).values({
+        global_sku: sku,
+        msrp: "100.00",
+        cost: "50.00",
+        is_web_visible: true,
+      }).onConflictDoNothing();
+
+      const active = await getActiveCatalog();
+      const found = active.find(a => a.globalSku === sku);
+      expect(found).toBeUndefined();
+      
+      await db.delete(finished_goods_catalog).where(eq(finished_goods_catalog.global_sku, sku));
+      await db.delete(sku_mappings).where(eq(sku_mappings.global_sku, sku));
+    });
+  });
+
+  describe("mapDisplayToFreight", () => {
+    it("maps depth to widthIn for freight dimensions", () => {
+      const result = mapDisplayToFreight({
+        length: "72",
+        depth: "36",
+        height: "30",
+        weight: "150"
+      });
+      
+      expect(result.lengthIn).toBe("72");
+      expect(result.widthIn).toBe("36"); // depth -> width
+      expect(result.heightIn).toBe("30");
+      expect(result.weightLb).toBe("150");
     });
   });
 

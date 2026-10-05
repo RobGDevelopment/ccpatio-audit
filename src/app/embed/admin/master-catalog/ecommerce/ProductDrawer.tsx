@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Save, Loader2, Download, Lock } from "lucide-react";
-import { EcommerceListing, getDictionaries, getListingScoreAction, generateTearSheetAction } from "../actions";
+import { EcommerceListing, getDictionaries, getListingScoreAction, generateTearSheetAction, extractCadDimensions } from "../actions";
 import { matchHubSku } from "@/lib/hub-sku-codes";
 import { useRouter } from "next/navigation";
 import { ListingContentPanels, type ListingPanelTab, type ListingPatch } from "./ListingContentPanels";
@@ -67,6 +67,7 @@ export default function ProductDrawer({
   const [listingError, setListingError] = useState<string | null>(null);
   
   const [hubSaving, setHubSaving] = useState(false);
+  const [cadExtracting, setCadExtracting] = useState(false);
   const [hubError, setHubError] = useState<string | null>(null);
 
   const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
@@ -252,6 +253,22 @@ export default function ProductDrawer({
       setHubError(err instanceof Error ? err.message : "Save failed");
     } finally {
       setHubSaving(false);
+    }
+  }
+
+  async function handleExtractCad() {
+    setCadExtracting(true);
+    setHubError(null);
+    try {
+      const res = await extractCadDimensions(listing.globalSku);
+      setLength(res.length);
+      setDepth(res.depth);
+      setHeight(res.height);
+      setLocalVersion(v => v + 1);
+    } catch (e: any) {
+      setHubError(e.message);
+    } finally {
+      setCadExtracting(false);
     }
   }
 
@@ -477,14 +494,29 @@ export default function ProductDrawer({
               <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
                 Hub (Applies to all shared)
               </h3>
-              <button
-                onClick={() => handleHubSave()}
-                disabled={hubSaving}
-                className="px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md hover:bg-slate-900 transition-colors disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {hubSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                Save Hub
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleExtractCad()}
+                  disabled={cadExtracting || hubSaving || !listing.factory.cadFilename?.endsWith(".dae") || listing.factory.cadStatus !== "draft_ready"}
+                  title={
+                    listing.factory.cadFilename?.endsWith(".dae") && listing.factory.cadStatus === "draft_ready"
+                      ? undefined
+                      : "Upload a .dae file to extract dimensions."
+                  }
+                  className="px-3 py-1.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-md hover:bg-amber-200 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {cadExtracting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  [Extract from CAD]
+                </button>
+                <button
+                  onClick={() => handleHubSave()}
+                  disabled={hubSaving || cadExtracting}
+                  className="px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md hover:bg-slate-900 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {hubSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Save Hub
+                </button>
+              </div>
             </div>
             {hubError && (
               <div className="text-xs text-rose-600 bg-rose-50 p-2 rounded-md">
@@ -620,6 +652,7 @@ export default function ProductDrawer({
                       onChange={(e) => setWholesaleCost(e.target.value)}
                       className="px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
                     />
+                    <div className="text-[10px] font-bold text-rose-600 tracking-wide">INTERNAL COST ONLY - NEVER SYNCED TO WEB OR POS</div>
                   </div>
                 </>
               )}
@@ -641,7 +674,13 @@ export default function ProductDrawer({
 
             <div className="mt-4 pt-4 border-t border-slate-100">
               <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">Freight Profile</h4>
-              <FreightPanel globalSku={listing.globalSku} />
+              <FreightPanel 
+                globalSku={listing.globalSku} 
+                hubLength={length}
+                hubDepth={depth}
+                hubHeight={height}
+                hubWeight={weight}
+              />
             </div>
             
             <div className="flex flex-col gap-1.5 mt-4 pt-4 border-t border-slate-100">

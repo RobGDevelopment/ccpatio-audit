@@ -461,3 +461,36 @@ The six open items above are fixed in source. Steps 4 and 5 stay unstarted.
 6. `npm run qa:lifecycle` exited 0. Test UUID `a3ed25c1-38a6-457f-95b6-d127238a10b3` (SKU `QA-TEST-A3ED25C1`). Unit tests: 80 passed. Webhook simulation passed. Playwright: 4 passed.
 
 I checked the rebuilt catalog in the browser. `FIN-BRV-ARM-SOF-72X34` shows collection `BRV` and category `ARM-SOF`, and the freight select includes `not_shipped`. Enter on All-tab row `FIN-BRK-CHS-84X34-LS-BR` (no ecommerce listing) opens the hub drawer at `?hubOnly=` with Save Hub and the freight panel.
+
+### Phase 4 and Phase 5 QC (2026-10-04)
+
+**Not certified.**
+
+What matches:
+
+- Freight suggestion appears only when packaged length, width, height, and weight are all empty. **Apply display dimensions** copies hub length, depth, height, and weight into the freight form (depth maps to width) and does not write `catalog_ship_profiles` by itself.
+- `extractCadDimensions` updates `finished_goods_catalog.length`, `.depth`, and `.height` from the latest `draft_ready` `.dae`. It does not write the freight cube. `.skp` rows are not parsed.
+- The wholesale sentence under Wholesale Cost in `ProductDrawer.tsx` and `NewProductDrawer.tsx` is the required text.
+
+Still open:
+
+1. The catalog predicate is `item_type = finished_good OR product_origin = third_party`, plus the five prefixes. The plan requires `item_type = finished_good` AND `product_origin` in (`manufactured`, `third_party`) AND the prefix exclusion. A third-party row that is not a finished good still passes.
+2. `getEcommerceRoster` does not exclude `archived_at`. The hub-gaps query in that function has no prefix filter.
+3. **Extract from CAD** stays enabled when the latest file is `.skp` or when no successful `.dae` exists. The operator finds out only after the click. The action also has no operator session check, unlike the other drawer writes.
+4. The new-product Freight tab does not receive the minted display dimensions, so **Apply display dimensions** cannot appear there.
+5. The Collada `meter` scale is not converted to inches. The axis sizes are stored as length, depth, and height directly.
+6. No new unit test covers the SQL predicate, the display-to-freight apply, or the CAD write. The pasted log is still 80 tests, the same count as the Step 2/3 fix run. The paste starts at the phase-2 success banner and omits the build route table and phase-2 steps 1–4.
+
+### Phase 4 and Phase 5 remediation QC (2026-10-04)
+
+**Steps 4 and 5 are certified** against the six conditions above. Test UUID `39da317b-052b-4cc0-bcb4-8b7da3333f3f` (SKU `QA-TEST-39DA317B`). The lifecycle paste includes the build route table, phase-2 steps 1–4, 82 unit tests, the webhook success line, and 4 Playwright tests.
+
+Closed:
+
+- Both catalog queries require `item_type = finished_good` and `product_origin` in (`manufactured`, `third_party`), and they exclude `RM-`, `PWD-`, `FAB-`, `ASM-`, and `SA-`. The roster also excludes `archived_at`. Hub gaps use the same prefix exclusion.
+- `extractCadDimensions` checks for a `@ccpatio.com` operator and writes only `finished_goods_catalog` length, depth, and height. The button stays disabled unless the latest `.dae` is `draft_ready`. `.skp` is not parsed.
+- The Collada `meter` attribute is converted to inches before those display fields are stored.
+- The new-product Freight tab passes the minted length and depth into **Apply display dimensions**. Depth maps to freight width through `mapDisplayToFreight`.
+- `tests/actions.test.ts` covers a third-party raw material kept out of `getActiveCatalog`, and the depth-to-width map.
+
+The disabled **Extract from CAD** button uses the title `Upload a .dae file to extract dimensions.` `tests/dae-weldment.test.ts` is in `qa:phase0-unit`.

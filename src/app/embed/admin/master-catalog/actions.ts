@@ -22,7 +22,7 @@ import {
   user_roles,
   catalog_ship_profiles,
 } from "@/server/db/schema";
-import { eq, desc, asc, count, and, inArray, sql, max } from "drizzle-orm";
+import { eq, desc, asc, count, and, inArray, sql, max, or, not, like, isNull } from "drizzle-orm";
 import {
   buildFactoryEvidence,
   deriveFactoryReadiness,
@@ -126,6 +126,17 @@ export async function getActiveCatalog(): Promise<CatalogItem[]> {
     .innerJoin(
       sku_mappings,
       eq(finished_goods_catalog.global_sku, sku_mappings.global_sku),
+    )
+    .where(
+      and(
+        eq(sku_mappings.item_type, 'finished_good'),
+        inArray(sku_mappings.product_origin, ['manufactured', 'third_party']),
+        not(like(sku_mappings.global_sku, 'RM-%')),
+        not(like(sku_mappings.global_sku, 'PWD-%')),
+        not(like(sku_mappings.global_sku, 'FAB-%')),
+        not(like(sku_mappings.global_sku, 'ASM-%')),
+        not(like(sku_mappings.global_sku, 'SA-%'))
+      )
     )
     .orderBy(sku_mappings.original_name);
 
@@ -650,10 +661,31 @@ export async function getEcommerceRoster(): Promise<EcommerceRoster> {
         third_party_sources,
         eq(sku_mappings.global_sku, third_party_sources.global_sku),
       )
+      .where(
+        and(
+          isNull(ecommerce_listings.archived_at),
+          eq(sku_mappings.item_type, 'finished_good'),
+          inArray(sku_mappings.product_origin, ['manufactured', 'third_party']),
+          not(like(sku_mappings.global_sku, 'RM-%')),
+          not(like(sku_mappings.global_sku, 'PWD-%')),
+          not(like(sku_mappings.global_sku, 'FAB-%')),
+          not(like(sku_mappings.global_sku, 'ASM-%')),
+          not(like(sku_mappings.global_sku, 'SA-%'))
+        )
+      )
       .orderBy(asc(ecommerce_listings.sheet_order)),
     db
       .select()
       .from(ecommerce_roster_gaps)
+      .where(
+        and(
+          not(like(ecommerce_roster_gaps.global_sku, 'RM-%')),
+          not(like(ecommerce_roster_gaps.global_sku, 'PWD-%')),
+          not(like(ecommerce_roster_gaps.global_sku, 'FAB-%')),
+          not(like(ecommerce_roster_gaps.global_sku, 'ASM-%')),
+          not(like(ecommerce_roster_gaps.global_sku, 'SA-%'))
+        )
+      )
       .orderBy(asc(ecommerce_roster_gaps.product_name)),
   ]);
 
@@ -1953,3 +1985,38 @@ export async function getListingScoreAction(globalSku: string, listingId: string
   return scoreProduct(snap);
 }
 
+import { downloadCadObject } from "@/lib/supabase-storage";
+import { parseDaeWeldmentFromXml } from "@/lib/sketchup-cutlist/parse-dae-weldment";
+
+export async function extractCadDimensions(globalSku: string) {
+  const session = await getPimSession();
+  if (!session || !aiOperatorEligible(session)) throw new Error("Unauthorized");
+  
+  const db = getDb();
+  const uploads = await db.select().from(cad_uploads)
+    .where(and(eq(cad_uploads.global_sku, globalSku), eq(cad_uploads.ext, 'dae'), eq(cad_uploads.status, 'draft_ready')))
+    .orderBy(desc(cad_uploads.created_at))
+    .limit(1);
+    
+  const upload = uploads[0];
+  if (!upload) throw new Error("No processed .dae upload found for this product.");
+  
+  const buffer = await downloadCadObject(upload.storage_path);
+  const parsed = parseDaeWeldmentFromXml(buffer, upload.storage_path);
+  
+  const aabb = parsed.walker.overall;
+  if (!aabb || aabb.lengthIn === null || aabb.depthIn === null || aabb.heightIn === null) {
+    throw new Error("Could not compute bounding box.");
+  }
+  
+  await db.update(finished_goods_catalog)
+    .set({
+       length: String(aabb.lengthIn),
+       depth: String(aabb.depthIn),
+       height: String(aabb.heightIn),
+       updated_at: new Date()
+    })
+    .where(eq(finished_goods_catalog.global_sku, globalSku));
+    
+  return { length: String(aabb.lengthIn), depth: String(aabb.depthIn), height: String(aabb.heightIn) };
+}

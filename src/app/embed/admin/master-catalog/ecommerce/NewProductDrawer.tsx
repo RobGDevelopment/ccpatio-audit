@@ -439,6 +439,7 @@ export default function NewProductDrawer({
                     placeholder="e.g. 450.00"
                     className="w-full mt-1.5 p-2 bg-white border border-amber-200 rounded-lg text-sm"
                   />
+                  <div className="text-[10px] font-bold text-rose-600 tracking-wide mt-1">INTERNAL COST ONLY - NEVER SYNCED TO WEB OR POS</div>
                 </div>
               </div>
             ) : (
@@ -515,7 +516,7 @@ export default function NewProductDrawer({
                  active={activeTab === 'asset_vault' || activeTab === 'story' || activeTab === 'seo' ? activeTab : null}
                />
              )}
-             {activeTab === 'freight' && preview?.sku && savedListingId && <FreightPanel globalSku={preview.sku} />}
+             {activeTab === 'freight' && preview?.sku && savedListingId && <FreightPanel globalSku={preview.sku} hubLength={length} hubDepth={depth} hubHeight={""} hubWeight={""} />}
              {activeTab === 'freight' && !savedListingId && (
                <p className="text-sm text-slate-500 p-4 text-center">Save the product before setting freight.</p>
              )}
