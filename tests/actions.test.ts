@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
 import { createDictionaryCode, createNewProduct, previewSkuAction, getActiveCatalog } from "@/app/embed/admin/master-catalog/actions";
-import { mapDisplayToFreight } from "@/lib/freight-utils";
+import { deriveDfmFreight, mapDisplayToFreight } from "@/lib/freight-utils";
 import { getDb } from "@/server/db/client";
 import { 
   nomenclature_collections, 
@@ -268,6 +268,40 @@ describe("Server Actions: Master Catalog", () => {
       expect(result.widthIn).toBe("36"); // depth -> width
       expect(result.heightIn).toBe("30");
       expect(result.weightLb).toBe("150");
+    });
+  });
+
+  describe("deriveDfmFreight", () => {
+    it("copies hub dimensions into packaged dims and divides cube by 139", () => {
+      const result = deriveDfmFreight({
+        hubLength: "34''",
+        hubDepth: "34''",
+        hubHeight: "31''",
+        hubWeight: "40",
+      });
+      expect(result.lengthIn).toBe("34.00");
+      expect(result.widthIn).toBe("34.00");
+      expect(result.heightIn).toBe("31.00");
+      expect(result.dimWeightLb).toBe(((34 * 34 * 31) / 139).toFixed(2));
+      expect(result.packagedFromHub).toBe(true);
+      expect(result.shipMode).toBeNull();
+    });
+
+    it("defaults ship mode to LTL when length exceeds 90 or weight exceeds 150", () => {
+      expect(
+        deriveDfmFreight({ hubLength: "96", hubDepth: "34", hubHeight: "31", hubWeight: "80" }).shipMode,
+      ).toBe("ltl");
+      expect(
+        deriveDfmFreight({ hubLength: "40", hubDepth: "20", hubHeight: "18", hubWeight: "151" }).shipMode,
+      ).toBe("ltl");
+      expect(
+        deriveDfmFreight({
+          hubLength: "96",
+          hubDepth: "34",
+          hubHeight: "31",
+          shipMode: "parcel",
+        }).shipMode,
+      ).toBe("parcel");
     });
   });
 

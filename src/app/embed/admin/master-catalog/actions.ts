@@ -59,6 +59,7 @@ import {
   SEO_NOT_CONFIGURED,
 } from "@/server/pim/seo-assistant";
 import { SEO_LIMITS, SLUG_RE, normalizeTags } from "@/lib/seo-limits";
+import { deriveDfmFreight } from "@/lib/freight-utils";
 
 /** The AI action needs a real @ccpatio.com person; a human session outranks the embed principal. */
 function aiOperatorEligible(session: PimSession): boolean {
@@ -1931,39 +1932,42 @@ export async function saveFreightProfile(globalSku: string, data: ShipProfileDat
   }
 
   const db = getDb();
-  let dimWeight: string | null = null;
-  
-  if (data.lengthIn && data.widthIn && data.heightIn) {
-    const l = parseFloat(data.lengthIn);
-    const w = parseFloat(data.widthIn);
-    const h = parseFloat(data.heightIn);
-    if (!isNaN(l) && !isNaN(w) && !isNaN(h)) {
-      dimWeight = ((l * w * h) / 139).toFixed(2);
-    }
-  }
+  const [hub] = await db
+    .select({
+      length: finished_goods_catalog.length,
+      depth: finished_goods_catalog.depth,
+      height: finished_goods_catalog.height,
+      weight: finished_goods_catalog.weight,
+    })
+    .from(finished_goods_catalog)
+    .where(eq(finished_goods_catalog.global_sku, globalSku))
+    .limit(1);
 
-  let billableWeight = data.weightLb;
-  if (dimWeight !== null && data.weightLb) {
-    const w = parseFloat(data.weightLb);
-    const dw = parseFloat(dimWeight);
-    if (!isNaN(w) && !isNaN(dw)) {
-      billableWeight = Math.max(w, dw).toFixed(2);
-    }
-  }
+  const dfm = deriveDfmFreight({
+    hubLength: hub?.length,
+    hubDepth: hub?.depth,
+    hubHeight: hub?.height,
+    hubWeight: hub?.weight,
+    packagedLength: data.lengthIn,
+    packagedWidth: data.widthIn,
+    packagedHeight: data.heightIn,
+    packagedWeight: data.weightLb,
+    shipMode: data.shipMode,
+  });
 
   const ltlClass = data.ltlClass || null;
 
   const payload = {
     global_sku: globalSku,
-    ship_mode: (data.shipMode || null) as any,
-    length_in: data.lengthIn || null,
-    width_in: data.widthIn || null,
-    height_in: data.heightIn || null,
-    weight_lb: data.weightLb || null,
+    ship_mode: (dfm.shipMode || null) as any,
+    length_in: dfm.lengthIn,
+    width_in: dfm.widthIn,
+    height_in: dfm.heightIn,
+    weight_lb: dfm.weightLb,
     ltl_class: ltlClass,
     stackable: data.stackable ?? false,
-    dim_weight_lb: dimWeight,
-    billable_weight_lb: billableWeight || null,
+    dim_weight_lb: dfm.dimWeightLb,
+    billable_weight_lb: dfm.billableWeightLb,
   };
 
   await db.insert(catalog_ship_profiles).values(payload).onConflictDoUpdate({
