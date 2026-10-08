@@ -1,5 +1,4 @@
 import type { Node } from "@xyflow/react";
-import type { PipelineNodeData, StageNodeData, SystemNodeData } from "../components/topology/nodes";
 
 export type IntegrationSystem =
   | "GHL"
@@ -132,17 +131,16 @@ export function buildIntegrationDefaults(node: Node): NodeIntegrationConfig {
   let pipelineName = "";
 
   if (node.type === "stage") {
-    const stage = data as unknown as StageNodeData;
-    nodeTitle = stage.label;
-    pipelineName = stage.parentPipelineId;
+    nodeTitle = String(data.label ?? "");
+    pipelineName = String(data.parentPipelineId ?? "");
   } else if (node.type === "pipeline") {
-    const pipe = data as unknown as PipelineNodeData;
-    nodeTitle = pipe.title;
-    pipelineName = pipe.subtitle ? `${pipe.title} · ${pipe.subtitle}` : pipe.title;
+    const title = String(data.title ?? "");
+    const subtitle = data.subtitle ? String(data.subtitle) : "";
+    nodeTitle = title;
+    pipelineName = subtitle ? `${title} · ${subtitle}` : title;
   } else {
-    const sys = data as unknown as SystemNodeData;
-    nodeTitle = sys.label ?? node.id;
-    pipelineName = sys.subtitle ?? sys.zone ?? "";
+    nodeTitle = String(data.label ?? node.id);
+    pipelineName = String(data.subtitle ?? data.zone ?? "");
   }
 
   const system = inferIntegrationSystem(node.id, data);

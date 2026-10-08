@@ -3,14 +3,27 @@
  * Retail happy path is ALWAYS the AG JSON 50-step sequence (no board skip).
  */
 
-import { LIFECYCLE_EXEC_SEQUENCE } from "../components/topology/lifecycleSequence";
-import type { SequenceStep } from "../components/topology/sequences";
-import type { JourneyId } from "../components/topology/sequences";
 import type { MasterWorkflowSchema, WorkflowDef } from "./schemaTypes";
+
+type SequenceStep = {
+  nodeId: string;
+  travelEdges: string[];
+  stageId?: string;
+  dwellMs?: number;
+  fanOutNodes?: string[];
+  externalTrigger?: {
+    travelEdges: string[];
+    targetNodeIds: string[];
+    travelMs?: number;
+    holdMs?: number;
+  };
+  storyKey?: string;
+  tone?: "happy" | "exception";
+};
 
 export function findWorkflow(
   schema: MasterWorkflowSchema,
-  journeyId: JourneyId | string,
+  journeyId: string,
   mode: "full" | "board"
 ): WorkflowDef | undefined {
   return (
@@ -23,22 +36,9 @@ export function findWorkflow(
 
 export function compileSequence(
   schema: MasterWorkflowSchema,
-  journeyId: JourneyId | string,
+  journeyId: string,
   _mode: "full" | "board" = "full"
 ): SequenceStep[] {
-  /* Executive lifecycle map — sequential Node 1→12 for all happy-path journeys */
-  if (
-    journeyId === "retail" ||
-    journeyId === "trade" ||
-    journeyId === "warranty"
-  ) {
-    return LIFECYCLE_EXEC_SEQUENCE.map((s) => ({
-      ...s,
-      travelEdges: s.travelEdges ? [...s.travelEdges] : undefined,
-      fanOutNodes: s.fanOutNodes ? [...s.fanOutNodes] : undefined,
-    }));
-  }
-
   const wf = findWorkflow(schema, journeyId, _mode);
   if (!wf) return [];
   return wf.steps.map((s) => {

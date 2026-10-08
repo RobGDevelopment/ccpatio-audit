@@ -3,8 +3,21 @@
  * workflow `retail-az-e2e-happy-path` (exact 50 steps, step_index order).
  */
 
-import type { SequenceStep } from "../components/topology/sequences";
 import agRetail from "./ag_retail_happy_path.json";
+
+type SequenceStep = {
+  nodeId: string;
+  travelEdges: string[];
+  stageId?: string;
+  storyKey?: string;
+  tone?: "happy" | "exception";
+  externalTrigger?: {
+    travelEdges: string[];
+    targetNodeIds: string[];
+    travelMs?: number;
+    holdMs?: number;
+  };
+};
 
 type AgStep = {
   step_index: number;

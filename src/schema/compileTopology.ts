@@ -3,8 +3,16 @@
  */
 
 import type { Edge, Node } from "@xyflow/react";
-import type { BeamEdgeData } from "../components/topology/BeamEdge";
 import type { MasterWorkflowSchema, WorkflowNode } from "./schemaTypes";
+
+type BeamEdgeData = {
+  label?: string;
+  brief?: boolean;
+  lane?: string;
+  utility?: string;
+  gridLevel?: string;
+  cable?: boolean;
+};
 
 function toRfNode(n: WorkflowNode): Node {
   const base: Node = {

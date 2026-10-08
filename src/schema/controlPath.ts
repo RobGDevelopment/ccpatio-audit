@@ -2,9 +2,19 @@
  * Control Room path model — editable snake / WBS sequence that drives topology.
  */
 
-import type { SequenceStep } from "../components/topology/sequences";
 import { GANTT_MASTER_STEPS } from "./ganttMasterSequence";
-import type { IngestionSource } from "../components/topology/journeyBuilder";
+
+type SequenceStep = {
+  nodeId: string;
+  stageId?: string;
+  travelEdges?: string[];
+  dwellMs?: number;
+  storyKey?: string;
+  tone?: "" | "happy" | "exception";
+  fanOutNodes?: string[];
+};
+
+export type IngestionSource = string;
 
 export type ControlPathStep = {
   /** Stable id for reorder / deps (survives renumber) */

@@ -1,6 +1,12 @@
-import { granularNodeId } from "../topology/granularGraph";
-import { zoneOfNode } from "../topology/utilityTypes";
 import type { WorkflowStep } from "../../schema/schemaTypes";
+
+function granularNodeId(nodeId: string, stageId?: string | null): string {
+  return stageId ? `${nodeId}::${stageId}` : nodeId;
+}
+
+function zoneOfNode(_nodeId: string): string | undefined {
+  return undefined;
+}
 import {
   parseDurationDays,
   type OperationalTask,

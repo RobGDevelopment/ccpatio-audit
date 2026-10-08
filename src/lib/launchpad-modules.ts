@@ -74,33 +74,6 @@ export const LAUNCHPAD_MODULES: LaunchpadModule[] = [
     requiresAuth: true,
   },
   {
-    id: "cpq-configurator",
-    title: "3D CPQ Configurator",
-    description:
-      "Interactive WebGL environment for real-time product visualization, Draco compression, and material swapping.",
-    href: "http://localhost:3001",
-    status: "POC",
-    requiresAuth: false,
-  },
-  {
-    id: "topology",
-    title: "Topology Blueprint (Demo)",
-    description:
-      "Historical E2E lifecycle visualization. Not ingress. Not operating procedure. Binding SoT: docs/MDM_MASTER_BLUEPRINT.md.",
-    href: "/topology",
-    status: "Sandbox",
-    requiresAuth: true,
-  },
-  {
-    id: "presentation",
-    title: "Operations Command Center (Demo)",
-    description:
-      "Executive briefing deck. Demo only — not the MDM control plane and not a DLQ.",
-    href: "/presentation",
-    status: "Walk Phase",
-    requiresAuth: true,
-  },
-  {
     id: "health",
     title: "System Health",
     description:
