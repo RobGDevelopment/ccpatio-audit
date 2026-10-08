@@ -1,10 +1,10 @@
 {
-  "phase_id": "step-2-fedex-ts-fix",
-  "intent": "Resolve TS narrowing leak in FedEx QA script to satisfy global typecheck and clear the QCA baseline.",
+  "phase_id": "step-3-mdm-hub-certify",
+  "intent": "Zero-edit certification of the MDM hub boundary. Fan-out is registered, V8 order functions are unregistered, and health cron is present.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
-    "scripts/qa/verify-fedex-sandbox.ts"
+    ".cursor/logs/qca-last.log"
   ],
   "expected_blast_radius": 2,
   "target_test": "npm run typecheck"
