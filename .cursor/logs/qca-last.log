@@ -1,18 +1,13 @@
 status=2
 --- stdout ---
 {
-  "phase_id": "step-2-fedex-ts-fix",
-  "phase": "step-2-fedex-ts-fix",
+  "phase_id": "step-3-mdm-hub-certify",
+  "phase": "step-3-mdm-hub-certify",
   "verdict": "DEFECT_REJECTED",
   "audit_exit": 2,
   "invariantViolations": [
-    "Blast Radius Breach: diff touches 5 files; expected 2; tolerance 0.",
-    "AAR blast radius 5 disagrees with phase.lock expected_blast_radius 2. Lock wins.",
-    "Scope Breach: PHASE_0_ALIGNMENT.md modified outside allowed phase scope.",
-    "Scope Breach: PROJECT_STATE.md modified outside allowed phase scope.",
-    "Scope Breach: .cursor/logs/qca-last.log modified outside allowed phase scope.",
-    "Scope Breach: .cursor/session-stamp.json modified outside allowed phase scope.",
-    "Scope Breach: package.json modified outside allowed phase scope."
+    "Blast Radius Breach: diff touches 1 files; expected 2; tolerance 0.",
+    "AAR blast radius 1 disagrees with phase.lock expected_blast_radius 2. Lock wins."
   ],
   "testResults": {
     "typecheck": "PASS",
@@ -21,25 +16,23 @@ status=2
   },
   "targetTest": "npm run typecheck",
   "blastRadius": {
-    "actual": 5,
+    "actual": 1,
     "expected": 2,
     "tolerance": 0,
-    "tracked": 3,
-    "untracked": 2,
+    "tracked": 1,
+    "untracked": 0,
     "status": "FAIL"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "b30158c5553177d0fcb555c9ec0621177ee8318d9ed3f60d1f6851e455107eb2",
-    "git_sha256": "b30158c5553177d0fcb555c9ec0621177ee8318d9ed3f60d1f6851e455107eb2"
+    "aar_sha256": "02491180029b82fb8c8f65b33f17c2dd63328d65b4843fbf47b31ec2c6c35d28",
+    "git_sha256": "02491180029b82fb8c8f65b33f17c2dd63328d65b4843fbf47b31ec2c6c35d28"
   }
 }
 
 --- stderr ---
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
 

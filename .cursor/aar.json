@@ -1,50 +1,23 @@
 {
-  "phase_id": "step-2-fedex-ts-fix",
+  "phase_id": "step-3-mdm-hub-certify",
   "base_ref": "HEAD",
-  "blast_radius": 5,
+  "blast_radius": 1,
   "counts": {
-    "files": 5,
-    "tracked": 3,
-    "untracked": 2,
-    "insertions": 30,
-    "deletions": 39
+    "files": 1,
+    "tracked": 1,
+    "untracked": 0,
+    "insertions": 9,
+    "deletions": 16
   },
   "files": [
     {
-      "status": "??",
-      "path": "PHASE_0_ALIGNMENT.md",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "PROJECT_STATE.md",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 25,
-      "deletions": 34
-    },
-    {
-      "status": "M",
-      "path": ".cursor/session-stamp.json",
-      "insertions": 4,
-      "deletions": 4
-    },
-    {
-      "status": "M",
-      "path": "package.json",
-      "insertions": 1,
-      "deletions": 1
+      "insertions": 9,
+      "deletions": 16
     }
   ],
-  "untracked": [
-    "PHASE_0_ALIGNMENT.md",
-    "PROJECT_STATE.md"
-  ],
-  "file_list_sha256": "b30158c5553177d0fcb555c9ec0621177ee8318d9ed3f60d1f6851e455107eb2",
+  "untracked": [],
+  "file_list_sha256": "02491180029b82fb8c8f65b33f17c2dd63328d65b4843fbf47b31ec2c6c35d28",
   "notes": ""
 }
