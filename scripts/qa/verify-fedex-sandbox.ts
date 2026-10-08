@@ -14,8 +14,8 @@ async function verify() {
   try {
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
-    params.append('client_id', clientId);
-    params.append('client_secret', clientSecret);
+    params.append('client_id', clientId!);
+    params.append('client_secret', clientSecret!);
 
     const response = await fetch(`${apiBase}/oauth/token`, {
       method: 'POST',

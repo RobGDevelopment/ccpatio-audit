@@ -1,0 +1,11 @@
+{
+  "phase_id": "step-2-fedex-ts-fix",
+  "intent": "Resolve TS narrowing leak in FedEx QA script to satisfy global typecheck and clear the QCA baseline.",
+  "base_ref": "HEAD",
+  "allowed_files": [
+    ".cursor/phase.lock",
+    "scripts/qa/verify-fedex-sandbox.ts"
+  ],
+  "expected_blast_radius": 2,
+  "target_test": "npm run typecheck"
+}
