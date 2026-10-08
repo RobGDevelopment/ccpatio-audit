@@ -1,61 +1,47 @@
 {
-  "phase_id": "pim-drawer-identity-fix",
+  "phase_id": "pim-drawer-listing",
   "base_ref": "HEAD",
-  "blast_radius": 7,
+  "blast_radius": 5,
   "counts": {
-    "files": 7,
-    "tracked": 6,
-    "untracked": 1,
-    "insertions": 62,
-    "deletions": 53
+    "files": 5,
+    "tracked": 5,
+    "untracked": 0,
+    "insertions": 44,
+    "deletions": 30
   },
   "files": [
     {
-      "status": "??",
-      "path": "PIM_GOD_MODE_DRAWER_BUILD_PLAN.md",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 17,
-      "deletions": 16
+      "insertions": 8,
+      "deletions": 8
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 8,
-      "deletions": 20
+      "insertions": 4,
+      "deletions": 6
     },
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
-      "insertions": 2,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/NewProductDrawer.tsx",
-      "insertions": 10,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/ProductDrawer.tsx",
-      "insertions": 2,
+      "insertions": 1,
       "deletions": 1
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/page.tsx",
-      "insertions": 23,
-      "deletions": 12
+      "path": "src/app/embed/admin/master-catalog/actions.ts",
+      "insertions": 4,
+      "deletions": 14
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/ProductDrawer.tsx",
+      "insertions": 27,
+      "deletions": 1
     }
   ],
-  "untracked": [
-    "PIM_GOD_MODE_DRAWER_BUILD_PLAN.md"
-  ],
-  "file_list_sha256": "438e441e0258f6e0791d8ced9b455bb947376b83a004d14ca459c3572150c39c",
+  "untracked": [],
+  "file_list_sha256": "6a34f46930fd08ec8bd1e9285e3961b7eb64f5d185c24c85f6f80219daf662fd",
   "notes": ""
 }

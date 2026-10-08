@@ -1,16 +1,14 @@
 {
-  "phase_id": "pim-drawer-identity-fix",
-  "intent": "Fix Phase 1 defects: restore server-side collision detection via previewSkuAction, wrap usePathname in Suspense, and authorize pending worktree files.",
+  "phase_id": "pim-drawer-listing",
+  "intent": "Implement Listing Layer: expand ListingDrawerPayload, isolate ecommerce_listings writes, sever hub MSRP mirror, and implement sanitized HTML story.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
-    "PIM_GOD_MODE_DRAWER_BUILD_PLAN.md",
-    "src/app/embed/admin/master-catalog/ecommerce/NewProductDrawer.tsx",
     "src/app/embed/admin/master-catalog/ecommerce/ProductDrawer.tsx",
-    "src/app/embed/admin/master-catalog/page.tsx"
+    "src/app/embed/admin/master-catalog/actions.ts"
   ],
-  "expected_blast_radius": 7,
+  "expected_blast_radius": 5,
   "target_test": "npm run typecheck"
 }

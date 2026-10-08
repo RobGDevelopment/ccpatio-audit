@@ -7,6 +7,8 @@ import { ListingContentPanels, type ListingPanelTab, type ListingPatch } from ".
 import { FreightPanel } from "./FreightPanel";
 
 export interface ListingDrawerPayload {
+  productName: string;
+  drawingSection: string;
   collectionLabel: string;
   steelMsrp: string | null;
   legacyBaseSku: string | null;
@@ -97,6 +99,8 @@ export default function ProductDrawer({
   }, [listing.globalSku]);
 
   // Listing state
+  const [productName, setProductName] = useState(listing.productName);
+  const [drawingSection, setDrawingSection] = useState(listing.drawingSection);
   const [collectionLabel, setCollectionLabel] = useState(listing.collectionLabel);
   const [msrp, setMsrp] = useState(listing.msrp === "—" ? "" : listing.msrp);
   const [legacySku, setLegacySku] = useState(listing.legacyBaseSku || "");
@@ -163,6 +167,8 @@ export default function ProductDrawer({
   const isArchived = !!listing.archivedAt;
   
   const hasUnsavedListingEdits = 
+    productName !== listing.productName ||
+    drawingSection !== listing.drawingSection ||
     marketingDescription !== (listing.marketingDescription || "") ||
     msrp !== (listing.msrp === "—" ? "" : listing.msrp) ||
     url !== (listing.productUrl || "") ||
@@ -189,6 +195,8 @@ export default function ProductDrawer({
         if (!isNaN(mVal) && sVal >= mVal) throw new Error("Sale price must be < MSRP");
       }
       await onSaveListing(listing.id, listingVersion, {
+        productName,
+        drawingSection,
         collectionLabel,
         steelMsrp: msrp || null,
         aluminumMsrp: aluminumMsrp || null,
@@ -375,12 +383,30 @@ export default function ProductDrawer({
             )}
             
             <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5 col-span-2">
+                <label className="text-xs font-medium text-slate-600">Product Name</label>
+                <input
+                  type="text"
+                  value={productName}
+                  onChange={(e) => setProductName(e.target.value)}
+                  className="px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                />
+              </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-600">Collection</label>
+                <label className="text-xs font-medium text-slate-600">Collection Label</label>
                 <input
                   type="text"
                   value={collectionLabel}
                   onChange={(e) => setCollectionLabel(e.target.value)}
+                  className="px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-600">Drawing Section</label>
+                <input
+                  type="text"
+                  value={drawingSection}
+                  onChange={(e) => setDrawingSection(e.target.value)}
                   className="px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
                 />
               </div>

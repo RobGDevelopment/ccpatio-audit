@@ -927,6 +927,8 @@ export async function updateListingInDrawer(
   id: string,
   expectedVersion: number,
   payload: {
+    productName: string;
+    drawingSection: string;
     collectionLabel: string;
     steelMsrp: string | null; // formatted or raw, will parse
     aluminumMsrp: string | null;
@@ -973,6 +975,8 @@ export async function updateListingInDrawer(
     const [row] = await tx
       .update(ecommerce_listings)
       .set({
+        product_name: payload.productName,
+        drawing_section: payload.drawingSection,
         collection_label: payload.collectionLabel,
         steel_msrp: fixedPrice,
         aluminum_msrp: payload.aluminumMsrp ? parsePrice(payload.aluminumMsrp).toFixed(2) : null,
@@ -996,20 +1000,6 @@ export async function updateListingInDrawer(
       
     if (!row) {
       throw new Error("This product was saved by someone else. Reload.");
-    }
-
-    // Mirrors MSRP to finished_goods_catalog if it's the only listing on this hub SKU
-    if (fixedPrice !== null) {
-      const [{ n }] = await tx
-        .select({ n: count() })
-        .from(ecommerce_listings)
-        .where(eq(ecommerce_listings.global_sku, row.globalSku));
-      if (Number(n) === 1) {
-        await tx
-          .update(finished_goods_catalog)
-          .set({ msrp: fixedPrice, updated_at: new Date() })
-          .where(eq(finished_goods_catalog.global_sku, row.globalSku));
-      }
     }
 
     // Recompute legacy shared flags
