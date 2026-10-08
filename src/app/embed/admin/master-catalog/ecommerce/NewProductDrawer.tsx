@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { X, AlertCircle, Plus, Lock } from "lucide-react";
 import { previewSkuAction, getDictionaries, createDictionaryCode, canEditDictionary, getHubProductForDrawer, getListingScoreAction, updateHubInDrawer } from "../actions";
 import { SkuPreviewResult } from "@/server/master-catalog/sku-preview";
@@ -28,7 +28,7 @@ function flattenDictOptions(rows: DictRow[]): DictOption[] {
   return out;
 }
 
-export default function NewProductDrawer({
+function NewProductDrawerContent({
   onClose,
   onCreate,
 }: {
@@ -644,6 +644,14 @@ export default function NewProductDrawer({
       )}
     </div>
     </>
+  );
+}
+
+export default function NewProductDrawer(props: { onClose: () => void; onCreate: (payload: any) => Promise<string> }) {
+  return (
+    <Suspense fallback={<div className="fixed inset-y-0 right-0 w-[500px] bg-slate-50 shadow-2xl z-50 animate-pulse" />}>
+      <NewProductDrawerContent {...props} />
+    </Suspense>
   );
 }
 

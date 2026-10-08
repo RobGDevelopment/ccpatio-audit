@@ -296,7 +296,8 @@ export default function ProductDrawer({
               {listing.productName}
             </h2>
             <div className="flex items-center gap-2 text-sm text-slate-500 font-mono">
-              <span>{listing.globalSku}</span>
+              <span className="px-2 py-1 bg-slate-200/50 rounded border border-slate-200 font-bold">{listing.globalSku}</span>
+              <span className="text-xs text-slate-400">This SKU is permanent.</span>
             </div>
             {listing.canonicalSkuShared && (
               <p className="text-xs font-medium text-amber-600 mt-1">

@@ -1,23 +1,61 @@
 {
-  "phase_id": "step-3-mdm-hub-certify",
+  "phase_id": "pim-drawer-identity-fix",
   "base_ref": "HEAD",
-  "blast_radius": 1,
+  "blast_radius": 7,
   "counts": {
-    "files": 1,
-    "tracked": 1,
-    "untracked": 0,
-    "insertions": 9,
-    "deletions": 16
+    "files": 7,
+    "tracked": 6,
+    "untracked": 1,
+    "insertions": 62,
+    "deletions": 53
   },
   "files": [
     {
+      "status": "??",
+      "path": "PIM_GOD_MODE_DRAWER_BUILD_PLAN.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 9,
+      "insertions": 17,
       "deletions": 16
+    },
+    {
+      "status": "M",
+      "path": ".cursor/phase.lock",
+      "insertions": 8,
+      "deletions": 20
+    },
+    {
+      "status": "M",
+      "path": ".cursor/session-stamp.json",
+      "insertions": 2,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/NewProductDrawer.tsx",
+      "insertions": 10,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/ProductDrawer.tsx",
+      "insertions": 2,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/page.tsx",
+      "insertions": 23,
+      "deletions": 12
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "02491180029b82fb8c8f65b33f17c2dd63328d65b4843fbf47b31ec2c6c35d28",
+  "untracked": [
+    "PIM_GOD_MODE_DRAWER_BUILD_PLAN.md"
+  ],
+  "file_list_sha256": "438e441e0258f6e0791d8ced9b455bb947376b83a004d14ca459c3572150c39c",
   "notes": ""
 }

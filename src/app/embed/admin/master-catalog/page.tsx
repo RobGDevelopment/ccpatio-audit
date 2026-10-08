@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -43,6 +43,15 @@ import {
 } from "@/lib/ecommerce-roster";
 import EcommerceGrid from "./ecommerce/EcommerceGrid";
 import NewProductDrawer from "./ecommerce/NewProductDrawer";
+
+function DrawerLoadingShell() {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center bg-white/50 backdrop-blur-md rounded-2xl border border-white/40 shadow-sm p-12 gap-3">
+      <Loader2 className="h-8 w-8 animate-spin text-sky-500" />
+      <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Loading Roster...</span>
+    </div>
+  );
+}
 
 /** Applies per-listing patches to roster state (no-op while the roster is unloaded). */
 function patchListings(
@@ -795,17 +804,19 @@ export default function MasterCatalogAdmin() {
                 <span>Loading E-Commerce roster...</span>
               </div>
             ) : (
-              <EcommerceGrid
-                listings={ecommerce.listings}
-                gaps={ecommerce.gaps}
-                onSaveMsrp={handleEcommerceMsrp}
-                onSaveUrl={handleEcommerceUrl}
-                onSaveLegacy={handleEcommerceLegacy}
-                onMintHub={handleMintHub}
-                onSaveListingDrawer={handleEcommerceListingDrawer}
-                onSaveHubDrawer={handleEcommerceHubDrawer}
-                onListingPatched={handleListingPatched}
-              />
+              <Suspense fallback={<DrawerLoadingShell />}>
+                <EcommerceGrid
+                  listings={ecommerce.listings}
+                  gaps={ecommerce.gaps}
+                  onSaveMsrp={handleEcommerceMsrp}
+                  onSaveUrl={handleEcommerceUrl}
+                  onSaveLegacy={handleEcommerceLegacy}
+                  onMintHub={handleMintHub}
+                  onSaveListingDrawer={handleEcommerceListingDrawer}
+                  onSaveHubDrawer={handleEcommerceHubDrawer}
+                  onListingPatched={handleListingPatched}
+                />
+              </Suspense>
             )}
           </div>
         ) : (

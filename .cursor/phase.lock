@@ -1,28 +1,16 @@
 {
-  "phase_id": "step-3.6-dangling-import-cleanup",
-  "intent": "Remove dangling imports of the deleted topology, presentation, and views modules so typecheck passes.",
+  "phase_id": "pim-drawer-identity-fix",
+  "intent": "Fix Phase 1 defects: restore server-side collision detection via previewSkuAction, wrap usePathname in Suspense, and authorize pending worktree files.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
-    "src/lib/launchpad-modules.ts",
-    "src/components/CommandCenterHydrator.tsx",
-    "src/components/PresentationDashboard.tsx",
-    "src/components/control/ActionCardList.tsx",
-    "src/components/control/BlueprintPersistenceBar.tsx",
-    "src/components/control/ExecutionStateIndicator.tsx",
-    "src/components/control/InspectorDrawer.tsx",
-    "src/components/control/IntegrationEditorPanel.tsx",
-    "src/components/control/operationalAdapters.ts",
-    "src/components/control/RightSidebar.tsx",
-    "src/components/gantt/GanttControlPlane.tsx",
-    "src/schema/agRetailSequence.ts",
-    "src/schema/buildSeedFromLegacy.ts",
-    "src/schema/compileSequence.ts",
-    "src/schema/compileTopology.ts",
-    "src/schema/controlPath.ts",
-    "src/schema/nodeIntegrationConfig.ts"
+    ".cursor/session-stamp.json",
+    "PIM_GOD_MODE_DRAWER_BUILD_PLAN.md",
+    "src/app/embed/admin/master-catalog/ecommerce/NewProductDrawer.tsx",
+    "src/app/embed/admin/master-catalog/ecommerce/ProductDrawer.tsx",
+    "src/app/embed/admin/master-catalog/page.tsx"
   ],
-  "expected_blast_radius": 19,
+  "expected_blast_radius": 7,
   "target_test": "npm run typecheck"
 }
