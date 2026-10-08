@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://azrs.local/protocol/QCA_VERDICT.schema.json",
+  "title": "QcaVerdict",
+  "description": "Stdout of node .cursor/skills/qca/scripts/qca.mjs. audit_exit 0 is CERTIFIED. audit_exit 2 is DEFECT_REJECTED.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["phase_id", "verdict", "audit_exit"],
+  "properties": {
+    "phase_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "phase": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Legacy alias of phase_id. ABSENT when .cursor/phase.lock is missing."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["CERTIFIED", "DEFECT_REJECTED"]
+    },
+    "audit_exit": {
+      "type": "integer",
+      "enum": [0, 2]
+    },
+    "invariantViolations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "testResults": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["PASS", "FAIL"]
+      }
+    },
+    "targetTest": {
+      "type": ["string", "null"]
+    },
+    "blastRadius": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actual", "expected", "tolerance", "status"],
+      "properties": {
+        "actual": { "type": ["integer", "null"], "minimum": 0 },
+        "expected": { "type": ["integer", "null"], "minimum": 0 },
+        "tolerance": { "type": "integer", "const": 0 },
+        "tracked": { "type": "integer", "minimum": 0 },
+        "untracked": { "type": "integer", "minimum": 0 },
+        "status": { "type": "string", "enum": ["PASS", "FAIL"] }
+      }
+    },
+    "aarParity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "aar_sha256", "git_sha256"],
+      "properties": {
+        "status": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "aar_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "git_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  }
+}

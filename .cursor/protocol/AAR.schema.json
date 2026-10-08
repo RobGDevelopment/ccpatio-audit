@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://azrs.local/protocol/AAR.schema.json",
+  "title": "AfterActionReport",
+  "description": "Payload for .cursor/aar.json. File lists, counts, insertions, and deletions are generated from git. The path .cursor/aar.json is excluded from its own file list so the document stays deterministic. QCA ignores notes. A blast_radius that disagrees with phase.lock is a defect. The lock wins.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["phase_id", "base_ref", "blast_radius", "counts", "files", "untracked", "file_list_sha256"],
+  "properties": {
+    "phase_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "base_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "blast_radius": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Count of generated file-list entries. Compared with phase.lock expected_blast_radius."
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "tracked", "untracked", "insertions", "deletions"],
+      "properties": {
+        "files": { "type": "integer", "minimum": 0 },
+        "tracked": { "type": "integer", "minimum": 0 },
+        "untracked": { "type": "integer", "minimum": 0 },
+        "insertions": { "type": "integer", "minimum": 0 },
+        "deletions": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "files": {
+      "type": "array",
+      "description": "Union of git diff --name-status and untracked paths. This is the list QCA hashes.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "path", "insertions", "deletions"],
+        "properties": {
+          "status": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "old_path": { "type": "string", "minLength": 1 },
+          "insertions": { "type": "integer", "minimum": 0 },
+          "deletions": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "untracked": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "file_list_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 of the canonical status-and-path file list. QCA recomputes this from git and rejects a mismatch."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Human notes. Preserved by the emitter. Ignored by QCA."
+    }
+  }
+}

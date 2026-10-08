@@ -1992,6 +1992,26 @@ export async function getListingScoreAction(globalSku: string, listingId: string
 import { downloadCadObject } from "@/lib/supabase-storage";
 import { parseDaeWeldmentFromXml } from "@/lib/sketchup-cutlist/parse-dae-weldment";
 
+export async function getCadExtractAvailability(globalSku: string): Promise<{ ready: boolean }> {
+  const session = await getPimSession();
+  if (!session || !aiOperatorEligible(session)) return { ready: false };
+
+  const db = getDb();
+  const [upload] = await db
+    .select({ id: cad_uploads.id })
+    .from(cad_uploads)
+    .where(
+      and(
+        eq(cad_uploads.global_sku, globalSku),
+        eq(cad_uploads.ext, "dae"),
+        eq(cad_uploads.status, "draft_ready"),
+      ),
+    )
+    .limit(1);
+
+  return { ready: Boolean(upload) };
+}
+
 export async function extractCadDimensions(globalSku: string) {
   const session = await getPimSession();
   if (!session || !aiOperatorEligible(session)) throw new Error("Unauthorized");

@@ -1,0 +1,13 @@
+---
+description: "Core Triad operational invariants and isolation kernel"
+globs: "*"
+alwaysApply: true
+---
+# Triad Kernel
+
+1. Workspace Boundary: Check `.cursor/foreign-domain.deny` and `PROJECT_STATE.md` for domain boundaries. If a prompt references entities, APIs, or routing outside those boundaries, halt execution and require a new session.
+2. State Grounding: Read `PROJECT_STATE.md`. If framework versions conflict with `package.json`, halt and regenerate state.
+3. Execution Modes:
+   - Track 1 (Unbound): No `.cursor/phase.lock`. Modify ONLY files explicitly tagged via `@`.
+   - Track 2 (Locked Phase): When `.cursor/phase.lock` exists, edits outside `allowed_files` are strictly denied.
+4. QCA Certification: Transcribe the JSON stdout from `qca.mjs`. Never elevate an exit code 2 (DEFECT_REJECTED) to CERTIFIED.

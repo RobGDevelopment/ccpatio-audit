@@ -2,7 +2,13 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Loader2, Save } from "lucide-react";
-import { getFreightProfile, saveFreightProfile, type ShipProfileData } from "../actions";
+import {
+  extractCadDimensions,
+  getCadExtractAvailability,
+  getFreightProfile,
+  saveFreightProfile,
+  type ShipProfileData,
+} from "../actions";
 import { mapDisplayToFreight } from "@/lib/freight-utils";
 
 export function FreightPanel({
@@ -11,17 +17,22 @@ export function FreightPanel({
   hubDepth,
   hubHeight,
   hubWeight,
+  onDisplayExtracted,
 }: {
   globalSku: string;
   hubLength?: string | null;
   hubDepth?: string | null;
   hubHeight?: string | null;
   hubWeight?: string | null;
+  onDisplayExtracted?: (dims: { length: string; depth: string; height: string }) => void;
 }) {
   const [data, setData] = useState<ShipProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [cadReady, setCadReady] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [extracted, setExtracted] = useState<{ length: string; depth: string; height: string } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -46,6 +57,25 @@ export function FreightPanel({
     });
     return () => { active = false; };
   }, [globalSku]);
+
+  useEffect(() => {
+    let active = true;
+    getCadExtractAvailability(globalSku)
+      .then((row) => {
+        if (active) setCadReady(row.ready);
+      })
+      .catch(() => {
+        if (active) setCadReady(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [globalSku]);
+
+  const displayLength = extracted?.length ?? hubLength ?? "";
+  const displayDepth = extracted?.depth ?? hubDepth ?? "";
+  const displayHeight = extracted?.height ?? hubHeight ?? "";
+  const displayWeight = hubWeight ?? "";
 
   if (loading) return <div className="p-6 text-sm text-slate-500 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading freight...</div>;
   if (!data) return <div className="p-6 text-sm text-rose-500">Failed to load freight profile.</div>;
@@ -79,27 +109,51 @@ export function FreightPanel({
           <h3 className="text-sm font-semibold text-slate-800">Freight Profile</h3>
           <p className="text-xs text-slate-500 mt-1">Quoting keeps reading logistics_profiles until a later publish copies the row.</p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={isPending}
-          className="px-3 py-1.5 bg-sky-600 text-white text-xs font-semibold rounded-md hover:bg-sky-700 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
-        >
-          {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-          Save Freight
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setExtracting(true);
+              setError(null);
+              extractCadDimensions(globalSku)
+                .then((dims) => {
+                  setExtracted(dims);
+                  onDisplayExtracted?.(dims);
+                })
+                .catch((err: unknown) => {
+                  setError(err instanceof Error ? err.message : "Could not extract CAD dimensions");
+                })
+                .finally(() => setExtracting(false));
+            }}
+            disabled={extracting || isPending || !cadReady}
+            title={cadReady ? undefined : "Upload a .dae file to extract dimensions."}
+            className="px-3 py-1.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-md hover:bg-amber-200 transition-colors disabled:opacity-50"
+          >
+            {extracting && <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" />}
+            [Extract from CAD]
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isPending || extracting}
+            className="px-3 py-1.5 bg-sky-600 text-white text-xs font-semibold rounded-md hover:bg-sky-700 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+          >
+            {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            Save Freight
+          </button>
+        </div>
       </div>
 
       {error && <div className="p-3 bg-rose-50 text-rose-700 text-sm rounded-md border border-rose-100">{error}</div>}
 
-      {!data.lengthIn && !data.widthIn && !data.heightIn && !data.weightLb && (hubLength || hubDepth || hubHeight || hubWeight) && (
-        <div className="p-3 bg-sky-50 text-sky-800 text-sm rounded-md border border-sky-100 flex items-center justify-between">
+      {!data.lengthIn && !data.widthIn && !data.heightIn && !data.weightLb && (displayLength || displayDepth || displayHeight || displayWeight) && (
+        <div className="p-3 bg-sky-50 text-sky-800 text-sm rounded-md border border-sky-100 flex items-center justify-between gap-3">
           <span>
-            <strong>Suggested Dimensions:</strong> L: {hubLength || '-'} x W: {hubDepth || '-'} x H: {hubHeight || '-'} / {hubWeight || '-'} lbs
+            <strong>Display dimensions:</strong> L: {displayLength || "-"} x W: {displayDepth || "-"} x H: {displayHeight || "-"} / {displayWeight || "-"} lbs
           </span>
-          <button 
-            type="button" 
-            onClick={() => setData(prev => prev ? { ...prev, ...mapDisplayToFreight({ length: hubLength, depth: hubDepth, height: hubHeight, weight: hubWeight }) } : null)}
-            className="px-3 py-1 bg-white text-sky-600 hover:bg-sky-50 text-xs font-semibold rounded border border-sky-200 transition-colors"
+          <button
+            type="button"
+            onClick={() => setData(prev => prev ? { ...prev, ...mapDisplayToFreight({ length: displayLength, depth: displayDepth, height: displayHeight, weight: displayWeight }) } : null)}
+            className="shrink-0 px-3 py-1 bg-white text-sky-600 hover:bg-sky-50 text-xs font-semibold rounded border border-sky-200 transition-colors"
           >
             Apply display dimensions
           </button>

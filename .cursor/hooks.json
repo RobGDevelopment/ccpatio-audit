@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "hooks": {
+    "stop": [
+      {
+        "command": "node .cursor/hooks/stop-qca.mjs",
+        "loop_limit": 2,
+        "timeout": 600
+      }
+    ],
+    "preToolUse": [
+      {
+        "matcher": "(Write|StrReplace|Delete)",
+        "command": "node .cursor/hooks/pre-tool-scope.mjs",
+        "failClosed": true
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "node .cursor/hooks/before-submit-domain.mjs"
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "node .cursor/hooks/session-start-stamp.mjs"
+      }
+    ]
+  }
+}

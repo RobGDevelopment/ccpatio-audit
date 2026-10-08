@@ -29,6 +29,11 @@ export function ListingContentPanels({
   externalVersion,
   onListingPatched,
   onImageUploaded,
+  hubLength,
+  hubDepth,
+  hubHeight,
+  hubWeight,
+  onDisplayExtracted,
 }: {
   listingId: string;
   globalSku: string;
@@ -37,6 +42,11 @@ export function ListingContentPanels({
   externalVersion?: number;
   onListingPatched?: (patch: ListingPatch) => void;
   onImageUploaded?: (url: string) => void;
+  hubLength?: string | null;
+  hubDepth?: string | null;
+  hubHeight?: string | null;
+  hubWeight?: string | null;
+  onDisplayExtracted?: (dims: { length: string; depth: string; height: string }) => void;
 }) {
   const [data, setData] = useState<ListingEditorData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -77,7 +87,14 @@ export function ListingContentPanels({
       </div>
 
       <div hidden={active !== "freight"}>
-        <FreightPanel globalSku={globalSku} />
+        <FreightPanel
+          globalSku={globalSku}
+          hubLength={hubLength}
+          hubDepth={hubDepth}
+          hubHeight={hubHeight}
+          hubWeight={hubWeight}
+          onDisplayExtracted={onDisplayExtracted}
+        />
       </div>
 
       {(active === "story" || active === "seo") && !data && (

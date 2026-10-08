@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Save, Loader2, Download, Lock } from "lucide-react";
-import { EcommerceListing, getDictionaries, getListingScoreAction, generateTearSheetAction, extractCadDimensions } from "../actions";
+import { EcommerceListing, getDictionaries, getListingScoreAction, generateTearSheetAction } from "../actions";
 import { matchHubSku } from "@/lib/hub-sku-codes";
 import { useRouter } from "next/navigation";
 import { ListingContentPanels, type ListingPanelTab, type ListingPatch } from "./ListingContentPanels";
@@ -67,7 +67,6 @@ export default function ProductDrawer({
   const [listingError, setListingError] = useState<string | null>(null);
   
   const [hubSaving, setHubSaving] = useState(false);
-  const [cadExtracting, setCadExtracting] = useState(false);
   const [hubError, setHubError] = useState<string | null>(null);
 
   const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
@@ -256,20 +255,11 @@ export default function ProductDrawer({
     }
   }
 
-  async function handleExtractCad() {
-    setCadExtracting(true);
-    setHubError(null);
-    try {
-      const res = await extractCadDimensions(listing.globalSku);
-      setLength(res.length);
-      setDepth(res.depth);
-      setHeight(res.height);
-      setLocalVersion(v => v + 1);
-    } catch (e: any) {
-      setHubError(e.message);
-    } finally {
-      setCadExtracting(false);
-    }
+  function handleDisplayExtracted(dims: { length: string; depth: string; height: string }) {
+    setLength(dims.length);
+    setDepth(dims.depth);
+    setHeight(dims.height);
+    setLocalVersion((v) => v + 1);
   }
 
   async function handleDownloadTearSheet() {
@@ -315,13 +305,15 @@ export default function ProductDrawer({
             )}
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={handleDownloadTearSheet}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors"
-              title="Download Tear Sheet"
-            >
-              <Download className="w-5 h-5" />
-            </button>
+            {!hubOnly && (
+              <button
+                onClick={handleDownloadTearSheet}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors"
+                title="Download Tear Sheet"
+              >
+                <Download className="w-5 h-5" />
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors"
@@ -496,21 +488,8 @@ export default function ProductDrawer({
               </h3>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleExtractCad()}
-                  disabled={cadExtracting || hubSaving || !listing.factory.cadFilename?.endsWith(".dae") || listing.factory.cadStatus !== "draft_ready"}
-                  title={
-                    listing.factory.cadFilename?.endsWith(".dae") && listing.factory.cadStatus === "draft_ready"
-                      ? undefined
-                      : "Upload a .dae file to extract dimensions."
-                  }
-                  className="px-3 py-1.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-md hover:bg-amber-200 transition-colors disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  {cadExtracting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  [Extract from CAD]
-                </button>
-                <button
                   onClick={() => handleHubSave()}
-                  disabled={hubSaving || cadExtracting}
+                  disabled={hubSaving}
                   className="px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md hover:bg-slate-900 transition-colors disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {hubSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
@@ -674,12 +653,13 @@ export default function ProductDrawer({
 
             <div className="mt-4 pt-4 border-t border-slate-100">
               <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">Freight Profile</h4>
-              <FreightPanel 
-                globalSku={listing.globalSku} 
+              <FreightPanel
+                globalSku={listing.globalSku}
                 hubLength={length}
                 hubDepth={depth}
                 hubHeight={height}
                 hubWeight={weight}
+                onDisplayExtracted={handleDisplayExtracted}
               />
             </div>
             
@@ -775,6 +755,11 @@ export default function ProductDrawer({
             externalVersion={listingVersion}
             onListingPatched={handlePanelPatch}
             onImageUploaded={handleImageUploaded}
+            hubLength={length}
+            hubDepth={depth}
+            hubHeight={height}
+            hubWeight={weight}
+            onDisplayExtracted={handleDisplayExtracted}
           />
         </div>
       </div>

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://azrs.local/protocol/EVIDENCE.schema.json",
+  "title": "Evidence",
+  "description": "Browser or manual evidence attached to a phase. This payload is not an audit verdict.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["phase_id", "kind", "result", "summary"],
+  "properties": {
+    "phase_id": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "const": "manual" }
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["browser", "manual"]
+    },
+    "result": {
+      "type": "string",
+      "enum": ["pass", "fail"]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "url": {
+      "type": "string",
+      "minLength": 1
+    },
+    "viewport": {
+      "type": "string",
+      "minLength": 1
+    },
+    "steps": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Repo-relative paths to screenshots, traces, or other captured artifacts."
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

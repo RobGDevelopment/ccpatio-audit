@@ -14,7 +14,6 @@ import {
   Loader2,
   ChevronDown,
   Printer,
-  FileText,
   Download,
   Zap,
 } from "lucide-react";
@@ -615,11 +614,6 @@ export default function MasterCatalogAdmin() {
     setToast(`Marketing feed exported (${roster.listings.length} roster items)`);
   }
 
-  function handleTearSheets() {
-    setMenuOpen(false);
-    setToast("Tear sheet PDF generation coming soon");
-  }
-
   const colCount = 6;
 
   return (
@@ -748,14 +742,6 @@ export default function MasterCatalogAdmin() {
                     >
                       <Printer className="h-4 w-4 text-slate-500" />
                       Print View
-                    </button>
-                    <button
-                      role="menuitem"
-                      onClick={handleTearSheets}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
-                    >
-                      <FileText className="h-4 w-4 text-slate-500" />
-                      Generate Tear Sheets (PDF)
                     </button>
                     <button
                       role="menuitem"

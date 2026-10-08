@@ -1,0 +1,7 @@
+---
+description: Enforce 44px touch targets on mobile components
+globs: components/mobile/**
+alwaysApply: false
+---
+
+Enforce 44px touch targets. Read the touch-targets skill.

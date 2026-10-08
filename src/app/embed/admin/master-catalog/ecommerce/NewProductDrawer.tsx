@@ -6,6 +6,7 @@ import { SkuPreviewResult } from "@/server/master-catalog/sku-preview";
 import { usePathname } from "next/navigation";
 import { ListingContentPanels } from "./ListingContentPanels";
 import { FreightPanel } from "./FreightPanel";
+import { TokenCombobox } from "./TokenCombobox";
 
 type DictRow = { code: string; label: string; aliases?: string[] | null };
 type DictOption = { key: string; code: string; label: string; display: string };
@@ -381,33 +382,25 @@ export default function NewProductDrawer({
                 onChange={e => setProductName(e.target.value)}
                 className="w-full mt-1.5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
               />
-              <p className="text-[10px] text-slate-500 mt-1">Customer-facing Display Name (e.g., 'Bravada Armless Sofa 34"').</p>
+              <p className="text-[10px] text-slate-500 mt-1">Customer-facing Display Name used on the website and tear sheets (e.g., &apos;Bravada Armless Sofa 34&quot;&apos;).</p>
             </div>
 
             {origin === "third_party" ? (
               <div className="space-y-4 p-4 bg-amber-50 rounded-lg border border-amber-100">
                 <div>
                   <label className="text-xs font-semibold text-amber-700 uppercase">SKU Token</label>
-                  <input
-                    list="token-options"
-                    type="text"
+                  <TokenCombobox
                     value={token}
-                    onChange={e => setToken(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
-                    onBlur={() => {
-                      if (token && !tokens.find(t => t.code === token)) {
-                        createDictionaryCode("token", token, token)
-                          .then(() => loadDictionaries())
-                          .catch((err) => setError(err instanceof Error ? err.message : String(err)));
-                      }
+                    tokens={tokens}
+                    onChange={setToken}
+                    onCommitCustom={(code) => {
+                      if (tokens.some((row) => row.code === code)) return;
+                      createDictionaryCode("token", code, code)
+                        .then(() => loadDictionaries())
+                        .catch((err) => setError(err instanceof Error ? err.message : String(err)));
                     }}
-                    className="w-full mt-1.5 p-2 bg-white border border-amber-200 rounded-lg text-sm"
                   />
-                  <datalist id="token-options">
-                    {tokens.map(t => (
-                      <option key={t.code} value={t.code}>{t.label !== t.code ? `${t.label} (${t.code})` : t.code}</option>
-                    ))}
-                  </datalist>
-                  <p className="text-[10px] text-amber-600 mt-1">Short unique token for this product.</p>
+                  <p className="text-[10px] text-amber-600 mt-1">Pick a dictionary token, or type a new one. A new token is saved with the code as its meaning until you rename it.</p>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-amber-700 uppercase">Vendor Name</label>
@@ -516,7 +509,19 @@ export default function NewProductDrawer({
                  active={activeTab === 'asset_vault' || activeTab === 'story' || activeTab === 'seo' ? activeTab : null}
                />
              )}
-             {activeTab === 'freight' && preview?.sku && savedListingId && <FreightPanel globalSku={preview.sku} hubLength={length} hubDepth={depth} hubHeight={""} hubWeight={""} />}
+             {activeTab === 'freight' && preview?.sku && savedListingId && (
+               <FreightPanel
+                 globalSku={preview.sku}
+                 hubLength={length}
+                 hubDepth={depth}
+                 hubHeight=""
+                 hubWeight=""
+                 onDisplayExtracted={(dims) => {
+                   setLength(dims.length);
+                   setDepth(dims.depth);
+                 }}
+               />
+             )}
              {activeTab === 'freight' && !savedListingId && (
                <p className="text-sm text-slate-500 p-4 text-center">Save the product before setting freight.</p>
              )}

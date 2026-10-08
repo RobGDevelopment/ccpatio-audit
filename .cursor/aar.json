@@ -1,0 +1,329 @@
+{
+  "phase_id": "ABSENT",
+  "base_ref": "HEAD~1",
+  "blast_radius": 46,
+  "counts": {
+    "files": 46,
+    "tracked": 11,
+    "untracked": 35,
+    "insertions": 1137,
+    "deletions": 200
+  },
+  "files": [
+    {
+      "status": "??",
+      "path": ".cursor/foreign-domain.deny",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/hooks.json",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/hooks/before-submit-domain.mjs",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/hooks/pre-tool-scope.mjs",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/hooks/read-stdin.mjs",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/hooks/session-start-stamp.mjs",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/hooks/stop-qca.mjs",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/logs/qca-last.log",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/plans/pim_god_mode_drawer_a69beb20.plan.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/protocol/AAR.schema.json",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/protocol/EVIDENCE.schema.json",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/protocol/LOOP_BUILD_PLAN.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/protocol/PHASE_PACKET.schema.json",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/protocol/QCA_VERDICT.schema.json",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/protocol/TRACKS.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/rules/aws-agent-rules.mdc",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/rules/mobile-touch.mdc",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/rules/triad-kernel.mdc",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/session-stamp.json",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/skills/aar/scripts/emit.mjs",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/skills/build-plan/SKILL.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/skills/phase-lock/scripts/write-lock.mjs",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/skills/qca/SKILL.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/skills/qca/scripts/qca.mjs",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": ".cursor/skills/scope-exec/scripts/wrap.mjs",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "BOOTSTRAP_DISCOVERY.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "data_migration/Pricing/MASTER_CATALOG_GOD_MODE_PIM_BLUEPRINT.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "docs/FINANCIAL_PIPELINE_BLUEPRINT.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "docs/UI_SWEEP_PUNCHLIST.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "scripts/apply-schema-changes.js",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "scripts/apply-schema-changes2.js",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "scripts/cleanup-schema.js",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "scripts/db-dedupe.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "scripts/qa/verify-fedex-sandbox.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/TokenCombobox.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "A",
+      "path": "scripts/hydrate-master-catalog.ts",
+      "insertions": 674,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "playwright-report/index.html",
+      "insertions": 1,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/actions.ts",
+      "insertions": 49,
+      "deletions": 25
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/FreightPanel.tsx",
+      "insertions": 70,
+      "deletions": 16
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/ListingContentPanels.tsx",
+      "insertions": 18,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/NewProductDrawer.tsx",
+      "insertions": 24,
+      "deletions": 19
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/ProductDrawer.tsx",
+      "insertions": 24,
+      "deletions": 39
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/page.tsx",
+      "insertions": 0,
+      "deletions": 14
+    },
+    {
+      "status": "M",
+      "path": "src/lib/freight-utils.ts",
+      "insertions": 113,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/pim/tear-sheet.ts",
+      "insertions": 129,
+      "deletions": 84
+    },
+    {
+      "status": "M",
+      "path": "tests/actions.test.ts",
+      "insertions": 35,
+      "deletions": 1
+    }
+  ],
+  "untracked": [
+    ".cursor/foreign-domain.deny",
+    ".cursor/hooks.json",
+    ".cursor/hooks/before-submit-domain.mjs",
+    ".cursor/hooks/pre-tool-scope.mjs",
+    ".cursor/hooks/read-stdin.mjs",
+    ".cursor/hooks/session-start-stamp.mjs",
+    ".cursor/hooks/stop-qca.mjs",
+    ".cursor/logs/qca-last.log",
+    ".cursor/plans/pim_god_mode_drawer_a69beb20.plan.md",
+    ".cursor/protocol/AAR.schema.json",
+    ".cursor/protocol/EVIDENCE.schema.json",
+    ".cursor/protocol/LOOP_BUILD_PLAN.md",
+    ".cursor/protocol/PHASE_PACKET.schema.json",
+    ".cursor/protocol/QCA_VERDICT.schema.json",
+    ".cursor/protocol/TRACKS.md",
+    ".cursor/rules/aws-agent-rules.mdc",
+    ".cursor/rules/mobile-touch.mdc",
+    ".cursor/rules/triad-kernel.mdc",
+    ".cursor/session-stamp.json",
+    ".cursor/skills/aar/scripts/emit.mjs",
+    ".cursor/skills/build-plan/SKILL.md",
+    ".cursor/skills/phase-lock/scripts/write-lock.mjs",
+    ".cursor/skills/qca/SKILL.md",
+    ".cursor/skills/qca/scripts/qca.mjs",
+    ".cursor/skills/scope-exec/scripts/wrap.mjs",
+    "BOOTSTRAP_DISCOVERY.md",
+    "data_migration/Pricing/MASTER_CATALOG_GOD_MODE_PIM_BLUEPRINT.md",
+    "docs/FINANCIAL_PIPELINE_BLUEPRINT.md",
+    "docs/UI_SWEEP_PUNCHLIST.md",
+    "scripts/apply-schema-changes.js",
+    "scripts/apply-schema-changes2.js",
+    "scripts/cleanup-schema.js",
+    "scripts/db-dedupe.ts",
+    "scripts/qa/verify-fedex-sandbox.ts",
+    "src/app/embed/admin/master-catalog/ecommerce/TokenCombobox.tsx"
+  ],
+  "file_list_sha256": "6f24855f2412e851c158b545a0f3522808fe19558101ab38913cae5a375a2ba4",
+  "notes": ""
+}

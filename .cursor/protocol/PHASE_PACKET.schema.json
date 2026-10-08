@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://azrs.local/protocol/PHASE_PACKET.schema.json",
+  "title": "PhasePacket",
+  "description": "Payload for .cursor/phase.lock. Expected blast radius is authoritative here. .cursor/aar.json must not override it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["phase_id", "intent", "allowed_files", "expected_blast_radius", "target_test"],
+  "properties": {
+    "phase_id": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "const": "manual" },
+      "description": "Active phase identifier. The value \"manual\" is not an audit mode."
+    },
+    "intent": {
+      "type": "string",
+      "minLength": 1
+    },
+    "allowed_files": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Edit phases must be non-empty. An empty list is legal only when mode is certify."
+    },
+    "expected_blast_radius": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "target_test": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["edit", "certify"]
+    },
+    "base_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Git revision the emitter and QCA diff against. Defaults to HEAD~1 when omitted."
+    },
+    "blast_radius": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Alias of expected_blast_radius accepted by the auditor."
+    },
+    "allow_dirty_base": {
+      "type": "boolean",
+      "description": "When true, write-lock.mjs may write .cursor/phase.lock while git status --porcelain is non-empty."
+    },
+    "override_blast_cap": {
+      "type": "boolean",
+      "description": "When true, write-lock.mjs may accept an allowed_files array longer than 8."
+    }
+  }
+}
