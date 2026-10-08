@@ -1,54 +1,45 @@
 status=2
 --- stdout ---
 {
-  "phase_id": "ABSENT",
-  "phase": "ABSENT",
+  "phase_id": "step-2-fedex-ts-fix",
+  "phase": "step-2-fedex-ts-fix",
   "verdict": "DEFECT_REJECTED",
   "audit_exit": 2,
   "invariantViolations": [
-    "phase.lock missing. No manual audit mode.",
-    "typecheck failed: Command failed: npm run typecheck",
-    "lint failed: spawnSync C:\\WINDOWS\\system32\\cmd.exe ENOBUFS",
-    "target_test field missing from phase.lock.",
-    "expected_blast_radius missing from phase.lock.",
-    "Prerender Breach: src/app/embed/admin/master-catalog/ecommerce/NewProductDrawer.tsx reads usePathname() without Suspense."
+    "Blast Radius Breach: diff touches 5 files; expected 2; tolerance 0.",
+    "AAR blast radius 5 disagrees with phase.lock expected_blast_radius 2. Lock wins.",
+    "Scope Breach: PHASE_0_ALIGNMENT.md modified outside allowed phase scope.",
+    "Scope Breach: PROJECT_STATE.md modified outside allowed phase scope.",
+    "Scope Breach: .cursor/logs/qca-last.log modified outside allowed phase scope.",
+    "Scope Breach: .cursor/session-stamp.json modified outside allowed phase scope.",
+    "Scope Breach: package.json modified outside allowed phase scope."
   ],
   "testResults": {
-    "typecheck": "FAIL",
-    "lint": "FAIL",
-    "target_test": "FAIL"
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "target_test": "PASS"
   },
-  "targetTest": null,
+  "targetTest": "npm run typecheck",
   "blastRadius": {
-    "actual": 46,
-    "expected": null,
+    "actual": 5,
+    "expected": 2,
     "tolerance": 0,
-    "tracked": 11,
-    "untracked": 35,
+    "tracked": 3,
+    "untracked": 2,
     "status": "FAIL"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "6f24855f2412e851c158b545a0f3522808fe19558101ab38913cae5a375a2ba4",
-    "git_sha256": "6f24855f2412e851c158b545a0f3522808fe19558101ab38913cae5a375a2ba4"
+    "aar_sha256": "b30158c5553177d0fcb555c9ec0621177ee8318d9ed3f60d1f6851e455107eb2",
+    "git_sha256": "b30158c5553177d0fcb555c9ec0621177ee8318d9ed3f60d1f6851e455107eb2"
   }
 }
 
 --- stderr ---
-warning: in the working copy of 'playwright-report/index.html', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/embed/admin/master-catalog/actions.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/embed/admin/master-catalog/ecommerce/FreightPanel.tsx', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/embed/admin/master-catalog/ecommerce/ListingContentPanels.tsx', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/embed/admin/master-catalog/ecommerce/NewProductDrawer.tsx', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/embed/admin/master-catalog/ecommerce/ProductDrawer.tsx', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/embed/admin/master-catalog/page.tsx', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/server/pim/tear-sheet.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'playwright-report/index.html', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/embed/admin/master-catalog/actions.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/embed/admin/master-catalog/ecommerce/FreightPanel.tsx', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/embed/admin/master-catalog/ecommerce/ListingContentPanels.tsx', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/embed/admin/master-catalog/ecommerce/NewProductDrawer.tsx', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/embed/admin/master-catalog/ecommerce/ProductDrawer.tsx', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/embed/admin/master-catalog/page.tsx', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/server/pim/tear-sheet.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
 
