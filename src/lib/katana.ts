@@ -1136,7 +1136,7 @@ function minsToSeconds(raw: string | null | undefined): number | null {
  */
 export async function syncBOMToKatana(
   parentSku: string,
-  options: { allowEmpty?: boolean } = {},
+  options: { allowEmpty?: boolean, idempotencyKey?: string, fromAirlock?: boolean } = {},
 ): Promise<KatanaBomSyncResult> {
   const needle = parentSku.trim().toUpperCase();
   if (!needle) {
@@ -1249,6 +1249,9 @@ export async function syncBOMToKatana(
               error: `Invalid quantity for component ${childSku}.`,
             };
           }
+          if (options.fromAirlock && (!Number.isFinite(scrap) || scrap <= 0)) {
+            return { ok: false, error: `Invalid scrap factor for component ${childSku}.` };
+          }
           const effectiveQty = qty * (Number.isFinite(scrap) && scrap > 0 ? scrap : 1);
 
           recipeRows.push({
@@ -1265,7 +1268,7 @@ export async function syncBOMToKatana(
           });
         }
 
-        await postKatanaManufacturingBom(recipeRows, productVariantId);
+        await postKatanaManufacturingBom(recipeRows, productVariantId, options.idempotencyKey);
       } else if (bomLines.length > 0) {
         // Dry-run: count planned recipe rows
         recipeRows.push(

@@ -1,18 +1,16 @@
 {
-  "phase_id": "airlock-3-steps",
-  "intent": "Implement the four interactive Airlock wizard steps (CAD, Materials, Operations, Release) and mount them inside AirlockWizard.tsx.",
+  "phase_id": "airlock-4-publish-gate",
+  "intent": "Implement the Katana publish gate: deterministic dossier hash, shop-drawing note injection, dry-run mode, and idempotency headers.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
-    "src/app/embed/factory-bom/steps/Step1Cad.tsx",
-    "src/app/embed/factory-bom/steps/Step2Materials.tsx",
-    "src/app/embed/factory-bom/steps/Step3Operations.tsx",
-    "src/app/embed/factory-bom/steps/Step4Release.tsx",
-    "src/app/embed/factory-bom/AirlockWizard.tsx"
+    "src/app/admin/factory-bom/actions.ts",
+    "src/server/factory-bom/dossier-hash.ts",
+    "src/lib/katana.ts"
   ],
-  "expected_blast_radius": 8,
+  "expected_blast_radius": 6,
   "override_blast_cap": false,
   "target_test": "npm run typecheck"
 }

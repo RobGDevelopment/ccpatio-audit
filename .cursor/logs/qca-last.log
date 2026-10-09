@@ -1,11 +1,14 @@
-status=0
+status=2
 --- stdout ---
 {
-  "phase_id": "airlock-3-steps",
-  "phase": "airlock-3-steps",
-  "verdict": "CERTIFIED",
-  "audit_exit": 0,
-  "invariantViolations": [],
+  "phase_id": "airlock-4-publish-gate",
+  "phase": "airlock-4-publish-gate",
+  "verdict": "DEFECT_REJECTED",
+  "audit_exit": 2,
+  "invariantViolations": [
+    "Blast Radius Breach: diff touches 2 files; expected 7; tolerance 0.",
+    "AAR blast radius 2 disagrees with phase.lock expected_blast_radius 7. Lock wins."
+  ],
   "testResults": {
     "typecheck": "PASS",
     "lint": "PASS",
@@ -13,17 +16,17 @@ status=0
   },
   "targetTest": "npm run typecheck",
   "blastRadius": {
-    "actual": 8,
-    "expected": 8,
+    "actual": 2,
+    "expected": 7,
     "tolerance": 0,
-    "tracked": 4,
-    "untracked": 4,
-    "status": "PASS"
+    "tracked": 2,
+    "untracked": 0,
+    "status": "FAIL"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "c539adf408dce6932ac298cab8d24be795dacc2aa7c30aeee279cb2627e0ef05",
-    "git_sha256": "c539adf408dce6932ac298cab8d24be795dacc2aa7c30aeee279cb2627e0ef05"
+    "aar_sha256": "dd02cd99422bf54d5010c37a62afa7964f0c49381d950c37761d2a9a06f58cae",
+    "git_sha256": "dd02cd99422bf54d5010c37a62afa7964f0c49381d950c37761d2a9a06f58cae"
   }
 }
 
@@ -31,9 +34,7 @@ status=0
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
 

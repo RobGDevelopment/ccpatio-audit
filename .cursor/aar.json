@@ -1,70 +1,29 @@
 {
-  "phase_id": "airlock-3-steps",
+  "phase_id": "airlock-4-publish-gate",
   "base_ref": "HEAD",
-  "blast_radius": 8,
+  "blast_radius": 2,
   "counts": {
-    "files": 8,
-    "tracked": 4,
-    "untracked": 4,
-    "insertions": 46,
-    "deletions": 19
+    "files": 2,
+    "tracked": 2,
+    "untracked": 0,
+    "insertions": 23,
+    "deletions": 23
   },
   "files": [
     {
-      "status": "??",
-      "path": "src/app/embed/factory-bom/steps/Step1Cad.tsx",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/app/embed/factory-bom/steps/Step2Materials.tsx",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/app/embed/factory-bom/steps/Step3Operations.tsx",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/app/embed/factory-bom/steps/Step4Release.tsx",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 7,
-      "deletions": 7
+      "insertions": 16,
+      "deletions": 15
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 8,
-      "deletions": 6
-    },
-    {
-      "status": "M",
-      "path": ".cursor/session-stamp.json",
-      "insertions": 2,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/factory-bom/AirlockWizard.tsx",
-      "insertions": 29,
-      "deletions": 4
+      "insertions": 7,
+      "deletions": 8
     }
   ],
-  "untracked": [
-    "src/app/embed/factory-bom/steps/Step1Cad.tsx",
-    "src/app/embed/factory-bom/steps/Step2Materials.tsx",
-    "src/app/embed/factory-bom/steps/Step3Operations.tsx",
-    "src/app/embed/factory-bom/steps/Step4Release.tsx"
-  ],
-  "file_list_sha256": "c539adf408dce6932ac298cab8d24be795dacc2aa7c30aeee279cb2627e0ef05",
+  "untracked": [],
+  "file_list_sha256": "dd02cd99422bf54d5010c37a62afa7964f0c49381d950c37761d2a9a06f58cae",
   "notes": ""
 }
