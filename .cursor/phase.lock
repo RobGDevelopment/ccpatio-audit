@@ -1,15 +1,19 @@
 {
-  "phase_id": "pim-drawer-logistics-readonly",
-  "intent": "Implement Logistics Layer: read-only channel IDs, restrict freight edits to existing logistics_profiles rows with katana_variant_id, forbid inserts.",
+  "phase_id": "airlock-1-schema",
+  "intent": "Create the factory_release_gate table schema and pure database helpers.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
-    "src/app/embed/admin/master-catalog/ecommerce/ProductDrawer.tsx",
-    "src/app/embed/admin/master-catalog/ecommerce/FreightPanel.tsx",
-    "src/app/embed/admin/master-catalog/actions.ts"
+    "src/server/db/schema.ts",
+    "src/server/factory-bom/release-gate.ts",
+    "KATANA_PIPELINE_BUILD_PLAN.md",
+    "src/server/db/migrations/0048_reflective_human_cannonball.sql",
+    "src/server/db/migrations/meta/0048_snapshot.json",
+    "src/server/db/migrations/meta/_journal.json"
   ],
-  "expected_blast_radius": 6,
+  "expected_blast_radius": 9,
+  "override_blast_cap": true,
   "target_test": "npm run typecheck"
 }

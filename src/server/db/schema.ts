@@ -1585,3 +1585,27 @@ export const product_relations = pgTable("product_relations", {
 }, (table) => [
   uniqueIndex("product_relations_unq").on(table.from_sku, table.to_sku, table.role),
 ]);
+
+export const factoryReleaseStatusEnum = pgEnum("factory_release_status", [
+  "quarantined",
+  "released",
+]);
+
+export const factory_release_gate = pgTable("factory_release_gate", {
+  root_sku: text("root_sku")
+    .primaryKey()
+    .references(() => sku_mappings.global_sku, { onUpdate: "cascade", onDelete: "cascade" }),
+  status: factoryReleaseStatusEnum("status").notNull().default("quarantined"),
+  blocking_codes: jsonb("blocking_codes").notNull().default([]),
+  checklist: jsonb("checklist").notNull().default({}),
+  dossier_hash: varchar("dossier_hash", { length: 64 }),
+  released_by: text("released_by"),
+  released_at: timestamp("released_at"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  check(
+    "factory_release_gate_released_attested",
+    sql`(status = 'quarantined') OR (status = 'released' AND released_by IS NOT NULL AND released_at IS NOT NULL AND dossier_hash IS NOT NULL AND jsonb_array_length(blocking_codes) = 0)`
+  )
+]);
