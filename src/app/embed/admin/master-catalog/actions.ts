@@ -21,6 +21,7 @@ import {
   nomenclature_sku_tokens,
   user_roles,
   catalog_ship_profiles,
+  product_relations,
 } from "@/server/db/schema";
 import { eq, desc, asc, count, and, inArray, sql, max, or, not, like, isNull } from "drizzle-orm";
 import {
@@ -1047,10 +1048,11 @@ export async function updateHubInDrawer(
     isWebVisible?: boolean;
     baseCost?: string | null;
     cost?: string | null;
+    /** Accepted from existing callers. This phase does not write channel sync flags. */
     syncToWoo?: boolean;
     syncToClover?: boolean;
-    naFields?: string[];
     publishConfirmed?: boolean;
+    naFields?: string[];
     assemblyRequired?: boolean;
     warrantyTermMonths?: number | null;
     warrantyCovers?: string | null;
@@ -1068,8 +1070,6 @@ export async function updateHubInDrawer(
   
   try {
     await db.transaction(async (tx) => {
-    // 1. Calculate Completeness Score to enforce sync toggles.
-    // An empty listing id is hub-only: the finished good has no ecommerce_listings row.
     const hubOnly = listingId.length === 0;
     const [listing] = hubOnly
       ? [undefined]
@@ -1080,52 +1080,9 @@ export async function updateHubInDrawer(
 
     if (!hubOnly && !listing) throw new Error("Listing not found");
 
-    const readinessMap = await getFactoryReadinessMap([globalSku]);
-    const factoryState = (readinessMap.get(globalSku) ?? UNKNOWN_FACTORY_READINESS).state;
-
-    const snap = await buildCompletenessSnapshot(tx, globalSku, listing?.id ?? "", factoryState, payload);
-    const { score, gates, canSyncWoo, canSyncClover } = scoreProduct(snap);
-    const isArchived = !!listing?.archived_at;
-    const isComplete = score === 100;
-    const canSyncW = canSyncWoo && !isArchived;
-    const canSyncC = canSyncClover && !isArchived;
-
-    // Check for sync block
-    const requestedWoo = "syncToWoo" in payload && payload.syncToWoo === true;
-    const requestedClover = "syncToClover" in payload && payload.syncToClover === true;
-    
-    let wooJustEnabled = false;
-    if (requestedWoo) {
-      const [currentMapping] = await tx.select({ sync_to_woo: sku_mappings.sync_to_woo }).from(sku_mappings).where(eq(sku_mappings.global_sku, globalSku));
-      if (currentMapping && !currentMapping.sync_to_woo) {
-        if (!payload.publishConfirmed) {
-          throw new Error(JSON.stringify({ ok: false, error: "publish_unconfirmed" }));
-        }
-        wooJustEnabled = true;
-      }
-    }
-
-    if ((requestedWoo && !canSyncW) || (requestedClover && !canSyncC)) {
-      const failing = gates ? gates.filter((g: any) => !g.passed).map((g: any) => g.id) : [];
-      // The Woo sentence is only for a complete product blocked by the hero/visibility mask.
-      // A short score stays sync_blocked so the failing gates are what the operator sees.
-      const wooMask =
-        requestedWoo &&
-        !canSyncW &&
-        score === 100 &&
-        !(requestedClover && !canSyncC) &&
-        (!snap.assets.hasPrimary || !snap.isWebVisible);
-      if (wooMask) {
-        throw new Error("Woo requires a primary image and web visibility.");
-      }
-      throw new Error(JSON.stringify({ ok: false, error: "sync_blocked", score, failing }));
-    }
-
     // 2. Bump version on sku_mappings
     const mappingSet: any = { version: sql`version + 1`, updated_at: new Date() };
     if ("baseCost" in payload) mappingSet.base_cost = payload.baseCost ? parsePrice(payload.baseCost).toFixed(2) : null;
-    if ("syncToWoo" in payload) mappingSet.sync_to_woo = payload.syncToWoo;
-    if ("syncToClover" in payload) mappingSet.sync_to_clover = payload.syncToClover;
 
     const [mappingRow] = await tx
       .update(sku_mappings)
@@ -1184,41 +1141,8 @@ export async function updateHubInDrawer(
           set: tpSet,
         });
     }
-      
-    if (wooJustEnabled) {
-      await tx.insert(pim_audit_log).values({
-        operator_email: session.email,
-        action: "publish_live_confirmed",
-        global_sku: globalSku,
-        new_value: JSON.stringify({ score: 100 }),
-      });
-    }
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "";
-    const wooMask = message === "Woo requires a primary image and web visibility.";
-    let auditPayload: string | null = null;
-    if (wooMask) {
-      auditPayload = JSON.stringify({ score: 100, failing: [], message });
-    } else {
-      try {
-        const parsed = JSON.parse(message) as { error?: string; score?: number; failing?: string[] };
-        if (parsed.error === "sync_blocked") {
-          auditPayload = JSON.stringify({ score: parsed.score, failing: parsed.failing });
-        }
-      } catch {
-        auditPayload = null;
-      }
-    }
-    if (auditPayload) {
-      await db.insert(pim_audit_log).values({
-        operator_email: session.email,
-        operator_name: session.name,
-        global_sku: globalSku,
-        action: "sync_blocked",
-        new_value: auditPayload,
-      });
-    }
     throw err;
   }
 
@@ -1228,6 +1152,89 @@ export async function updateHubInDrawer(
 
 // 13. Create a brand new product from the empty drawer
 import { previewSku } from "@/server/master-catalog/sku-preview";
+
+export async function createSuccessorProduct(
+  oldGlobalSku: string,
+  listingId: string,
+  payload: {
+    productName: string;
+    collectionLabel: string;
+    categoryCode: string;
+    categoryLabel: string;
+    length: string;
+    depth: string;
+    origin: "manufactured" | "third_party";
+    token?: string;
+    collectionCode?: string;
+  }
+) {
+  const db = getDb();
+  const session = await getPimSession();
+  
+  if (!session || isEmbedPrincipal(session) || !session.email?.endsWith("@ccpatio.com")) {
+    throw new Error("Unauthorized");
+  }
+
+  const preview = await previewSku(
+    payload.productName,
+    payload.collectionLabel,
+    payload.categoryCode,
+    payload.length,
+    payload.depth,
+    null,
+    payload.origin,
+    payload.token,
+    payload.collectionCode,
+    payload.categoryLabel
+  );
+
+  if (preview.isCollision) {
+    throw new Error(`Successor SKU ${preview.sku} already exists as ${preview.existingProductName}`);
+  }
+
+  const newSku = preview.sku;
+
+  await db.transaction(async (tx) => {
+    const [oldListing] = await tx
+      .select()
+      .from(ecommerce_listings)
+      .where(eq(ecommerce_listings.id, listingId));
+
+    if (!oldListing) throw new Error("Original listing not found");
+
+    await tx.insert(sku_mappings).values({
+      global_sku: newSku,
+      product_origin: payload.origin,
+      category: preview.categoryLabel || "Uncategorized",
+      item_type: "finished_good",
+      original_name: payload.productName,
+      source_file: "master-catalog-successor",
+      is_active: true,
+    });
+
+    await tx.insert(finished_goods_catalog).values({
+      global_sku: newSku,
+      length: payload.length,
+      depth: payload.depth,
+    });
+
+    const { id, created_at, updated_at, ...listingWithoutId } = oldListing as any;
+    await tx.insert(ecommerce_listings).values({
+      ...listingWithoutId,
+      global_sku: newSku,
+      version: 1,
+    });
+
+    await tx.insert(product_relations).values({
+      from_sku: oldGlobalSku,
+      to_sku: newSku,
+      role: 'successor',
+    });
+  });
+
+  revalidatePath("/embed/admin/master-catalog");
+  return { success: true, newSku };
+}
 import { matchHubSku } from "@/lib/hub-sku-codes";
 
 export async function previewSkuAction(name: string, collectionLabel: string, categoryCode: string, length: string, depth: string, existingSku?: string | null, origin: "manufactured" | "third_party" = "manufactured", token?: string, collectionCode?: string, categoryLabel?: string) {

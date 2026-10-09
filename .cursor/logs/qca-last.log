@@ -1,8 +1,8 @@
 status=0
 --- stdout ---
 {
-  "phase_id": "pim-drawer-listing",
-  "phase": "pim-drawer-listing",
+  "phase_id": "pim-drawer-hub",
+  "phase": "pim-drawer-hub",
   "verdict": "CERTIFIED",
   "audit_exit": 0,
   "invariantViolations": [],

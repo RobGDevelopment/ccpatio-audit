@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Save, Loader2, Download, Lock } from "lucide-react";
-import { EcommerceListing, getDictionaries, getListingScoreAction, generateTearSheetAction } from "../actions";
+import { EcommerceListing, getDictionaries, getListingScoreAction, generateTearSheetAction, createSuccessorProduct } from "../actions";
 import { matchHubSku } from "@/lib/hub-sku-codes";
 import { useRouter } from "next/navigation";
 import { ListingContentPanels, type ListingPanelTab, type ListingPatch } from "./ListingContentPanels";
@@ -33,10 +33,7 @@ export interface HubDrawerPayload {
   marketingDescription?: string | null;
   baseCost?: string | null;
   cost?: string | null;
-  syncToWoo?: boolean;
-  syncToClover?: boolean;
   naFields?: string[];
-  publishConfirmed?: boolean;
   assemblyRequired?: boolean;
   warrantyTermMonths?: number | null;
   warrantyCovers?: string | null;
@@ -119,6 +116,9 @@ export default function ProductDrawer({
   const [sitHeight, setSitHeight] = useState(listing.hubSitHeight || "");
   const [weight, setWeight] = useState(listing.hubWeight || "");
   const [imageUrl, setImageUrl] = useState(listing.imageUrl || "");
+  const [baseCost, setBaseCost] = useState(listing.baseCost || "");
+  const [seoTitle, setSeoTitle] = useState("");
+  const [seoDescription, setSeoDescription] = useState("");
   const [syncToWoo, setSyncToWoo] = useState(listing.syncToWoo || false);
   const [syncToClover, setSyncToClover] = useState(listing.syncToClover || false);
   const [isWebVisible, setIsWebVisible] = useState(listing.isWebVisible || false);
@@ -214,12 +214,6 @@ export default function ProductDrawer({
   }
 
   async function handleHubSave(confirmedPublish = false) {
-    if (!confirmedPublish && syncToWoo && !listing.syncToWoo) {
-      setPublishConfirmOpen(true);
-      return;
-    }
-    setPublishConfirmOpen(false);
-
     setHubSaving(true);
     setHubError(null);
     try {
@@ -230,10 +224,11 @@ export default function ProductDrawer({
         armHeight: armHeight || null,
         sitHeight: sitHeight || null,
         weight: weight || null,
-        syncToWoo,
-        syncToClover,
+        imageUrl: imageUrl || null,
+        seoTitle: seoTitle || null,
+        seoDescription: seoDescription || null,
+        baseCost: baseCost || null,
         naFields,
-        publishConfirmed: confirmedPublish,
         isWebVisible,
         assemblyRequired,
         warrantyTermMonths: warrantyTermMonths ? parseInt(warrantyTermMonths, 10) : null,
@@ -515,6 +510,31 @@ export default function ProductDrawer({
               </h3>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={async () => {
+                    try {
+                      setHubSaving(true);
+                      await createSuccessorProduct(listing.globalSku, listing.id, {
+                        productName: productName,
+                        collectionLabel: collectionLabel,
+                        categoryCode: listing.globalSku.split("-")[2] || "UNKNOWN",
+                        categoryLabel: "Uncategorized",
+                        length: length,
+                        depth: depth,
+                        origin: listing.globalSku.startsWith("3P-") ? "third_party" : "manufactured"
+                      });
+                      onClose();
+                    } catch (e: any) {
+                      setHubError(e.message);
+                    } finally {
+                      setHubSaving(false);
+                    }
+                  }}
+                  disabled={hubSaving}
+                  className="px-3 py-1.5 bg-sky-600 text-white text-xs font-semibold rounded-md hover:bg-sky-700 transition-colors disabled:opacity-50"
+                >
+                  Save as New Product (Successor)
+                </button>
+                <button
                   onClick={() => handleHubSave()}
                   disabled={hubSaving}
                   className="px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md hover:bg-slate-900 transition-colors disabled:opacity-50 flex items-center gap-1.5"
@@ -604,6 +624,45 @@ export default function ProductDrawer({
                   type="text"
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
+                  className="px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-600 flex justify-between">
+                  Local Cost
+                  <span className="text-amber-600 text-[10px]">Cost not synced to QuickBooks.</span>
+                </label>
+                <input
+                  type="text"
+                  value={baseCost}
+                  onChange={(e) => setBaseCost(e.target.value)}
+                  className="px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-600">Image Assignment URL</label>
+                <input
+                  type="text"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className="px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-600">SEO Title</label>
+                <input
+                  type="text"
+                  value={seoTitle}
+                  onChange={(e) => setSeoTitle(e.target.value)}
+                  className="px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-600">SEO Description</label>
+                <input
+                  type="text"
+                  value={seoDescription}
+                  onChange={(e) => setSeoDescription(e.target.value)}
                   className="px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
                 />
               </div>

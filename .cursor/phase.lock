@@ -1,6 +1,6 @@
 {
-  "phase_id": "pim-drawer-listing",
-  "intent": "Implement Listing Layer: expand ListingDrawerPayload, isolate ecommerce_listings writes, sever hub MSRP mirror, and implement sanitized HTML story.",
+  "phase_id": "pim-drawer-hub",
+  "intent": "Implement Core Hub Layer: narrow updateHubInDrawer to local tables, add Hub UI fields with QuickBooks cost warning, and implement Successor SKU generation flow.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
