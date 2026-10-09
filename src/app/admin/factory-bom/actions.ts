@@ -24,7 +24,7 @@ import { getPimSession, logPimAudit } from "@/lib/pim-audit";
 import { subAssemblySku } from "@/lib/heuristic-bom";
 import { syncBOMToKatana } from "@/lib/katana";
 import { getCatalogPublishMode, canMutateKatanaCatalog } from "@/server/pipeline/catalog-mode";
-import { hashChannelPayload, upsertChannelSync } from "@/server/mdm/channel-sync";
+import { upsertChannelSync } from "@/server/mdm/channel-sync";
 import { runSecondaryExtract } from "@/lib/secondary-extraction";
 import {
   coerceCutListColumn,
@@ -1371,23 +1371,13 @@ export async function publishApprovedRecipeToKatana(
     };
   }
 
-  const payloadHash = hashChannelPayload({
-    channel: "katana",
-    path: "factory_publish",
-    sku,
-    recipeRows: result.recipeRows ?? 0,
-    operationRows: result.operationRows ?? 0,
-    nodesSynced: result.nodesSynced ?? 0,
-    dryRun: result.dryRun ?? false,
-  });
-
   await upsertChannelSync({
     globalSku: sku,
     channel: "katana",
     status: result.dryRun ? "pending" : "success",
     externalId: result.productVariantId != null ? String(result.productVariantId) : null,
     lastError: null,
-    payloadHash,
+    payloadHash: dossierHash,
   });
 
   await logPimAudit({
