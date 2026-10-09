@@ -1,49 +1,35 @@
 {
   "phase_id": "airlock-4-channel-sync",
   "base_ref": "HEAD",
-  "blast_radius": 5,
+  "blast_radius": 3,
   "counts": {
-    "files": 5,
-    "tracked": 4,
-    "untracked": 1,
-    "insertions": 39,
+    "files": 3,
+    "tracked": 3,
+    "untracked": 0,
+    "insertions": 12,
     "deletions": 16
   },
   "files": [
     {
-      "status": "??",
-      "path": "tests/publish-idempotency.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 11,
-      "deletions": 9
+      "insertions": 9,
+      "deletions": 13
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 4,
-      "deletions": 5
+      "insertions": 1,
+      "deletions": 1
     },
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
       "insertions": 2,
       "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/app/admin/factory-bom/actions.ts",
-      "insertions": 22,
-      "deletions": 0
     }
   ],
-  "untracked": [
-    "tests/publish-idempotency.test.ts"
-  ],
-  "file_list_sha256": "9cffb6af1915486ab1971a81042e075a022befa22625033a9c68e29e4034a045",
+  "untracked": [],
+  "file_list_sha256": "f23beb95b73a2b6e0372d3b993e5222caee64fa439ef3ed662f5c9d2bda075de",
   "notes": ""
 }

@@ -1,15 +1,14 @@
 {
-  "phase_id": "airlock-4-channel-sync",
-  "intent": "Implement idempotent network skip using channel_sync.payload_hash to prevent duplicate Katana API calls.",
+  "phase_id": "airlock-3-e2e",
+  "intent": "Implement Playwright E2E assertions for the factory-bom lifecycle, proving the UI enforces quarantine gates and correctly renders heuristic vs. manual states.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
-    "src/app/admin/factory-bom/actions.ts",
-    "tests/publish-idempotency.test.ts"
+    "tests/e2e/factory-bom-lifecycle.spec.ts"
   ],
-  "expected_blast_radius": 5,
+  "expected_blast_radius": 4,
   "override_blast_cap": false,
-  "target_test": "npm run typecheck"
+  "target_test": "npx playwright test tests/e2e/factory-bom-lifecycle.spec.ts"
 }
