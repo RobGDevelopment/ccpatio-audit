@@ -1,16 +1,15 @@
 {
-  "phase_id": "airlock-4-publish-gate",
-  "intent": "Implement the Katana publish gate: deterministic dossier hash, shop-drawing note injection, dry-run mode, and idempotency headers.",
+  "phase_id": "airlock-4-channel-sync",
+  "intent": "Implement idempotent network skip using channel_sync.payload_hash to prevent duplicate Katana API calls.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
     "src/app/admin/factory-bom/actions.ts",
-    "src/server/factory-bom/dossier-hash.ts",
-    "src/lib/katana.ts"
+    "tests/publish-idempotency.test.ts"
   ],
-  "expected_blast_radius": 4,
+  "expected_blast_radius": 5,
   "override_blast_cap": false,
   "target_test": "npm run typecheck"
 }

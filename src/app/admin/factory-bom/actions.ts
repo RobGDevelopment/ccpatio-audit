@@ -48,6 +48,7 @@ import {
   product_bom_draft,
   recipe_estimates_draft,
   sku_mappings,
+  channel_sync,
   type CadUploadStatus,
   type ItemType,
   type RecipeReviewStatus,
@@ -1127,6 +1128,7 @@ export async function publishApprovedRecipeToKatana(
     dryRun?: boolean;
     dossierHash?: string;
     message?: string;
+    idempotent?: boolean;
   }
 > {
   const session = await requireSession();
@@ -1333,6 +1335,26 @@ export async function publishApprovedRecipeToKatana(
 
   const catalogMode = getCatalogPublishMode();
   const dryRun = !canMutateKatanaCatalog(catalogMode);
+
+  const [existingSync] = await db
+    .select()
+    .from(channel_sync)
+    .where(
+      and(
+        eq(channel_sync.global_sku, sku),
+        eq(channel_sync.channel, "katana")
+      )
+    )
+    .limit(1);
+
+  if (existingSync?.status === "success" && existingSync.payload_hash === dossierHash) {
+    return { 
+      ok: true, 
+      idempotent: true, 
+      dossierHash, 
+      message: "Idempotent skip: dossier hash unchanged" 
+    };
+  }
 
   const result = await syncBOMToKatana(sku, {
     fromAirlock: true,
