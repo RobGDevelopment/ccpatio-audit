@@ -1,41 +1,71 @@
 {
-  "phase_id": "airlock-1-invalidate",
+  "phase_id": "airlock-1.5-hygiene",
   "base_ref": "HEAD",
-  "blast_radius": 4,
+  "blast_radius": 8,
   "counts": {
-    "files": 4,
-    "tracked": 4,
-    "untracked": 0,
-    "insertions": 48,
-    "deletions": 24
+    "files": 8,
+    "tracked": 3,
+    "untracked": 5,
+    "insertions": 18,
+    "deletions": 16
   },
   "files": [
     {
+      "status": "??",
+      "path": "src/lib/sketchup-cutlist/component-hygiene.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/lib/sketchup-cutlist/derived-heuristics.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/lib/sketchup-cutlist/parse-glb-weldment.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/component-hygiene.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/derived-heuristics.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 10,
-      "deletions": 12
+      "insertions": 8,
+      "deletions": 10
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 4,
-      "deletions": 10
+      "insertions": 8,
+      "deletions": 4
     },
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
       "insertions": 2,
       "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/app/admin/factory-bom/actions.ts",
-      "insertions": 32,
-      "deletions": 0
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "a713af5a37e7e0e282aad917f6cb00a6e67cf6fea02fb574855449acf3826417",
+  "untracked": [
+    "src/lib/sketchup-cutlist/component-hygiene.ts",
+    "src/lib/sketchup-cutlist/derived-heuristics.ts",
+    "src/lib/sketchup-cutlist/parse-glb-weldment.ts",
+    "tests/component-hygiene.test.ts",
+    "tests/derived-heuristics.test.ts"
+  ],
+  "file_list_sha256": "fc39bdf53fc88b2f46b1d9bf2d43fc5e99f933daaa74bb8e114486dd90917afc",
   "notes": ""
 }

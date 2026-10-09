@@ -1,8 +1,8 @@
 status=0
 --- stdout ---
 {
-  "phase_id": "airlock-1-invalidate",
-  "phase": "airlock-1-invalidate",
+  "phase_id": "airlock-1.5-hygiene",
+  "phase": "airlock-1.5-hygiene",
   "verdict": "CERTIFIED",
   "audit_exit": 0,
   "invariantViolations": [],
@@ -13,17 +13,17 @@ status=0
   },
   "targetTest": "npm run typecheck",
   "blastRadius": {
-    "actual": 4,
-    "expected": 4,
+    "actual": 8,
+    "expected": 8,
     "tolerance": 0,
-    "tracked": 4,
-    "untracked": 0,
+    "tracked": 3,
+    "untracked": 5,
     "status": "PASS"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "a713af5a37e7e0e282aad917f6cb00a6e67cf6fea02fb574855449acf3826417",
-    "git_sha256": "a713af5a37e7e0e282aad917f6cb00a6e67cf6fea02fb574855449acf3826417"
+    "aar_sha256": "fc39bdf53fc88b2f46b1d9bf2d43fc5e99f933daaa74bb8e114486dd90917afc",
+    "git_sha256": "fc39bdf53fc88b2f46b1d9bf2d43fc5e99f933daaa74bb8e114486dd90917afc"
   }
 }
 
@@ -32,10 +32,8 @@ warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF 
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/admin/factory-bom/actions.ts', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/admin/factory-bom/actions.ts', LF will be replaced by CRLF the next time Git touches it
 

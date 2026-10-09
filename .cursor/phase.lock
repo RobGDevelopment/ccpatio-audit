@@ -1,13 +1,17 @@
 {
-  "phase_id": "airlock-1-invalidate",
-  "intent": "Invalidate the factory release gate upon draft mutations by calling resetReleaseGate.",
+  "phase_id": "airlock-1.5-hygiene",
+  "intent": "Implement pure SketchUp naming grammar, AABB auto-correction, and derived heuristic calculators (powder, weight, joinery) alongside their unit tests.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
-    "src/app/admin/factory-bom/actions.ts"
+    "src/lib/sketchup-cutlist/component-hygiene.ts",
+    "src/lib/sketchup-cutlist/parse-glb-weldment.ts",
+    "src/lib/sketchup-cutlist/derived-heuristics.ts",
+    "tests/component-hygiene.test.ts",
+    "tests/derived-heuristics.test.ts"
   ],
-  "expected_blast_radius": 4,
+  "expected_blast_radius": 8,
   "target_test": "npm run typecheck"
 }
