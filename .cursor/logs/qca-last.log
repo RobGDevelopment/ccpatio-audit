@@ -1,8 +1,8 @@
 status=0
 --- stdout ---
 {
-  "phase_id": "pim-drawer-hub",
-  "phase": "pim-drawer-hub",
+  "phase_id": "pim-drawer-logistics-readonly",
+  "phase": "pim-drawer-logistics-readonly",
   "verdict": "CERTIFIED",
   "audit_exit": 0,
   "invariantViolations": [],
@@ -13,17 +13,17 @@ status=0
   },
   "targetTest": "npm run typecheck",
   "blastRadius": {
-    "actual": 5,
-    "expected": 5,
+    "actual": 6,
+    "expected": 6,
     "tolerance": 0,
-    "tracked": 5,
+    "tracked": 6,
     "untracked": 0,
     "status": "PASS"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "6a34f46930fd08ec8bd1e9285e3961b7eb64f5d185c24c85f6f80219daf662fd",
-    "git_sha256": "6a34f46930fd08ec8bd1e9285e3961b7eb64f5d185c24c85f6f80219daf662fd"
+    "aar_sha256": "29df1dfbb6d1acae52916a0e704560f98603cd9ac4d34670a7e7272145d81371",
+    "git_sha256": "29df1dfbb6d1acae52916a0e704560f98603cd9ac4d34670a7e7272145d81371"
   }
 }
 

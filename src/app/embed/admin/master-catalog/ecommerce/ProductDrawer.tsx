@@ -745,6 +745,10 @@ export default function ProductDrawer({
                 hubDepth={depth}
                 hubHeight={height}
                 hubWeight={weight}
+                katanaVariantId={listing.katanaVariantId}
+                wooProductId={listing.wooProductId}
+                cloverItemId={listing.cloverItemId}
+                qboItemId={listing.qboItemId}
                 onDisplayExtracted={handleDisplayExtracted}
               />
             </div>

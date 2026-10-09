@@ -1,14 +1,15 @@
 {
-  "phase_id": "pim-drawer-hub",
-  "intent": "Implement Core Hub Layer: narrow updateHubInDrawer to local tables, add Hub UI fields with QuickBooks cost warning, and implement Successor SKU generation flow.",
+  "phase_id": "pim-drawer-logistics-readonly",
+  "intent": "Implement Logistics Layer: read-only channel IDs, restrict freight edits to existing logistics_profiles rows with katana_variant_id, forbid inserts.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
     "src/app/embed/admin/master-catalog/ecommerce/ProductDrawer.tsx",
+    "src/app/embed/admin/master-catalog/ecommerce/FreightPanel.tsx",
     "src/app/embed/admin/master-catalog/actions.ts"
   ],
-  "expected_blast_radius": 5,
+  "expected_blast_radius": 6,
   "target_test": "npm run typecheck"
 }

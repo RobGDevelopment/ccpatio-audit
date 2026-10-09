@@ -22,6 +22,7 @@ import {
   user_roles,
   catalog_ship_profiles,
   product_relations,
+  logistics_profiles,
 } from "@/server/db/schema";
 import { eq, desc, asc, count, and, inArray, sql, max, or, not, like, isNull } from "drizzle-orm";
 import {
@@ -305,6 +306,8 @@ export interface EcommerceListing {
   hubNaFields: string[];
   imageUrl: string | null;
   archivedAt: Date | null;
+  katanaVariantId: number | null;
+  wooProductId: string | null;
   syncToWoo: boolean;
   syncToClover: boolean;
   cloverItemId: string | null;
@@ -360,6 +363,8 @@ interface ListingFields {
   hubNaFields: string[];
   imageUrl: string | null;
   archivedAt: Date | null;
+  katanaVariantId: number | null;
+  wooProductId: string | null;
   syncToWoo: boolean;
   syncToClover: boolean;
   cloverItemId: string | null;
@@ -410,6 +415,8 @@ function toListing(r: ListingFields, factory: FactoryReadiness): EcommerceListin
     hubNaFields: r.hubNaFields || [],
     imageUrl: r.imageUrl,
     archivedAt: r.archivedAt,
+    katanaVariantId: r.katanaVariantId,
+    wooProductId: r.wooProductId,
     syncToWoo: r.syncToWoo,
     syncToClover: r.syncToClover,
     cloverItemId: r.cloverItemId,
@@ -457,6 +464,8 @@ export async function getHubProductForDrawer(globalSku: string): Promise<Ecommer
       weight: finished_goods_catalog.weight,
       naFields: finished_goods_catalog.na_fields,
       imageUrl: finished_goods_catalog.image_url,
+      katanaVariantId: sku_mappings.katana_variant_id,
+      wooProductId: sku_mappings.woo_product_id,
       isWebVisible: finished_goods_catalog.is_web_visible,
       assemblyRequired: finished_goods_catalog.assembly_required,
       warrantyTermMonths: finished_goods_catalog.warranty_term_months,
@@ -503,6 +512,8 @@ export async function getHubProductForDrawer(globalSku: string): Promise<Ecommer
     hubNaFields: row.naFields ?? [],
     imageUrl: row.imageUrl,
     archivedAt: null,
+    katanaVariantId: row.katanaVariantId,
+    wooProductId: row.wooProductId,
     syncToWoo: Boolean(row.syncToWoo),
     syncToClover: Boolean(row.syncToClover),
     cloverItemId: row.cloverItemId,
@@ -631,6 +642,8 @@ export async function getEcommerceRoster(): Promise<EcommerceRoster> {
         hubWeight: finished_goods_catalog.weight,
         hubNaFields: finished_goods_catalog.na_fields,
         imageUrl: finished_goods_catalog.image_url,
+        katanaVariantId: sku_mappings.katana_variant_id,
+        wooProductId: sku_mappings.woo_product_id,
         syncToWoo: sku_mappings.sync_to_woo,
         syncToClover: sku_mappings.sync_to_clover,
         cloverItemId: sku_mappings.clover_item_id,
@@ -896,6 +909,8 @@ export async function mintHubSkuFromGap(
           hubNaFields: [],
           imageUrl: null,
           archivedAt: null,
+          katanaVariantId: null,
+          wooProductId: null,
           syncToWoo: false,
           syncToClover: false,
           cloverItemId: null,
@@ -2040,4 +2055,42 @@ export async function extractCadDimensions(globalSku: string) {
     .where(eq(finished_goods_catalog.global_sku, globalSku));
     
   return { length: String(aabb.lengthIn), depth: String(aabb.depthIn), height: String(aabb.heightIn) };
+}
+
+export async function getLogisticsProfile(katanaVariantId: number) {
+  const db = getDb();
+  const [row] = await db
+    .select({ weightLb: logistics_profiles.weight_lb, ltlClass: logistics_profiles.ltl_class })
+    .from(logistics_profiles)
+    .where(eq(logistics_profiles.katana_variant_id, katanaVariantId))
+    .limit(1);
+  return row || null;
+}
+
+export async function updateLogisticsProfile(globalSku: string, weightLb: string, ltlClass: string) {
+  const session = await getPimSession();
+  if (!session || isEmbedPrincipal(session) || !session.email?.endsWith("@ccpatio.com")) {
+    throw new Error("Unauthorized");
+  }
+
+  const db = getDb();
+  const [mapping] = await db.select({ katanaVariantId: sku_mappings.katana_variant_id })
+    .from(sku_mappings)
+    .where(eq(sku_mappings.global_sku, globalSku))
+    .limit(1);
+
+  if (!mapping || typeof mapping.katanaVariantId !== "number") {
+    throw new Error("Cannot update logistics profile: no established Katana variant ID exists.");
+  }
+
+  const [updated] = await db.update(logistics_profiles)
+    .set({ weight_lb: weightLb, ltl_class: ltlClass, updated_at: new Date() })
+    .where(eq(logistics_profiles.katana_variant_id, mapping.katanaVariantId))
+    .returning({ id: logistics_profiles.katana_variant_id });
+
+  if (!updated) {
+    throw new Error("Cannot update logistics profile: no row exists in logistics_profiles yet.");
+  }
+
+  return true;
 }

@@ -7,6 +7,8 @@ import {
   getCadExtractAvailability,
   getFreightProfile,
   saveFreightProfile,
+  getLogisticsProfile,
+  updateLogisticsProfile,
   type ShipProfileData,
 } from "../actions";
 import { mapDisplayToFreight } from "@/lib/freight-utils";
@@ -17,6 +19,10 @@ export function FreightPanel({
   hubDepth,
   hubHeight,
   hubWeight,
+  katanaVariantId,
+  wooProductId,
+  cloverItemId,
+  qboItemId,
   onDisplayExtracted,
 }: {
   globalSku: string;
@@ -24,9 +30,14 @@ export function FreightPanel({
   hubDepth?: string | null;
   hubHeight?: string | null;
   hubWeight?: string | null;
+  katanaVariantId?: number | null;
+  wooProductId?: string | null;
+  cloverItemId?: string | null;
+  qboItemId?: string | null;
   onDisplayExtracted?: (dims: { length: string; depth: string; height: string }) => void;
 }) {
   const [data, setData] = useState<ShipProfileData | null>(null);
+  const [logisticsData, setLogisticsData] = useState<{ weightLb: string | null; ltlClass: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +47,10 @@ export function FreightPanel({
 
   useEffect(() => {
     let active = true;
-    getFreightProfile(globalSku).then(d => {
+    Promise.all([
+      getFreightProfile(globalSku),
+      katanaVariantId ? getLogisticsProfile(katanaVariantId) : Promise.resolve(null)
+    ]).then(([d, log]) => {
       if (active) {
         setData(d || {
           shipMode: "",
@@ -47,6 +61,7 @@ export function FreightPanel({
           ltlClass: "",
           stackable: false,
         });
+        setLogisticsData(log);
         setLoading(false);
       }
     }).catch(err => {
@@ -56,7 +71,7 @@ export function FreightPanel({
       }
     });
     return () => { active = false; };
-  }, [globalSku]);
+  }, [globalSku, katanaVariantId]);
 
   useEffect(() => {
     let active = true;
@@ -91,6 +106,9 @@ export function FreightPanel({
       setError(null);
       try {
         await saveFreightProfile(globalSku, data);
+        if (logisticsData && katanaVariantId) {
+          await updateLogisticsProfile(globalSku, String(data.weightLb || ""), String(data.ltlClass || ""));
+        }
       } catch (err: any) {
         setError(err.message);
       }
@@ -104,6 +122,31 @@ export function FreightPanel({
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-4 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Katana Variant ID</label>
+          <div className="font-mono text-sm text-slate-700">{katanaVariantId || "—"}</div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">WooCommerce ID</label>
+          <div className="font-mono text-sm text-slate-700">{wooProductId || "—"}</div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Clover Item ID</label>
+          <div className="font-mono text-sm text-slate-700">{cloverItemId || "—"}</div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">QuickBooks ID</label>
+          <div className="font-mono text-sm text-slate-700">{qboItemId || "—"}</div>
+        </div>
+      </div>
+
+      {!logisticsData && (
+        <div className="p-3 bg-amber-50 text-amber-700 text-sm font-medium rounded-md border border-amber-200">
+          Cannot create a logistics profile without an established Katana variant ID.
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-slate-800">Freight Profile</h3>
@@ -185,8 +228,9 @@ export function FreightPanel({
               name="ltlClass"
               value={data.ltlClass}
               onChange={handleChange}
+              disabled={!logisticsData}
               placeholder="e.g. 150"
-              className="px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+              className="px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-50 disabled:bg-slate-50"
             />
           </div>
         )}
@@ -210,7 +254,7 @@ export function FreightPanel({
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-600">Weight (lb)</label>
-              <input type="number" step="0.1" name="weightLb" value={data.weightLb} onChange={handleChange} className="px-3 py-2 border border-slate-200 rounded-md text-sm w-full" />
+              <input type="number" step="0.1" name="weightLb" value={data.weightLb} onChange={handleChange} disabled={!logisticsData} className="px-3 py-2 border border-slate-200 rounded-md text-sm w-full disabled:opacity-50 disabled:bg-slate-50" />
             </div>
           </div>
           

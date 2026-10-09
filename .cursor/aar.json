@@ -1,26 +1,26 @@
 {
-  "phase_id": "pim-drawer-hub",
+  "phase_id": "pim-drawer-logistics-readonly",
   "base_ref": "HEAD",
-  "blast_radius": 5,
+  "blast_radius": 6,
   "counts": {
-    "files": 5,
-    "tracked": 5,
+    "files": 6,
+    "tracked": 6,
     "untracked": 0,
-    "insertions": 163,
-    "deletions": 97
+    "insertions": 117,
+    "deletions": 15
   },
   "files": [
     {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 2,
-      "deletions": 2
+      "insertions": 7,
+      "deletions": 7
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 2,
-      "deletions": 2
+      "insertions": 4,
+      "deletions": 3
     },
     {
       "status": "M",
@@ -31,17 +31,23 @@
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 86,
-      "deletions": 79
+      "insertions": 53,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/FreightPanel.tsx",
+      "insertions": 48,
+      "deletions": 4
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/ecommerce/ProductDrawer.tsx",
-      "insertions": 72,
-      "deletions": 13
+      "insertions": 4,
+      "deletions": 0
     }
   ],
   "untracked": [],
-  "file_list_sha256": "6a34f46930fd08ec8bd1e9285e3961b7eb64f5d185c24c85f6f80219daf662fd",
+  "file_list_sha256": "29df1dfbb6d1acae52916a0e704560f98603cd9ac4d34670a7e7272145d81371",
   "notes": ""
 }
