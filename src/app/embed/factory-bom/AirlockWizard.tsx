@@ -4,6 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FactoryProductRow } from "@/server/factory-bom/list-factory-products";
 import type { AirlockSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
+import { Step1Cad, step1AllowsContinue } from "./steps/Step1Cad";
+import { Step2Materials } from "./steps/Step2Materials";
+import { Step3Operations } from "./steps/Step3Operations";
+import { Step4Release } from "./steps/Step4Release";
 
 export function AirlockWizard({
   products,
@@ -16,6 +20,14 @@ export function AirlockWizard({
 }) {
   const router = useRouter();
   const [step, setStep] = useState<number>(1);
+  const selected = products.find((product) => product.sku === initialSku);
+  const originalName = selected?.name ?? "";
+  const canContinue =
+    step === 4
+      ? false
+      : !snapshot
+        ? false
+        : step !== 1 || step1AllowsContinue(snapshot, originalName);
 
   const handleSkuChange = (sku: string) => {
     if (sku) {
@@ -80,16 +92,28 @@ export function AirlockWizard({
           )}
         </div>
 
-        {/* Body Placeholder */}
         <div className="flex-1 overflow-y-auto">
           {!initialSku ? (
             <div className="flex h-full items-center justify-center text-slate-500">
               Please select a product to begin.
             </div>
-          ) : (
+          ) : !snapshot ? (
             <div className="flex h-full items-center justify-center text-slate-500">
-              <p>Step {step} Content Placeholder</p>
-              {/* Packet 9 will inject actual components here */}
+              No airlock snapshot for this SKU.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {step === 1 && (
+                <Step1Cad
+                  snapshot={snapshot}
+                  originalName={originalName}
+                  itemType="finished_good"
+                  isPending={false}
+                />
+              )}
+              {step === 2 && <Step2Materials snapshot={snapshot} products={products} />}
+              {step === 3 && <Step3Operations snapshot={snapshot} />}
+              {step === 4 && <Step4Release snapshot={snapshot} products={products} />}
             </div>
           )}
         </div>
@@ -105,6 +129,7 @@ export function AirlockWizard({
               Back
             </button>
             <button
+              disabled={!canContinue}
               onClick={() => setStep((s) => Math.min(4, s + 1))}
               className="min-h-11 px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
             >

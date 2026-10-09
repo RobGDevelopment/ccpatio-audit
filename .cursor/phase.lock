@@ -1,16 +1,18 @@
 {
-  "phase_id": "airlock-3-shell",
-  "intent": "Implement the AirlockWizard shell, replacing the direct workbench mount on the factory-bom embed, and build the server-side snapshot loader.",
+  "phase_id": "airlock-3-steps",
+  "intent": "Implement the four interactive Airlock wizard steps (CAD, Materials, Operations, Release) and mount them inside AirlockWizard.tsx.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
-    "src/app/embed/factory-bom/page.tsx",
-    "src/app/embed/factory-bom/AirlockWizard.tsx",
-    "src/server/factory-bom/load-airlock-snapshot.ts"
+    "src/app/embed/factory-bom/steps/Step1Cad.tsx",
+    "src/app/embed/factory-bom/steps/Step2Materials.tsx",
+    "src/app/embed/factory-bom/steps/Step3Operations.tsx",
+    "src/app/embed/factory-bom/steps/Step4Release.tsx",
+    "src/app/embed/factory-bom/AirlockWizard.tsx"
   ],
-  "expected_blast_radius": 6,
+  "expected_blast_radius": 8,
   "override_blast_cap": false,
   "target_test": "npm run typecheck"
 }

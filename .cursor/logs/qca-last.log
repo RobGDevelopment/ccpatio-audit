@@ -1,8 +1,8 @@
 status=0
 --- stdout ---
 {
-  "phase_id": "airlock-3-shell",
-  "phase": "airlock-3-shell",
+  "phase_id": "airlock-3-steps",
+  "phase": "airlock-3-steps",
   "verdict": "CERTIFIED",
   "audit_exit": 0,
   "invariantViolations": [],
@@ -13,17 +13,17 @@ status=0
   },
   "targetTest": "npm run typecheck",
   "blastRadius": {
-    "actual": 6,
-    "expected": 6,
+    "actual": 8,
+    "expected": 8,
     "tolerance": 0,
     "tracked": 4,
-    "untracked": 2,
+    "untracked": 4,
     "status": "PASS"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "5cfce8017269742da358c351e603548203b74cd34b400e68ba2d4e7112faddd9",
-    "git_sha256": "5cfce8017269742da358c351e603548203b74cd34b400e68ba2d4e7112faddd9"
+    "aar_sha256": "c539adf408dce6932ac298cab8d24be795dacc2aa7c30aeee279cb2627e0ef05",
+    "git_sha256": "c539adf408dce6932ac298cab8d24be795dacc2aa7c30aeee279cb2627e0ef05"
   }
 }
 
