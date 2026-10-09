@@ -1,9 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FactoryProductRow } from "@/server/factory-bom/list-factory-products";
 import type { AirlockSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
+import {
+  continueButton,
+  glassCard,
+  quietButton,
+  skuMenu,
+  ticket,
+} from "@/app/admin/factory-bom/factory-bom-ui";
 import { Step1Cad, step1AllowsContinue } from "./steps/Step1Cad";
 import { Step2Materials } from "./steps/Step2Materials";
 import { Step3Operations } from "./steps/Step3Operations";
@@ -20,6 +27,10 @@ export function AirlockWizard({
 }) {
   const router = useRouter();
   const [step, setStep] = useState<number>(1);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
   const selected = products.find((product) => product.sku === initialSku);
   const originalName = selected?.name ?? "";
   const canContinue =
@@ -45,47 +56,37 @@ export function AirlockWizard({
   ];
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-slate-50 font-sans p-6 items-center justify-center">
-      {/* Central Glass Card */}
-      <div className="w-full max-w-3xl bg-white/80 backdrop-blur-md rounded-2xl border border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-6 sm:p-8 flex flex-col h-[80vh]">
-        
-        {/* Header */}
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-4 mb-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-xl font-bold text-slate-800">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-slate-50 p-6 font-sans items-center justify-center">
+      <div className={`flex h-[80vh] w-full max-w-3xl flex-col p-6 sm:p-8 ${glassCard}`}>
+        <div className="mb-4 flex flex-col gap-4 border-b border-slate-200 pb-4">
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="text-xl font-bold text-zinc-800">
               {initialSku ? `Airlock: ${initialSku}` : "Airlock Wizard"}
             </h1>
-            <select
-              className="text-sm border border-slate-300 rounded px-2 py-1"
-              value={initialSku || ""}
-              onChange={(e) => handleSkuChange(e.target.value)}
-            >
-              <option value="">Select Product...</option>
-              {products.map((p) => (
-                <option key={p.sku} value={p.sku}>
-                  {p.sku} - {p.name}
-                </option>
-              ))}
-            </select>
+            <SkuPicker
+              products={products}
+              initialSku={initialSku}
+              onChange={handleSkuChange}
+            />
           </div>
-          
+
           {initialSku && (
             <div className="flex flex-col items-center gap-2">
               <div className="flex gap-2">
                 {[1, 2, 3, 4].map((s) => (
                   <div
                     key={s}
-                    className={`w-2.5 h-2.5 rounded-full ${
+                    className={`h-2.5 w-2.5 rounded-full transition-colors duration-150 ${
                       s === step
-                        ? "bg-blue-600"
+                        ? "bg-emerald-600"
                         : s < step
-                        ? "bg-blue-300"
+                        ? "bg-emerald-300"
                         : "bg-slate-200"
                     }`}
                   />
                 ))}
               </div>
-              <h2 className="text-sm font-semibold text-slate-600">
+              <h2 className="text-sm font-semibold text-zinc-500">
                 Step {step}: {stepTitles[step - 1]}
               </h2>
             </div>
@@ -94,11 +95,11 @@ export function AirlockWizard({
 
         <div className="flex-1 overflow-y-auto">
           {!initialSku ? (
-            <div className="flex h-full items-center justify-center text-slate-500">
-              Please select a product to begin.
+            <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+              Choose a SKU to open this airlock.
             </div>
           ) : !snapshot ? (
-            <div className="flex h-full items-center justify-center text-slate-500">
+            <div className="flex h-full items-center justify-center text-sm text-zinc-500">
               No airlock snapshot for this SKU.
             </div>
           ) : (
@@ -118,26 +119,92 @@ export function AirlockWizard({
           )}
         </div>
 
-        {/* Footer */}
         {initialSku && (
-          <div className="flex justify-between items-center border-t border-slate-200 pt-4 mt-4">
+          <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">
             <button
+              type="button"
               disabled={step === 1}
               onClick={() => setStep((s) => Math.max(1, s - 1))}
-              className="min-h-11 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+              className={quietButton}
             >
               Back
             </button>
             <button
-              disabled={!canContinue}
+              type="button"
+              disabled={!hydrated || !canContinue}
               onClick={() => setStep((s) => Math.min(4, s + 1))}
-              className="min-h-11 px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className={continueButton}
             >
               {step === 4 ? "Submit" : "Continue"}
             </button>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function SkuPicker({
+  products,
+  initialSku,
+  onChange,
+}: {
+  products: FactoryProductRow[];
+  initialSku?: string;
+  onChange: (sku: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = products.find((product) => product.sku === initialSku);
+  const label = selected ? `${selected.sku} — ${selected.name}` : "Choose a SKU";
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className={`${quietButton} max-w-xs truncate border border-slate-200 bg-white/80 px-3 text-left`}
+      >
+        <span className={selected ? ticket : "text-zinc-500"}>{label}</span>
+      </button>
+      {open ? (
+        <ul role="listbox" className={skuMenu}>
+          <li>
+            <button
+              type="button"
+              role="option"
+              aria-selected={!initialSku}
+              className={`${quietButton} w-full justify-start px-3 text-left text-zinc-500`}
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              Clear SKU
+            </button>
+          </li>
+          {products.map((product) => (
+            <li key={product.sku}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={product.sku === initialSku}
+                className={`${quietButton} flex w-full items-baseline justify-start gap-2 px-3 text-left ${
+                  product.sku === initialSku ? "bg-emerald-50 text-emerald-800" : ""
+                }`}
+                onClick={() => {
+                  onChange(product.sku);
+                  setOpen(false);
+                }}
+              >
+                <span className={`${ticket} shrink-0 whitespace-nowrap`}>{product.sku}</span>
+                <span className="min-w-0 truncate text-zinc-500">{product.name}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

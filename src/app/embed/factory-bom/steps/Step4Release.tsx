@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import type { AirlockSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
 import type { FactoryProductRow } from "@/server/factory-bom/list-factory-products";
 import { evaluateAirlock } from "@/server/factory-bom/evaluate-airlock";
+import { releaseButton, ticket } from "@/app/admin/factory-bom/factory-bom-ui";
 import type { AirlockDossier } from "@/server/factory-bom/airlock.schema";
 
 export function Step4Release({
@@ -126,46 +127,46 @@ export function Step4Release({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h2 className="text-lg font-bold text-slate-800">Quarantine Gate Attestation</h2>
-        <p className="text-sm text-slate-600">Please confirm all structural parameters before releasing to the live factory floor.</p>
+        <h2 className="text-lg font-bold text-zinc-800">Quarantine Gate Attestation</h2>
+        <p className="text-sm text-zinc-500">Please confirm all structural parameters before releasing to the live factory floor.</p>
       </div>
 
-      <div className="flex flex-col gap-4 border border-slate-200 rounded-lg p-6 bg-slate-50">
-        <label className="flex items-center gap-3 cursor-pointer min-h-11">
+      <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-6">
+        <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
-            className="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+            className="h-5 w-5 rounded border-slate-300 accent-emerald-600"
             checked={identityConfirmed}
             onChange={(e) => setIdentityConfirmed(e.target.checked)}
           />
-          <span className="text-sm font-medium text-slate-700">Identity: Product and CAD match precisely.</span>
+          <span className="text-sm font-medium text-zinc-700">Identity: Product and CAD match precisely.</span>
         </label>
-        <label className="flex items-center gap-3 cursor-pointer min-h-11">
+        <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
-            className="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+            className="h-5 w-5 rounded border-slate-300 accent-emerald-600"
             checked={cutListConfirmed}
             onChange={(e) => setCutListConfirmed(e.target.checked)}
           />
-          <span className="text-sm font-medium text-slate-700">Cut List: Material yield has been verified.</span>
+          <span className="text-sm font-medium text-zinc-700">Cut List: Material yield has been verified.</span>
         </label>
-        <label className="flex items-center gap-3 cursor-pointer min-h-11">
+        <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
-            className="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+            className="h-5 w-5 rounded border-slate-300 accent-emerald-600"
             checked={operationsConfirmed}
             onChange={(e) => setOperationsConfirmed(e.target.checked)}
           />
-          <span className="text-sm font-medium text-slate-700">Operations: Routing and times are scheduled.</span>
+          <span className="text-sm font-medium text-zinc-700">Operations: Routing and times are scheduled.</span>
         </label>
-        <label className="flex items-center gap-3 cursor-pointer min-h-11">
+        <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
-            className="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+            className="h-5 w-5 rounded border-slate-300 accent-emerald-600"
             checked={quarantineConfirmed}
             onChange={(e) => setQuarantineConfirmed(e.target.checked)}
           />
-          <span className="text-sm font-medium text-slate-700">Acknowledgement: I am releasing this to live Katana production.</span>
+          <span className="text-sm font-medium text-zinc-700">Acknowledgement: I am releasing this to live Katana production.</span>
         </label>
       </div>
 
@@ -174,7 +175,7 @@ export function Step4Release({
           <p className="font-semibold text-sm mb-2">Blocking Codes Prevent Release:</p>
           <ul className="list-disc pl-5 text-sm space-y-1">
             {blockingCodes.map(code => (
-              <li key={code} className="font-mono">{code}</li>
+              <li key={code} className={ticket}>{code}</li>
             ))}
           </ul>
         </div>
@@ -182,7 +183,7 @@ export function Step4Release({
 
       <button
         disabled={!canRelease}
-        className="mt-4 min-h-11 px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-sm hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className={releaseButton}
       >
         Release to Katana
       </button>

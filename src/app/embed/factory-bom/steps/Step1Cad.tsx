@@ -36,9 +36,9 @@ export function Step1Cad({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-xl font-bold text-slate-800">{snapshot.rootSku}</h2>
-        <p className="text-sm text-slate-600">{originalName}</p>
-        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded uppercase">
+        <h2 className="font-mono text-xl font-bold tabular-nums text-zinc-800">{snapshot.rootSku}</h2>
+        <p className="text-sm text-zinc-500">{originalName}</p>
+        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-zinc-600">
           {assemblyBadge(snapshot.rootSku, itemType)}
         </span>
       </div>
@@ -54,7 +54,7 @@ export function Step1Cad({
       </div>
 
       {cad?.error_message && (
-        <div className="p-4 bg-red-50 text-red-800 rounded-lg border border-red-200">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
           <p className="font-semibold mb-2">Upload Error</p>
           <p className="text-sm">{cad.error_message}</p>
           

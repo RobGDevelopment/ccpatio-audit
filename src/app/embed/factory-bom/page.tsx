@@ -16,7 +16,7 @@ export default async function EmbedFactoryBomPage({
   
   if (!session) {
     return (
-      <main className={`flex h-full min-h-0 flex-1 items-center justify-center px-6 text-sm text-slate-500 ${canvas}`}>
+      <main className={`flex h-full min-h-0 flex-1 items-center justify-center px-6 text-sm text-zinc-500 ${canvas}`}>
         This embed link is missing a valid access key.
       </main>
     );

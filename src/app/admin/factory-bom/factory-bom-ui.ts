@@ -22,6 +22,27 @@ export const tactileButton = `${tactileIdle} rounded-lg hover:translate-y-[2px] 
 export const primaryButton =
   "rounded-lg border-b-2 border-slate-950 bg-slate-800 text-white shadow-sm transition-all duration-150 ease-out hover:translate-y-[2px] hover:border-b-0 hover:shadow-inner active:translate-y-[2px] active:border-b-0 active:shadow-inner disabled:cursor-not-allowed disabled:opacity-40";
 
+export const continueButton = `${primaryButton} min-h-11 px-6 py-2 text-sm font-medium`;
+
+/** Floating glass card on the slate canvas. Light Mission Control, not dark `.pim-glass`. */
+export const glassCard =
+  "bg-white/80 backdrop-blur-md rounded-2xl border border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.06)]";
+
+export const quietButton =
+  "min-h-11 rounded-lg px-4 py-2 text-sm font-medium text-zinc-600 transition-colors duration-150 hover:bg-slate-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40";
+
+export const releaseButton =
+  "min-h-11 rounded-lg bg-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition-colors duration-150 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40";
+
+export const emeraldBanner =
+  "rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800";
+
+export const ticket =
+  "font-mono text-[12px] tabular-nums tracking-tight text-zinc-800";
+
+export const skuMenu =
+  "absolute right-0 z-20 mt-2 max-h-64 w-[28rem] overflow-y-auto rounded-xl border border-slate-200 bg-white/95 p-1 shadow-[0_8px_30px_rgb(0,0,0,0.08)] backdrop-blur-md";
+
 export const pill =
   "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide";
 

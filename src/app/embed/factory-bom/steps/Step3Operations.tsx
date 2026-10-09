@@ -50,29 +50,29 @@ export function Step3Operations({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h2 className="text-lg font-bold text-slate-800">Factory Floor Operations</h2>
-        <p className="text-sm text-slate-600">Assign work centers and adjust expected times for {snapshot.rootSku}.</p>
+        <h2 className="text-lg font-bold text-zinc-800">Factory Floor Operations</h2>
+        <p className="text-sm text-zinc-500">Assign work centers and adjust expected times for {snapshot.rootSku}.</p>
       </div>
 
-      <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
-        <span className="text-sm font-semibold text-slate-700">Cushion Fulfillment:</span>
-        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-          <input 
-            type="radio" 
-            name="cushion_mode" 
+      <div className="flex min-h-11 flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Cushion Fulfillment</span>
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-zinc-700">
+          <input
+            type="radio"
+            name="cushion_mode"
             checked={cushionMode === "standard"}
             onChange={() => setCushionMode("standard")}
-            className="text-blue-600 focus:ring-blue-500"
+            className="accent-emerald-600"
           />
           Standard
         </label>
-        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-          <input 
-            type="radio" 
-            name="cushion_mode" 
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-zinc-700">
+          <input
+            type="radio"
+            name="cushion_mode"
             checked={cushionMode === "vacuum_compressed"}
             onChange={() => setCushionMode("vacuum_compressed")}
-            className="text-blue-600 focus:ring-blue-500"
+            className="accent-emerald-600"
           />
           Vacuum Compressed
         </label>

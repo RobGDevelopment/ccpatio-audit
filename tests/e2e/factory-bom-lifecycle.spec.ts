@@ -101,6 +101,7 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
       .where(eq(product_bom_draft.child_sku, E2E_POWDER_SKU));
 
     await page.goto(`/embed/factory-bom?sku=${E2E_FG_SKU}`);
+    await page.waitForLoadState('networkidle');
     await page.getByRole("button", { name: "Continue" }).click(); // Go to step 2
 
     await expect(page.getByText(/Proposed from SketchUp geometry/i)).toBeVisible();
@@ -130,6 +131,7 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
       .where(eq(product_bom_draft.child_sku, E2E_POWDER_SKU));
 
     await page.goto(`/embed/factory-bom?sku=${E2E_FG_SKU}`);
+    await page.waitForLoadState('networkidle');
     await page.getByRole("button", { name: "Continue" }).click(); // Go to step 2
 
     await expect(page.getByText(/Component names do not match the lengthless standard/i)).toBeVisible();
@@ -158,6 +160,7 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
       .where(eq(product_bom_draft.child_sku, E2E_POWDER_SKU));
 
     await page.goto(`/embed/factory-bom?sku=${E2E_FG_SKU}`);
+    await page.waitForLoadState('networkidle');
     await page.getByRole("button", { name: "Continue" }).click(); // Go to step 2
     await page.getByRole("button", { name: "Continue" }).click(); // Go to step 3
     await page.getByRole("button", { name: "Continue" }).click(); // Go to step 4
