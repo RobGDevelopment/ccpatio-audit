@@ -146,3 +146,51 @@ export function evaluateComponentHygiene(
     lengthConvention,
   };
 }
+
+export function formatGeomHygieneMessage(failures: { name: string; reason: string }[]): string {
+  if (
+    failures.length === 1 &&
+    failures[0]?.name === "File" &&
+    failures[0]?.reason === "Zero structural nodes"
+  ) {
+    return "No structural components were found. Group each frame member and rename it ROLE-MATERIAL-PROFILE (example: FRM-ALUM-2X2). Decorative meshes stay outside that grammar and are ignored.";
+  }
+
+  const seen = new Map<string, number>();
+  const labeled = failures.map((failure) => {
+    const raw = failure.name.trim() ? failure.name.trim() : "(unnamed node)";
+    const n = (seen.get(raw) ?? 0) + 1;
+    seen.set(raw, n);
+    return { name: n === 1 ? raw : `${raw} #${n}`, reason: failure.reason };
+  });
+
+  const groups = new Map<string, string[]>();
+  for (const row of labeled) {
+    const names = groups.get(row.reason) ?? [];
+    names.push(row.name);
+    groups.set(row.reason, names);
+  }
+
+  const bullets: string[] = [];
+  let omitted = 0;
+  for (const [reason, names] of groups) {
+    for (const name of names) {
+      if (bullets.length >= 12) {
+        omitted += 1;
+        continue;
+      }
+      bullets.push(`- ${name} — ${reason}`);
+    }
+  }
+
+  const intro =
+    "The following components failed the lengthless naming standard. Please group these meshes and rename using the ROLE-MATERIAL-PROFILE format (example: FRM-ALUM-2X2). Do not put inches in the name. The parser owns the cut length.";
+  const tail =
+    omitted > 0 ? `and ${omitted} more. The geometry snapshot has the full list.` : "";
+  let message = [intro, ...bullets, tail].filter(Boolean).join("\n");
+  while (message.length > 2000 && bullets.length > 0) {
+    bullets.pop();
+    message = [intro, ...bullets, tail].filter(Boolean).join("\n");
+  }
+  return message;
+}

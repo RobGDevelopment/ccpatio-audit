@@ -1,43 +1,92 @@
 {
-  "phase_id": "step-5.3-katana-blueprint-factory-polish",
+  "phase_id": "airlock-1.5-factory-polish",
   "base_ref": "HEAD",
-  "blast_radius": 4,
+  "blast_radius": 12,
   "counts": {
-    "files": 4,
-    "tracked": 3,
-    "untracked": 1,
-    "insertions": 22,
-    "deletions": 37
+    "files": 12,
+    "tracked": 10,
+    "untracked": 2,
+    "insertions": 729,
+    "deletions": 72
   },
   "files": [
     {
       "status": "??",
-      "path": "KATANA_PIPELINE_BUILD_PLAN_2.md",
+      "path": "src/server/db/migrations/0050_even_chamber.sql",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/db/migrations/meta/0050_snapshot.json",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 15,
-      "deletions": 24
+      "insertions": 22,
+      "deletions": 10
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
       "insertions": 5,
-      "deletions": 11
+      "deletions": 2
     },
     {
       "status": "M",
-      "path": ".cursor/session-stamp.json",
-      "insertions": 2,
-      "deletions": 2
+      "path": "src/lib/cad-upload/process-job.ts",
+      "insertions": 261,
+      "deletions": 15
+    },
+    {
+      "status": "M",
+      "path": "src/lib/secondary-extraction/run.ts",
+      "insertions": 50,
+      "deletions": 18
+    },
+    {
+      "status": "M",
+      "path": "src/lib/sketchup-cutlist/component-hygiene.ts",
+      "insertions": 48,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/lib/sketchup-cutlist/derived-heuristics.ts",
+      "insertions": 165,
+      "deletions": 7
+    },
+    {
+      "status": "M",
+      "path": "src/lib/sketchup-cutlist/parse-glb-weldment.ts",
+      "insertions": 50,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "src/server/db/migrations/meta/_journal.json",
+      "insertions": 7,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/db/schema.ts",
+      "insertions": 6,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/derived-heuristics.test.ts",
+      "insertions": 115,
+      "deletions": 17
     }
   ],
   "untracked": [
-    "KATANA_PIPELINE_BUILD_PLAN_2.md"
+    "src/server/db/migrations/0050_even_chamber.sql",
+    "src/server/db/migrations/meta/0050_snapshot.json"
   ],
-  "file_list_sha256": "624946e3368479392fd44761a6b1ec968de72776b72050acf5b09962658a3f01",
+  "file_list_sha256": "8a8528ca957ddc497b468e830b324c5697cd7de8ade537f58f3fdc04d083735f",
   "notes": ""
 }

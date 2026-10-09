@@ -12,9 +12,12 @@
     "src/lib/cad-upload/process-job.ts",
     "src/lib/secondary-extraction/run.ts",
     "src/server/db/schema.ts",
-    "tests/derived-heuristics.test.ts"
+    "tests/derived-heuristics.test.ts",
+    "src/server/db/migrations/0050_even_chamber.sql",
+    "src/server/db/migrations/meta/_journal.json",
+    "src/server/db/migrations/meta/0050_snapshot.json"
   ],
-  "expected_blast_radius": 11,
+  "expected_blast_radius": 12,
   "override_blast_cap": true,
   "target_test": "npm run typecheck"
 }

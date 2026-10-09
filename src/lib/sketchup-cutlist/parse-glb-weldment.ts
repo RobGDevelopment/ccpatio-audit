@@ -1,6 +1,6 @@
 import { NodeIO, type mat4, type vec3 } from "@gltf-transform/core";
 import { evaluateComponentHygiene, isStructuralNode, type ProfileType } from "./component-hygiene";
-import { calculatePowder, calculateWeight, calculateJoinery } from "./derived-heuristics";
+import { calculatePowder, calculateWeight, calculateJoinery, calculateArgon, calculateSand, calculateFreight } from "./derived-heuristics";
 
 function transformPoint(matrix: mat4, point: vec3): vec3 {
   const [x, y, z] = point;
@@ -23,9 +23,19 @@ export async function parseGlbWeldment(glbBuffer: Uint8Array) {
   const components: any[] = [];
   const failures: Array<{ name: string; reason: string }> = [];
 
+  let globalUnion: { min: [number, number, number]; max: [number, number, number] } = {
+    min: [Infinity, Infinity, Infinity],
+    max: [-Infinity, -Infinity, -Infinity],
+  };
+  let cushionUnion: { min: [number, number, number]; max: [number, number, number] } = {
+    min: [Infinity, Infinity, Infinity],
+    max: [-Infinity, -Infinity, -Infinity],
+  };
+
   for (const node of root.listNodes()) {
     const name = node.getName() || "Unnamed";
-    if (!isStructuralNode(name)) continue;
+    const isStructural = isStructuralNode(name);
+    const isCushion = name.toUpperCase().includes("CUSH");
 
     const mesh = node.getMesh();
     if (!mesh) continue;
@@ -33,6 +43,8 @@ export async function parseGlbWeldment(glbBuffer: Uint8Array) {
     const worldMatrix = node.getWorldMatrix();
     let min: vec3 = [Infinity, Infinity, Infinity];
     let max: vec3 = [-Infinity, -Infinity, -Infinity];
+    let meshMin: [number, number, number] = [Infinity, Infinity, Infinity];
+    let meshMax: [number, number, number] = [-Infinity, -Infinity, -Infinity];
 
     for (const prim of mesh.listPrimitives()) {
       const position = prim.getAttribute("POSITION");
@@ -53,10 +65,36 @@ export async function parseGlbWeldment(glbBuffer: Uint8Array) {
         if (xIn > max[0]) max[0] = xIn;
         if (yIn > max[1]) max[1] = yIn;
         if (zIn > max[2]) max[2] = zIn;
+
+        if (xIn < meshMin[0]) meshMin[0] = xIn;
+        if (yIn < meshMin[1]) meshMin[1] = yIn;
+        if (zIn < meshMin[2]) meshMin[2] = zIn;
+        if (xIn > meshMax[0]) meshMax[0] = xIn;
+        if (yIn > meshMax[1]) meshMax[1] = yIn;
+        if (zIn > meshMax[2]) meshMax[2] = zIn;
       }
     }
 
-    if (min[0] === Infinity) continue;
+    if (meshMin[0] === Infinity) continue;
+
+    // Expand global union
+    if (meshMin[0] < globalUnion.min[0]) globalUnion.min[0] = meshMin[0];
+    if (meshMin[1] < globalUnion.min[1]) globalUnion.min[1] = meshMin[1];
+    if (meshMin[2] < globalUnion.min[2]) globalUnion.min[2] = meshMin[2];
+    if (meshMax[0] > globalUnion.max[0]) globalUnion.max[0] = meshMax[0];
+    if (meshMax[1] > globalUnion.max[1]) globalUnion.max[1] = meshMax[1];
+    if (meshMax[2] > globalUnion.max[2]) globalUnion.max[2] = meshMax[2];
+
+    if (isCushion) {
+      if (meshMin[0] < cushionUnion.min[0]) cushionUnion.min[0] = meshMin[0];
+      if (meshMin[1] < cushionUnion.min[1]) cushionUnion.min[1] = meshMin[1];
+      if (meshMin[2] < cushionUnion.min[2]) cushionUnion.min[2] = meshMin[2];
+      if (meshMax[0] > cushionUnion.max[0]) cushionUnion.max[0] = meshMax[0];
+      if (meshMax[1] > cushionUnion.max[1]) cushionUnion.max[1] = meshMax[1];
+      if (meshMax[2] > cushionUnion.max[2]) cushionUnion.max[2] = meshMax[2];
+    }
+
+    if (!isStructural) continue;
 
     const dx = max[0] - min[0];
     const dy = max[1] - min[1];
@@ -106,16 +144,25 @@ export async function parseGlbWeldment(glbBuffer: Uint8Array) {
   const powder = calculatePowder(derivedComps.filter(c => c.material === "ALUM" || c.material === "STL"));
   const weight = calculateWeight(derivedComps);
   const joinery = calculateJoinery(derivedComps);
+  
+  const argon = calculateArgon(joinery.jointCount);
+  const sand = calculateSand(derivedComps);
+  const freight = calculateFreight(globalUnion, weight.aluminumLbs);
 
   return {
     unit: "inch",
     hygiene: "pass",
     failures: [],
     components,
+    globalAabb: globalUnion,
+    cushionAabb: cushionUnion.min[0] !== Infinity ? cushionUnion : null,
     derived: {
       powder,
       weight,
       joinery,
+      argon,
+      sand,
+      freight,
     }
   };
 }

@@ -260,6 +260,8 @@ export const recipeReviewStatusEnum = pgEnum("recipe_review_status", [
   "factory_approved",
 ]);
 
+export const cushionFulfillmentModeEnum = pgEnum("cushion_fulfillment_mode", ["standard", "vacuum_compressed"]);
+
 export const recipeSourceEnum = pgEnum("recipe_source", [
   "heuristic",
   "manager",
@@ -320,6 +322,10 @@ export const recipe_estimates_draft = pgTable("recipe_estimates_draft", {
       onDelete: "cascade",
     }),
   est_weight_lbs: numeric("est_weight_lbs", { precision: 12, scale: 4 }),
+  gross_freight_weight_lbs: numeric("gross_freight_weight_lbs", { precision: 12, scale: 4 }),
+  cushion_fulfillment_mode: cushionFulfillmentModeEnum("cushion_fulfillment_mode")
+    .notNull()
+    .default("standard"),
   weight_breakdown: jsonb("weight_breakdown")
     .$type<Record<string, number>>()
     .notNull()

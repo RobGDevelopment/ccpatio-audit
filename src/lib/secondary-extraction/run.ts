@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { resourceLane } from "@/lib/factory-routing/resources";
 import { resolveDraftCutsAndNote } from "@/lib/sketchup-cutlist/notes-codec";
 import { getDb } from "@/server/db/client";
+import { cad_uploads } from "@/server/db/schema";
 import {
   finished_goods_catalog,
   item_operations_draft,
@@ -195,12 +196,51 @@ export async function runSecondaryExtract(
   });
 
   const [existing] = await db
-    .select({ overrides: recipe_estimates_draft.overrides })
+    .select({ 
+      overrides: recipe_estimates_draft.overrides,
+      gross_freight_weight_lbs: recipe_estimates_draft.gross_freight_weight_lbs,
+      carton_lwh_in: recipe_estimates_draft.carton_lwh_in,
+      est_dim_weight_lbs: recipe_estimates_draft.est_dim_weight_lbs,
+      packaging_bom: recipe_estimates_draft.packaging_bom,
+    })
     .from(recipe_estimates_draft)
     .where(eq(recipe_estimates_draft.root_sku, rootSku))
     .limit(1);
 
   const overrides = existing?.overrides ?? {};
+  
+  // Freight persistence logic
+  let keepFreight = false;
+  const [latestGlb] = await db
+    .select({ snapshot: cad_uploads.geometry_snapshot })
+    .from(cad_uploads)
+    .where(eq(cad_uploads.global_sku, rootSku))
+    .orderBy(sql`created_at DESC`)
+    .limit(1);
+
+  if (latestGlb?.snapshot) {
+    const snap = latestGlb.snapshot as any;
+    if (snap.hygiene === "pass" && snap.derived?.freight && !snap.derived.freight.reason) {
+      keepFreight = true;
+    }
+  }
+
+  let finalGrossFreight = keepFreight ? existing?.gross_freight_weight_lbs : null;
+  let finalCartonLwh = keepFreight ? existing?.carton_lwh_in : packaging.cartonIn;
+  let finalDimWeight = keepFreight ? existing?.est_dim_weight_lbs : String(packaging.dimWeightLbs);
+  let finalPkgBom = {
+    cartonIn: packaging.cartonIn,
+    lines: packaging.lines,
+    dimWeightLbs: packaging.dimWeightLbs,
+    dimDivisor: packaging.dimDivisor,
+  };
+  
+  if (keepFreight && existing?.packaging_bom) {
+    const exPkg = existing.packaging_bom as any;
+    if (exPkg.geometryFreight) {
+      (finalPkgBom as any).geometryFreight = exPkg.geometryFreight;
+    }
+  }
   const now = new Date();
 
   await db
@@ -209,14 +249,10 @@ export async function runSecondaryExtract(
       root_sku: rootSku,
       est_weight_lbs: weight.estWeightLbs.toFixed(4),
       weight_breakdown: weight.breakdown,
-      est_dim_weight_lbs: String(packaging.dimWeightLbs),
-      carton_lwh_in: packaging.cartonIn,
-      packaging_bom: {
-        cartonIn: packaging.cartonIn,
-        lines: packaging.lines,
-        dimWeightLbs: packaging.dimWeightLbs,
-        dimDivisor: packaging.dimDivisor,
-      },
+      gross_freight_weight_lbs: finalGrossFreight,
+      est_dim_weight_lbs: finalDimWeight,
+      carton_lwh_in: finalCartonLwh,
+      packaging_bom: finalPkgBom,
       est_labor_minutes: labor.totalMinutes.toFixed(4),
       labor_breakdown: {
         drivers,
@@ -236,14 +272,10 @@ export async function runSecondaryExtract(
       set: {
         est_weight_lbs: weight.estWeightLbs.toFixed(4),
         weight_breakdown: weight.breakdown,
-        est_dim_weight_lbs: String(packaging.dimWeightLbs),
-        carton_lwh_in: packaging.cartonIn,
-        packaging_bom: {
-          cartonIn: packaging.cartonIn,
-          lines: packaging.lines,
-          dimWeightLbs: packaging.dimWeightLbs,
-          dimDivisor: packaging.dimDivisor,
-        },
+        gross_freight_weight_lbs: finalGrossFreight ? sql`${finalGrossFreight}::numeric` : null,
+        est_dim_weight_lbs: finalDimWeight,
+        carton_lwh_in: finalCartonLwh,
+        packaging_bom: finalPkgBom,
         est_labor_minutes: labor.totalMinutes.toFixed(4),
         labor_breakdown: {
           drivers,

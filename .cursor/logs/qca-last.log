@@ -1,8 +1,8 @@
 status=0
 --- stdout ---
 {
-  "phase_id": "step-5.3-katana-blueprint-factory-polish",
-  "phase": "step-5.3-katana-blueprint-factory-polish",
+  "phase_id": "airlock-1.5-factory-polish",
+  "phase": "airlock-1.5-factory-polish",
   "verdict": "CERTIFIED",
   "audit_exit": 0,
   "invariantViolations": [],
@@ -13,17 +13,17 @@ status=0
   },
   "targetTest": "npm run typecheck",
   "blastRadius": {
-    "actual": 4,
-    "expected": 4,
+    "actual": 12,
+    "expected": 12,
     "tolerance": 0,
-    "tracked": 3,
-    "untracked": 1,
+    "tracked": 10,
+    "untracked": 2,
     "status": "PASS"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "624946e3368479392fd44761a6b1ec968de72776b72050acf5b09962658a3f01",
-    "git_sha256": "624946e3368479392fd44761a6b1ec968de72776b72050acf5b09962658a3f01"
+    "aar_sha256": "8a8528ca957ddc497b468e830b324c5697cd7de8ade537f58f3fdc04d083735f",
+    "git_sha256": "8a8528ca957ddc497b468e830b324c5697cd7de8ade537f58f3fdc04d083735f"
   }
 }
 
@@ -31,9 +31,21 @@ status=0
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/cad-upload/process-job.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/secondary-extraction/run.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/sketchup-cutlist/component-hygiene.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/sketchup-cutlist/derived-heuristics.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/sketchup-cutlist/parse-glb-weldment.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/server/db/migrations/meta/_journal.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/derived-heuristics.test.ts', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/cad-upload/process-job.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/secondary-extraction/run.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/sketchup-cutlist/component-hygiene.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/sketchup-cutlist/derived-heuristics.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/sketchup-cutlist/parse-glb-weldment.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/server/db/migrations/meta/_journal.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/derived-heuristics.test.ts', LF will be replaced by CRLF the next time Git touches it
 

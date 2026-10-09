@@ -351,6 +351,13 @@
       "when": 1791549818291,
       "tag": "0049_free_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791555395855,
+      "tag": "0050_even_chamber",
+      "breakpoints": true
     }
   ]
 }
