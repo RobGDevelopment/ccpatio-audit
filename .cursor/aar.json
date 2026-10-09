@@ -1,92 +1,57 @@
 {
-  "phase_id": "airlock-1.5-factory-polish",
+  "phase_id": "airlock-2-zod",
   "base_ref": "HEAD",
-  "blast_radius": 12,
+  "blast_radius": 6,
   "counts": {
-    "files": 12,
-    "tracked": 10,
-    "untracked": 2,
-    "insertions": 729,
-    "deletions": 72
+    "files": 6,
+    "tracked": 3,
+    "untracked": 3,
+    "insertions": 21,
+    "deletions": 40
   },
   "files": [
     {
       "status": "??",
-      "path": "src/server/db/migrations/0050_even_chamber.sql",
+      "path": "src/server/factory-bom/airlock.schema.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/db/migrations/meta/0050_snapshot.json",
+      "path": "src/server/factory-bom/evaluate-airlock.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/airlock-dossier.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 22,
-      "deletions": 10
+      "insertions": 11,
+      "deletions": 23
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 5,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/lib/cad-upload/process-job.ts",
-      "insertions": 261,
+      "insertions": 8,
       "deletions": 15
     },
     {
       "status": "M",
-      "path": "src/lib/secondary-extraction/run.ts",
-      "insertions": 50,
-      "deletions": 18
-    },
-    {
-      "status": "M",
-      "path": "src/lib/sketchup-cutlist/component-hygiene.ts",
-      "insertions": 48,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/lib/sketchup-cutlist/derived-heuristics.ts",
-      "insertions": 165,
-      "deletions": 7
-    },
-    {
-      "status": "M",
-      "path": "src/lib/sketchup-cutlist/parse-glb-weldment.ts",
-      "insertions": 50,
-      "deletions": 3
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/migrations/meta/_journal.json",
-      "insertions": 7,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/schema.ts",
-      "insertions": 6,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "tests/derived-heuristics.test.ts",
-      "insertions": 115,
-      "deletions": 17
+      "path": ".cursor/session-stamp.json",
+      "insertions": 2,
+      "deletions": 2
     }
   ],
   "untracked": [
-    "src/server/db/migrations/0050_even_chamber.sql",
-    "src/server/db/migrations/meta/0050_snapshot.json"
+    "src/server/factory-bom/airlock.schema.ts",
+    "src/server/factory-bom/evaluate-airlock.ts",
+    "tests/airlock-dossier.test.ts"
   ],
-  "file_list_sha256": "8a8528ca957ddc497b468e830b324c5697cd7de8ade537f58f3fdc04d083735f",
+  "file_list_sha256": "f2205829dd1b17fbc5eb9340789b16b52f9a7f8bd8d8d94664a5455a82e312c2",
   "notes": ""
 }
