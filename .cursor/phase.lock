@@ -1,16 +1,15 @@
 {
-  "phase_id": "airlock-2-zod",
-  "intent": "Implement the strict Zod validation schemas, Katana payload HTTP contracts, the evaluateAirlock function, and pure unit tests.",
+  "phase_id": "airlock-2-wire-approve",
+  "intent": "Wire the evaluateAirlock validation engine into the approveDraftRecipe server action, returning blockingCodes and preventing live upserts on failure.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
-    "src/server/factory-bom/airlock.schema.ts",
-    "src/server/factory-bom/evaluate-airlock.ts",
-    "tests/airlock-dossier.test.ts"
+    "src/app/admin/factory-bom/actions.ts",
+    "src/server/factory-bom/evaluate-airlock.ts"
   ],
-  "expected_blast_radius": 6,
+  "expected_blast_radius": 3,
   "override_blast_cap": false,
-  "target_test": "npx vitest run tests/airlock-dossier.test.ts"
+  "target_test": "npm run typecheck"
 }

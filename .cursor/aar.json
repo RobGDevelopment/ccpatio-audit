@@ -1,57 +1,35 @@
 {
-  "phase_id": "airlock-2-zod",
+  "phase_id": "airlock-2-wire-approve",
   "base_ref": "HEAD",
-  "blast_radius": 6,
+  "blast_radius": 3,
   "counts": {
-    "files": 6,
+    "files": 3,
     "tracked": 3,
-    "untracked": 3,
-    "insertions": 21,
-    "deletions": 40
+    "untracked": 0,
+    "insertions": 135,
+    "deletions": 23
   },
   "files": [
     {
-      "status": "??",
-      "path": "src/server/factory-bom/airlock.schema.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/factory-bom/evaluate-airlock.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/airlock-dossier.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 11,
-      "deletions": 23
+      "insertions": 8,
+      "deletions": 10
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 8,
-      "deletions": 15
+      "insertions": 6,
+      "deletions": 7
     },
     {
       "status": "M",
-      "path": ".cursor/session-stamp.json",
-      "insertions": 2,
-      "deletions": 2
+      "path": "src/app/admin/factory-bom/actions.ts",
+      "insertions": 121,
+      "deletions": 6
     }
   ],
-  "untracked": [
-    "src/server/factory-bom/airlock.schema.ts",
-    "src/server/factory-bom/evaluate-airlock.ts",
-    "tests/airlock-dossier.test.ts"
-  ],
-  "file_list_sha256": "f2205829dd1b17fbc5eb9340789b16b52f9a7f8bd8d8d94664a5455a82e312c2",
+  "untracked": [],
+  "file_list_sha256": "9f52ce8157f957ce880944dd70c0247ae07e31fe03ffb517d3a7122cdaee9b17",
   "notes": ""
 }

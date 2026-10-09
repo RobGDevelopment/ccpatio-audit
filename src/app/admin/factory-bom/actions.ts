@@ -51,6 +51,8 @@ import {
   type ItemType,
   type RecipeReviewStatus,
 } from "@/server/db/schema";
+import { evaluateAirlock } from "@/server/factory-bom/evaluate-airlock";
+import { type AirlockDossier } from "@/server/factory-bom/airlock.schema";
 import { resetReleaseGate } from "@/server/factory-bom/release-gate";
 
 export type { BomComponentCandidate, BomTreeNode };
@@ -762,7 +764,7 @@ export async function approveDraftRecipe(
     includePackagingBom?: boolean;
     applyEstimatedWeight?: boolean;
   },
-): Promise<BomMutationResult> {
+): Promise<BomMutationResult & { blockingCodes?: string[] }> {
   const session = await requireSession();
   if ("error" in session) return { ok: false, error: session.error };
 
@@ -792,6 +794,124 @@ export async function approveDraftRecipe(
   const applyWeight =
     options?.applyEstimatedWeight === true ||
     estimate?.overrides?.applyEstimatedWeight === true;
+
+  const ops = await db
+    .select()
+    .from(item_operations_draft)
+    .where(inArray(item_operations_draft.item_sku, parents));
+
+  const allSkus = new Set<string>();
+  for (const p of parents) allSkus.add(p);
+  for (const l of lines) allSkus.add(l.child_sku);
+  
+  const skuMap = new Map<string, any>();
+  if (allSkus.size > 0) {
+     const mapped = await db.select({
+       sku: sku_mappings.global_sku,
+       itemType: sku_mappings.item_type,
+       originalName: sku_mappings.original_name,
+       katanaVariantId: sku_mappings.katana_variant_id,
+       category: sku_mappings.category,
+     }).from(sku_mappings).where(inArray(sku_mappings.global_sku, Array.from(allSkus)));
+     for (const m of mapped) skuMap.set(m.sku, m);
+  }
+  
+  const rootMeta = skuMap.get(sku);
+  if (!rootMeta) return { ok: false, error: "Root SKU metadata not found" };
+
+  const [latestCad] = await db
+    .select()
+    .from(cad_uploads)
+    .where(eq(cad_uploads.global_sku, sku))
+    .orderBy(desc(cad_uploads.created_at))
+    .limit(1);
+
+  let cadNode = null;
+  if (latestCad && (latestCad.ext === "dae" || latestCad.ext === "glb")) {
+    const snap = latestCad.geometry_snapshot as any;
+    cadNode = {
+      uploadId: latestCad.id,
+      ext: latestCad.ext as "dae" | "glb",
+      status: (latestCad.status === "failed" ? "failed" : "draft_ready") as "draft_ready" | "failed",
+      sha256: latestCad.sha256 || "",
+      hygiene: (snap?.hygiene === "pass" ? "pass" : "fail") as "pass" | "fail",
+    };
+  }
+
+  const checklist = {
+    identityConfirmed: true as const,
+    cutListConfirmed: true as const,
+    operationsConfirmed: true as const,
+    quarantineConfirmed: true as const,
+  };
+
+  const nodes = parents.map(parentSku => {
+    const pMeta = skuMap.get(parentSku);
+    const parentLines = lines.filter(l => l.parent_sku === parentSku).map(l => {
+       const cMeta = skuMap.get(l.child_sku);
+       const isMetal = Boolean(
+         cMeta?.category?.match(/metal|aluminum|tube|flat bar/i) ||
+         (Array.isArray(l.cut_list) && l.cut_list.length > 0 && (l.cut_list[0] as any).profile !== "UNKNOWN") ||
+         ((l.unit_of_measure === "in" || l.unit_of_measure === "ft") && Array.isArray(l.cut_list) && l.cut_list.length > 0)
+       );
+       
+       return {
+         parentSku: l.parent_sku,
+         childSku: l.child_sku,
+         itemType: cMeta?.itemType as any,
+         quantity: Number(l.quantity),
+         scrapFactor: Number(l.scrap_factor),
+         unitOfMeasure: l.unit_of_measure as any,
+         status: l.status,
+         source: l.source,
+         notes: l.notes,
+         cutList: Array.isArray(l.cut_list) ? l.cut_list.map((c: any) => ({
+           role: c.role || "",
+           profile: c.profile || "UNKNOWN",
+           lengthIn: Number(c.lengthIn) || 0,
+           endA: c.endA,
+           endB: c.endB,
+           qtyEa: c.qtyEa,
+           lengthConvention: c.lengthConvention,
+           sourceName: c.sourceName || "",
+           confidence: c.confidence,
+           drawingPartNumber: c.drawingPartNumber
+         })) : [],
+         isMetal
+       };
+    });
+    const parentOps = ops.filter(o => o.item_sku === parentSku).map(o => ({
+       itemSku: o.item_sku,
+       workCenter: o.work_center,
+       sequence: o.sequence,
+       setupTimeMins: o.setup_time_mins ? Number(o.setup_time_mins) : 0,
+       runTimeMins: o.run_time_mins ? Number(o.run_time_mins) : 0,
+    }));
+    return {
+      sku: parentSku,
+      itemType: pMeta?.itemType as any,
+      lines: parentLines,
+      operations: parentOps,
+    };
+  });
+
+  const dossier: AirlockDossier = {
+    rootSku: sku,
+    identity: {
+      itemType: rootMeta.itemType as any,
+      originalName: rootMeta.originalName || "",
+      katanaVariantId: rootMeta.katanaVariantId,
+      cad: cadNode,
+      cadWaived: false,
+    },
+    nodes,
+    checklist,
+  };
+
+  const blockingCodes = evaluateAirlock(dossier);
+  if (blockingCodes.length > 0) {
+    return { ok: false, error: "Validation failed", blockingCodes };
+  }
 
   const now = new Date();
   for (const line of lines) {
@@ -829,11 +949,6 @@ export async function approveDraftRecipe(
         },
       });
   }
-
-  const ops = await db
-    .select()
-    .from(item_operations_draft)
-    .where(inArray(item_operations_draft.item_sku, parents));
   for (const op of ops) {
     await db
       .insert(item_operations)

@@ -1,8 +1,8 @@
 status=0
 --- stdout ---
 {
-  "phase_id": "airlock-2-zod",
-  "phase": "airlock-2-zod",
+  "phase_id": "airlock-2-wire-approve",
+  "phase": "airlock-2-wire-approve",
   "verdict": "CERTIFIED",
   "audit_exit": 0,
   "invariantViolations": [],
@@ -11,19 +11,19 @@ status=0
     "lint": "PASS",
     "target_test": "PASS"
   },
-  "targetTest": "npx vitest run tests/airlock-dossier.test.ts",
+  "targetTest": "npm run typecheck",
   "blastRadius": {
-    "actual": 6,
-    "expected": 6,
+    "actual": 3,
+    "expected": 3,
     "tolerance": 0,
     "tracked": 3,
-    "untracked": 3,
+    "untracked": 0,
     "status": "PASS"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "f2205829dd1b17fbc5eb9340789b16b52f9a7f8bd8d8d94664a5455a82e312c2",
-    "git_sha256": "f2205829dd1b17fbc5eb9340789b16b52f9a7f8bd8d8d94664a5455a82e312c2"
+    "aar_sha256": "9f52ce8157f957ce880944dd70c0247ae07e31fe03ffb517d3a7122cdaee9b17",
+    "git_sha256": "9f52ce8157f957ce880944dd70c0247ae07e31fe03ffb517d3a7122cdaee9b17"
   }
 }
 
@@ -31,9 +31,7 @@ status=0
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
 
