@@ -1121,7 +1121,14 @@ export async function approveDraftRecipe(
  */
 export async function publishApprovedRecipeToKatana(
   rootSku: string,
-): Promise<BomMutationResult & { blockingCodes?: string[] }> {
+): Promise<
+  BomMutationResult & {
+    blockingCodes?: string[];
+    dryRun?: boolean;
+    dossierHash?: string;
+    message?: string;
+  }
+> {
   const session = await requireSession();
   if ("error" in session) return { ok: false, error: session.error };
 
@@ -1227,36 +1234,71 @@ export async function publishApprovedRecipeToKatana(
     cutList: allCuts as any,
     geometrySnapshot: (snapshot.cadUpload?.geometry_snapshot as any) || { components: [] }
   });
-  
-  const shopDrawingSha256 = sha256Hex(pdfBytes);
-  const storagePath = buildStorageKey(sku, "shop_drawing", 1, "pdf");
-  const { error: uploadErr } = await getSupabaseAdmin().storage.from(PRODUCT_DOCUMENTS_BUCKET).upload(storagePath, pdfBytes, { contentType: "application/pdf" });
-  if (uploadErr) {
-    return { ok: false, error: "Failed to upload shop drawing: " + uploadErr.message };
-  }
-  
-  const db = getDb();
-  await db.insert(product_assets).values({
-    global_sku: sku,
-    kind: "shop_drawing",
-    revision: 1,
-    storage_path: storagePath,
-    original_filename: `shop_drawing_${sku}.pdf`,
-    content_type: "application/pdf",
-    byte_size: pdfBytes.length,
-    sha256: shopDrawingSha256
-  });
 
-  const [firstLine] = snapshot.lines.filter(l => l.parent_sku === sku);
+  const shopDrawingSha256 = sha256Hex(pdfBytes);
+  const db = getDb();
+  const [currentDrawing] = await db
+    .select()
+    .from(product_assets)
+    .where(
+      and(
+        eq(product_assets.global_sku, sku),
+        eq(product_assets.kind, "shop_drawing"),
+        eq(product_assets.is_current, true),
+      ),
+    )
+    .limit(1);
+
+  let storagePath = currentDrawing?.storage_path ?? "";
+  if (!(currentDrawing?.sha256 === shopDrawingSha256 && storagePath)) {
+    const revision = (currentDrawing?.revision ?? 0) + 1;
+    storagePath = buildStorageKey(sku, "shop_drawing", revision, "pdf");
+    const { error: uploadErr } = await getSupabaseAdmin()
+      .storage.from(PRODUCT_DOCUMENTS_BUCKET)
+      .upload(storagePath, pdfBytes, { contentType: "application/pdf" });
+    if (uploadErr) {
+      return { ok: false, error: "SHOP_DRAWING_REQUIRED", blockingCodes: ["SHOP_DRAWING_REQUIRED"] };
+    }
+    await db.transaction(async (tx) => {
+      if (currentDrawing) {
+        await tx
+          .update(product_assets)
+          .set({ is_current: false, superseded_at: new Date(), updated_at: new Date() })
+          .where(eq(product_assets.id, currentDrawing.id));
+      }
+      await tx.insert(product_assets).values({
+        global_sku: sku,
+        kind: "shop_drawing",
+        revision,
+        storage_path: storagePath,
+        original_filename: `shop_drawing_${sku}.pdf`,
+        content_type: "application/pdf",
+        byte_size: pdfBytes.length,
+        sha256: shopDrawingSha256,
+        is_current: true,
+      });
+    });
+  }
+
+  const [firstLine] = snapshot.lines
+    .filter((line) => line.parent_sku === sku)
+    .slice()
+    .sort((a, b) => a.child_sku.localeCompare(b.child_sku));
   if (firstLine) {
-    const newNote = `${firstLine.notes || ""} | Shop:${storagePath}`.trim();
+    const shopSuffix = `Shop:${storagePath}`;
+    const baseNote = (firstLine.notes || "").trim();
+    const newNote = baseNote.endsWith(shopSuffix)
+      ? baseNote
+      : baseNote
+        ? `${baseNote} | ${shopSuffix}`
+        : shopSuffix;
     if (newNote.length > 255) {
       return { ok: false, error: "SHOP_NOTE", blockingCodes: ["SHOP_NOTE"] };
     }
     await db.update(product_bom_draft)
       .set({ notes: newNote })
       .where(eq(product_bom_draft.id, firstLine.id));
-      
+
     const rootNode = dossier.nodes.find(n => n.sku === sku);
     if (rootNode) {
       const rootDossierLine = rootNode.lines.find(l => l.childSku === firstLine.child_sku);
@@ -1266,6 +1308,7 @@ export async function publishApprovedRecipeToKatana(
 
   const dossierHash = computeDossierHash(dossier, shopDrawingSha256);
   if (snapshot.releaseGate?.dossier_hash && snapshot.releaseGate.dossier_hash !== dossierHash) {
+    await resetReleaseGate(sku, ["CHECKLIST"]);
     return { ok: false, error: "CHECKLIST", blockingCodes: ["CHECKLIST"] };
   }
   
@@ -1291,21 +1334,20 @@ export async function publishApprovedRecipeToKatana(
   const catalogMode = getCatalogPublishMode();
   const dryRun = !canMutateKatanaCatalog(catalogMode);
 
-  if (dryRun) {
-    const payloadHash = hashChannelPayload({
-      channel: "katana",
-      path: "factory_publish",
-      sku,
-      recipeRows: 0,
-      operationRows: 0,
-      nodesSynced: 0,
-      dryRun: true,
-    });
-    return { ok: true, dryRun: true } as any;
-  }
-
-  const result = await syncBOMToKatana(sku, { fromAirlock: true, idempotencyKey: `factory-bom:${sku}:${dossierHash}` } as any);
+  const result = await syncBOMToKatana(sku, {
+    fromAirlock: true,
+    idempotencyKey: `factory-bom:${sku}:${dossierHash}`,
+  });
   if (!result.ok) return { ok: false, error: result.error };
+
+  if (dryRun || result.dryRun) {
+    return {
+      ok: true,
+      dryRun: true,
+      dossierHash,
+      message: `${result.message} Nothing was sent to Katana.`,
+    };
+  }
 
   const payloadHash = hashChannelPayload({
     channel: "katana",

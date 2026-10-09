@@ -1,60 +1,41 @@
 {
   "phase_id": "airlock-4-publish-gate",
   "base_ref": "HEAD",
-  "blast_radius": 6,
+  "blast_radius": 4,
   "counts": {
-    "files": 6,
-    "tracked": 0,
-    "untracked": 6,
-    "insertions": 0,
-    "deletions": 0
+    "files": 4,
+    "tracked": 4,
+    "untracked": 0,
+    "insertions": 92,
+    "deletions": 38
   },
   "files": [
     {
-      "status": "??",
-      "path": "fix_katana.js",
-      "insertions": 0,
+      "status": "M",
+      "path": ".cursor/phase.lock",
+      "insertions": 1,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/app/admin/factory-bom/actions.ts",
+      "insertions": 76,
+      "deletions": 34
+    },
+    {
+      "status": "M",
+      "path": "src/lib/katana.ts",
+      "insertions": 1,
       "deletions": 0
     },
     {
-      "status": "??",
-      "path": "fix_katana.py",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "fix_katana_ops.js",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "fix_types.js",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "fix_types_v2.js",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "rewrite.py",
-      "insertions": 0,
-      "deletions": 0
+      "status": "M",
+      "path": "src/server/factory-bom/dossier-hash.ts",
+      "insertions": 14,
+      "deletions": 3
     }
   ],
-  "untracked": [
-    "fix_katana.js",
-    "fix_katana.py",
-    "fix_katana_ops.js",
-    "fix_types.js",
-    "fix_types_v2.js",
-    "rewrite.py"
-  ],
-  "file_list_sha256": "5eb511fe095f2e6d79e021dc99dcae4127b84d243115524aa3d565ee580226e8",
+  "untracked": [],
+  "file_list_sha256": "4da40dc8a88cf18d7d7385a0f61f6a6961e69c82e6c3ea5a575d749abb6695de",
   "notes": ""
 }

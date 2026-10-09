@@ -1318,6 +1318,7 @@ export async function syncBOMToKatana(
         // Katana public API: POST /product_operation_rows (product operations)
         await katanaFetch("/product_operation_rows", {
           method: "POST",
+          idempotencyKey: options.idempotencyKey,
           body: {
             keep_current_rows: false,
             rows: operationPayload,

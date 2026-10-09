@@ -10,7 +10,7 @@
     "src/server/factory-bom/dossier-hash.ts",
     "src/lib/katana.ts"
   ],
-  "expected_blast_radius": 6,
+  "expected_blast_radius": 4,
   "override_blast_cap": false,
   "target_test": "npm run typecheck"
 }
