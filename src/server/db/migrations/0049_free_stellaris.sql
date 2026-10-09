@@ -1,0 +1,1 @@
+ALTER TABLE "cad_uploads" ADD COLUMN "geometry_snapshot" jsonb;

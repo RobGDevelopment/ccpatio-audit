@@ -344,6 +344,13 @@
       "when": 1791508068150,
       "tag": "0048_reflective_human_cannonball",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791549818291,
+      "tag": "0049_free_stellaris",
+      "breakpoints": true
     }
   ]
 }

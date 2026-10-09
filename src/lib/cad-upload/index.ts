@@ -10,7 +10,7 @@ export type CadUploadedEventData = {
   uploadId: string;
   globalSku: string;
   storagePath: string;
-  ext: "dae" | "skp";
+  ext: "dae" | "skp" | "glb";
   sha256?: string;
   operatorEmail: string;
   replaceImage?: boolean;

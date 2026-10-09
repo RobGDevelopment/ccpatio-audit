@@ -403,6 +403,7 @@ export const cad_uploads = pgTable("cad_uploads", {
   force_rename: boolean("force_rename").notNull().default(false),
   replace_image: boolean("replace_image").notNull().default(false),
   uploaded_by: text("uploaded_by"),
+  geometry_snapshot: jsonb("geometry_snapshot"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
