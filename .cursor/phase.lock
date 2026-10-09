@@ -1,20 +1,16 @@
 {
-  "phase_id": "airlock-2.5-shop-pdf",
-  "intent": "Implement the pure jsPDF shop-drawing renderer, expand the asset vault to accept it, and write pure unit tests verifying byte stability.",
+  "phase_id": "airlock-3-shell",
+  "intent": "Implement the AirlockWizard shell, replacing the direct workbench mount on the factory-bom embed, and build the server-side snapshot loader.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
-    "src/server/factory-bom/shop-drawing.ts",
-    "src/server/db/schema.ts",
-    "src/server/pim/asset-vault.ts",
-    "tests/shop-drawing.test.ts",
-    "src/server/db/migrations/0051_numerous_adam_warlock.sql",
-    "src/server/db/migrations/meta/_journal.json",
-    "src/server/db/migrations/meta/0051_snapshot.json"
+    "src/app/embed/factory-bom/page.tsx",
+    "src/app/embed/factory-bom/AirlockWizard.tsx",
+    "src/server/factory-bom/load-airlock-snapshot.ts"
   ],
-  "expected_blast_radius": 9,
-  "override_blast_cap": true,
+  "expected_blast_radius": 6,
+  "override_blast_cap": false,
   "target_test": "npm run typecheck"
 }

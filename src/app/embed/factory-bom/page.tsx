@@ -1,8 +1,8 @@
 import { getPimSession } from "@/lib/pim-audit";
-import { FactoryBomWorkbench } from "@/app/admin/factory-bom/FactoryBomWorkbench";
 import { canvas } from "@/app/admin/factory-bom/factory-bom-ui";
 import { listFactoryProducts } from "@/server/factory-bom/list-factory-products";
-import { resolveLinkedFinishedGood } from "@/server/factory-bom/resolve-linked-sku";
+import { loadAirlockSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
+import { AirlockWizard } from "./AirlockWizard";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,7 @@ export default async function EmbedFactoryBomPage({
 }) {
   const session = await getPimSession();
   const params = await searchParams;
+  
   if (!session) {
     return (
       <main className={`flex h-full min-h-0 flex-1 items-center justify-center px-6 text-sm text-slate-500 ${canvas}`}>
@@ -23,19 +24,19 @@ export default async function EmbedFactoryBomPage({
 
   const products = await listFactoryProducts();
   const initialSku = params.sku?.trim().toUpperCase() || undefined;
-  const linkedProduct =
-    initialSku && !products.some((row) => row.sku === initialSku)
-      ? await resolveLinkedFinishedGood(initialSku)
-      : null;
+
+  let snapshot = null;
+  if (initialSku) {
+    snapshot = await loadAirlockSnapshot(initialSku);
+  }
 
   return (
-    <div className={`flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden font-sans ${canvas}`}>
-      <FactoryBomWorkbench
+    <main className={`flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden font-sans ${canvas}`}>
+      <AirlockWizard
         products={products}
         initialSku={initialSku}
-        linkedProduct={linkedProduct}
-        embedded
+        snapshot={snapshot}
       />
-    </div>
+    </main>
   );
 }

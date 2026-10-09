@@ -1,76 +1,56 @@
 {
-  "phase_id": "airlock-2.5-shop-pdf",
+  "phase_id": "airlock-3-shell",
   "base_ref": "HEAD",
-  "blast_radius": 9,
+  "blast_radius": 6,
   "counts": {
-    "files": 9,
-    "tracked": 5,
-    "untracked": 4,
-    "insertions": 34,
-    "deletions": 14
+    "files": 6,
+    "tracked": 4,
+    "untracked": 2,
+    "insertions": 31,
+    "deletions": 38
   },
   "files": [
     {
       "status": "??",
-      "path": "src/server/db/migrations/0051_numerous_adam_warlock.sql",
+      "path": "src/app/embed/factory-bom/AirlockWizard.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/db/migrations/meta/0051_snapshot.json",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/factory-bom/shop-drawing.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/shop-drawing.test.ts",
+      "path": "src/server/factory-bom/load-airlock-snapshot.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 14,
-      "deletions": 8
+      "insertions": 10,
+      "deletions": 14
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 11,
-      "deletions": 6
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/migrations/meta/_journal.json",
       "insertions": 7,
-      "deletions": 0
+      "deletions": 11
     },
     {
       "status": "M",
-      "path": "src/server/db/schema.ts",
-      "insertions": 1,
-      "deletions": 0
+      "path": ".cursor/session-stamp.json",
+      "insertions": 2,
+      "deletions": 2
     },
     {
       "status": "M",
-      "path": "src/server/pim/asset-vault.ts",
-      "insertions": 1,
-      "deletions": 0
+      "path": "src/app/embed/factory-bom/page.tsx",
+      "insertions": 12,
+      "deletions": 11
     }
   ],
   "untracked": [
-    "src/server/db/migrations/0051_numerous_adam_warlock.sql",
-    "src/server/db/migrations/meta/0051_snapshot.json",
-    "src/server/factory-bom/shop-drawing.ts",
-    "tests/shop-drawing.test.ts"
+    "src/app/embed/factory-bom/AirlockWizard.tsx",
+    "src/server/factory-bom/load-airlock-snapshot.ts"
   ],
-  "file_list_sha256": "f58abe03af352441f97ec4941f9b9278fe640262fb2bb5039fad631e87309d95",
+  "file_list_sha256": "5cfce8017269742da358c351e603548203b74cd34b400e68ba2d4e7112faddd9",
   "notes": ""
 }

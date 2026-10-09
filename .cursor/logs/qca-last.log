@@ -1,8 +1,8 @@
 status=0
 --- stdout ---
 {
-  "phase_id": "airlock-2.5-shop-pdf",
-  "phase": "airlock-2.5-shop-pdf",
+  "phase_id": "airlock-3-shell",
+  "phase": "airlock-3-shell",
   "verdict": "CERTIFIED",
   "audit_exit": 0,
   "invariantViolations": [],
@@ -13,17 +13,17 @@ status=0
   },
   "targetTest": "npm run typecheck",
   "blastRadius": {
-    "actual": 9,
-    "expected": 9,
+    "actual": 6,
+    "expected": 6,
     "tolerance": 0,
-    "tracked": 5,
-    "untracked": 4,
+    "tracked": 4,
+    "untracked": 2,
     "status": "PASS"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "f58abe03af352441f97ec4941f9b9278fe640262fb2bb5039fad631e87309d95",
-    "git_sha256": "f58abe03af352441f97ec4941f9b9278fe640262fb2bb5039fad631e87309d95"
+    "aar_sha256": "5cfce8017269742da358c351e603548203b74cd34b400e68ba2d4e7112faddd9",
+    "git_sha256": "5cfce8017269742da358c351e603548203b74cd34b400e68ba2d4e7112faddd9"
   }
 }
 
@@ -31,13 +31,9 @@ status=0
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/server/db/migrations/meta/_journal.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/server/db/schema.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/server/pim/asset-vault.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/server/db/migrations/meta/_journal.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/server/db/schema.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/server/pim/asset-vault.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
 
