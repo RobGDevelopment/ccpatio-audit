@@ -501,6 +501,23 @@ export const item_operations_draft = pgTable("item_operations_draft", {
   index("item_operations_draft_item_sku_idx").on(table.item_sku),
 ]);
 
+/** Header for a custom build factory order, created from a designer's PDF. */
+export const custom_build_jobs = pgTable(
+  "custom_build_jobs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    client_slug: text("client_slug").notNull(),
+    display_name: text("display_name").notNull(),
+    ghl_opportunity_id: text("ghl_opportunity_id").unique(),
+    architect_name: text("architect_name"),
+    designer_name: text("designer_name"),
+    packet_storage_path: text("packet_storage_path"),
+    created_by: text("created_by").notNull(),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
+  }
+);
+
 export const skuMappingsRelations = relations(sku_mappings, ({ many }) => ({
   bomAsParent: many(product_bom, { relationName: "bom_parent" }),
   bomAsChild: many(product_bom, { relationName: "bom_child" }),
