@@ -1,35 +1,76 @@
 {
-  "phase_id": "airlock-2-wire-approve",
+  "phase_id": "airlock-2.5-shop-pdf",
   "base_ref": "HEAD",
-  "blast_radius": 3,
+  "blast_radius": 9,
   "counts": {
-    "files": 3,
-    "tracked": 3,
-    "untracked": 0,
-    "insertions": 135,
-    "deletions": 23
+    "files": 9,
+    "tracked": 5,
+    "untracked": 4,
+    "insertions": 34,
+    "deletions": 14
   },
   "files": [
     {
+      "status": "??",
+      "path": "src/server/db/migrations/0051_numerous_adam_warlock.sql",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/db/migrations/meta/0051_snapshot.json",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/factory-bom/shop-drawing.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/shop-drawing.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 8,
-      "deletions": 10
+      "insertions": 14,
+      "deletions": 8
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 6,
-      "deletions": 7
+      "insertions": 11,
+      "deletions": 6
     },
     {
       "status": "M",
-      "path": "src/app/admin/factory-bom/actions.ts",
-      "insertions": 121,
-      "deletions": 6
+      "path": "src/server/db/migrations/meta/_journal.json",
+      "insertions": 7,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/db/schema.ts",
+      "insertions": 1,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/pim/asset-vault.ts",
+      "insertions": 1,
+      "deletions": 0
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "9f52ce8157f957ce880944dd70c0247ae07e31fe03ffb517d3a7122cdaee9b17",
+  "untracked": [
+    "src/server/db/migrations/0051_numerous_adam_warlock.sql",
+    "src/server/db/migrations/meta/0051_snapshot.json",
+    "src/server/factory-bom/shop-drawing.ts",
+    "tests/shop-drawing.test.ts"
+  ],
+  "file_list_sha256": "f58abe03af352441f97ec4941f9b9278fe640262fb2bb5039fad631e87309d95",
   "notes": ""
 }

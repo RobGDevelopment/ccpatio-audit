@@ -36,6 +36,7 @@ export const KIND_POLICY: Record<ProductAssetKind, KindPolicy> = {
   assembly: { bucket: "product-documents", exts: PDF_EXTS, maxBytes: 25 * MB, multi: false },
   care_guide: { bucket: "product-documents", exts: PDF_EXTS, maxBytes: 25 * MB, multi: false },
   warranty: { bucket: "product-documents", exts: PDF_EXTS, maxBytes: 25 * MB, multi: false },
+  shop_drawing: { bucket: "product-documents", exts: PDF_EXTS, maxBytes: 25 * MB, multi: false },
 };
 
 export const VAULT_KINDS = Object.keys(KIND_POLICY) as ProductAssetKind[];

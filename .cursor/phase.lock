@@ -1,15 +1,20 @@
 {
-  "phase_id": "airlock-2-wire-approve",
-  "intent": "Wire the evaluateAirlock validation engine into the approveDraftRecipe server action, returning blockingCodes and preventing live upserts on failure.",
+  "phase_id": "airlock-2.5-shop-pdf",
+  "intent": "Implement the pure jsPDF shop-drawing renderer, expand the asset vault to accept it, and write pure unit tests verifying byte stability.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
-    "src/app/admin/factory-bom/actions.ts",
-    "src/server/factory-bom/evaluate-airlock.ts"
+    "src/server/factory-bom/shop-drawing.ts",
+    "src/server/db/schema.ts",
+    "src/server/pim/asset-vault.ts",
+    "tests/shop-drawing.test.ts",
+    "src/server/db/migrations/0051_numerous_adam_warlock.sql",
+    "src/server/db/migrations/meta/_journal.json",
+    "src/server/db/migrations/meta/0051_snapshot.json"
   ],
-  "expected_blast_radius": 3,
-  "override_blast_cap": false,
+  "expected_blast_radius": 9,
+  "override_blast_cap": true,
   "target_test": "npm run typecheck"
 }

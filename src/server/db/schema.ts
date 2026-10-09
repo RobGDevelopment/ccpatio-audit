@@ -1448,6 +1448,7 @@ export type EcommerceListingRow = typeof ecommerce_listings.$inferSelect;
 export type EcommerceRosterGapRow = typeof ecommerce_roster_gaps.$inferSelect;
 
 export const productAssetKindEnum = pgEnum("product_asset_kind", [
+  "shop_drawing",
   "tear_sheet",
   "assembly",
   "gallery",

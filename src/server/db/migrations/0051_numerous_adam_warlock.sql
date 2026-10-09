@@ -1,0 +1,1 @@
+ALTER TYPE "public"."product_asset_kind" ADD VALUE 'shop_drawing' BEFORE 'tear_sheet';
