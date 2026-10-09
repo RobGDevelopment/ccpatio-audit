@@ -22,7 +22,8 @@ import {
 } from "@/lib/factory-routing/resources";
 import { getPimSession, logPimAudit } from "@/lib/pim-audit";
 import { subAssemblySku } from "@/lib/heuristic-bom";
-import { syncBOMToKatana, getCatalogPublishMode, canMutateKatanaCatalog } from "@/lib/katana";
+import { syncBOMToKatana } from "@/lib/katana";
+import { getCatalogPublishMode, canMutateKatanaCatalog } from "@/server/pipeline/catalog-mode";
 import { hashChannelPayload, upsertChannelSync } from "@/server/mdm/channel-sync";
 import { runSecondaryExtract } from "@/lib/secondary-extraction";
 import {

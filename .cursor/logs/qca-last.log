@@ -6,8 +6,15 @@ status=2
   "verdict": "DEFECT_REJECTED",
   "audit_exit": 2,
   "invariantViolations": [
-    "Blast Radius Breach: diff touches 2 files; expected 7; tolerance 0.",
-    "AAR blast radius 2 disagrees with phase.lock expected_blast_radius 7. Lock wins."
+    "Blast Radius Breach: diff touches 7 files; expected 6; tolerance 0.",
+    "AAR file list parity breach: generated file list does not match git diff.",
+    "AAR insertion and deletion counts do not match git diff --numstat.",
+    "Scope Breach: fix_katana.js modified outside allowed phase scope.",
+    "Scope Breach: fix_katana.py modified outside allowed phase scope.",
+    "Scope Breach: fix_katana_ops.js modified outside allowed phase scope.",
+    "Scope Breach: fix_types.js modified outside allowed phase scope.",
+    "Scope Breach: fix_types_v2.js modified outside allowed phase scope.",
+    "Scope Breach: rewrite.py modified outside allowed phase scope."
   ],
   "testResults": {
     "typecheck": "PASS",
@@ -16,25 +23,23 @@ status=2
   },
   "targetTest": "npm run typecheck",
   "blastRadius": {
-    "actual": 2,
-    "expected": 7,
+    "actual": 7,
+    "expected": 6,
     "tolerance": 0,
-    "tracked": 2,
-    "untracked": 0,
+    "tracked": 1,
+    "untracked": 6,
     "status": "FAIL"
   },
   "aarParity": {
-    "status": "PASS",
-    "aar_sha256": "dd02cd99422bf54d5010c37a62afa7964f0c49381d950c37761d2a9a06f58cae",
-    "git_sha256": "dd02cd99422bf54d5010c37a62afa7964f0c49381d950c37761d2a9a06f58cae"
+    "status": "FAIL",
+    "aar_sha256": "5eb511fe095f2e6d79e021dc99dcae4127b84d243115524aa3d565ee580226e8",
+    "git_sha256": "64929c141d149d2dcab6bc48555e021ae6c6da9c0dca71804ba2e37fc2513df5"
   }
 }
 
 --- stderr ---
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/admin/factory-bom/actions.ts', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/admin/factory-bom/actions.ts', LF will be replaced by CRLF the next time Git touches it
 

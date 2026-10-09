@@ -1,29 +1,60 @@
 {
   "phase_id": "airlock-4-publish-gate",
   "base_ref": "HEAD",
-  "blast_radius": 2,
+  "blast_radius": 6,
   "counts": {
-    "files": 2,
-    "tracked": 2,
-    "untracked": 0,
-    "insertions": 23,
-    "deletions": 23
+    "files": 6,
+    "tracked": 0,
+    "untracked": 6,
+    "insertions": 0,
+    "deletions": 0
   },
   "files": [
     {
-      "status": "M",
-      "path": ".cursor/logs/qca-last.log",
-      "insertions": 16,
-      "deletions": 15
+      "status": "??",
+      "path": "fix_katana.js",
+      "insertions": 0,
+      "deletions": 0
     },
     {
-      "status": "M",
-      "path": ".cursor/phase.lock",
-      "insertions": 7,
-      "deletions": 8
+      "status": "??",
+      "path": "fix_katana.py",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "fix_katana_ops.js",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "fix_types.js",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "fix_types_v2.js",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "rewrite.py",
+      "insertions": 0,
+      "deletions": 0
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "dd02cd99422bf54d5010c37a62afa7964f0c49381d950c37761d2a9a06f58cae",
+  "untracked": [
+    "fix_katana.js",
+    "fix_katana.py",
+    "fix_katana_ops.js",
+    "fix_types.js",
+    "fix_types_v2.js",
+    "rewrite.py"
+  ],
+  "file_list_sha256": "5eb511fe095f2e6d79e021dc99dcae4127b84d243115524aa3d565ee580226e8",
   "notes": ""
 }
