@@ -1,45 +1,52 @@
-status=0
+status=2
 --- stdout ---
 {
-  "phase_id": "airlock-3-e2e",
-  "phase": "airlock-3-e2e",
-  "verdict": "CERTIFIED",
-  "audit_exit": 0,
-  "invariantViolations": [],
+  "phase_id": "airlock-5c-fast-lane",
+  "phase": "airlock-5c-fast-lane",
+  "verdict": "DEFECT_REJECTED",
+  "audit_exit": 2,
+  "invariantViolations": [
+    "Blast Radius Breach: diff touches 18 files; expected 4; tolerance 0.",
+    "AAR blast radius 18 disagrees with phase.lock expected_blast_radius 4. Lock wins.",
+    "Scope Breach: BUILD_PLAN.md modified outside allowed phase scope.",
+    "Scope Breach: src/app/embed/factory-bom/FunnelFork.tsx modified outside allowed phase scope.",
+    "Scope Breach: src/app/embed/factory-bom/IntakeDropzone.tsx modified outside allowed phase scope.",
+    "Scope Breach: src/server/factory-bom/promote-to-catalog.ts modified outside allowed phase scope.",
+    "Scope Breach: src/server/db/migrations/0052_custom_build_jobs.sql modified outside allowed phase scope.",
+    "Scope Breach: src/server/db/migrations/meta/0052_snapshot.json modified outside allowed phase scope.",
+    "Scope Breach: src/server/factory-bom/mint-custom-job.ts modified outside allowed phase scope.",
+    "Scope Breach: tests/custom-build-job.test.ts modified outside allowed phase scope.",
+    "Scope Breach: .cursor/logs/qca-last.log modified outside allowed phase scope.",
+    "Scope Breach: .cursor/phase.lock modified outside allowed phase scope.",
+    "Scope Breach: .cursor/session-stamp.json modified outside allowed phase scope.",
+    "Scope Breach: playwright-report/index.html modified outside allowed phase scope.",
+    "Scope Breach: src/app/admin/factory-bom/CadUploadDropzone.tsx modified outside allowed phase scope.",
+    "Scope Breach: src/app/admin/factory-bom/actions.ts modified outside allowed phase scope.",
+    "Scope Breach: src/app/embed/factory-bom/AirlockWizard.tsx modified outside allowed phase scope.",
+    "Scope Breach: src/app/embed/factory-bom/page.tsx modified outside allowed phase scope.",
+    "Scope Breach: src/server/db/migrations/meta/_journal.json modified outside allowed phase scope.",
+    "Scope Breach: src/server/db/schema.ts modified outside allowed phase scope."
+  ],
   "testResults": {
     "typecheck": "PASS",
     "lint": "PASS",
     "target_test": "PASS"
   },
-  "targetTest": "npx playwright test tests/e2e/factory-bom-lifecycle.spec.ts",
+  "targetTest": "npx vitest run tests/dae-weldment.test.ts tests/cad-upload-pipeline.test.ts",
   "blastRadius": {
-    "actual": 6,
-    "expected": 6,
+    "actual": 18,
+    "expected": 4,
     "tolerance": 0,
-    "tracked": 6,
-    "untracked": 0,
-    "status": "PASS"
+    "tracked": 14,
+    "untracked": 4,
+    "status": "FAIL"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "d1dcf15f9e1ac0e8c09642bec4d32048b5fb49943acc7841440da6acaa437f71",
-    "git_sha256": "d1dcf15f9e1ac0e8c09642bec4d32048b5fb49943acc7841440da6acaa437f71"
+    "aar_sha256": "2e75d356932308ed12688355c48f62a8f173ad10f63b09b249b968a75483447c",
+    "git_sha256": "2e75d356932308ed12688355c48f62a8f173ad10f63b09b249b968a75483447c"
   }
 }
 
 --- stderr ---
-warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'playwright-report/index.html', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'test-results/.last-run.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'tests/e2e/factory-bom-lifecycle.spec.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'tests/e2e/helpers/factory-bom-seed.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'playwright-report/index.html', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'test-results/.last-run.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'tests/e2e/factory-bom-lifecycle.spec.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'tests/e2e/helpers/factory-bom-seed.ts', LF will be replaced by CRLF the next time Git touches it
 

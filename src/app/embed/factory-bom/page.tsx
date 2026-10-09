@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function EmbedFactoryBomPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sku?: string }>;
+  searchParams: Promise<{ sku?: string; opportunityId?: string }>;
 }) {
   const session = await getPimSession();
   const params = await searchParams;
@@ -24,6 +24,7 @@ export default async function EmbedFactoryBomPage({
 
   const products = await listFactoryProducts();
   const initialSku = params.sku?.trim().toUpperCase() || undefined;
+  const opportunityId = params.opportunityId || undefined;
 
   let snapshot = null;
   if (initialSku) {
@@ -36,6 +37,7 @@ export default async function EmbedFactoryBomPage({
         products={products}
         initialSku={initialSku}
         snapshot={snapshot}
+        opportunityId={opportunityId}
       />
     </main>
   );

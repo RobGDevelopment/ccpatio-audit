@@ -80,7 +80,7 @@ export function CadUploadDropzone({
     const images = files.filter((f) => f.type.startsWith("image/"));
     const cad = files.find((f) => {
       const n = f.name.toLowerCase();
-      return n.endsWith(".dae") || n.endsWith(".skp");
+      return n.endsWith(".dae") || n.endsWith(".glb") || n.endsWith(".skp");
     });
 
     setBusy(true);
@@ -107,7 +107,7 @@ export function CadUploadDropzone({
 
       if (!cad) {
         if (images.length === 0) {
-          setError("Drop a .dae (geometry) or .skp (preview) file");
+          setError("Drop a .glb or .dae (geometry) or .skp (preview) file");
         }
         return;
       }
@@ -192,7 +192,7 @@ export function CadUploadDropzone({
         }`}
       >
         <p className="text-sm text-slate-800">
-          Drop <span className="font-mono">.dae</span> for cut-list drafts
+          Drop <span className="font-mono">.glb</span> or <span className="font-mono">.dae</span> for cut-list drafts
         </p>
         <p className="mt-1 text-xs text-slate-500">
           Optional: .skp for thumbnail
@@ -209,7 +209,7 @@ export function CadUploadDropzone({
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".dae,.skp,image/png,image/jpeg,image/webp"
+          accept=".dae,.glb,.skp,image/png,image/jpeg,image/webp"
           multiple
           onChange={(e) => void handleFiles(e.target.files)}
         />

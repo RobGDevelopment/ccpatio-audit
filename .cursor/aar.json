@@ -1,25 +1,55 @@
 {
-  "phase_id": "airlock-3-e2e",
+  "phase_id": "airlock-5b-intake-fork",
   "base_ref": "HEAD",
-  "blast_radius": 6,
+  "blast_radius": 12,
   "counts": {
-    "files": 6,
-    "tracked": 6,
-    "untracked": 0,
-    "insertions": 194,
-    "deletions": 69
+    "files": 12,
+    "tracked": 8,
+    "untracked": 4,
+    "insertions": 158,
+    "deletions": 171
   },
   "files": [
     {
+      "status": "??",
+      "path": "BUILD_PLAN.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/FunnelFork.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/IntakeDropzone.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/factory-bom/promote-to-catalog.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 41,
-      "deletions": 23
+      "insertions": 35,
+      "deletions": 28
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 5,
+      "insertions": 15,
+      "deletions": 10
+    },
+    {
+      "status": "M",
+      "path": ".cursor/session-stamp.json",
+      "insertions": 2,
       "deletions": 2
     },
     {
@@ -30,24 +60,35 @@
     },
     {
       "status": "M",
+      "path": "src/app/admin/factory-bom/CadUploadDropzone.tsx",
+      "insertions": 4,
+      "deletions": 4
+    },
+    {
+      "status": "M",
       "path": "src/app/admin/factory-bom/actions.ts",
-      "insertions": 29,
-      "deletions": 18
+      "insertions": 53,
+      "deletions": 0
     },
     {
       "status": "M",
-      "path": "tests/e2e/factory-bom-lifecycle.spec.ts",
-      "insertions": 101,
+      "path": "src/app/embed/factory-bom/AirlockWizard.tsx",
+      "insertions": 45,
+      "deletions": 125
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/factory-bom/page.tsx",
+      "insertions": 3,
       "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "tests/e2e/helpers/factory-bom-seed.ts",
-      "insertions": 17,
-      "deletions": 24
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "d1dcf15f9e1ac0e8c09642bec4d32048b5fb49943acc7841440da6acaa437f71",
+  "untracked": [
+    "BUILD_PLAN.md",
+    "src/app/embed/factory-bom/FunnelFork.tsx",
+    "src/app/embed/factory-bom/IntakeDropzone.tsx",
+    "src/server/factory-bom/promote-to-catalog.ts"
+  ],
+  "file_list_sha256": "ae3f5cfef6be2ce7123252b9dac8fc69911b8e0debacf0e496c21cf15f49f4d7",
   "notes": ""
 }

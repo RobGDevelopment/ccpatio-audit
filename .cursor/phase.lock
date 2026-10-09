@@ -1,17 +1,22 @@
 {
-  "phase_id": "airlock-3-e2e",
-  "intent": "Implement Playwright E2E assertions for the factory-bom lifecycle, proving the UI enforces quarantine gates and correctly renders heuristic vs. manual states.",
+  "phase_id": "airlock-5b-intake-fork",
+  "intent": "Remove the dropdown. File-first zone. Fork UI. ?sku= still opens an existing airlock.",
   "base_ref": "HEAD",
+  "target_test": "npm run test:e2e:factory-bom",
+  "expected_blast_radius": 12,
   "allowed_files": [
+    "src/app/embed/factory-bom/IntakeDropzone.tsx",
+    "src/app/embed/factory-bom/FunnelFork.tsx",
+    "src/server/factory-bom/promote-to-catalog.ts",
+    "src/app/embed/factory-bom/AirlockWizard.tsx",
+    "src/app/embed/factory-bom/page.tsx",
+    "src/app/admin/factory-bom/actions.ts",
+    "src/app/admin/factory-bom/CadUploadDropzone.tsx",
+    "tests/e2e/factory-bom-lifecycle.spec.ts",
+    ".cursor/session-stamp.json",
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
-    ".cursor/session-stamp.json",
-    "tests/e2e/factory-bom-lifecycle.spec.ts",
-    "tests/e2e/helpers/factory-bom-seed.ts",
-    "src/app/admin/factory-bom/actions.ts",
+    "BUILD_PLAN.md",
     "playwright-report/index.html"
-  ],
-  "expected_blast_radius": 6,
-  "override_blast_cap": false,
-  "target_test": "npx playwright test tests/e2e/factory-bom-lifecycle.spec.ts"
+  ]
 }

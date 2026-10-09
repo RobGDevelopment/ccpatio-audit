@@ -1,5 +1,8 @@
 "use server";
 
+import { mintCustomJob } from "@/server/factory-bom/mint-custom-job";
+import { promoteToCatalog } from "@/server/factory-bom/promote-to-catalog";
+
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   listFactoryProducts as loadFactoryProducts,
@@ -1831,3 +1834,53 @@ export async function uploadCadStillImage(input: {
 }
 
 export { searchBomMaterials };
+
+export async function beginAirlockIntake(input: {
+  mode: "custom_build" | "catalog";
+  clientSlug?: string;
+  itemSlug?: string;
+  ghlOpportunityId?: string;
+  originalName?: string;
+  category?: string;
+  collection?: string;
+  length?: string;
+  depth?: string;
+  displayName?: string;
+}) {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized" };
+
+  try {
+    if (input.mode === "custom_build") {
+      if (!input.clientSlug || !input.itemSlug) {
+        return { ok: false, error: "Missing required fields for custom build" };
+      }
+      const job = await mintCustomJob(
+        {
+          clientSlug: input.clientSlug,
+          itemSlug: input.itemSlug,
+          ghlOpportunityId: input.ghlOpportunityId,
+          displayName: input.displayName || `${input.clientSlug} ${input.itemSlug}`,
+          createdBy: session.email,
+        },
+        { forceRecreate: true }
+      );
+      return { ok: true, sku: job.globalSku };
+    } else {
+      if (!input.originalName || !input.category) {
+        return { ok: false, error: "Missing required fields for catalog promotion" };
+      }
+      const res = await promoteToCatalog({
+        originalName: input.originalName,
+        category: input.category,
+        collection: input.collection,
+        length: input.length,
+        depth: input.depth,
+        createdBy: session.email,
+      });
+      return { ok: true, sku: res.globalSku };
+    }
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+}
