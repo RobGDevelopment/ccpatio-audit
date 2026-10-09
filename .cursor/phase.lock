@@ -6,9 +6,12 @@
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
-    "tests/e2e/factory-bom-lifecycle.spec.ts"
+    "tests/e2e/factory-bom-lifecycle.spec.ts",
+    "tests/e2e/helpers/factory-bom-seed.ts",
+    "src/app/admin/factory-bom/actions.ts",
+    "playwright-report/index.html"
   ],
-  "expected_blast_radius": 4,
+  "expected_blast_radius": 6,
   "override_blast_cap": false,
   "target_test": "npx playwright test tests/e2e/factory-bom-lifecycle.spec.ts"
 }

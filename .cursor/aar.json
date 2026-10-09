@@ -1,35 +1,53 @@
 {
-  "phase_id": "airlock-4-channel-sync",
+  "phase_id": "airlock-3-e2e",
   "base_ref": "HEAD",
-  "blast_radius": 3,
+  "blast_radius": 6,
   "counts": {
-    "files": 3,
-    "tracked": 3,
+    "files": 6,
+    "tracked": 6,
     "untracked": 0,
-    "insertions": 12,
-    "deletions": 16
+    "insertions": 194,
+    "deletions": 69
   },
   "files": [
     {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 9,
-      "deletions": 13
+      "insertions": 41,
+      "deletions": 23
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
+      "insertions": 5,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "playwright-report/index.html",
       "insertions": 1,
       "deletions": 1
     },
     {
       "status": "M",
-      "path": ".cursor/session-stamp.json",
-      "insertions": 2,
-      "deletions": 2
+      "path": "src/app/admin/factory-bom/actions.ts",
+      "insertions": 29,
+      "deletions": 18
+    },
+    {
+      "status": "M",
+      "path": "tests/e2e/factory-bom-lifecycle.spec.ts",
+      "insertions": 101,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "tests/e2e/helpers/factory-bom-seed.ts",
+      "insertions": 17,
+      "deletions": 24
     }
   ],
   "untracked": [],
-  "file_list_sha256": "f23beb95b73a2b6e0372d3b993e5222caee64fa439ef3ed662f5c9d2bda075de",
+  "file_list_sha256": "d1dcf15f9e1ac0e8c09642bec4d32048b5fb49943acc7841440da6acaa437f71",
   "notes": ""
 }

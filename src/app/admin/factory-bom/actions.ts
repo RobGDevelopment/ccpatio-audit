@@ -917,7 +917,7 @@ export async function approveDraftRecipe(
 
   const blockingCodes = evaluateAirlock(dossier);
   if (blockingCodes.length > 0) {
-    return { ok: false, error: "Validation failed", blockingCodes };
+    return { ok: false, error: "Validation failed: " + blockingCodes.join(", "), blockingCodes };
   }
 
   const now = new Date();
@@ -1138,9 +1138,27 @@ export async function publishApprovedRecipeToKatana(
   if (!sku) return { ok: false, error: "SKU is required" };
 
   const snapshot = await loadAirlockSnapshot(sku);
-  const products = await listFactoryProducts();
+  const db = getDb();
+  const allSkus = new Set<string>();
+  allSkus.add(sku);
+  snapshot.lines.forEach(l => {
+    allSkus.add(l.parent_sku);
+    allSkus.add(l.child_sku);
+  });
 
-  const rootMeta = products.find(p => p.sku === sku);
+  const skuMap = new Map<string, any>();
+  if (allSkus.size > 0) {
+     const mapped = await db.select({
+       sku: sku_mappings.global_sku,
+       itemType: sku_mappings.item_type,
+       originalName: sku_mappings.original_name,
+       katanaVariantId: sku_mappings.katana_variant_id,
+       category: sku_mappings.category,
+     }).from(sku_mappings).where(inArray(sku_mappings.global_sku, Array.from(allSkus)));
+     for (const m of mapped) skuMap.set(m.sku, m);
+  }
+
+  const rootMeta = skuMap.get(sku);
   if (!rootMeta) return { ok: false, error: "Root meta not found" };
 
   let cadNode = null;
@@ -1155,21 +1173,15 @@ export async function publishApprovedRecipeToKatana(
     };
   }
 
-  const allSkus = new Set<string>();
-  allSkus.add(sku);
-  snapshot.lines.forEach(l => {
-    allSkus.add(l.parent_sku);
-    allSkus.add(l.child_sku);
-  });
   const parents = Array.from(allSkus).filter(s => 
     s === sku || snapshot.lines.some(l => l.parent_sku === s)
   );
 
   const nodes = parents.map(parentSku => {
-    const pMeta = products.find(p => p.sku === parentSku);
+    const pMeta = skuMap.get(parentSku);
     const parentLines = snapshot.lines.filter(l => l.parent_sku === parentSku).map(l => {
-       const cMeta = products.find(p => p.sku === l.child_sku);
-       const cat = (cMeta as any)?.category || "";
+       const cMeta = skuMap.get(l.child_sku);
+       const cat = cMeta?.category || "";
        const isMetal = Boolean(
          cat.match(/metal|aluminum|tube|flat bar/i) ||
          (Array.isArray(l.cut_list) && l.cut_list.length > 0 && (l.cut_list[0] as any).profile !== "UNKNOWN") ||
@@ -1207,9 +1219,9 @@ export async function publishApprovedRecipeToKatana(
   const dossier: AirlockDossier = {
     rootSku: sku,
     identity: {
-      itemType: (rootMeta as any).itemType || "finished_good",
-      originalName: rootMeta.name || "",
-      katanaVariantId: (rootMeta as any).katanaVariantId || null,
+      itemType: rootMeta.itemType || "finished_good",
+      originalName: rootMeta.originalName || "",
+      katanaVariantId: rootMeta.katanaVariantId || null,
       cad: cadNode,
       cadWaived: false,
     },
@@ -1238,7 +1250,6 @@ export async function publishApprovedRecipeToKatana(
   });
 
   const shopDrawingSha256 = sha256Hex(pdfBytes);
-  const db = getDb();
   const [currentDrawing] = await db
     .select()
     .from(product_assets)
@@ -1326,8 +1337,8 @@ export async function publishApprovedRecipeToKatana(
   }
   for (const node of dossier.nodes) {
     for (const line of node.lines) {
-      const childMeta = products.find(p => p.sku === line.childSku);
-      if (!(childMeta as any)?.katanaVariantId) {
+      const childMeta = skuMap.get(line.childSku);
+      if (!childMeta?.katanaVariantId) {
          return { ok: false, error: `KATANA_VARIANT_UNRESOLVED: ${line.childSku}`, blockingCodes: ["KATANA_VARIANT_UNRESOLVED"] };
       }
     }

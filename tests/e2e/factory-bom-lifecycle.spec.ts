@@ -83,6 +83,93 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
     await injectGodModeSession(context);
   });
 
+  test("Step 2 proposal: sketchup_geometry fixture renders pre-filled cut cards", async ({ page }) => {
+    const db = getDb();
+    const { cad_uploads, product_bom_draft } = await import("../../src/server/db/schema");
+    const [inserted] = await db.insert(cad_uploads).values({
+      global_sku: E2E_FG_SKU,
+      original_filename: "test.glb",
+      storage_path: "test/path.glb",
+      ext: "glb",
+      status: "draft_ready",
+      geometry_snapshot: { hygiene: "pass" }
+    }).returning();
+
+    // Airlock flattens materials under the root
+    await db.update(product_bom_draft)
+      .set({ parent_sku: E2E_FG_SKU })
+      .where(eq(product_bom_draft.child_sku, E2E_POWDER_SKU));
+
+    await page.goto(`/embed/factory-bom?sku=${E2E_FG_SKU}`);
+    await page.getByRole("button", { name: "Continue" }).click(); // Go to step 2
+
+    await expect(page.getByText(/Proposed from SketchUp geometry/i)).toBeVisible();
+    await expect(page.getByTestId(`factory-bom-cut-cards-${E2E_POWDER_SKU}`)).toBeVisible();
+
+    await db.delete(cad_uploads).where(eq(cad_uploads.id, inserted.id));
+    await db.update(product_bom_draft)
+      .set({ parent_sku: E2E_FRAME_SKU })
+      .where(eq(product_bom_draft.child_sku, E2E_POWDER_SKU));
+  });
+
+  test("Step 2 hygiene: GEOM_HYGIENE failure renders manual banner and empty cards", async ({ page }) => {
+    const db = getDb();
+    const { cad_uploads, product_bom_draft } = await import("../../src/server/db/schema");
+    const [inserted] = await db.insert(cad_uploads).values({
+      global_sku: E2E_FG_SKU,
+      original_filename: "test.glb",
+      storage_path: "test/path.glb",
+      ext: "glb",
+      status: "draft_ready",
+      error_message: "GEOM_HYGIENE_FAIL",
+      geometry_snapshot: { hygiene: "fail" }
+    }).returning();
+
+    await db.update(product_bom_draft)
+      .set({ parent_sku: E2E_FG_SKU })
+      .where(eq(product_bom_draft.child_sku, E2E_POWDER_SKU));
+
+    await page.goto(`/embed/factory-bom?sku=${E2E_FG_SKU}`);
+    await page.getByRole("button", { name: "Continue" }).click(); // Go to step 2
+
+    await expect(page.getByText(/Component names do not match the lengthless standard/i)).toBeVisible();
+    await expect(page.getByText(/No materials drafted/i)).toBeVisible();
+
+    await db.delete(cad_uploads).where(eq(cad_uploads.id, inserted.id));
+    await db.update(product_bom_draft)
+      .set({ parent_sku: E2E_FRAME_SKU })
+      .where(eq(product_bom_draft.child_sku, E2E_POWDER_SKU));
+  });
+
+  test("Step 4 quarantine: Release to Katana button is disabled when cut list is empty", async ({ page }) => {
+    const db = getDb();
+    const { cad_uploads } = await import("../../src/server/db/schema");
+    const [inserted] = await db.insert(cad_uploads).values({
+      global_sku: E2E_FG_SKU,
+      original_filename: "test.glb",
+      storage_path: "test/path.glb",
+      ext: "glb",
+      status: "draft_ready",
+      geometry_snapshot: { hygiene: "pass" }
+    }).returning();
+
+    await db.update(product_bom_draft)
+      .set({ cut_list: [] })
+      .where(eq(product_bom_draft.child_sku, E2E_POWDER_SKU));
+
+    await page.goto(`/embed/factory-bom?sku=${E2E_FG_SKU}`);
+    await page.getByRole("button", { name: "Continue" }).click(); // Go to step 2
+    await page.getByRole("button", { name: "Continue" }).click(); // Go to step 3
+    await page.getByRole("button", { name: "Continue" }).click(); // Go to step 4
+
+    const releaseBtn = page.getByRole("button", { name: "Release to Katana" });
+    await expect(releaseBtn).toBeDisabled();
+
+    // Clean up
+    await db.delete(cad_uploads).where(eq(cad_uploads.id, inserted.id));
+    await seedFactoryBomE2eDraft();
+  });
+
   test("operator edits a draft recipe, approves it, and Katana receives nested recipe rows", async ({
     page,
   }) => {
@@ -90,6 +177,18 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
     // PHASE 4 intercept (browser-side). Server actions cannot be seen here;
     // the authenticated recipe-preview route + optional E2E mirror cover that.
     // --------------------------------------------------------------------------
+    const db = getDb();
+    const { cad_uploads } = await import("../../src/server/db/schema");
+    const [inserted] = await db.insert(cad_uploads).values({
+      global_sku: E2E_FG_SKU,
+      original_filename: "test.glb",
+      storage_path: "test/path.glb",
+      ext: "glb",
+      status: "draft_ready",
+      sha256: "0".repeat(64),
+      geometry_snapshot: { hygiene: "pass" }
+    }).returning();
+
     const browserKatanaPosts: unknown[] = [];
     await page.route("https://api.katanamrp.com/v1/**", async (route) => {
       const request = route.request();
@@ -186,7 +285,6 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
     // --------------------------------------------------------------------------
     // PHASE 3 — bypass the UI; query Postgres directly.
     // --------------------------------------------------------------------------
-    const db = getDb();
     const draftRows = await db
       .select()
       .from(product_bom_draft)
@@ -294,6 +392,8 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
 
     // Browser-side route is a safety net; hub publish is a server action.
     expect(Array.isArray(browserKatanaPosts)).toBeTruthy();
+
+    await db.delete(cad_uploads).where(eq(cad_uploads.id, inserted.id));
   });
 });
 

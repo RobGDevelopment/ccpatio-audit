@@ -11,6 +11,8 @@ import {
   product_bom_draft,
   raw_materials_catalog,
   sku_mappings,
+  channel_sync,
+  factory_release_gate,
 } from "../../../src/server/db/schema";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.test.local") });
@@ -132,6 +134,8 @@ export async function cleanupFactoryBomE2eSeed(): Promise<void> {
   await db.delete(finished_goods_catalog).where(eq(finished_goods_catalog.global_sku, E2E_FG_SKU));
   await db.delete(raw_materials_catalog).where(eq(raw_materials_catalog.sku, E2E_CAP_SKU));
   await db.delete(sku_mappings).where(inArray(sku_mappings.global_sku, [...OWNED_SKUS]));
+  await db.delete(channel_sync).where(eq(channel_sync.global_sku, E2E_FG_SKU));
+  await db.delete(factory_release_gate).where(eq(factory_release_gate.root_sku, E2E_FG_SKU));
 }
 
 export async function seedFactoryBomE2eDraft(): Promise<void> {
@@ -263,30 +267,19 @@ export async function seedFactoryBomE2eDraft(): Promise<void> {
   ]);
 
   await db.insert(item_operations_draft).values([
-    {
-      item_sku: E2E_FG_SKU,
-      work_center: "Quality Control",
-      sequence: 10,
-      run_time_mins: "8",
-      status: "draft_pending_review",
-      source: "heuristic",
-    },
-    {
-      item_sku: E2E_FRAME_SKU,
-      work_center: "FAB POD A",
-      sequence: 20,
-      run_time_mins: "25",
-      status: "draft_pending_review",
-      source: "heuristic",
-    },
-    {
-      item_sku: E2E_CUSH_SKU,
-      work_center: "Fabric Sewing",
-      sequence: 20,
-      run_time_mins: "22",
-      status: "draft_pending_review",
-      source: "heuristic",
-    },
+    { item_sku: E2E_FG_SKU, work_center: "Quality Control", sequence: 10, run_time_mins: "8", status: "draft_pending_review", source: "heuristic" },
+    { item_sku: E2E_FG_SKU, work_center: "Assembly & Packaging", sequence: 20, setup_time_mins: "5", run_time_mins: "15", status: "draft_pending_review", source: "heuristic" },
+
+    { item_sku: E2E_FRAME_SKU, work_center: "Metal Cutting", sequence: 10, run_time_mins: "15", status: "draft_pending_review", source: "heuristic" },
+    { item_sku: E2E_FRAME_SKU, work_center: "FAB POD A", sequence: 20, run_time_mins: "25", status: "draft_pending_review", source: "heuristic" },
+    { item_sku: E2E_FRAME_SKU, work_center: "Sandblasting", sequence: 30, setup_time_mins: "10", run_time_mins: "20", status: "draft_pending_review", source: "heuristic" },
+    { item_sku: E2E_FRAME_SKU, work_center: "Powder Coating Booth", sequence: 40, run_time_mins: "22", status: "draft_pending_review", source: "heuristic" },
+    { item_sku: E2E_FRAME_SKU, work_center: "Curing Oven", sequence: 50, run_time_mins: "45", status: "draft_pending_review", source: "heuristic" },
+
+    { item_sku: E2E_CUSH_SKU, work_center: "Fabric Cutting", sequence: 10, run_time_mins: "10", status: "draft_pending_review", source: "heuristic" },
+    { item_sku: E2E_CUSH_SKU, work_center: "Fabric Sewing", sequence: 20, run_time_mins: "22", status: "draft_pending_review", source: "heuristic" },
+    { item_sku: E2E_CUSH_SKU, work_center: "Cushion Stuffing", sequence: 30, run_time_mins: "15", status: "draft_pending_review", source: "heuristic" },
+    { item_sku: E2E_CUSH_SKU, work_center: "Quality Control", sequence: 40, run_time_mins: "8", status: "draft_pending_review", source: "heuristic" },
   ]);
 }
 
