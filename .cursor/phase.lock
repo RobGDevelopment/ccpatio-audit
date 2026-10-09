@@ -1,19 +1,20 @@
 {
-  "phase_id": "airlock-1.5-ingest",
-  "intent": "Wire pure heuristic parsers into the CAD upload job, expand schema for geometry_snapshot, and write proposed drafts on hygiene pass.",
+  "phase_id": "airlock-1.5-factory-polish",
+  "intent": "Implement factory polish heuristics: human-readable hygiene UX, Consumables matrix (argon, sand, caps), LTL freight/skid packaging, and dynamic vacuum compression toggle.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
+    "src/lib/sketchup-cutlist/component-hygiene.ts",
+    "src/lib/sketchup-cutlist/derived-heuristics.ts",
+    "src/lib/sketchup-cutlist/parse-glb-weldment.ts",
     "src/lib/cad-upload/process-job.ts",
-    "src/lib/cad-upload/index.ts",
+    "src/lib/secondary-extraction/run.ts",
     "src/server/db/schema.ts",
-    "src/server/db/migrations/0049_free_stellaris.sql",
-    "src/server/db/migrations/meta/_journal.json",
-    "src/server/db/migrations/meta/0049_snapshot.json"
+    "tests/derived-heuristics.test.ts"
   ],
-  "expected_blast_radius": 8,
+  "expected_blast_radius": 11,
   "override_blast_cap": true,
   "target_test": "npm run typecheck"
 }

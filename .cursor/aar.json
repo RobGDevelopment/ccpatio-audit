@@ -1,68 +1,43 @@
 {
-  "phase_id": "airlock-1.5-ingest",
+  "phase_id": "step-5.3-katana-blueprint-factory-polish",
   "base_ref": "HEAD",
-  "blast_radius": 8,
+  "blast_radius": 4,
   "counts": {
-    "files": 8,
-    "tracked": 6,
-    "untracked": 2,
-    "insertions": 288,
-    "deletions": 28
+    "files": 4,
+    "tracked": 3,
+    "untracked": 1,
+    "insertions": 22,
+    "deletions": 37
   },
   "files": [
     {
       "status": "??",
-      "path": "src/server/db/migrations/0049_free_stellaris.sql",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/db/migrations/meta/0049_snapshot.json",
+      "path": "KATANA_PIPELINE_BUILD_PLAN_2.md",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 23,
-      "deletions": 14
+      "insertions": 15,
+      "deletions": 24
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 9,
-      "deletions": 7
+      "insertions": 5,
+      "deletions": 11
     },
     {
       "status": "M",
-      "path": "src/lib/cad-upload/index.ts",
-      "insertions": 1,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/lib/cad-upload/process-job.ts",
-      "insertions": 247,
-      "deletions": 6
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/migrations/meta/_journal.json",
-      "insertions": 7,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/schema.ts",
-      "insertions": 1,
-      "deletions": 0
+      "path": ".cursor/session-stamp.json",
+      "insertions": 2,
+      "deletions": 2
     }
   ],
   "untracked": [
-    "src/server/db/migrations/0049_free_stellaris.sql",
-    "src/server/db/migrations/meta/0049_snapshot.json"
+    "KATANA_PIPELINE_BUILD_PLAN_2.md"
   ],
-  "file_list_sha256": "32ec0b4c689d895ec2d3295e410745709d5ee5ece7f94fae02efe2bc822d3081",
+  "file_list_sha256": "624946e3368479392fd44761a6b1ec968de72776b72050acf5b09962658a3f01",
   "notes": ""
 }

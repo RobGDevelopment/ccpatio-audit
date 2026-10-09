@@ -1,14 +1,11 @@
-status=2
+status=0
 --- stdout ---
 {
-  "phase_id": "airlock-1.5-ingest",
-  "phase": "airlock-1.5-ingest",
-  "verdict": "DEFECT_REJECTED",
-  "audit_exit": 2,
-  "invariantViolations": [
-    "Blast Radius Breach: diff touches 8 files; expected 7; tolerance 0.",
-    "AAR blast radius 8 disagrees with phase.lock expected_blast_radius 7. Lock wins."
-  ],
+  "phase_id": "step-5.3-katana-blueprint-factory-polish",
+  "phase": "step-5.3-katana-blueprint-factory-polish",
+  "verdict": "CERTIFIED",
+  "audit_exit": 0,
+  "invariantViolations": [],
   "testResults": {
     "typecheck": "PASS",
     "lint": "PASS",
@@ -16,17 +13,17 @@ status=2
   },
   "targetTest": "npm run typecheck",
   "blastRadius": {
-    "actual": 8,
-    "expected": 7,
+    "actual": 4,
+    "expected": 4,
     "tolerance": 0,
-    "tracked": 6,
-    "untracked": 2,
-    "status": "FAIL"
+    "tracked": 3,
+    "untracked": 1,
+    "status": "PASS"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "32ec0b4c689d895ec2d3295e410745709d5ee5ece7f94fae02efe2bc822d3081",
-    "git_sha256": "32ec0b4c689d895ec2d3295e410745709d5ee5ece7f94fae02efe2bc822d3081"
+    "aar_sha256": "624946e3368479392fd44761a6b1ec968de72776b72050acf5b09962658a3f01",
+    "git_sha256": "624946e3368479392fd44761a6b1ec968de72776b72050acf5b09962658a3f01"
   }
 }
 
@@ -34,15 +31,9 @@ status=2
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/lib/cad-upload/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/lib/cad-upload/process-job.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/server/db/migrations/meta/_journal.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/server/db/schema.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/aar.json', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/logs/qca-last.log', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of '.cursor/phase.lock', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/lib/cad-upload/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/lib/cad-upload/process-job.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/server/db/migrations/meta/_journal.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/server/db/schema.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.cursor/session-stamp.json', LF will be replaced by CRLF the next time Git touches it
 
