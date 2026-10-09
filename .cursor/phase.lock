@@ -1,19 +1,13 @@
 {
-  "phase_id": "airlock-1-schema",
-  "intent": "Create the factory_release_gate table schema and pure database helpers.",
+  "phase_id": "airlock-1-invalidate",
+  "intent": "Invalidate the factory release gate upon draft mutations by calling resetReleaseGate.",
   "base_ref": "HEAD",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
     ".cursor/session-stamp.json",
-    "src/server/db/schema.ts",
-    "src/server/factory-bom/release-gate.ts",
-    "KATANA_PIPELINE_BUILD_PLAN.md",
-    "src/server/db/migrations/0048_reflective_human_cannonball.sql",
-    "src/server/db/migrations/meta/0048_snapshot.json",
-    "src/server/db/migrations/meta/_journal.json"
+    "src/app/admin/factory-bom/actions.ts"
   ],
-  "expected_blast_radius": 9,
-  "override_blast_cap": true,
+  "expected_blast_radius": 4,
   "target_test": "npm run typecheck"
 }

@@ -51,6 +51,7 @@ import {
   type ItemType,
   type RecipeReviewStatus,
 } from "@/server/db/schema";
+import { resetReleaseGate } from "@/server/factory-bom/release-gate";
 
 export type { BomComponentCandidate, BomTreeNode };
 
@@ -126,6 +127,31 @@ function revalidateFactory(): void {
     revalidatePath("/admin/dictionary");
   } catch {
     // vitest / scripts
+  }
+}
+
+async function invalidateGateForDraftSku(sku: string) {
+  const db = getDb();
+  const queue = [sku];
+  const visited = new Set<string>();
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (visited.has(current)) continue;
+    visited.add(current);
+    const [mapping] = await db
+      .select({ item_type: sku_mappings.item_type })
+      .from(sku_mappings)
+      .where(eq(sku_mappings.global_sku, current))
+      .limit(1);
+    if (mapping?.item_type === "finished_good") {
+      await resetReleaseGate(current);
+    } else if (mapping?.item_type === "sub_assembly") {
+      const parents = await db
+        .selectDistinct({ parent_sku: product_bom_draft.parent_sku })
+        .from(product_bom_draft)
+        .where(eq(product_bom_draft.child_sku, current));
+      queue.push(...parents.map((p) => p.parent_sku));
+    }
   }
 }
 
@@ -379,6 +405,7 @@ export async function upsertDraftBomLine(data: {
       field: childSku,
       newValue: quantity,
     });
+    await invalidateGateForDraftSku(parentSku);
     revalidateFactory();
     return { ok: true };
   } catch (error: unknown) {
@@ -406,6 +433,7 @@ export async function deleteDraftBomLine(id: string): Promise<BomMutationResult>
     globalSku: deleted.parent,
     action: "factory_bom_draft_delete",
   });
+  await invalidateGateForDraftSku(deleted.parent);
   revalidateFactory();
   return { ok: true };
 }
@@ -528,6 +556,7 @@ export async function upsertDraftOperation(
         field: workCenter,
         newValue: String(Math.trunc(sequence)),
       });
+      await invalidateGateForDraftSku(itemSku);
       revalidateFactory();
       return { ok: true, row: mapDraftOperationRow(updated) };
     }
@@ -553,6 +582,7 @@ export async function upsertDraftOperation(
       field: workCenter,
       newValue: String(Math.trunc(sequence)),
     });
+    await invalidateGateForDraftSku(itemSku);
     revalidateFactory();
     return { ok: true, row: mapDraftOperationRow(inserted) };
   } catch (error: unknown) {
@@ -584,6 +614,7 @@ export async function deleteDraftOperation(
       globalSku: deleted.itemSku,
       action: "factory_bom_draft_op_delete",
     });
+    await invalidateGateForDraftSku(deleted.itemSku);
     revalidateFactory();
     return { ok: true };
   } catch (error: unknown) {
@@ -692,6 +723,7 @@ export async function applyStandardTrack(
       field: data.trackId,
       newValue: `${mode}:${inserted}`,
     });
+    await invalidateGateForDraftSku(itemSku);
     revalidateFactory();
     return { ok: true, inserted, skipped, removed };
   } catch (error: unknown) {
