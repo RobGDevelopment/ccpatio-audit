@@ -1,23 +1,82 @@
 {
-  "phase_id": "airlock-5c-fast-lane",
+  "phase_id": "airlock-5c-python-bridge",
   "base_ref": "HEAD",
-  "blast_radius": 1,
+  "blast_radius": 10,
   "counts": {
-    "files": 1,
-    "tracked": 1,
-    "untracked": 0,
-    "insertions": 12,
-    "deletions": 9
+    "files": 10,
+    "tracked": 6,
+    "untracked": 4,
+    "insertions": 49,
+    "deletions": 30
   },
   "files": [
+    {
+      "status": "??",
+      "path": "services/cad-convert/app.py",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "services/cad-convert/export_blend.py",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/lib/cad-upload/convert-client.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/cad-convert-client.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
     {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
       "insertions": 12,
-      "deletions": 9
+      "deletions": 11
+    },
+    {
+      "status": "M",
+      "path": ".cursor/phase.lock",
+      "insertions": 12,
+      "deletions": 8
+    },
+    {
+      "status": "M",
+      "path": ".cursor/session-stamp.json",
+      "insertions": 2,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/inngest/functions.ts",
+      "insertions": 2,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/lib/cad-upload/index.ts",
+      "insertions": 1,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/lib/cad-upload/process-job.ts",
+      "insertions": 20,
+      "deletions": 6
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "02491180029b82fb8c8f65b33f17c2dd63328d65b4843fbf47b31ec2c6c35d28",
+  "untracked": [
+    "services/cad-convert/app.py",
+    "services/cad-convert/export_blend.py",
+    "src/lib/cad-upload/convert-client.ts",
+    "tests/cad-convert-client.test.ts"
+  ],
+  "file_list_sha256": "89946f2266a51217cf9dc6348cbc2f65fc8d71c83704840450098f87fe3e1369",
   "notes": ""
 }

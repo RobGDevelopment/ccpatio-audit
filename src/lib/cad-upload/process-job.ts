@@ -65,8 +65,24 @@ export async function processCadUploadJob(
     .where(eq(cad_uploads.id, uploadId));
 
   try {
-    const buffer = await downloadCadObject(data.storagePath);
-    const ext = data.ext;
+    let buffer = await downloadCadObject(data.storagePath);
+    let ext = data.ext;
+
+    if (ext === "blend") {
+      const { convertBlendToGlb } = await import("./convert-client");
+      const converted = await convertBlendToGlb(buffer, `upload-${uploadId}.blend`);
+      buffer = converted.glb;
+      
+      const { getSupabaseAdmin, CAD_MODELS_BUCKET } = await import("@/lib/supabase-storage");
+      const supabase = getSupabaseAdmin();
+      const newPath = data.storagePath.replace(/\.blend$/i, ".glb");
+      await supabase.storage.from(CAD_MODELS_BUCKET).upload(newPath, buffer, {
+         upsert: true,
+         contentType: "model/gltf-binary"
+      });
+      
+      ext = "glb"; // Fall through to glb processing
+    }
 
     if (ext === "skp") {
       const png = extractSkpThumbnail(buffer);
@@ -104,8 +120,7 @@ export async function processCadUploadJob(
         .update(cad_uploads)
         .set({
           status: "failed",
-          error_message:
-            "`.skp` accepted for thumbnail only. Upload a `.glb` or `.dae` export for cut-list / draft BOM math.",
+          error_message: "SKP_CONVERT_UNAVAILABLE",
           thumbnail_source: thumbSource,
           thumbnail_url: thumbnailUrl,
           updated_at: new Date(),
@@ -114,8 +129,7 @@ export async function processCadUploadJob(
 
       return {
         ok: false,
-        error:
-          "SKP thumbnail extracted (if present); upload .glb or .dae for geometry drafts",
+        error: "SKP_CONVERT_UNAVAILABLE",
       };
     }
 

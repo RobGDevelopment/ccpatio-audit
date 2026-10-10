@@ -630,7 +630,7 @@ export const processCadUpload = inngest.createFunction(
         .trim()
         .toUpperCase(),
       storagePath: String(event.data.storagePath ?? ""),
-      ext: String(event.data.ext ?? "").toLowerCase() as "dae" | "skp" | "glb",
+      ext: String(event.data.ext ?? "").toLowerCase() as "dae" | "skp" | "glb" | "blend",
       sha256:
         typeof event.data.sha256 === "string" ? event.data.sha256 : undefined,
       operatorEmail: String(event.data.operatorEmail ?? ""),
@@ -642,7 +642,7 @@ export const processCadUpload = inngest.createFunction(
       throw new NonRetriableError("cad/model.uploaded missing required fields");
     }
 
-    if (data.ext !== "glb" && data.ext !== "dae" && data.ext !== "skp") {
+    if (data.ext !== "glb" && data.ext !== "dae" && data.ext !== "skp" && data.ext !== "blend") {
       const { NonRetriableError } = await import("inngest");
       throw new NonRetriableError(`Invalid CAD extension: ${data.ext}`);
     }

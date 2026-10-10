@@ -1,32 +1,33 @@
 status=2
 --- stdout ---
 {
-  "phase_id": "airlock-5c-fast-lane",
-  "phase": "airlock-5c-fast-lane",
+  "phase_id": "airlock-5c-python-bridge",
+  "phase": "airlock-5c-python-bridge",
   "verdict": "DEFECT_REJECTED",
   "audit_exit": 2,
   "invariantViolations": [
-    "Blast Radius Breach: diff touches 0 files; expected 4; tolerance 0.",
-    "AAR blast radius 0 disagrees with phase.lock expected_blast_radius 4. Lock wins."
+    "Blast Radius Breach: diff touches 10 files; expected 9; tolerance 0.",
+    "AAR blast radius 10 disagrees with phase.lock expected_blast_radius 9. Lock wins.",
+    "Scope Breach: .cursor/session-stamp.json modified outside allowed phase scope."
   ],
   "testResults": {
     "typecheck": "PASS",
     "lint": "PASS",
     "target_test": "PASS"
   },
-  "targetTest": "npx vitest run tests/dae-weldment.test.ts tests/cad-upload-pipeline.test.ts",
+  "targetTest": "npx vitest run tests/cad-convert-client.test.ts",
   "blastRadius": {
-    "actual": 0,
-    "expected": 4,
+    "actual": 10,
+    "expected": 9,
     "tolerance": 0,
-    "tracked": 0,
-    "untracked": 0,
+    "tracked": 6,
+    "untracked": 4,
     "status": "FAIL"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "git_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    "aar_sha256": "89946f2266a51217cf9dc6348cbc2f65fc8d71c83704840450098f87fe3e1369",
+    "git_sha256": "89946f2266a51217cf9dc6348cbc2f65fc8d71c83704840450098f87fe3e1369"
   }
 }
 

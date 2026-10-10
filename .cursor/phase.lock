@@ -1,16 +1,20 @@
 {
-  "phase_id": "airlock-5c-fast-lane",
-  "intent": ".glb survives Inngest and runs parseGlbWeldment.",
+  "phase_id": "airlock-5c-python-bridge",
+  "intent": ".blend becomes .glb outside Vercel. .skp geometry fails closed with SKP_CONVERT_UNAVAILABLE. Python writes no draft rows.",
   "base_ref": "HEAD",
   "allow_dirty_base": true,
   "override_blast_cap": false,
-  "target_test": "npx vitest run tests/dae-weldment.test.ts tests/cad-upload-pipeline.test.ts",
-  "expected_blast_radius": 4,
+  "target_test": "npx vitest run tests/cad-convert-client.test.ts",
+  "expected_blast_radius": 9,
   "allowed_files": [
-    "src/app/admin/factory-bom/actions.ts",
+    "services/cad-convert/app.py",
+    "services/cad-convert/export_blend.py",
+    "src/lib/cad-upload/convert-client.ts",
+    "tests/cad-convert-client.test.ts",
+    "src/lib/cad-upload/process-job.ts",
+    "src/inngest/functions.ts",
+    "src/lib/cad-upload/index.ts",
     ".cursor/phase.lock",
-    ".cursor/logs/qca-last.log",
-    ".cursor/session-stamp.json",
-    ".cursor/aar.json"
+    ".cursor/logs/qca-last.log"
   ]
 }
