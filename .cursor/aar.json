@@ -1,70 +1,64 @@
 {
-  "phase_id": "airlock-5d-factory-link",
+  "phase_id": "airlock-5e-pdf-packet",
   "base_ref": "HEAD",
-  "blast_radius": 8,
+  "blast_radius": 7,
   "counts": {
-    "files": 8,
-    "tracked": 4,
+    "files": 7,
+    "tracked": 3,
     "untracked": 4,
-    "insertions": 67,
-    "deletions": 15
+    "insertions": 1968,
+    "deletions": 1901
   },
   "files": [
     {
       "status": "??",
-      "path": "src/app/factory/cut-cards/[token]/page.tsx",
+      "path": "src/app/embed/factory-bom/PacketLines.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/factory-bom/cut-card-token.ts",
+      "path": "src/server/factory-bom/match-factory-order-line.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/factory-bom/release-custom-build.ts",
+      "path": "src/server/factory-bom/parse-factory-order-packet.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/factory-cut-card-token.test.ts",
+      "path": "tests/factory-order-packet.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 11,
-      "deletions": 12
+      "insertions": 10,
+      "deletions": 11
     },
     {
       "status": "M",
-      "path": "src/app/embed/factory-bom/steps/Step4Release.tsx",
-      "insertions": 29,
-      "deletions": 2
+      "path": "src/app/admin/factory-bom/actions.ts",
+      "insertions": 1917,
+      "deletions": 1885
     },
     {
       "status": "M",
-      "path": "src/inngest/functions.ts",
-      "insertions": 18,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/proxy.ts",
-      "insertions": 9,
-      "deletions": 1
+      "path": "src/app/embed/factory-bom/IntakeDropzone.tsx",
+      "insertions": 41,
+      "deletions": 5
     }
   ],
   "untracked": [
-    "src/app/factory/cut-cards/[token]/page.tsx",
-    "src/server/factory-bom/cut-card-token.ts",
-    "src/server/factory-bom/release-custom-build.ts",
-    "tests/factory-cut-card-token.test.ts"
+    "src/app/embed/factory-bom/PacketLines.tsx",
+    "src/server/factory-bom/match-factory-order-line.ts",
+    "src/server/factory-bom/parse-factory-order-packet.ts",
+    "tests/factory-order-packet.test.ts"
   ],
-  "file_list_sha256": "81783beb2cad2ecbd3cd04b28c2435f3cb50826667c5ca90202a21d269a1a699",
+  "file_list_sha256": "2d0bd6d911b0b8858686e8dcb16343653cdeb1ae1af4c21293523b429fe9bd20",
   "notes": ""
 }

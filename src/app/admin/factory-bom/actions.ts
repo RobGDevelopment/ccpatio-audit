@@ -24,6 +24,8 @@ import {
   type StandardTrackId,
 } from "@/lib/factory-routing/resources";
 import { getPimSession, logPimAudit } from "@/lib/pim-audit";
+import { order_intake } from "@/server/db/schema";
+import { matchFactoryOrderLine } from "@/server/factory-bom/match-factory-order-line";
 import { subAssemblySku } from "@/lib/heuristic-bom";
 import { syncBOMToKatana } from "@/lib/katana";
 import { getCatalogPublishMode, canMutateKatanaCatalog } from "@/server/pipeline/catalog-mode";
@@ -1846,6 +1848,7 @@ export async function beginAirlockIntake(input: {
   length?: string;
   depth?: string;
   displayName?: string;
+  packetStoragePath?: string;
 }) {
   const session = await getPimSession();
   if (!session) return { ok: false, error: "Unauthorized" };
@@ -1862,6 +1865,7 @@ export async function beginAirlockIntake(input: {
           ghlOpportunityId: input.ghlOpportunityId,
           displayName: input.displayName || `${input.clientSlug} ${input.itemSlug}`,
           createdBy: session.email,
+          packetStoragePath: input.packetStoragePath,
         },
         { forceRecreate: true }
       );
@@ -1882,5 +1886,33 @@ export async function beginAirlockIntake(input: {
     }
   } catch (error: any) {
     return { ok: false, error: error.message };
+  }
+}
+
+export async function uploadFactoryPacketAction(formData: FormData) {
+  const file = formData.get("file") as File | null;
+  const opportunityId = formData.get("opportunityId") as string | null;
+  if (!file) return { ok: false, error: "No file provided" };
+  
+  try {
+    const text = await file.text();
+    const rawLines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+    const lines = [];
+    for (const raw of rawLines) {
+      lines.push(await matchFactoryOrderLine(raw));
+    }
+    
+    const packetStoragePath = "s3://ccpatio-packets/" + encodeURIComponent(file.name);
+    
+    if (opportunityId) {
+      const db = getDb();
+      await db.update(order_intake).set({
+        mapped_lines: lines as any,
+      }).where(eq(order_intake.ghl_opportunity_id, opportunityId));
+    }
+    
+    return { ok: true, lines, packetStoragePath };
+  } catch (err: any) {
+    return { ok: false, error: err.message };
   }
 }
