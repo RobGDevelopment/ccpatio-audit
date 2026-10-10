@@ -1,35 +1,41 @@
 {
   "phase_id": "airlock-5c-fast-lane",
   "base_ref": "HEAD",
-  "blast_radius": 3,
+  "blast_radius": 4,
   "counts": {
-    "files": 3,
-    "tracked": 3,
+    "files": 4,
+    "tracked": 4,
     "untracked": 0,
-    "insertions": 749,
-    "deletions": 719
+    "insertions": 19,
+    "deletions": 40
   },
   "files": [
     {
       "status": "M",
+      "path": ".cursor/logs/qca-last.log",
+      "insertions": 10,
+      "deletions": 31
+    },
+    {
+      "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 9,
-      "deletions": 15
+      "insertions": 4,
+      "deletions": 4
     },
     {
       "status": "M",
-      "path": "src/inngest/functions.ts",
-      "insertions": 706,
-      "deletions": 703
+      "path": ".cursor/session-stamp.json",
+      "insertions": 2,
+      "deletions": 2
     },
     {
       "status": "M",
-      "path": "tests/cad-upload-pipeline.test.ts",
-      "insertions": 34,
-      "deletions": 1
+      "path": "src/app/admin/factory-bom/actions.ts",
+      "insertions": 3,
+      "deletions": 3
     }
   ],
   "untracked": [],
-  "file_list_sha256": "a87dd4a23b6cd5bea904e26b7f24e9c39ff737968106648d85c52963b5e63bc5",
+  "file_list_sha256": "a713af5a37e7e0e282aad917f6cb00a6e67cf6fea02fb574855449acf3826417",
   "notes": ""
 }

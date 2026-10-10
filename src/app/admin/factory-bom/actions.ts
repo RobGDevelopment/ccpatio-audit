@@ -1611,10 +1611,10 @@ export async function requestCadUpload(input: {
   const extRaw = filename.includes(".")
     ? filename.slice(filename.lastIndexOf(".") + 1).toLowerCase()
     : "";
-  if (extRaw !== "dae" && extRaw !== "skp") {
+  if (extRaw !== "dae" && extRaw !== "skp" && extRaw !== "glb") {
     return {
       ok: false,
-      error: "Only .dae (geometry) or .skp (thumbnail) CAD files are accepted",
+      error: "Only .dae or .glb (geometry) or .skp (thumbnail) CAD files are accepted",
     };
   }
 
@@ -1713,7 +1713,7 @@ export async function confirmCadUpload(
       uploadId: row.id,
       globalSku: row.global_sku,
       storagePath: row.storage_path,
-      ext: (row.ext === "skp" ? "skp" : "dae") as "dae" | "skp",
+      ext: row.ext as "dae" | "skp" | "glb",
       sha256: row.sha256 ?? undefined,
       operatorEmail: session.email,
       replaceImage: row.replace_image,

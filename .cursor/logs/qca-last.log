@@ -1,32 +1,11 @@
-status=2
+status=0
 --- stdout ---
 {
   "phase_id": "airlock-5c-fast-lane",
   "phase": "airlock-5c-fast-lane",
-  "verdict": "DEFECT_REJECTED",
-  "audit_exit": 2,
-  "invariantViolations": [
-    "Blast Radius Breach: diff touches 18 files; expected 4; tolerance 0.",
-    "AAR blast radius 18 disagrees with phase.lock expected_blast_radius 4. Lock wins.",
-    "Scope Breach: BUILD_PLAN.md modified outside allowed phase scope.",
-    "Scope Breach: src/app/embed/factory-bom/FunnelFork.tsx modified outside allowed phase scope.",
-    "Scope Breach: src/app/embed/factory-bom/IntakeDropzone.tsx modified outside allowed phase scope.",
-    "Scope Breach: src/server/factory-bom/promote-to-catalog.ts modified outside allowed phase scope.",
-    "Scope Breach: src/server/db/migrations/0052_custom_build_jobs.sql modified outside allowed phase scope.",
-    "Scope Breach: src/server/db/migrations/meta/0052_snapshot.json modified outside allowed phase scope.",
-    "Scope Breach: src/server/factory-bom/mint-custom-job.ts modified outside allowed phase scope.",
-    "Scope Breach: tests/custom-build-job.test.ts modified outside allowed phase scope.",
-    "Scope Breach: .cursor/logs/qca-last.log modified outside allowed phase scope.",
-    "Scope Breach: .cursor/phase.lock modified outside allowed phase scope.",
-    "Scope Breach: .cursor/session-stamp.json modified outside allowed phase scope.",
-    "Scope Breach: playwright-report/index.html modified outside allowed phase scope.",
-    "Scope Breach: src/app/admin/factory-bom/CadUploadDropzone.tsx modified outside allowed phase scope.",
-    "Scope Breach: src/app/admin/factory-bom/actions.ts modified outside allowed phase scope.",
-    "Scope Breach: src/app/embed/factory-bom/AirlockWizard.tsx modified outside allowed phase scope.",
-    "Scope Breach: src/app/embed/factory-bom/page.tsx modified outside allowed phase scope.",
-    "Scope Breach: src/server/db/migrations/meta/_journal.json modified outside allowed phase scope.",
-    "Scope Breach: src/server/db/schema.ts modified outside allowed phase scope."
-  ],
+  "verdict": "CERTIFIED",
+  "audit_exit": 0,
+  "invariantViolations": [],
   "testResults": {
     "typecheck": "PASS",
     "lint": "PASS",
@@ -34,17 +13,17 @@ status=2
   },
   "targetTest": "npx vitest run tests/dae-weldment.test.ts tests/cad-upload-pipeline.test.ts",
   "blastRadius": {
-    "actual": 18,
+    "actual": 4,
     "expected": 4,
     "tolerance": 0,
-    "tracked": 14,
-    "untracked": 4,
-    "status": "FAIL"
+    "tracked": 4,
+    "untracked": 0,
+    "status": "PASS"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "2e75d356932308ed12688355c48f62a8f173ad10f63b09b249b968a75483447c",
-    "git_sha256": "2e75d356932308ed12688355c48f62a8f173ad10f63b09b249b968a75483447c"
+    "aar_sha256": "a713af5a37e7e0e282aad917f6cb00a6e67cf6fea02fb574855449acf3826417",
+    "git_sha256": "a713af5a37e7e0e282aad917f6cb00a6e67cf6fea02fb574855449acf3826417"
   }
 }
 

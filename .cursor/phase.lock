@@ -5,12 +5,12 @@
   "allow_dirty_base": true,
   "override_blast_cap": false,
   "target_test": "npx vitest run tests/dae-weldment.test.ts tests/cad-upload-pipeline.test.ts",
-  "expected_blast_radius": 3,
+  "expected_blast_radius": 4,
   "allowed_files": [
-    "src/inngest/functions.ts",
-    "tests/cad-upload-pipeline.test.ts",
+    "src/app/admin/factory-bom/actions.ts",
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
-    ".cursor/session-stamp.json"
+    ".cursor/session-stamp.json",
+    ".cursor/aar.json"
   ]
 }
