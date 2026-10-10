@@ -1,47 +1,31 @@
 {
-  "phase_id": "airlock-5e-pdf-packet",
+  "phase_id": "mc-6-blueprint",
   "base_ref": "HEAD",
-  "blast_radius": 5,
+  "blast_radius": 2,
   "counts": {
-    "files": 5,
-    "tracked": 5,
-    "untracked": 0,
-    "insertions": 68,
-    "deletions": 17
+    "files": 2,
+    "tracked": 1,
+    "untracked": 1,
+    "insertions": 7,
+    "deletions": 12
   },
   "files": [
     {
+      "status": "??",
+      "path": "MISSION_CONTROL_BUILD_PLAN_6.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 1,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/app/admin/factory-bom/actions.ts",
-      "insertions": 2,
-      "deletions": 7
-    },
-    {
-      "status": "M",
-      "path": "src/server/factory-bom/match-factory-order-line.ts",
-      "insertions": 28,
-      "deletions": 3
-    },
-    {
-      "status": "M",
-      "path": "src/server/factory-bom/parse-factory-order-packet.ts",
-      "insertions": 16,
-      "deletions": 6
-    },
-    {
-      "status": "M",
-      "path": "tests/factory-order-packet.test.ts",
-      "insertions": 21,
-      "deletions": 0
+      "insertions": 7,
+      "deletions": 12
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "2843b0750a2e46f4acb7dca44b1c2ecf4e94f9e9da70bb2af9c8ed993d800b8e",
+  "untracked": [
+    "MISSION_CONTROL_BUILD_PLAN_6.md"
+  ],
+  "file_list_sha256": "a841cfd84bb705b09e70314fe1b96d3adff7e797b0c52a082b4301cfc0c124cf",
   "notes": ""
 }

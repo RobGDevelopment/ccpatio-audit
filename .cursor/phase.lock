@@ -1,18 +1,13 @@
 {
-  "phase_id": "airlock-5e-pdf-packet",
-  "intent": "Implement factory order line matching and 'Custom Line' dropzone logic.",
+  "phase_id": "mc-6-blueprint",
+  "intent": "Author the Phase 6 Mission Control execution blueprint. No application code.",
   "base_ref": "HEAD",
-  "allow_dirty_base": true,
+  "allow_dirty_base": false,
   "override_blast_cap": false,
-  "target_test": "npx vitest run tests/factory-order-packet.test.ts",
-  "expected_blast_radius": 5,
+  "target_test": "npm run typecheck",
+  "expected_blast_radius": 2,
   "allowed_files": [
-    "src/server/factory-bom/parse-factory-order-packet.ts",
-    "src/server/factory-bom/match-factory-order-line.ts",
-    "src/app/embed/factory-bom/PacketLines.tsx",
-    "tests/factory-order-packet.test.ts",
-    "src/app/embed/factory-bom/IntakeDropzone.tsx",
-    "src/app/admin/factory-bom/actions.ts",
-    ".cursor/phase.lock"
+    ".cursor/phase.lock",
+    "MISSION_CONTROL_BUILD_PLAN_6.md"
   ]
 }
