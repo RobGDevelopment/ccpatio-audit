@@ -10,23 +10,33 @@ export type ParsedOrderLine = {
 export function parseFactoryOrderLine(line: string): ParsedOrderLine {
   const originalLine = line;
   let work = line.trim().toUpperCase();
-  
+
   let configuration = "";
   const parenMatch = work.match(/\((.*?)\)/);
   if (parenMatch) {
     configuration = parenMatch[1].trim();
     work = work.replace(parenMatch[0], "").trim();
   }
-  
-  work = work.replace(/(?:\s*(?:x|X|A-|\*)\s*)/g, " X ");
-  
+
+  // Normalize inch marks
+  work = work.replace(/''/g, "");
+  work = work.replace(/"/g, "");
+
+  // Normalize dimension separators
+  work = work.replace(/(?:\s*(?:x|X|×|\*|A-)\s*)/g, " X ");
+
   let quantity = 1;
-  
+  const qtyMatch = work.match(/^(\d+)\s+(.+)$/);
+  if (qtyMatch) {
+    quantity = parseInt(qtyMatch[1], 10);
+    work = qtyMatch[2].trim();
+  }
+
   const dimMatch = work.match(/(.*?)\s+(\d+(?:\.\d+)?)\s*X\s*(\d+(?:\.\d+)?)$/);
   let family = work;
   let widthInches = "";
   let depthInches = "";
-  
+
   if (dimMatch) {
     family = dimMatch[1].trim();
     widthInches = dimMatch[2];

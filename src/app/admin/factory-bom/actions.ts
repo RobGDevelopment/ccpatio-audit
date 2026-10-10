@@ -1904,12 +1904,7 @@ export async function uploadFactoryPacketAction(formData: FormData) {
     
     const packetStoragePath = "s3://ccpatio-packets/" + encodeURIComponent(file.name);
     
-    if (opportunityId) {
-      const db = getDb();
-      await db.update(order_intake).set({
-        mapped_lines: lines as any,
-      }).where(eq(order_intake.ghl_opportunity_id, opportunityId));
-    }
+    
     
     return { ok: true, lines, packetStoragePath };
   } catch (err: any) {

@@ -21,6 +21,12 @@ vi.mock("../src/server/db/client", () => {
         },
         pim_audit_log: {
           findFirst: vi.fn().mockResolvedValue({ id: 1 })
+        },
+        product_bom_draft: {
+          findMany: vi.fn().mockResolvedValue([])
+        },
+        cad_uploads: {
+          findFirst: vi.fn().mockResolvedValue(null)
         }
       }
     })
@@ -59,4 +65,19 @@ test("Parenthesis makes it custom", async () => {
   const match = await matchFactoryOrderLine("BROOKLYN OVERSIZED CHAISE 84 A- 42 (CORNER ON RIGHT SIDE)");
   expect(match.isCustom).toBe(true);
   expect(match.snapToGlobalSku).toBeNull();
+});
+
+test("Parses exact fixture with × symbol", () => {
+  const line = parseFactoryOrderLine("OCEAN SINGLE CHAISE LOUNGE 36 × 79");
+  expect(line.family).toBe("OCEAN SINGLE CHAISE LOUNGE");
+  expect(line.widthInches).toBe("36");
+  expect(line.depthInches).toBe("79");
+});
+
+test("Parses quantity and inch marks", () => {
+  const line = parseFactoryOrderLine('2 OCEAN SINGLE CHAISE LOUNGE 36" × 79"');
+  expect(line.family).toBe("OCEAN SINGLE CHAISE LOUNGE");
+  expect(line.widthInches).toBe("36");
+  expect(line.depthInches).toBe("79");
+  expect(line.quantity).toBe(2);
 });

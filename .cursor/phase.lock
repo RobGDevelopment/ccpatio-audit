@@ -5,7 +5,7 @@
   "allow_dirty_base": true,
   "override_blast_cap": false,
   "target_test": "npx vitest run tests/factory-order-packet.test.ts",
-  "expected_blast_radius": 7,
+  "expected_blast_radius": 5,
   "allowed_files": [
     "src/server/factory-bom/parse-factory-order-packet.ts",
     "src/server/factory-bom/match-factory-order-line.ts",

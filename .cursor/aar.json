@@ -1,64 +1,47 @@
 {
   "phase_id": "airlock-5e-pdf-packet",
   "base_ref": "HEAD",
-  "blast_radius": 7,
+  "blast_radius": 5,
   "counts": {
-    "files": 7,
-    "tracked": 3,
-    "untracked": 4,
-    "insertions": 1968,
-    "deletions": 1901
+    "files": 5,
+    "tracked": 5,
+    "untracked": 0,
+    "insertions": 68,
+    "deletions": 17
   },
   "files": [
     {
-      "status": "??",
-      "path": "src/app/embed/factory-bom/PacketLines.tsx",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/factory-bom/match-factory-order-line.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/factory-bom/parse-factory-order-packet.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/factory-order-packet.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 10,
-      "deletions": 11
+      "insertions": 1,
+      "deletions": 1
     },
     {
       "status": "M",
       "path": "src/app/admin/factory-bom/actions.ts",
-      "insertions": 1917,
-      "deletions": 1885
+      "insertions": 2,
+      "deletions": 7
     },
     {
       "status": "M",
-      "path": "src/app/embed/factory-bom/IntakeDropzone.tsx",
-      "insertions": 41,
-      "deletions": 5
+      "path": "src/server/factory-bom/match-factory-order-line.ts",
+      "insertions": 28,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "src/server/factory-bom/parse-factory-order-packet.ts",
+      "insertions": 16,
+      "deletions": 6
+    },
+    {
+      "status": "M",
+      "path": "tests/factory-order-packet.test.ts",
+      "insertions": 21,
+      "deletions": 0
     }
   ],
-  "untracked": [
-    "src/app/embed/factory-bom/PacketLines.tsx",
-    "src/server/factory-bom/match-factory-order-line.ts",
-    "src/server/factory-bom/parse-factory-order-packet.ts",
-    "tests/factory-order-packet.test.ts"
-  ],
-  "file_list_sha256": "2d0bd6d911b0b8858686e8dcb16343653cdeb1ae1af4c21293523b429fe9bd20",
+  "untracked": [],
+  "file_list_sha256": "2843b0750a2e46f4acb7dca44b1c2ecf4e94f9e9da70bb2af9c8ed993d800b8e",
   "notes": ""
 }

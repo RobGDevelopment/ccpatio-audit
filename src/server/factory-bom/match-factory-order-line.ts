@@ -6,8 +6,11 @@ import {
   product_bom,
   channel_sync,
   pim_audit_log,
+  product_bom_draft,
+  cad_uploads,
 } from "@/server/db/schema";
-import { eq, and, sql, ilike } from "drizzle-orm";
+import { deriveFactoryReadiness, type FactoryEvidence } from "./derive-readiness";
+import { eq, and, sql, ilike, desc } from "drizzle-orm";
 
 export async function matchFactoryOrderLine(rawLine: string) {
   const parsed = parseFactoryOrderLine(rawLine);
@@ -64,9 +67,31 @@ export async function matchFactoryOrderLine(rawLine: string) {
     ),
   });
 
-  const isPublished = hasLiveBom && sync?.status === "success" && recipeAudit;
+  const draftRows = await db.query.product_bom_draft.findMany({
+    where: eq(product_bom_draft.parent_sku, candidateSku),
+  });
 
-  if (isPublished) {
+  const latestDae = await db.query.cad_uploads.findFirst({
+    where: and(
+      eq(cad_uploads.global_sku, candidateSku),
+      ilike(cad_uploads.ext, "dae")
+    ),
+    orderBy: [desc(cad_uploads.created_at)],
+  });
+
+  const evidence: FactoryEvidence = {
+    liveRecipe: !!hasLiveBom,
+    draftStatuses: draftRows.map((r) => r.status),
+    latestDae: latestDae
+      ? { status: latestDae.status, filename: latestDae.original_filename }
+      : null,
+    katanaStatus: sync?.status ?? null,
+    recipePublished: !!recipeAudit,
+  };
+
+  const readiness = deriveFactoryReadiness(evidence);
+
+  if (readiness.state === "published") {
     return { rawLine, isCustom: false, parsed, snapToGlobalSku: candidateSku };
   }
 
