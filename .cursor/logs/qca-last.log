@@ -1,11 +1,14 @@
-status=0
+status=2
 --- stdout ---
 {
   "phase_id": "airlock-5c-fast-lane",
   "phase": "airlock-5c-fast-lane",
-  "verdict": "CERTIFIED",
-  "audit_exit": 0,
-  "invariantViolations": [],
+  "verdict": "DEFECT_REJECTED",
+  "audit_exit": 2,
+  "invariantViolations": [
+    "Blast Radius Breach: diff touches 0 files; expected 4; tolerance 0.",
+    "AAR blast radius 0 disagrees with phase.lock expected_blast_radius 4. Lock wins."
+  ],
   "testResults": {
     "typecheck": "PASS",
     "lint": "PASS",
@@ -13,17 +16,17 @@ status=0
   },
   "targetTest": "npx vitest run tests/dae-weldment.test.ts tests/cad-upload-pipeline.test.ts",
   "blastRadius": {
-    "actual": 4,
+    "actual": 0,
     "expected": 4,
     "tolerance": 0,
-    "tracked": 4,
+    "tracked": 0,
     "untracked": 0,
-    "status": "PASS"
+    "status": "FAIL"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "a713af5a37e7e0e282aad917f6cb00a6e67cf6fea02fb574855449acf3826417",
-    "git_sha256": "a713af5a37e7e0e282aad917f6cb00a6e67cf6fea02fb574855449acf3826417"
+    "aar_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "git_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }
 }
 
