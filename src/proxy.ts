@@ -59,6 +59,10 @@ function isLogisticsPath(pathname: string): boolean {
   return pathname === LOGISTICS_PATH || pathname.startsWith(`${LOGISTICS_PATH}/`);
 }
 
+function isCutCardsPath(pathname: string): boolean {
+  return pathname.startsWith("/factory/cut-cards");
+}
+
 function isGhlFrameablePath(pathname: string): boolean {
   return isEmbedPath(pathname) || pathname === STOCK_CHECKER_PATH || isLogisticsPath(pathname);
 }
@@ -78,7 +82,7 @@ function frameableLoginTarget(request: NextRequest): boolean {
 
 function isUnframeablePath(pathname: string): boolean {
   if (isLogisticsPath(pathname)) return false;
-  return pathname === "/" || pathname === "/admin" || pathname.startsWith("/admin/");
+  return pathname === "/" || pathname === "/admin" || pathname.startsWith("/admin/") || isCutCardsPath(pathname);
 }
 
 function isProtectedPath(pathname: string): boolean {
@@ -144,6 +148,10 @@ export async function proxy(request: NextRequest) {
 
   if (isPublicAsset(pathname) || isBypassedPath(pathname)) {
     return continueWithRequest(requestHeadersFor(request, pathname, null));
+  }
+
+  if (isCutCardsPath(pathname)) {
+    return applyFramePolicy(continueWithRequest(requestHeadersFor(request, pathname, null)), pathname, request);
   }
 
   if (pathname === STOCK_CHECKER_PATH) {

@@ -4,6 +4,9 @@ import type { FactoryProductRow } from "@/server/factory-bom/list-factory-produc
 import { evaluateAirlock } from "@/server/factory-bom/evaluate-airlock";
 import { releaseButton, ticket } from "@/app/admin/factory-bom/factory-bom-ui";
 import type { AirlockDossier } from "@/server/factory-bom/airlock.schema";
+import { publishApprovedRecipeToKatana } from "@/app/admin/factory-bom/actions";
+import { releaseCustomJobAction } from "@/server/factory-bom/release-custom-build";
+import { useRouter } from "next/navigation";
 
 export function Step4Release({
   snapshot,
@@ -16,6 +19,8 @@ export function Step4Release({
   const [cutListConfirmed, setCutListConfirmed] = useState(false);
   const [operationsConfirmed, setOperationsConfirmed] = useState(false);
   const [quarantineConfirmed, setQuarantineConfirmed] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const router = useRouter();
 
   const allChecked = identityConfirmed && cutListConfirmed && operationsConfirmed && quarantineConfirmed;
 
@@ -182,10 +187,32 @@ export function Step4Release({
       )}
 
       <button
-        disabled={!canRelease}
+        disabled={!canRelease || isPublishing}
+        onClick={async () => {
+          setIsPublishing(true);
+          try {
+            const res = await publishApprovedRecipeToKatana(snapshot.rootSku);
+            if (res.blockingCodes && res.blockingCodes.length > 0) {
+              alert("Publish blocked: " + res.blockingCodes.join(", "));
+              return;
+            }
+            if (!res.ok) {
+              alert("Publish error: " + (res.message || "Unknown error"));
+              return;
+            }
+            if (snapshot.rootSku.startsWith("JOB-")) {
+              await releaseCustomJobAction(snapshot.rootSku);
+            }
+            router.refresh();
+          } catch (err: any) {
+            alert("Error: " + err.message);
+          } finally {
+            setIsPublishing(false);
+          }
+        }}
         className={releaseButton}
       >
-        Release to Katana
+        {isPublishing ? "Releasing..." : "Release to Katana"}
       </button>
     </div>
   );

@@ -7,6 +7,7 @@ import {
   autoReleaseExpiredHolds,
   sendHoldExpirationWarnings,
 } from "@/server/inngest/inventory-holds";
+import { executeReleaseCustomBuild } from "@/server/factory-bom/release-custom-build";
 import { sweepExpiredInventoryHolds } from "@/server/stock/sweep-expired-holds";
 import {
   createKatanaSalesOrder,
@@ -656,6 +657,22 @@ export const processCadUpload = inngest.createFunction(
   },
 );
 
+export const releaseCustomJob = inngest.createFunction(
+  {
+    id: "release-custom-job",
+    name: "Release Custom Job to Katana",
+    triggers: [{ event: "factory.custom_job.released" }],
+    retries: 3,
+  },
+  async ({ event }) => {
+    const data = event.data as { globalSku?: string };
+    if (!data.globalSku) {
+      throw new Error("Missing globalSku in factory.custom_job.released payload");
+    }
+    return executeReleaseCustomBuild(data.globalSku);
+  },
+);
+
 export const pushApprovedFactoryOrder = inngest.createFunction(
   {
     id: "push-approved-factory-order",
@@ -689,6 +706,7 @@ export const inngestFunctions = [
   publishApprovedProduct,
   systemHealthPing,
   processCadUpload,
+  releaseCustomJob,
   pushApprovedFactoryOrder,
   sweepExpiredInventoryHolds,
   sendHoldExpirationWarnings,

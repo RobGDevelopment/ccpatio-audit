@@ -1,20 +1,19 @@
 {
-  "phase_id": "airlock-5c-python-bridge",
-  "intent": ".blend becomes .glb outside Vercel. .skp geometry fails closed with SKP_CONVERT_UNAVAILABLE. Python writes no draft rows.",
+  "phase_id": "airlock-5d-factory-link",
+  "intent": "After a clean custom release, one MO note points at an unframeable cut-card page.",
   "base_ref": "HEAD",
   "allow_dirty_base": true,
   "override_blast_cap": false,
-  "target_test": "npx vitest run tests/cad-convert-client.test.ts",
-  "expected_blast_radius": 9,
+  "target_test": "npx vitest run tests/factory-cut-card-token.test.ts",
+  "expected_blast_radius": 8,
   "allowed_files": [
-    "services/cad-convert/app.py",
-    "services/cad-convert/export_blend.py",
-    "src/lib/cad-upload/convert-client.ts",
-    "tests/cad-convert-client.test.ts",
-    "src/lib/cad-upload/process-job.ts",
+    "src/server/factory-bom/cut-card-token.ts",
+    "src/app/factory/cut-cards/[token]/page.tsx",
+    "src/server/factory-bom/release-custom-build.ts",
+    "tests/factory-cut-card-token.test.ts",
+    "src/proxy.ts",
+    "src/app/embed/factory-bom/steps/Step4Release.tsx",
     "src/inngest/functions.ts",
-    "src/lib/cad-upload/index.ts",
-    ".cursor/phase.lock",
-    ".cursor/logs/qca-last.log"
+    ".cursor/phase.lock"
   ]
 }
