@@ -50,11 +50,44 @@ describe("CAD upload pipeline foundations", () => {
     expect(result.rollup.length).toBeGreaterThan(0);
   });
 
-  it("extractSkpThumbnail finds embedded PNG signature → IEND", () => {
+  it("extractSkpThumbnail finds embedded PNG signature -> IEND", () => {
     const extracted = extractSkpThumbnail(craftedSkpWithPng());
     expect(extracted).not.toBeNull();
     expect(extracted![0]).toBe(0x89);
     expect(extracted![1]).toBe(0x50);
     expect(extracted!.length).toBeGreaterThan(200);
+  });
+});
+
+describe("Inngest processCadUpload mapping", () => {
+  it("preserves glb, dae, skp and rejects invalid extensions", async () => {
+    const { processCadUpload } = await import("@/inngest/functions");
+    const { NonRetriableError } = await import("inngest");
+
+    // The Inngest function handler is exposed on .fn
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handler = (processCadUpload as any).fn;
+    
+    // Valid ones (mocking step.run to throw a dummy error just to stop execution)
+    const stepMock = {
+      run: async (name: string, cb: any) => { throw new Error("STOP_EXECUTION"); }
+    };
+
+    const validExts = ["glb", "dae", "skp"];
+    for (const ext of validExts) {
+      const event = {
+        data: { uploadId: "123", globalSku: "SKU", storagePath: "path", ext }
+      };
+      await expect(handler({ event, step: stepMock })).rejects.toThrow("STOP_EXECUTION");
+    }
+
+    // Invalid ones
+    const invalidExts = ["png", "blend", "pdf", "txt", ""];
+    for (const ext of invalidExts) {
+      const event = {
+        data: { uploadId: "123", globalSku: "SKU", storagePath: "path", ext }
+      };
+      await expect(handler({ event, step: stepMock })).rejects.toThrow(NonRetriableError);
+    }
   });
 });

@@ -1,22 +1,16 @@
 {
-  "phase_id": "airlock-5b-intake-fork",
-  "intent": "Remove the dropdown. File-first zone. Fork UI. ?sku= still opens an existing airlock.",
+  "phase_id": "airlock-5c-fast-lane",
+  "intent": ".glb survives Inngest and runs parseGlbWeldment.",
   "base_ref": "HEAD",
-  "target_test": "npm run test:e2e:factory-bom",
-  "expected_blast_radius": 12,
+  "allow_dirty_base": true,
+  "override_blast_cap": false,
+  "target_test": "npx vitest run tests/dae-weldment.test.ts tests/cad-upload-pipeline.test.ts",
+  "expected_blast_radius": 3,
   "allowed_files": [
-    "src/app/embed/factory-bom/IntakeDropzone.tsx",
-    "src/app/embed/factory-bom/FunnelFork.tsx",
-    "src/server/factory-bom/promote-to-catalog.ts",
-    "src/app/embed/factory-bom/AirlockWizard.tsx",
-    "src/app/embed/factory-bom/page.tsx",
-    "src/app/admin/factory-bom/actions.ts",
-    "src/app/admin/factory-bom/CadUploadDropzone.tsx",
-    "tests/e2e/factory-bom-lifecycle.spec.ts",
-    ".cursor/session-stamp.json",
+    "src/inngest/functions.ts",
+    "tests/cad-upload-pipeline.test.ts",
     ".cursor/phase.lock",
     ".cursor/logs/qca-last.log",
-    "BUILD_PLAN.md",
-    "playwright-report/index.html"
+    ".cursor/session-stamp.json"
   ]
 }

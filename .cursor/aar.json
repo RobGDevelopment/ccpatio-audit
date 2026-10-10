@@ -1,94 +1,35 @@
 {
-  "phase_id": "airlock-5b-intake-fork",
+  "phase_id": "airlock-5c-fast-lane",
   "base_ref": "HEAD",
-  "blast_radius": 12,
+  "blast_radius": 3,
   "counts": {
-    "files": 12,
-    "tracked": 8,
-    "untracked": 4,
-    "insertions": 158,
-    "deletions": 171
+    "files": 3,
+    "tracked": 3,
+    "untracked": 0,
+    "insertions": 749,
+    "deletions": 719
   },
   "files": [
     {
-      "status": "??",
-      "path": "BUILD_PLAN.md",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/app/embed/factory-bom/FunnelFork.tsx",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/app/embed/factory-bom/IntakeDropzone.tsx",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/factory-bom/promote-to-catalog.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": ".cursor/logs/qca-last.log",
-      "insertions": 35,
-      "deletions": 28
-    },
-    {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 15,
-      "deletions": 10
+      "insertions": 9,
+      "deletions": 15
     },
     {
       "status": "M",
-      "path": ".cursor/session-stamp.json",
-      "insertions": 2,
-      "deletions": 2
+      "path": "src/inngest/functions.ts",
+      "insertions": 706,
+      "deletions": 703
     },
     {
       "status": "M",
-      "path": "playwright-report/index.html",
-      "insertions": 1,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/app/admin/factory-bom/CadUploadDropzone.tsx",
-      "insertions": 4,
-      "deletions": 4
-    },
-    {
-      "status": "M",
-      "path": "src/app/admin/factory-bom/actions.ts",
-      "insertions": 53,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/factory-bom/AirlockWizard.tsx",
-      "insertions": 45,
-      "deletions": 125
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/factory-bom/page.tsx",
-      "insertions": 3,
+      "path": "tests/cad-upload-pipeline.test.ts",
+      "insertions": 34,
       "deletions": 1
     }
   ],
-  "untracked": [
-    "BUILD_PLAN.md",
-    "src/app/embed/factory-bom/FunnelFork.tsx",
-    "src/app/embed/factory-bom/IntakeDropzone.tsx",
-    "src/server/factory-bom/promote-to-catalog.ts"
-  ],
-  "file_list_sha256": "ae3f5cfef6be2ce7123252b9dac8fc69911b8e0debacf0e496c21cf15f49f4d7",
+  "untracked": [],
+  "file_list_sha256": "a87dd4a23b6cd5bea904e26b7f24e9c39ff737968106648d85c52963b5e63bc5",
   "notes": ""
 }
