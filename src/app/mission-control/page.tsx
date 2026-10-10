@@ -2,15 +2,18 @@ import { requireMissionControlAuth, getFailedJobsAction } from "./actions";
 import { TrafficLights } from "@/components/mission-control/TrafficLights";
 import { IssuesInbox } from "@/components/mission-control/IssuesInbox";
 import { KeyManager } from "@/components/mission-control/KeyManager";
+import { MissionControlUnauthorizedError } from "@/server/mission-control/require-role";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function MissionControlPage() {
+  let session: Awaited<ReturnType<typeof requireMissionControlAuth>>;
   try {
-    await requireMissionControlAuth();
+    session = await requireMissionControlAuth();
   } catch (error) {
-    redirect("/"); // If not SuperAdmin or IT_Admin, kick them back to Launchpad
+    if (!(error instanceof MissionControlUnauthorizedError)) throw error;
+    redirect("/");
   }
 
   // Fetch initial failed jobs for the Inbox
@@ -27,6 +30,9 @@ export default async function MissionControlPage() {
             </h1>
             <span className="rounded bg-rose-500/10 px-2 py-0.5 text-[10px] font-medium text-rose-400 uppercase tracking-widest border border-rose-500/20">
               Restricted Area
+            </span>
+            <span className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-200 uppercase tracking-widest border border-zinc-700">
+              {session.role}
             </span>
           </div>
           <a href="/" className="text-xs font-medium text-zinc-400 hover:text-zinc-200 transition">

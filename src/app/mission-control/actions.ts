@@ -5,36 +5,33 @@ import { fetchFailedPublishJobs, replayInngestRun } from "@/services/inngest-api
 import { invalidateVendorKey } from "@/utils/vault";
 import { getDb } from "@/server/db/client";
 import { vendor_credentials } from "@/server/db/schema";
+import {
+  MissionControlUnauthorizedError,
+  requireMissionControlRole,
+  type MissionControlRole,
+} from "@/server/mission-control/require-role";
+
+export type MissionControlSession = {
+  id: string;
+  email: string | null;
+  role: MissionControlRole;
+};
 
 /**
- * Validates that the current user session has a SuperAdmin or IT_Admin role.
- * Throws an error if unauthorized.
+ * Session gate for Mission Control. The role decision lives in requireMissionControlRole.
  */
-export async function requireMissionControlAuth() {
+export async function requireMissionControlAuth(): Promise<MissionControlSession> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error("Unauthorized: No active session.");
+    throw new MissionControlUnauthorizedError("NO_SESSION", "Unauthorized: No active session.");
   }
 
-  const { data: roleData, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (error || !roleData) {
-    throw new Error("Unauthorized: Role not found.");
-  }
-
-  if (roleData.role !== "SuperAdmin" && roleData.role !== "IT_Admin") {
-    throw new Error(`Unauthorized: Insufficient permissions (Role: ${roleData.role}).`);
-  }
-
-  return user;
+  const role = await requireMissionControlRole(user.id, user.email);
+  return { id: user.id, email: user.email ?? null, role };
 }
 
 export async function getFailedJobsAction() {

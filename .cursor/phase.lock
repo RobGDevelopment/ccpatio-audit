@@ -1,13 +1,17 @@
 {
-  "phase_id": "mc-6-blueprint",
-  "intent": "Author the Phase 6 Mission Control execution blueprint. No application code.",
+  "phase_id": "mc-6a-rbac-shell",
+  "intent": "SuperAdmin and IT_Admin reach /mission-control. Every other principal is refused by both the proxy and requireMissionControlAuth. The page shows the signed-in role and does not render the dashboard for anyone else.",
   "base_ref": "HEAD",
   "allow_dirty_base": false,
   "override_blast_cap": false,
-  "target_test": "npm run typecheck",
-  "expected_blast_radius": 2,
+  "target_test": "npx vitest run tests/mission-control-rbac.test.ts",
+  "expected_blast_radius": 6,
   "allowed_files": [
     ".cursor/phase.lock",
-    "MISSION_CONTROL_BUILD_PLAN_6.md"
+    "src/server/mission-control/require-role.ts",
+    "src/proxy.ts",
+    "src/app/mission-control/actions.ts",
+    "src/app/mission-control/page.tsx",
+    "tests/mission-control-rbac.test.ts"
   ]
 }

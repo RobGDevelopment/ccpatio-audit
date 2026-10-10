@@ -21,6 +21,10 @@ import {
   EMBED_KEY_HEADER,
   embedAuthCookieOptions,
 } from "@/lib/embed-auth";
+import {
+  MissionControlUnauthorizedError,
+  assertMissionControlGrant,
+} from "@/server/mission-control/require-role";
 
 const PUBLIC_PATHS = new Set(["/", "/api/health"]);
 const STOCK_CHECKER_PATH = "/tools/stock-checker";
@@ -63,7 +67,12 @@ function isCutCardsPath(pathname: string): boolean {
   return pathname.startsWith("/factory/cut-cards");
 }
 
+function isMissionControlPath(pathname: string): boolean {
+  return pathname === "/mission-control" || pathname.startsWith("/mission-control/");
+}
+
 function isGhlFrameablePath(pathname: string): boolean {
+  if (isMissionControlPath(pathname)) return false;
   return isEmbedPath(pathname) || pathname === STOCK_CHECKER_PATH || isLogisticsPath(pathname);
 }
 
@@ -82,7 +91,13 @@ function frameableLoginTarget(request: NextRequest): boolean {
 
 function isUnframeablePath(pathname: string): boolean {
   if (isLogisticsPath(pathname)) return false;
-  return pathname === "/" || pathname === "/admin" || pathname.startsWith("/admin/") || isCutCardsPath(pathname);
+  return (
+    pathname === "/" ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    isCutCardsPath(pathname) ||
+    isMissionControlPath(pathname)
+  );
 }
 
 function isProtectedPath(pathname: string): boolean {
@@ -174,7 +189,10 @@ export async function proxy(request: NextRequest) {
     return continueWithRequest(requestHeadersFor(request, pathname, null));
   }
 
-  const embedKey = isEmbedPath(pathname) ? embedKeyFromRequest(request) : null;
+  const embedKey =
+    isEmbedPath(pathname) && !isMissionControlPath(pathname)
+      ? embedKeyFromRequest(request)
+      : null;
   const requestHeaders = requestHeadersFor(request, pathname, embedKey);
   if (isEmbedPath(pathname)) {
     const response = continueWithRequest(requestHeaders);
@@ -188,7 +206,7 @@ export async function proxy(request: NextRequest) {
     request.cookies.get(E2E_GODMODE_COOKIE)?.value ??
     request.headers.get("x-ccpatio-e2e-godmode");
   const e2e = await verifyE2eGodModeCookie(e2eToken, getE2eGodModeSecret());
-  if (e2e) {
+  if (e2e && !isMissionControlPath(pathname)) {
     return applyFramePolicy(continueWithRequest(requestHeaders), pathname, request);
   }
 
@@ -244,7 +262,13 @@ export async function proxy(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (error || !roleData || (roleData.role !== "SuperAdmin" && roleData.role !== "IT_Admin")) {
+    try {
+      assertMissionControlGrant({
+        email: user.email,
+        role: error || !roleData ? null : roleData.role,
+      });
+    } catch (err) {
+      if (!(err instanceof MissionControlUnauthorizedError)) throw err;
       const unauthorizedUrl = request.nextUrl.clone();
       unauthorizedUrl.pathname = "/admin";
       return applyFramePolicy(NextResponse.redirect(unauthorizedUrl), pathname, request);
