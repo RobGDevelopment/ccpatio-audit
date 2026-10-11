@@ -1,14 +1,12 @@
 # Soft Allocation (Hold) — Architecture
 
-**Status:** Proposed for approval. No schema, server action, webhook branch, or sweeper is implemented.  
+**Status:** Implemented. A product hold is a `HOLD-` sales order. A material hold is a negative stock adjustment at CC Manufacturing (`98179`). That adjustment reduces on-hand. A later stocktake can erase it. The house customer is `CC Patio Showroom Hold`. The opportunity name is stored in `reason` and `additional_info`.  
 **Audience:** Showroom, factory floor, PIM  
 **Binding SoT:** [`docs/MDM_MASTER_BLUEPRINT.md`](MDM_MASTER_BLUEPRINT.md) §2.4 and §3  
 **Date:** 2026-10-02  
 **Supersedes:** the earlier 48-hour walk-in brief in this file (typed customer name, no opportunity id).
 
-The Place Hold button on `InventoryCard` logs the Katana variant id and stops. This document is the reservation system that button will call once approved.
-
-Supabase is the reservation ledger and the clock. Katana is the inventory engine. Katana has no temporary hold and no expiry, so a short-lived sales order is the commitment. The ledger says who placed it, which GoHighLevel opportunity it belongs to, and when it must die.
+Place Hold on `InventoryCard` calls `createHold`. Supabase is the reservation ledger and the clock. Katana is the inventory engine. Katana has no temporary hold and no expiry. A product hold is a short-lived sales order. A material hold is the negative stock adjustment described above. The ledger says who placed it, which GoHighLevel opportunity it belongs to, and when it must die.
 
 This path is a showroom promise. It is a different document from the legacy fabric freeze `MIG-HOLD-FABRIC-20260811` (`52594042`).
 
@@ -39,7 +37,7 @@ Section 9 is the conversion analysis behind decisions 5–8. If any row in this 
 
 A hold sales order must not be delivered, invoiced, or turned into a manufacturing order. Delivery consumes on-hand stock. A manufacturing order starts factory work and commits recipe ingredients. `createMakeToOrderManufacturingOrders` is a separate call. The hold path does not call it.
 
-`POST /stock_adjustments` stays forbidden. Adjusting on-hand would hide units from the floor instead of showing them as committed, and it would fight the next stocktake.
+A product hold still uses a sales order so the quantity moves into Committed. A material cannot sit on a sales order. That hold is a negative `POST /stock_adjustments` and reduces on-hand instead. A later stocktake can erase it. Fabric relief on `MIG-HOLD-FABRIC-20260811` stays a line PATCH. It is not this adjustment.
 
 The legacy fabric freeze stays on its own order. Showroom holds are many small orders, one line each, deleted in full when they end. Any delete in this system loads the sales order first and continues only when `order_no` starts with `HOLD-` and equals the ledger value. `52594042` and `GHL-{opportunityId}` fail that test.
 

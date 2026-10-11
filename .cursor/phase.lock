@@ -1,14 +1,12 @@
 {
-  "phase_id": "mc-6e-escalation-modal",
-  "intent": "Raise the existing Oh-Crap mail from Mission Control. No second alert bus.",
+  "phase_id": "hold-7a-mdm-exception",
+  "intent": "Authorize the existing showroom material hold in the binding blueprint.",
   "allowed_files": [
     ".cursor/phase.lock",
-    "src/app/mission-control/escalation-action.ts",
-    "src/components/mission-control/EscalationModal.tsx",
-    "src/app/mission-control/page.tsx",
-    "tests/mission-control-escalation.test.ts"
+    "docs/MDM_MASTER_BLUEPRINT.md",
+    "docs/SOFT_HOLD_ARCHITECTURE.md"
   ],
-  "expected_blast_radius": 5,
-  "target_test": "npx vitest run tests/mission-control-escalation.test.ts",
+  "expected_blast_radius": 3,
+  "target_test": "npm run typecheck",
   "base_ref": "HEAD"
 }

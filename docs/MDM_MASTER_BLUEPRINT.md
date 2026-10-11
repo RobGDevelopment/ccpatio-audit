@@ -105,7 +105,7 @@ This Next.js application is the **PIM + BOM translation + catalog fan-out** hub,
 | WooCommerce sales orders → Katana | Katana native Woo connector | No `/api/webhooks/woocommerce` order consumers. Stay `410`. |
 | GHL **Produce Factory Order** → Katana sales order / MTO | This hub, after human triage | `POST /api/webhooks/ghl` → `order_intake` → `/admin/order-triage` → Inngest `order.approved`. Gate: `GHL_FACTORY_ORDERS`. |
 | GHL Won auto-push (legacy V8) | Not this product | `syncGhlOpportunity` stays unregistered. Do not rebuild it. |
-| Live inventory deductions | Katana | No `POST /stock_adjustments`. Fabric relief is a line PATCH on the legacy hold (§2.4). |
+| Live inventory deductions | Katana | No `POST /stock_adjustments`, except one showroom material hold: negative quantity, location `98179`, number `HOLD-` plus 8 hex characters, house customer `CC Patio Showroom Hold`, opportunity name in `reason` and `additional_info`. Fabric relief stays a line PATCH on the legacy hold (§2.4). |
 | Katana COGS / inventory → QuickBooks Online | Katana native QBO connector | No QBO invoice/mutex/Clover-match code |
 | Clover tender → accounting | Clover / QBO native | No fuzzy deposit matcher, no custom recon DLQ |
 | Quote → Clover deposit → Katana | This hub, §2.5 | Stock-only deposit may create `GHL-{opportunityId}` and delete `HOLD-` orders. Configured lines still wait for §2.4 triage. The payment path does not create a manufacturing order |
@@ -128,9 +128,9 @@ Fully-welded multi-level BOMs cannot be stored in WooCommerce’s flat EAV (`wp_
 | Trigger stage | `Produce Factory Order` (or `pipeline_stage_id` listed in `GHL_FACTORY_STAGE_IDS`) |
 | Customer order lines | `FIN-*` only |
 | Fabric | MO recipe swap to the chosen `FAB-*`, then reduce that fabric's quantity on the hold |
-| Forbidden | `POST /stock_adjustments`, shipping, invoicing, or fulfilling either order from this pipeline |
+| Forbidden | `POST /stock_adjustments` except the showroom material hold in §2.2, plus shipping, invoicing, or fulfilling either order from this pipeline |
 
-The hold already commits legacy reserved yards. The new manufacturing order also commits its fabric ingredient. The burn-down PATCHes (or DELETEs, when the remainder is zero) the matching hold line by the Hub BOM yardage so committed stock is not double-reserved. A retry reads `order_intake.hold_relief` and does not deduct twice.
+The hold already commits legacy reserved yards. The new manufacturing order also commits its fabric ingredient. The burn-down PATCHes (or DELETEs, when the remainder is zero) the matching hold line by the Hub BOM yardage so committed stock is not double-reserved. A retry reads `order_intake.hold_relief` and does not deduct twice. That legacy fabric freeze stays sales order `MIG-HOLD-FABRIC-20260811` (`52594042`). It is not a stock adjustment.
 
 ### 2.5 Scoped exception — commercial document lane
 
