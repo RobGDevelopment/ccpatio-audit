@@ -1,35 +1,53 @@
 {
-  "phase_id": "hotfix-ci-assertions",
-  "base_ref": "HEAD",
-  "blast_radius": 3,
+  "phase_id": "hold-7e-ledger-inbox",
+  "base_ref": "1120ac723f9177aaf88c6fcbcd548c9e42d75d24",
+  "blast_radius": 6,
   "counts": {
-    "files": 3,
-    "tracked": 3,
+    "files": 6,
+    "tracked": 6,
     "untracked": 0,
-    "insertions": 33,
-    "deletions": 24
+    "insertions": 196,
+    "deletions": 13
   },
   "files": [
     {
+      "status": "A",
+      "path": "tests/mission-control-hold-issues.test.ts",
+      "insertions": 71,
+      "deletions": 0
+    },
+    {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 6,
-      "deletions": 10
+      "insertions": 10,
+      "deletions": 7
     },
     {
       "status": "M",
-      "path": "tests/cad-upload-pipeline.test.ts",
-      "insertions": 3,
-      "deletions": 3
+      "path": "src/app/mission-control/inbox-action.ts",
+      "insertions": 29,
+      "deletions": 4
     },
     {
       "status": "M",
-      "path": "tests/publish-idempotency.test.ts",
-      "insertions": 24,
-      "deletions": 11
+      "path": "src/components/mission-control/IssuesInbox.tsx",
+      "insertions": 1,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/mission-control/issue-copy.ts",
+      "insertions": 46,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/services/inngest-api.ts",
+      "insertions": 39,
+      "deletions": 0
     }
   ],
   "untracked": [],
-  "file_list_sha256": "aa4c5177e1a61c22d4d3edc48e98f0aad4d92364bc393ad04549bbce130a320b",
+  "file_list_sha256": "04a205ba3bdacc8e26dd9b5c3ef0badd8ed6393dddfba11e0d38d822419806ca",
   "notes": ""
 }
