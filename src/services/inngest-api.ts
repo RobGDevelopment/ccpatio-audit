@@ -49,3 +49,42 @@ export async function replayInngestRun(run_id: string) {
 
   return response.json();
 }
+
+const HOLD_FUNCTION_IDS = [
+  "send-hold-expiration-warnings",
+  "auto-release-expired-holds",
+  "sweep-expired-inventory-holds",
+] as const;
+
+function runsFromPayload(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) return payload;
+  if (
+    payload &&
+    typeof payload === "object" &&
+    Array.isArray((payload as { data?: unknown }).data)
+  ) {
+    return (payload as { data: unknown[] }).data;
+  }
+  return [];
+}
+
+/** Failed hold cron runs. Does not change the catalog publish query. */
+export async function fetchFailedHoldJobs(): Promise<unknown[]> {
+  const lists = await Promise.all(
+    HOLD_FUNCTION_IDS.map(async (functionId) => {
+      const url = new URL(`${INNGEST_API_URL}/runs`);
+      url.searchParams.set("status", "Failed");
+      url.searchParams.set("function_id", functionId);
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: getInngestApiHeaders(),
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch Inngest jobs: ${response.statusText}`);
+      }
+      return runsFromPayload(await response.json());
+    }),
+  );
+  return lists.flat();
+}

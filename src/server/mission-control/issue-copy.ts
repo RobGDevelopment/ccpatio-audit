@@ -15,7 +15,7 @@ const CATALOG_CHANNELS = new Set(["katana", "woocommerce", "clover"]);
 
 export type InboxIssue = {
   id: string;
-  kind: "run" | "sync";
+  kind: "run" | "sync" | "hold";
   title: string;
   spoke: string;
   sku: string | null;
@@ -86,6 +86,15 @@ function describeFunction(functionId: string): { title: string; spoke: string } 
   if (id.includes("clover-payment-sync")) {
     return { title: "Clover payment sync failed", spoke: "Clover" };
   }
+  if (id.includes("send-hold-expiration-warnings")) {
+    return { title: "Hold expiration warning failed", spoke: "Katana" };
+  }
+  if (id.includes("auto-release-expired-holds")) {
+    return { title: "Expired hold release failed", spoke: "Katana" };
+  }
+  if (id.includes("sweep-expired-inventory-holds")) {
+    return { title: "Hold sweeper failed", spoke: "Katana" };
+  }
   if (id.includes("woocommerce")) {
     return { title: "WooCommerce sync failed", spoke: "WooCommerce" };
   }
@@ -113,6 +122,22 @@ function skuFromEventData(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
   const record = data as Record<string, unknown>;
   return asString(record.globalSku) ?? asString(record.global_sku) ?? asString(record.sku);
+}
+
+export type HoldLedgerCandidate = {
+  id: string;
+  sku: string;
+  status: string;
+  lastError: string | null;
+  updatedAt: Date | string;
+};
+
+const HOLD_LEDGER_STATUSES = new Set(["active", "releasing", "converting"]);
+
+function holdLedgerTitle(status: string): string {
+  if (status === "converting") return "Showroom hold is stuck converting";
+  if (status === "releasing") return "Showroom hold did not finish releasing";
+  return "Showroom hold needs attention";
 }
 
 function asIso(value: Date | string): string {
@@ -155,6 +180,26 @@ export function selectFailedSyncIssues(rows: readonly ChannelSyncCandidate[]): I
       title: syncTitle(row.channel),
       spoke: spokeLabel(row.channel),
       sku: row.globalSku,
+      at: asIso(row.updatedAt),
+      summary: plainEnglishError(row.lastError),
+      runId: null,
+    });
+  }
+  return issues;
+}
+
+/** Stuck hold rows. `lastError` is translated, then dropped. */
+export function selectHoldLedgerIssues(rows: readonly HoldLedgerCandidate[]): InboxIssue[] {
+  const issues: InboxIssue[] = [];
+  for (const row of rows) {
+    if (!HOLD_LEDGER_STATUSES.has(row.status)) continue;
+    if (!row.lastError?.trim()) continue;
+    issues.push({
+      id: `hold:${row.id}`,
+      kind: "hold",
+      title: holdLedgerTitle(row.status),
+      spoke: "Katana",
+      sku: row.sku,
       at: asIso(row.updatedAt),
       summary: plainEnglishError(row.lastError),
       runId: null,

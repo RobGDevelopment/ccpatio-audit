@@ -1,17 +1,18 @@
 "use server";
 
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { requireMissionControlAuth, retryJobAction } from "@/app/mission-control/actions";
 import { getDb } from "@/server/db/client";
-import { channel_sync } from "@/server/db/schema";
+import { channel_sync, inventory_holds } from "@/server/db/schema";
 import {
   plainEnglishError,
   selectFailedRunIssues,
   selectFailedSyncIssues,
+  selectHoldLedgerIssues,
   type FailedRunCandidate,
   type InboxIssue,
 } from "@/server/mission-control/issue-copy";
-import { fetchFailedPublishJobs } from "@/services/inngest-api";
+import { fetchFailedHoldJobs, fetchFailedPublishJobs } from "@/services/inngest-api";
 
 const LOAD_ERROR = "The issues inbox could not be loaded.";
 
@@ -53,6 +54,26 @@ async function readFailedSyncRows() {
     .orderBy(desc(channel_sync.updated_at));
 }
 
+async function readFailedHoldRows() {
+  const db = getDb();
+  return db
+    .select({
+      id: inventory_holds.id,
+      sku: inventory_holds.sku,
+      status: inventory_holds.status,
+      lastError: inventory_holds.last_error,
+      updatedAt: inventory_holds.updated_at,
+    })
+    .from(inventory_holds)
+    .where(
+      and(
+        isNotNull(inventory_holds.last_error),
+        inArray(inventory_holds.status, ["active", "releasing", "converting"]),
+      ),
+    )
+    .orderBy(desc(inventory_holds.updated_at));
+}
+
 /**
  * Failed publish runs plus failed `channel_sync` rows.
  * The client receives translated fields only.
@@ -63,13 +84,17 @@ export async function getIssuesInboxAction(): Promise<
   await requireMissionControlAuth();
 
   try {
-    const [runsPayload, syncRows] = await Promise.all([
+    const [runsPayload, holdRuns, syncRows, holdRows] = await Promise.all([
       fetchFailedPublishJobs(),
+      fetchFailedHoldJobs(),
       readFailedSyncRows(),
+      readFailedHoldRows(),
     ]);
     const data = [
       ...selectFailedRunIssues(unwrapRuns(runsPayload)),
+      ...selectFailedRunIssues(unwrapRuns(holdRuns)),
       ...selectFailedSyncIssues(syncRows),
+      ...selectHoldLedgerIssues(holdRows),
     ].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
     return { ok: true, data };
   } catch (error: unknown) {

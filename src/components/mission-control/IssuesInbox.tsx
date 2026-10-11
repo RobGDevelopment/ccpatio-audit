@@ -64,7 +64,7 @@ export function IssuesInbox({ initialJobs }: { initialJobs?: readonly unknown[] 
     <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-6">
       <h2 className="text-lg font-semibold text-zinc-100">Active Issues Inbox</h2>
       <p className="mt-1 text-sm text-zinc-400">
-        Failed catalog syncs and publish runs. Marking a sync seen hides it on this screen only.
+        Failed catalog syncs, publish runs, and showroom holds. Marking a row seen hides it on this screen only.
       </p>
 
       {notice && (

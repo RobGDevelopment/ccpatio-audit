@@ -1,12 +1,15 @@
 {
-  "phase_id": "hold-7d-compensate-orphan",
-  "intent": "Record a ledger row when a Katana hold survives a failed compensate.",
+  "phase_id": "hold-7e-ledger-inbox",
+  "intent": "Show stuck showroom holds and failed hold crons in the Mission Control inbox.",
   "allowed_files": [
     ".cursor/phase.lock",
-    "src/server/stock/create-hold.ts",
-    "tests/hold-compensate.test.ts"
+    "src/server/mission-control/issue-copy.ts",
+    "src/app/mission-control/inbox-action.ts",
+    "src/components/mission-control/IssuesInbox.tsx",
+    "src/services/inngest-api.ts",
+    "tests/mission-control-hold-issues.test.ts"
   ],
-  "expected_blast_radius": 3,
-  "target_test": "npx vitest run tests/hold-compensate.test.ts",
+  "expected_blast_radius": 6,
+  "target_test": "npx vitest run tests/mission-control-issues.test.ts tests/mission-control-hold-issues.test.ts",
   "base_ref": "HEAD"
 }
