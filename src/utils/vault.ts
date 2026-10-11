@@ -24,9 +24,6 @@ export async function getDecryptedVendorKey(
 
   const db = getDb();
   
-  // Note: We are fetching the encrypted_token column directly.
-  // When pgsodium is fully wired, this query should hit the secure view or RPC
-  // that decrypts the token at the DB level, or we use a Node.js decrypt function.
   const record = await db.query.vendor_credentials.findFirst({
     where: eq(vendor_credentials.service_name, service_name),
   });

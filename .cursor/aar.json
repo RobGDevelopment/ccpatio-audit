@@ -1,31 +1,49 @@
 {
-  "phase_id": "mc-6-blueprint",
+  "phase_id": "mc-6b-vault-caching",
   "base_ref": "HEAD",
-  "blast_radius": 2,
+  "blast_radius": 5,
   "counts": {
-    "files": 2,
-    "tracked": 1,
+    "files": 5,
+    "tracked": 4,
     "untracked": 1,
-    "insertions": 7,
-    "deletions": 12
+    "insertions": 22,
+    "deletions": 27
   },
   "files": [
     {
       "status": "??",
-      "path": "MISSION_CONTROL_BUILD_PLAN_6.md",
+      "path": "tests/vendor-vault.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 7,
-      "deletions": 12
+      "insertions": 8,
+      "deletions": 9
+    },
+    {
+      "status": "M",
+      "path": "src/app/mission-control/actions.ts",
+      "insertions": 11,
+      "deletions": 13
+    },
+    {
+      "status": "M",
+      "path": "src/components/mission-control/KeyManager.tsx",
+      "insertions": 3,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/utils/vault.ts",
+      "insertions": 0,
+      "deletions": 3
     }
   ],
   "untracked": [
-    "MISSION_CONTROL_BUILD_PLAN_6.md"
+    "tests/vendor-vault.test.ts"
   ],
-  "file_list_sha256": "a841cfd84bb705b09e70314fe1b96d3adff7e797b0c52a082b4301cfc0c124cf",
+  "file_list_sha256": "141afdc7e2d7a7d599c96fc2f085f96385e4822e3622e7abc2a9b11ff32ace7c",
   "notes": ""
 }

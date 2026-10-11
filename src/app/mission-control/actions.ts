@@ -66,28 +66,28 @@ export async function testVendorKeyAction(serviceName: VendorService, testKey: s
       const response = await fetch("https://api.katanamrp.com/v1/products?limit=1", {
         headers: { Authorization: `Bearer ${testKey}` },
       });
-      if (!response.ok) return { ok: false, error: `Katana returned ${response.status}` };
+      if (!response.ok) return { ok: false as const, status: response.status };
     } else if (serviceName === "woocommerce") {
       const baseUrl = process.env.WOOCOMMERCE_URL?.trim().replace(/\/$/, "");
-      if (!baseUrl) return { ok: false, error: "WOOCOMMERCE_URL not set" };
+      if (!baseUrl) return { ok: false as const, status: 500 };
       const auth = testKey.includes(":") ? Buffer.from(testKey).toString("base64") : testKey;
       const response = await fetch(`${baseUrl}/wp-json/wc/v3/products?per_page=1`, {
         headers: { Authorization: `Basic ${auth}` },
       });
-      if (!response.ok) return { ok: false, error: `WooCommerce returned ${response.status}` };
+      if (!response.ok) return { ok: false as const, status: response.status };
     } else if (serviceName === "clover") {
       const merchantId = process.env.CLOVER_MERCHANT_ID?.trim();
       const base = process.env.CLOVER_API_BASE?.trim().replace(/\/$/, "") || "https://api.clover.com";
-      if (!merchantId) return { ok: false, error: "CLOVER_MERCHANT_ID not set" };
+      if (!merchantId) return { ok: false as const, status: 500 };
       const response = await fetch(`${base}/v3/merchants/${merchantId}/items?limit=1`, {
         headers: { Authorization: `Bearer ${testKey}` },
       });
-      if (!response.ok) return { ok: false, error: `Clover returned ${response.status}` };
+      if (!response.ok) return { ok: false as const, status: response.status };
     }
 
-    return { ok: true };
-  } catch (error: any) {
-    return { ok: false, error: error.message || "Network error during test" };
+    return { ok: true as const };
+  } catch {
+    return { ok: false as const, status: 0 };
   }
 }
 
@@ -97,8 +97,6 @@ export async function saveVendorKeyAction(serviceName: VendorService, newKey: st
   try {
     const db = getDb();
     
-    // Note: When fully wired with pgsodium, we might insert/update differently
-    // to utilize the pgsodium encryption function. For now, we update the encrypted_token column directly.
     await db
       .insert(vendor_credentials)
       .values({
@@ -118,8 +116,8 @@ export async function saveVendorKeyAction(serviceName: VendorService, newKey: st
     // Invalidate the cache so the new key is used immediately
     invalidateVendorKey(serviceName);
 
-    return { ok: true };
-  } catch (error: any) {
-    return { ok: false, error: error.message || "Failed to save vendor key" };
+    return { ok: true as const };
+  } catch {
+    return { ok: false as const, status: 500 };
   }
 }

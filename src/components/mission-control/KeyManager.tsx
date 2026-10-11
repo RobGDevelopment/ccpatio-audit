@@ -24,7 +24,7 @@ export function KeyManager() {
     if (res.ok) {
       setMessage({ type: "success", text: "Connection successful! You can now safely save this key." });
     } else {
-      setMessage({ type: "error", text: `Connection failed: ${res.error}` });
+      setMessage({ type: "error", text: `HTTP ${res.status}` });
     }
     setTesting(false);
   }
@@ -40,7 +40,7 @@ export function KeyManager() {
       setMessage({ type: "success", text: "Key saved securely and cache cleared." });
       setKey("");
     } else {
-      setMessage({ type: "error", text: `Failed to save key: ${res.error}` });
+      setMessage({ type: "error", text: `HTTP ${res.status}` });
     }
     setSaving(false);
   }
@@ -81,6 +81,7 @@ export function KeyManager() {
           <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
             New API Key / Password
           </label>
+          {/* Field is write-only and clears after save */}
           <input
             type="password"
             value={key}

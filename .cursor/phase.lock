@@ -1,17 +1,16 @@
 {
-  "phase_id": "mc-6a-rbac-shell",
-  "intent": "SuperAdmin and IT_Admin reach /mission-control. Every other principal is refused by both the proxy and requireMissionControlAuth. The page shows the signed-in role and does not render the dashboard for anyone else.",
+  "phase_id": "mc-6b-vault-caching",
+  "intent": "Implement Write-Only Key Rotation and 5-minute LRU Cache for the Vault.",
   "base_ref": "HEAD",
-  "allow_dirty_base": false,
+  "allow_dirty_base": true,
   "override_blast_cap": false,
-  "target_test": "npx vitest run tests/mission-control-rbac.test.ts",
-  "expected_blast_radius": 6,
+  "target_test": "npx vitest run tests/vendor-vault.test.ts",
+  "expected_blast_radius": 5,
   "allowed_files": [
     ".cursor/phase.lock",
-    "src/server/mission-control/require-role.ts",
-    "src/proxy.ts",
+    "src/utils/vault.ts",
     "src/app/mission-control/actions.ts",
-    "src/app/mission-control/page.tsx",
-    "tests/mission-control-rbac.test.ts"
+    "src/components/mission-control/KeyManager.tsx",
+    "tests/vendor-vault.test.ts"
   ]
 }
