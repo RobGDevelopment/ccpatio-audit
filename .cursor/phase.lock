@@ -1,15 +1,12 @@
 {
-  "phase_id": "hold-7c-webhook-phantom",
-  "intent": "Release the ledger when Katana deletes a HOLD- sales order or stock adjustment.",
+  "phase_id": "hold-7d-compensate-orphan",
+  "intent": "Record a ledger row when a Katana hold survives a failed compensate.",
   "allowed_files": [
     ".cursor/phase.lock",
-    "src/server/katana/variant-webhook.ts",
-    "src/app/api/webhooks/katana/route.ts",
-    "src/server/stock/release-hold.ts",
-    "tests/katana-variant-webhook.test.ts",
-    "tests/hold-webhook-release.test.ts"
+    "src/server/stock/create-hold.ts",
+    "tests/hold-compensate.test.ts"
   ],
-  "expected_blast_radius": 6,
-  "target_test": "npx vitest run tests/katana-variant-webhook.test.ts tests/hold-webhook-release.test.ts",
+  "expected_blast_radius": 3,
+  "target_test": "npx vitest run tests/hold-compensate.test.ts",
   "base_ref": "HEAD"
 }

@@ -112,6 +112,69 @@ async function compensate(
   }
 }
 
+const ORPHAN_ERROR_MAX = 500;
+
+function clipError(value: string): string {
+  return value.length <= ORPHAN_ERROR_MAX ? value : value.slice(0, ORPHAN_ERROR_MAX);
+}
+
+function holdLedgerRow(args: {
+  input: CreateHoldInput;
+  sku: string;
+  note: string;
+  qty: number;
+  holdId: string;
+  orderNo: string;
+  expiresAt: Date;
+  documentId: number;
+  documentKind: KatanaHoldDocumentKind;
+  salesOrderRowId: number | null;
+}) {
+  return {
+    id: args.holdId,
+    katana_variant_id: args.input.variantId,
+    sku: args.sku,
+    qty: qtyText(args.qty),
+    ghl_user_id: args.input.actor.ghlUserId,
+    ghl_user_name: args.input.actor.ghlUserName,
+    ghl_user_email: args.input.actor.ghlUserEmail,
+    ghl_contact_id: args.input.opportunity.contactId,
+    ghl_opportunity_id: args.input.opportunity.id,
+    ghl_opportunity_name: args.input.opportunity.name,
+    note: args.note,
+    expires_at: args.expiresAt,
+    katana_dummy_so_id: args.documentId,
+    katana_sales_order_row_id: args.salesOrderRowId,
+    order_no: args.orderNo,
+    converted_order_no: args.documentKind,
+  };
+}
+
+/** Insert one releasing row only when the compensating delete failed. */
+export async function closeFailedHoldWrite(input: {
+  deleteError: string | null;
+  shown: string;
+  row: ReturnType<typeof holdLedgerRow>;
+}): Promise<CreateHoldResult> {
+  if (!input.deleteError) return fail(input.shown);
+  const lastError = clipError(input.shown);
+  try {
+    await getDb().insert(inventory_holds).values({
+      ...input.row,
+      status: "releasing",
+      release_reason: "manual",
+      released_by: "compensate",
+      last_error: lastError,
+      updated_at: new Date(),
+    });
+    return fail(input.shown);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[soft-hold] orphan ledger insert failed", { message, lastError });
+    return fail(clipError(`${input.shown} ${message}`));
+  }
+}
+
 function isMaterialVariant(variant: KatanaVariantRecord): boolean {
   const type = variant.type.trim().toLowerCase();
   if (type === "material") return true;
@@ -266,11 +329,24 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
       orderNo,
       holdId,
     );
-    return fail(
-      deleteError
+    return closeFailedHoldWrite({
+      deleteError,
+      shown: deleteError
         ? `Katana returned order ${created.orderNo}. Compensating delete failed: ${deleteError}`
         : `Katana returned order ${created.orderNo} instead of ${orderNo}.`,
-    );
+      row: holdLedgerRow({
+        input,
+        sku,
+        note,
+        qty,
+        holdId,
+        orderNo,
+        expiresAt,
+        documentId: created.salesOrderId,
+        documentKind: KATANA_HOLD_SALES_ORDER,
+        salesOrderRowId: null,
+      }),
+    });
   }
 
   try {
@@ -287,11 +363,24 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
         orderNo,
         holdId,
       );
-      return fail(
-        deleteError
+      return closeFailedHoldWrite({
+        deleteError,
+        shown: deleteError
           ? `Variant mismatch on ${orderNo}. Compensating delete failed: ${deleteError}`
           : `SKU ${sku} was posted against a different variant. The hold was removed.`,
-      );
+        row: holdLedgerRow({
+          input,
+          sku,
+          note,
+          qty,
+          holdId,
+          orderNo,
+          expiresAt,
+          documentId: created.salesOrderId,
+          documentKind: KATANA_HOLD_SALES_ORDER,
+          salesOrderRowId: null,
+        }),
+      });
     }
   } catch (error: unknown) {
     const deleteError = await compensate(
@@ -301,11 +390,22 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
       holdId,
     );
     const message = error instanceof Error ? error.message : "Could not read the hold sales order.";
-    return fail(
-      deleteError
-        ? `${message} Compensating delete failed: ${deleteError}`
-        : message,
-    );
+    return closeFailedHoldWrite({
+      deleteError,
+      shown: deleteError ? `${message} Compensating delete failed: ${deleteError}` : message,
+      row: holdLedgerRow({
+        input,
+        sku,
+        note,
+        qty,
+        holdId,
+        orderNo,
+        expiresAt,
+        documentId: created.salesOrderId,
+        documentKind: KATANA_HOLD_SALES_ORDER,
+        salesOrderRowId: null,
+      }),
+    });
   }
 
   try {
@@ -339,11 +439,24 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
       holdId,
     );
     const message = error instanceof Error ? error.message : "Could not save the hold.";
-    return fail(
-      deleteError
+    return closeFailedHoldWrite({
+      deleteError,
+      shown: deleteError
         ? `${message} Compensating delete failed for Katana order ${created.salesOrderId}: ${deleteError}`
         : message,
-    );
+      row: holdLedgerRow({
+        input,
+        sku,
+        note,
+        qty,
+        holdId,
+        orderNo,
+        expiresAt,
+        documentId: created.salesOrderId,
+        documentKind: KATANA_HOLD_SALES_ORDER,
+        salesOrderRowId: created.salesOrderRowIds[0] ?? null,
+      }),
+    });
   }
 
   return {
@@ -405,11 +518,24 @@ async function createMaterialHold(ctx: {
       orderNo,
       holdId,
     );
-    return fail(
-      deleteError
+    return closeFailedHoldWrite({
+      deleteError,
+      shown: deleteError
         ? `Katana returned adjustment ${created.adjustmentNumber}. Compensating delete failed: ${deleteError}`
         : `Katana returned adjustment ${created.adjustmentNumber} instead of ${orderNo}.`,
-    );
+      row: holdLedgerRow({
+        input,
+        sku,
+        note,
+        qty,
+        holdId,
+        orderNo,
+        expiresAt,
+        documentId: created.stockAdjustmentId,
+        documentKind: KATANA_HOLD_STOCK_ADJUSTMENT,
+        salesOrderRowId: null,
+      }),
+    });
   }
 
   try {
@@ -443,11 +569,24 @@ async function createMaterialHold(ctx: {
       holdId,
     );
     const message = error instanceof Error ? error.message : "Could not save the hold.";
-    return fail(
-      deleteError
+    return closeFailedHoldWrite({
+      deleteError,
+      shown: deleteError
         ? `${message} Compensating delete failed for Katana adjustment ${created.stockAdjustmentId}: ${deleteError}`
         : message,
-    );
+      row: holdLedgerRow({
+        input,
+        sku,
+        note,
+        qty,
+        holdId,
+        orderNo,
+        expiresAt,
+        documentId: created.stockAdjustmentId,
+        documentKind: KATANA_HOLD_STOCK_ADJUSTMENT,
+        salesOrderRowId: null,
+      }),
+    });
   }
 
   return {
