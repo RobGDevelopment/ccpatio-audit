@@ -1,21 +1,15 @@
 {
-  "phase_id": "mc-6b-vault-caching",
+  "phase_id": "hotfix-showroom-materials",
   "base_ref": "HEAD",
-  "blast_radius": 5,
+  "blast_radius": 4,
   "counts": {
-    "files": 5,
+    "files": 4,
     "tracked": 4,
-    "untracked": 1,
-    "insertions": 22,
-    "deletions": 27
+    "untracked": 0,
+    "insertions": 368,
+    "deletions": 25
   },
   "files": [
-    {
-      "status": "??",
-      "path": "tests/vendor-vault.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
@@ -24,26 +18,24 @@
     },
     {
       "status": "M",
-      "path": "src/app/mission-control/actions.ts",
-      "insertions": 11,
-      "deletions": 13
+      "path": "src/lib/katana.ts",
+      "insertions": 123,
+      "deletions": 5
     },
     {
       "status": "M",
-      "path": "src/components/mission-control/KeyManager.tsx",
-      "insertions": 3,
-      "deletions": 2
+      "path": "src/server/stock/create-hold.ts",
+      "insertions": 195,
+      "deletions": 8
     },
     {
       "status": "M",
-      "path": "src/utils/vault.ts",
-      "insertions": 0,
+      "path": "src/server/stock/release-hold.ts",
+      "insertions": 42,
       "deletions": 3
     }
   ],
-  "untracked": [
-    "tests/vendor-vault.test.ts"
-  ],
-  "file_list_sha256": "141afdc7e2d7a7d599c96fc2f085f96385e4822e3622e7abc2a9b11ff32ace7c",
+  "untracked": [],
+  "file_list_sha256": "161a88cad88cefb368109297380c28123e7c45db5a0646ef48db0388f35202b3",
   "notes": ""
 }

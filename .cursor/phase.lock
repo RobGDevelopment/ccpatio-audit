@@ -1,16 +1,15 @@
 {
-  "phase_id": "mc-6b-vault-caching",
-  "intent": "Implement Write-Only Key Rotation and 5-minute LRU Cache for the Vault.",
+  "phase_id": "hotfix-showroom-materials",
+  "intent": "Route material showroom holds to Katana stock adjustments and release the recorded document.",
   "base_ref": "HEAD",
   "allow_dirty_base": true,
   "override_blast_cap": false,
-  "target_test": "npx vitest run tests/vendor-vault.test.ts",
-  "expected_blast_radius": 5,
+  "target_test": "npx vitest run tests/soft-hold-release.test.ts",
+  "expected_blast_radius": 4,
   "allowed_files": [
-    ".cursor/phase.lock",
-    "src/utils/vault.ts",
-    "src/app/mission-control/actions.ts",
-    "src/components/mission-control/KeyManager.tsx",
-    "tests/vendor-vault.test.ts"
+    "src/server/stock/create-hold.ts",
+    "src/server/stock/release-hold.ts",
+    "src/lib/katana.ts",
+    ".cursor/phase.lock"
   ]
 }

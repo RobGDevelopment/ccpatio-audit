@@ -1729,6 +1729,117 @@ async function resolveKatanaCustomerId(
   return data.id;
 }
 
+/** Ledger flag: this hold committed stock with POST /sales_orders. */
+export const KATANA_HOLD_SALES_ORDER = "sales_order";
+
+/** Ledger flag: this hold committed stock with POST /stock_adjustments. */
+export const KATANA_HOLD_STOCK_ADJUSTMENT = "stock_adjustment";
+
+export type KatanaHoldDocumentKind =
+  | typeof KATANA_HOLD_SALES_ORDER
+  | typeof KATANA_HOLD_STOCK_ADJUSTMENT;
+
+export type KatanaHoldStockAdjustmentResult = {
+  stockAdjustmentId: number;
+  adjustmentNumber: string;
+  customerId: number;
+};
+
+/** Katana rejects string ids on sales orders and stock adjustments. */
+function asKatanaInteger(value: unknown, label: string): number {
+  const numeric = typeof value === "string" ? Number(value.trim()) : Number(value);
+  if (!Number.isInteger(numeric) || numeric <= 0) {
+    throw new KatanaApiError(`${label} must be a positive integer.`, { status: 422 });
+  }
+  return numeric;
+}
+
+function readStockAdjustmentNumber(data: Record<string, unknown>): string | null {
+  for (const key of ["stock_adjustment_number", "adjustment_number", "number"]) {
+    const value = data[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+/**
+ * Material variants cannot sit on a sales order. A negative stock adjustment
+ * removes the held quantity, and the reason names the customer who owns it.
+ */
+export async function createKatanaHoldStockAdjustment(input: {
+  adjustmentNumber: string;
+  locationId: number;
+  variantId: number;
+  quantity: number;
+  customer: KatanaSalesOrderCustomer;
+  customerName: string;
+  notes: string;
+  idempotencyKey?: string;
+}): Promise<KatanaHoldStockAdjustmentResult> {
+  if (!input.adjustmentNumber.trim()) {
+    throw new KatanaApiError("Stock adjustment number is required.", { status: 422 });
+  }
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
+    throw new KatanaApiError("Stock adjustment quantity must be greater than 0.", {
+      status: 422,
+    });
+  }
+
+  const variantId = asKatanaInteger(input.variantId, "variant_id");
+  const locationId = asKatanaInteger(input.locationId, "location_id");
+  const customerId = asKatanaInteger(
+    await resolveKatanaCustomerId(input.customer, []),
+    "customer_id",
+  );
+  const accountName = input.customer.name.trim();
+  const customerName = input.customerName.trim() || accountName;
+  const trace = [
+    `customer_id=${customerId}`,
+    `customer_name=${customerName}`,
+    accountName && accountName !== customerName ? `katana_customer=${accountName}` : null,
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(" ");
+
+  const { data } = await katanaFetch<Record<string, unknown>>("/stock_adjustments", {
+    method: "POST",
+    idempotencyKey: input.idempotencyKey,
+    body: {
+      stock_adjustment_number: input.adjustmentNumber,
+      location_id: locationId,
+      stock_adjustment_date: new Date().toISOString().slice(0, 10),
+      reason: trace,
+      additional_info: `${trace}\n${input.notes}`,
+      stock_adjustment_rows: [
+        {
+          variant_id: variantId,
+          quantity: -input.quantity,
+        },
+      ],
+    },
+  });
+
+  const stockAdjustmentId = asKatanaInteger(data.id, "stock_adjustment id");
+  return {
+    stockAdjustmentId,
+    adjustmentNumber: readStockAdjustmentNumber(data) ?? input.adjustmentNumber,
+    customerId,
+  };
+}
+
+/** One DELETE against the endpoint recorded on the hold. */
+export async function deleteKatanaHoldDocument(
+  kind: KatanaHoldDocumentKind,
+  documentId: number,
+): Promise<void> {
+  const id = asKatanaInteger(documentId, "document id");
+  const pathname =
+    kind === KATANA_HOLD_STOCK_ADJUSTMENT
+      ? `/stock_adjustments/${id}`
+      : `/sales_orders/${id}`;
+  await katanaFetch(pathname, { method: "DELETE" });
+}
+
 /**
  * Creates a Katana sales order from a normalized middleware payload.
  * Resolves global SKUs → variant_id and finds or creates the customer.
@@ -1776,15 +1887,22 @@ export async function createKatanaSalesOrder(
     });
   }
 
-  const customerId = await resolveKatanaCustomerId(
-    orderPayload.customer,
-    orderPayload.addresses ?? [],
+  const customerId = asKatanaInteger(
+    await resolveKatanaCustomerId(orderPayload.customer, orderPayload.addresses ?? []),
+    "customer_id",
   );
+  const salesOrderRows = resolvedRows.map((row) => ({
+    ...row,
+    variant_id: asKatanaInteger(row.variant_id, "variant_id"),
+    ...(row.location_id != null
+      ? { location_id: asKatanaInteger(row.location_id, "location_id") }
+      : {}),
+  }));
 
   const salesOrderBody: Record<string, unknown> = {
     order_no: orderPayload.orderNo,
     customer_id: customerId,
-    sales_order_rows: resolvedRows,
+    sales_order_rows: salesOrderRows,
     currency: orderPayload.currency ?? "USD",
     additional_info: orderPayload.additionalInfo,
     customer_ref: orderPayload.customerRef,
@@ -1797,7 +1915,7 @@ export async function createKatanaSalesOrder(
     salesOrderBody.addresses = orderPayload.addresses.map(katanaAddressPayload);
   }
   if (orderPayload.locationId != null) {
-    salesOrderBody.location_id = orderPayload.locationId;
+    salesOrderBody.location_id = asKatanaInteger(orderPayload.locationId, "location_id");
   }
 
   const { data } = await katanaFetch<Record<string, unknown>>("/sales_orders", {

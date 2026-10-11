@@ -1,11 +1,18 @@
 import { and, eq } from "drizzle-orm";
+import {
+  KATANA_HOLD_SALES_ORDER,
+  KATANA_HOLD_STOCK_ADJUSTMENT,
+  KatanaApiError,
+  deleteKatanaHoldDocument,
+  type KatanaHoldDocumentKind,
+} from "@/lib/katana";
 import { isHoldId } from "@/lib/inventory-holds";
 import { getDb } from "@/server/db/client";
 import {
   inventory_holds,
   type InventoryHoldReleaseReason,
 } from "@/server/db/schema";
-import { deleteHoldSalesOrder } from "@/server/stock/delete-hold-order";
+import { FABRIC_HOLD_ORDER_ID } from "@/server/ghl/hold-order";
 
 export type OpportunityReleaseResult = {
   released: number;
@@ -47,10 +54,42 @@ async function noteReleaseError(id: string, error: unknown): Promise<void> {
     .where(and(eq(inventory_holds.id, id), eq(inventory_holds.status, "releasing")));
 }
 
-/** Delete the dummy and close a row that is already `releasing`. */
+function recordedDocumentKind(value: string | null): KatanaHoldDocumentKind {
+  if (value === KATANA_HOLD_STOCK_ADJUSTMENT) return KATANA_HOLD_STOCK_ADJUSTMENT;
+  if (value === KATANA_HOLD_SALES_ORDER || value == null) return KATANA_HOLD_SALES_ORDER;
+  throw new Error(`Hold document kind "${value}" is not sales_order or stock_adjustment.`);
+}
+
+/**
+ * Read the ledger flag and DELETE that one Katana document.
+ * A 404 from the chosen endpoint means it is already gone. It does not select the other endpoint.
+ */
+async function deleteRecordedHoldDocument(
+  holdId: string,
+  documentId: number,
+  orderNo: string,
+): Promise<void> {
+  if (documentId === FABRIC_HOLD_ORDER_ID || !orderNo.startsWith("HOLD-")) {
+    throw new Error(`Refusing to delete ${orderNo}.`);
+  }
+  const [row] = await getDb()
+    .select({ kind: inventory_holds.converted_order_no })
+    .from(inventory_holds)
+    .where(eq(inventory_holds.id, holdId))
+    .limit(1);
+  const kind = recordedDocumentKind(row?.kind ?? null);
+  try {
+    await deleteKatanaHoldDocument(kind, documentId);
+  } catch (error: unknown) {
+    if (error instanceof KatanaApiError && error.status === 404) return;
+    throw error;
+  }
+}
+
+/** Delete the recorded Katana document and close a row that is already `releasing`. */
 export async function finishReleasingHold(target: ReleaseTarget): Promise<"released" | "failed"> {
   try {
-    await deleteHoldSalesOrder(target.katanaDummySoId, target.orderNo);
+    await deleteRecordedHoldDocument(target.id, target.katanaDummySoId, target.orderNo);
     const closed = await markReleased(target.id);
     return closed ? "released" : "failed";
   } catch (error: unknown) {

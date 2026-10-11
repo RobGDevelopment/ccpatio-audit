@@ -1,9 +1,16 @@
 import { randomUUID } from "node:crypto";
 import {
+  KATANA_HOLD_SALES_ORDER,
+  KATANA_HOLD_STOCK_ADJUSTMENT,
   KatanaApiError,
+  createKatanaHoldStockAdjustment,
   createKatanaSalesOrder,
+  deleteKatanaHoldDocument,
+  findVariantById,
   katanaFetch,
   resolveKatanaVariantId,
+  type KatanaHoldDocumentKind,
+  type KatanaVariantRecord,
 } from "@/lib/katana";
 import {
   SHOWROOM_HOLD_CUSTOMER_EMAIL,
@@ -15,7 +22,7 @@ import { roundQty } from "@/lib/stock-display";
 import { eq } from "drizzle-orm";
 import { withAdvisoryLock } from "@/server/db/advisory-lock";
 import { getDb } from "@/server/db/client";
-import { inventory_holds, logistics_profiles } from "@/server/db/schema";
+import { inventory_holds, logistics_profiles, sku_mappings } from "@/server/db/schema";
 import { CC_MANUFACTURING_LOCATION_ID } from "@/server/ghl/hold-order";
 import type { HoldActor, HoldOpportunity } from "@/server/ghl/hold-actor";
 import { deleteHoldSalesOrder } from "@/server/stock/delete-hold-order";
@@ -80,23 +87,58 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 async function compensate(
-  salesOrderId: number,
+  documentKind: KatanaHoldDocumentKind,
+  documentId: number,
   orderNo: string,
   holdId: string,
 ): Promise<string | null> {
   try {
-    await deleteHoldSalesOrder(salesOrderId, orderNo);
+    if (documentKind === KATANA_HOLD_STOCK_ADJUSTMENT) {
+      await deleteKatanaHoldDocument(documentKind, documentId);
+    } else {
+      await deleteHoldSalesOrder(documentId, orderNo);
+    }
     return null;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[soft-hold] compensating delete failed", {
       holdId,
       orderNo,
-      salesOrderId,
+      documentKind,
+      documentId,
       message,
     });
     return message;
   }
+}
+
+function isMaterialVariant(variant: KatanaVariantRecord): boolean {
+  const type = variant.type.trim().toLowerCase();
+  if (type === "material") return true;
+  if (type === "product") return false;
+  return variant.material_id != null && variant.product_id == null;
+}
+
+/** Live Katana type wins. The catalog item type is only used when the variant is missing. */
+async function resolveHoldDocumentKind(
+  variantId: number,
+  sku: string,
+): Promise<KatanaHoldDocumentKind> {
+  const live = await findVariantById(variantId);
+  if (live) {
+    return isMaterialVariant(live) ? KATANA_HOLD_STOCK_ADJUSTMENT : KATANA_HOLD_SALES_ORDER;
+  }
+  const [mapping] = await getDb()
+    .select({ itemType: sku_mappings.item_type })
+    .from(sku_mappings)
+    .where(eq(sku_mappings.global_sku, sku))
+    .limit(1);
+  if (!mapping) {
+    throw new Error(`Could not tell whether ${sku} is a product or a material.`);
+  }
+  return mapping.itemType === "raw_material"
+    ? KATANA_HOLD_STOCK_ADJUSTMENT
+    : KATANA_HOLD_SALES_ORDER;
 }
 
 function validate(input: CreateHoldInput): CreateHoldResult | null {
@@ -160,6 +202,25 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
     return fail(`SKU ${sku} resolved to a different Katana variant.`);
   }
 
+  let documentKind: KatanaHoldDocumentKind;
+  try {
+    documentKind = await resolveHoldDocumentKind(input.variantId, sku);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Could not classify the variant.";
+    return fail(message);
+  }
+  if (documentKind === KATANA_HOLD_STOCK_ADJUSTMENT) {
+    return createMaterialHold({
+      input,
+      sku,
+      note,
+      qty,
+      holdId,
+      orderNo,
+      expiresAt,
+    });
+  }
+
   let created: Awaited<ReturnType<typeof createKatanaSalesOrder>>;
   try {
     created = await createKatanaSalesOrder({
@@ -199,7 +260,12 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
   }
 
   if (created.orderNo !== orderNo) {
-    const deleteError = await compensate(created.salesOrderId, orderNo, holdId);
+    const deleteError = await compensate(
+      KATANA_HOLD_SALES_ORDER,
+      created.salesOrderId,
+      orderNo,
+      holdId,
+    );
     return fail(
       deleteError
         ? `Katana returned order ${created.orderNo}. Compensating delete failed: ${deleteError}`
@@ -215,7 +281,12 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
     const row = asRecord(rows[0]);
     const rowVariant = Number(row?.variant_id);
     if (rowVariant !== input.variantId) {
-      const deleteError = await compensate(created.salesOrderId, orderNo, holdId);
+      const deleteError = await compensate(
+        KATANA_HOLD_SALES_ORDER,
+        created.salesOrderId,
+        orderNo,
+        holdId,
+      );
       return fail(
         deleteError
           ? `Variant mismatch on ${orderNo}. Compensating delete failed: ${deleteError}`
@@ -223,7 +294,12 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
       );
     }
   } catch (error: unknown) {
-    const deleteError = await compensate(created.salesOrderId, orderNo, holdId);
+    const deleteError = await compensate(
+      KATANA_HOLD_SALES_ORDER,
+      created.salesOrderId,
+      orderNo,
+      holdId,
+    );
     const message = error instanceof Error ? error.message : "Could not read the hold sales order.";
     return fail(
       deleteError
@@ -251,10 +327,17 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
       katana_dummy_so_id: created.salesOrderId,
       katana_sales_order_row_id: created.salesOrderRowIds[0] ?? null,
       order_no: orderNo,
+      // Document kind until factory conversion writes the real order number.
+      converted_order_no: KATANA_HOLD_SALES_ORDER,
       updated_at: new Date(),
     });
   } catch (error: unknown) {
-    const deleteError = await compensate(created.salesOrderId, orderNo, holdId);
+    const deleteError = await compensate(
+      KATANA_HOLD_SALES_ORDER,
+      created.salesOrderId,
+      orderNo,
+      holdId,
+    );
     const message = error instanceof Error ? error.message : "Could not save the hold.";
     return fail(
       deleteError
@@ -268,6 +351,110 @@ async function createHoldLocked(input: CreateHoldInput): Promise<CreateHoldResul
     holdId,
     orderNo,
     katanaDummySoId: created.salesOrderId,
+    expiresAt: expiresAt.toISOString(),
+  };
+}
+
+async function createMaterialHold(ctx: {
+  input: CreateHoldInput;
+  sku: string;
+  note: string;
+  qty: number;
+  holdId: string;
+  orderNo: string;
+  expiresAt: Date;
+}): Promise<CreateHoldResult> {
+  const { input, sku, note, qty, holdId, orderNo, expiresAt } = ctx;
+  const notes = additionalInfo({
+    actor: input.actor,
+    opportunity: input.opportunity,
+    holdId,
+    expiresAt,
+    note,
+  });
+
+  let created: Awaited<ReturnType<typeof createKatanaHoldStockAdjustment>>;
+  try {
+    created = await createKatanaHoldStockAdjustment({
+      adjustmentNumber: orderNo,
+      locationId: CC_MANUFACTURING_LOCATION_ID,
+      variantId: input.variantId,
+      quantity: qty,
+      customer: {
+        name: SHOWROOM_HOLD_CUSTOMER_NAME,
+        email: SHOWROOM_HOLD_CUSTOMER_EMAIL,
+      },
+      customerName: input.opportunity.name,
+      notes,
+      idempotencyKey: `soft-hold:${holdId}`,
+    });
+  } catch (error: unknown) {
+    const message =
+      error instanceof KatanaApiError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : "Katana did not create the material hold.";
+    return fail(message);
+  }
+
+  if (created.adjustmentNumber !== orderNo) {
+    const deleteError = await compensate(
+      KATANA_HOLD_STOCK_ADJUSTMENT,
+      created.stockAdjustmentId,
+      orderNo,
+      holdId,
+    );
+    return fail(
+      deleteError
+        ? `Katana returned adjustment ${created.adjustmentNumber}. Compensating delete failed: ${deleteError}`
+        : `Katana returned adjustment ${created.adjustmentNumber} instead of ${orderNo}.`,
+    );
+  }
+
+  try {
+    const db = getDb();
+    await db.insert(inventory_holds).values({
+      id: holdId,
+      katana_variant_id: input.variantId,
+      sku,
+      qty: qtyText(qty),
+      ghl_user_id: input.actor.ghlUserId,
+      ghl_user_name: input.actor.ghlUserName,
+      ghl_user_email: input.actor.ghlUserEmail,
+      ghl_contact_id: input.opportunity.contactId,
+      ghl_opportunity_id: input.opportunity.id,
+      ghl_opportunity_name: input.opportunity.name,
+      note,
+      expires_at: expiresAt,
+      status: "active",
+      katana_dummy_so_id: created.stockAdjustmentId,
+      katana_sales_order_row_id: null,
+      order_no: orderNo,
+      // Document kind until factory conversion writes the real order number.
+      converted_order_no: KATANA_HOLD_STOCK_ADJUSTMENT,
+      updated_at: new Date(),
+    });
+  } catch (error: unknown) {
+    const deleteError = await compensate(
+      KATANA_HOLD_STOCK_ADJUSTMENT,
+      created.stockAdjustmentId,
+      orderNo,
+      holdId,
+    );
+    const message = error instanceof Error ? error.message : "Could not save the hold.";
+    return fail(
+      deleteError
+        ? `${message} Compensating delete failed for Katana adjustment ${created.stockAdjustmentId}: ${deleteError}`
+        : message,
+    );
+  }
+
+  return {
+    ok: true,
+    holdId,
+    orderNo,
+    katanaDummySoId: created.stockAdjustmentId,
     expiresAt: expiresAt.toISOString(),
   };
 }
