@@ -5,6 +5,7 @@ import { closeDb, getDb } from "@/server/db/client";
 import { logistics_profiles, sku_mappings } from "@/server/db/schema";
 import {
   healKatanaVariantSku,
+  readHoldDeletion,
   readStockAdjustmentDeletion,
   readVariantUpdate,
   verifyKatanaWebhookSignature,
@@ -66,6 +67,25 @@ describe("Katana webhook signature", () => {
     expect(
       readStockAdjustmentDeletion({ action: "stock_adjustment.deleted", object: { id: 9 } }).kind,
     ).toBe("invalid");
+    expect(
+      readHoldDeletion({ action: "stock_adjustment.deleted", object: { id: 9 } }),
+    ).toEqual({
+      kind: "deleted",
+      documentKind: "stock_adjustment",
+      number: null,
+      documentId: 9,
+    });
+    expect(
+      readHoldDeletion({
+        action: "sales_order.deleted",
+        object: { id: 44, order_no: "HOLD-8f2a1c3d" },
+      }),
+    ).toEqual({
+      kind: "deleted",
+      documentKind: "sales_order",
+      number: "HOLD-8f2a1c3d",
+      documentId: 44,
+    });
   });
 });
 

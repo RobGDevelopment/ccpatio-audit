@@ -23,6 +23,18 @@ export type StockAdjustmentDeletionRead =
   | { kind: "invalid"; message: string }
   | { kind: "deleted"; stockAdjustmentNumber: string };
 
+export type HoldDocumentKind = "stock_adjustment" | "sales_order";
+
+export type HoldDeletionRead =
+  | { kind: "ignore" }
+  | { kind: "invalid"; message: string }
+  | {
+      kind: "deleted";
+      documentKind: HoldDocumentKind;
+      number: string | null;
+      documentId: number | null;
+    };
+
 function signaturesMatch(left: Buffer, right: Buffer): boolean {
   if (left.length !== right.length) return false;
   return timingSafeEqual(left, right);
@@ -101,6 +113,11 @@ function isStockAdjustmentDeleted(action: string, resourceType: string): boolean
   return resourceType === "stock_adjustment" && action === "deleted";
 }
 
+function isSalesOrderDeleted(action: string, resourceType: string): boolean {
+  if (action === "sales_order.deleted" || action === "sales_order_deleted") return true;
+  return resourceType === "sales_order" && action === "deleted";
+}
+
 /**
  * Katana deletion events use the same `{ action, object }` envelope as variant updates.
  * The adjustment number is what the showroom stored as the HOLD- id.
@@ -126,6 +143,50 @@ export function readStockAdjustmentDeletion(payload: unknown): StockAdjustmentDe
     };
   }
   return { kind: "deleted", stockAdjustmentNumber };
+}
+
+/**
+ * Stock-adjustment and sales-order deletes. A missing number still carries
+ * the document id so the ledger can match `katana_dummy_so_id`.
+ */
+export function readHoldDeletion(payload: unknown): HoldDeletionRead {
+  const root = asRecord(payload);
+  if (!root) return { kind: "invalid", message: "Body must be a JSON object" };
+  const action = (text(root.action) || text(root.event)).toLowerCase();
+  const resourceType = text(root.resource_type).toLowerCase();
+  const documentKind: HoldDocumentKind | null = isStockAdjustmentDeleted(action, resourceType)
+    ? "stock_adjustment"
+    : isSalesOrderDeleted(action, resourceType)
+      ? "sales_order"
+      : null;
+  if (!documentKind) return { kind: "ignore" };
+
+  const object = asRecord(root.object);
+  const data = asRecord(root.data);
+  const nested =
+    documentKind === "stock_adjustment"
+      ? (asRecord(object?.stock_adjustment) ?? asRecord(data?.stock_adjustment))
+      : (asRecord(object?.sales_order) ?? asRecord(data?.sales_order));
+  const number =
+    documentKind === "stock_adjustment"
+      ? text(object?.stock_adjustment_number) ||
+        text(data?.stock_adjustment_number) ||
+        text(nested?.stock_adjustment_number)
+      : text(object?.order_no) || text(data?.order_no) || text(nested?.order_no);
+  const documentId =
+    positiveInt(object?.id) ?? positiveInt(data?.id) ?? positiveInt(nested?.id);
+  if (!number && documentId == null) {
+    return {
+      kind: "invalid",
+      message: `${documentKind}.deleted is missing a document number and id`,
+    };
+  }
+  return {
+    kind: "deleted",
+    documentKind,
+    number: number || null,
+    documentId,
+  };
 }
 
 function skuFromVariantPayload(payload: unknown): string | null {

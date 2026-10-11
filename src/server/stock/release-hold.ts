@@ -210,6 +210,37 @@ export async function releaseHoldById(
 }
 
 const HOLD_ADJUSTMENT_NO = /^hold-[0-9a-f]{8}$/;
+const CONVERTING_DELETE_NOTE = "Katana deleted this hold while it was converting.";
+
+export type DeletedHoldDecision = "release" | "ignore" | "note";
+
+/** Pure match for a Katana delete. `note` keeps `converting` and records last_error. */
+export function decideDeletedHoldRelease(input: {
+  status: string;
+  orderNo: string;
+  documentId: number;
+  storedKind: string | null;
+  eventKind: KatanaHoldDocumentKind;
+  eventNumber: string | null;
+  eventId: number | null;
+}): DeletedHoldDecision {
+  const orderNo = input.orderNo.trim().toLowerCase();
+  const eventNumber = input.eventNumber?.trim().toLowerCase() ?? "";
+  const numberHit = HOLD_ADJUSTMENT_NO.test(eventNumber) && eventNumber === orderNo;
+  const idHit =
+    input.eventId != null &&
+    input.eventId === input.documentId &&
+    HOLD_ADJUSTMENT_NO.test(orderNo);
+  if (!numberHit && !idHit) return "ignore";
+  const kindMatches =
+    input.eventKind === KATANA_HOLD_STOCK_ADJUSTMENT
+      ? input.storedKind === KATANA_HOLD_STOCK_ADJUSTMENT
+      : input.storedKind === KATANA_HOLD_SALES_ORDER || input.storedKind == null;
+  if (!kindMatches) return "ignore";
+  if (input.status === "converting") return "note";
+  if (input.status === "active" || input.status === "releasing") return "release";
+  return "ignore";
+}
 
 /**
  * Katana already deleted the HOLD- stock adjustment. Close the ledger row
@@ -218,8 +249,29 @@ const HOLD_ADJUSTMENT_NO = /^hold-[0-9a-f]{8}$/;
 export async function releaseDeletedStockAdjustmentHold(
   stockAdjustmentNumber: string,
 ): Promise<"released" | "ignored" | "failed"> {
-  const orderNo = stockAdjustmentNumber.trim().toLowerCase();
-  if (!HOLD_ADJUSTMENT_NO.test(orderNo)) return "ignored";
+  return releaseDeletedHoldDocument({
+    documentKind: KATANA_HOLD_STOCK_ADJUSTMENT,
+    number: stockAdjustmentNumber,
+    documentId: null,
+  });
+}
+
+/**
+ * Katana already deleted the HOLD- document. Close the ledger row without
+ * sending another DELETE. A converting row keeps its status and records last_error.
+ */
+export async function releaseDeletedHoldDocument(input: {
+  documentKind: KatanaHoldDocumentKind;
+  number: string | null;
+  documentId: number | null;
+}): Promise<"released" | "ignored" | "failed"> {
+  const eventNumber = input.number?.trim().toLowerCase() ?? "";
+  const numberLookup = HOLD_ADJUSTMENT_NO.test(eventNumber) ? eventNumber : null;
+  const idLookup =
+    input.documentId != null && Number.isInteger(input.documentId) && input.documentId > 0
+      ? input.documentId
+      : null;
+  if (!numberLookup && idLookup == null) return "ignored";
 
   const db = getDb();
   const [row] = await db
@@ -231,11 +283,32 @@ export async function releaseDeletedStockAdjustmentHold(
       kind: inventory_holds.converted_order_no,
     })
     .from(inventory_holds)
-    .where(sql`lower(${inventory_holds.order_no}) = ${orderNo}`)
+    .where(
+      numberLookup
+        ? sql`lower(${inventory_holds.order_no}) = ${numberLookup}`
+        : eq(inventory_holds.katana_dummy_so_id, idLookup as number),
+    )
     .limit(1);
-  if (!row || row.kind !== KATANA_HOLD_STOCK_ADJUSTMENT) return "ignored";
+  if (!row) return "ignored";
   if (row.status === "released" || row.status === "converted") return "released";
-  if (row.status === "converting") return "ignored";
+
+  const decision = decideDeletedHoldRelease({
+    status: row.status,
+    orderNo: row.orderNo,
+    documentId: row.katanaDummySoId,
+    storedKind: row.kind,
+    eventKind: input.documentKind,
+    eventNumber: input.number,
+    eventId: input.documentId,
+  });
+  if (decision === "ignore") return "ignored";
+  if (decision === "note") {
+    await db
+      .update(inventory_holds)
+      .set({ last_error: CONVERTING_DELETE_NOTE, updated_at: new Date() })
+      .where(and(eq(inventory_holds.id, row.id), eq(inventory_holds.status, "converting")));
+    return "ignored";
+  }
 
   if (row.status === "active") {
     const claimed = await claimActiveHold(
