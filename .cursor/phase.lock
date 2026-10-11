@@ -1,11 +1,14 @@
 {
-  "phase_id": "hold-closure-blueprint",
-  "intent": "Write the showroom hold closure blueprint. No application code.",
+  "phase_id": "mc-6e-escalation-modal",
+  "intent": "Raise the existing Oh-Crap mail from Mission Control. No second alert bus.",
   "allowed_files": [
     ".cursor/phase.lock",
-    "SHOWROOM_HOLD_CLOSURE_BUILD_PLAN.md"
+    "src/app/mission-control/escalation-action.ts",
+    "src/components/mission-control/EscalationModal.tsx",
+    "src/app/mission-control/page.tsx",
+    "tests/mission-control-escalation.test.ts"
   ],
-  "expected_blast_radius": 2,
-  "target_test": "npm run typecheck",
+  "expected_blast_radius": 5,
+  "target_test": "npx vitest run tests/mission-control-escalation.test.ts",
   "base_ref": "HEAD"
 }

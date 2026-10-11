@@ -2,6 +2,7 @@ import { requireMissionControlAuth, getFailedJobsAction } from "./actions";
 import { TrafficLights } from "@/components/mission-control/TrafficLights";
 import { IssuesInbox } from "@/components/mission-control/IssuesInbox";
 import { KeyManager } from "@/components/mission-control/KeyManager";
+import { EscalationModal } from "@/components/mission-control/EscalationModal";
 import { MissionControlUnauthorizedError } from "@/server/mission-control/require-role";
 import { redirect } from "next/navigation";
 
@@ -34,6 +35,7 @@ export default async function MissionControlPage() {
             <span className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-200 uppercase tracking-widest border border-zinc-700">
               {session.role}
             </span>
+            <EscalationModal />
           </div>
           <a href="/" className="text-xs font-medium text-zinc-400 hover:text-zinc-200 transition">
             ← Back to Launchpad
