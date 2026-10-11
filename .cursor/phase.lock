@@ -1,11 +1,13 @@
 {
-  "phase_id": "hotfix-ci-assertions",
+  "phase_id": "mc-6d-issues-inbox",
   "base_ref": "HEAD",
   "allowed_files": [
-    "tests/cad-upload-pipeline.test.ts",
-    "tests/publish-idempotency.test.ts",
-    ".cursor/phase.lock"
+    ".cursor/phase.lock",
+    "src/server/mission-control/issue-copy.ts",
+    "src/app/mission-control/inbox-action.ts",
+    "src/components/mission-control/IssuesInbox.tsx",
+    "tests/mission-control-issues.test.ts"
   ],
-  "expected_blast_radius": 3,
-  "target_test": "npx vitest run tests/cad-upload-pipeline.test.ts tests/publish-idempotency.test.ts"
+  "expected_blast_radius": 5,
+  "target_test": "npx vitest run tests/mission-control-issues.test.ts"
 }
