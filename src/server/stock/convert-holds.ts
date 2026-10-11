@@ -1,7 +1,7 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import { inventory_holds } from "@/server/db/schema";
-import { deleteHoldSalesOrder } from "@/server/stock/delete-hold-order";
+import { deleteHoldByRecordedKind } from "@/server/stock/delete-hold-order";
 
 const ABSENT_NOTE = "Dummy sales order was already absent.";
 
@@ -96,9 +96,19 @@ export async function convertOneHold(input: {
   katanaSalesOrderId: number;
   katanaOrderNo: string;
 }): Promise<"converted" | "skipped"> {
+  const [prior] = await getDb()
+    .select({ kind: inventory_holds.converted_order_no })
+    .from(inventory_holds)
+    .where(eq(inventory_holds.id, input.holdId))
+    .limit(1);
+
   let absent = false;
   try {
-    const outcome = await deleteHoldSalesOrder(input.katanaDummySoId, input.orderNo);
+    const outcome = await deleteHoldByRecordedKind(
+      prior?.kind ?? null,
+      input.katanaDummySoId,
+      input.orderNo,
+    );
     absent = outcome === "absent";
   } catch (error: unknown) {
     await noteConvertError(input.holdId, error);

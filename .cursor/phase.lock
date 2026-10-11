@@ -1,12 +1,13 @@
 {
-  "phase_id": "hold-7a-mdm-exception",
-  "intent": "Authorize the existing showroom material hold in the binding blueprint.",
+  "phase_id": "hold-7b-convert-by-kind",
+  "intent": "Conversion deletes the recorded Katana document. A 404 from the other endpoint is not success.",
   "allowed_files": [
     ".cursor/phase.lock",
-    "docs/MDM_MASTER_BLUEPRINT.md",
-    "docs/SOFT_HOLD_ARCHITECTURE.md"
+    "src/server/stock/convert-holds.ts",
+    "src/server/stock/delete-hold-order.ts",
+    "tests/hold-convert-kind.test.ts"
   ],
-  "expected_blast_radius": 3,
-  "target_test": "npm run typecheck",
+  "expected_blast_radius": 4,
+  "target_test": "npx vitest run tests/hold-convert-kind.test.ts tests/soft-hold-release.test.ts",
   "base_ref": "HEAD"
 }

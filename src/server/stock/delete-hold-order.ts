@@ -1,4 +1,9 @@
-import { KatanaApiError, katanaFetch } from "@/lib/katana";
+import {
+  KATANA_HOLD_STOCK_ADJUSTMENT,
+  KatanaApiError,
+  deleteKatanaHoldDocument,
+  katanaFetch,
+} from "@/lib/katana";
 import { parseKatanaListPayload } from "@/lib/katana-mto";
 import { FABRIC_HOLD_ORDER_ID } from "@/server/ghl/hold-order";
 
@@ -85,6 +90,38 @@ function manufacturingOrderIds(data: unknown, salesOrderId: number): number[] {
     ids.push(id);
   }
   return ids;
+}
+
+/** `stock_adjustment` deletes that document. Every other recorded flag stays on the sales-order path. */
+export function holdDeleteRoute(kind: string | null): "stock_adjustment" | "sales_order" {
+  return kind === KATANA_HOLD_STOCK_ADJUSTMENT ? "stock_adjustment" : "sales_order";
+}
+
+/**
+ * Delete the document recorded on the hold.
+ * A material hold never calls `GET /sales_orders`. A 404 from the matching
+ * endpoint means the dummy is already gone.
+ */
+export async function deleteHoldByRecordedKind(
+  kind: string | null,
+  documentId: number,
+  orderNo: string,
+): Promise<"deleted" | "absent"> {
+  if (holdDeleteRoute(kind) === "sales_order") {
+    return deleteHoldSalesOrder(documentId, orderNo);
+  }
+  if (documentId === FABRIC_HOLD_ORDER_ID || !orderNo.startsWith("HOLD-")) {
+    throw new HoldDeleteRefused(
+      `Refusing to delete stock adjustment ${documentId} (${orderNo}).`,
+    );
+  }
+  try {
+    await deleteKatanaHoldDocument(KATANA_HOLD_STOCK_ADJUSTMENT, documentId);
+    return "deleted";
+  } catch (error: unknown) {
+    if (error instanceof KatanaApiError && error.status === 404) return "absent";
+    throw error;
+  }
 }
 
 /**
