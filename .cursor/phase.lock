@@ -1,16 +1,16 @@
 {
-  "phase_id": "mc-katana-webhook",
-  "intent": "Release a showroom hold when Katana deletes its HOLD- stock adjustment.",
-  "base_ref": "e829ce97be2f447f37dec27056aad78cd953b30a",
-  "allow_dirty_base": true,
+  "phase_id": "mc-6c-traffic-matrix",
+  "intent": "Each spoke shows green, amber, or red. Green is a live token and no failed sync rows. Amber is pending sync rows, or a token ping that is not an auth failure. Red is authFailed or any failed sync row. The grid is read-only.",
+  "base_ref": "HEAD",
+  "allow_dirty_base": false,
   "override_blast_cap": false,
-  "target_test": "npx vitest run tests/katana-variant-webhook.test.ts -t \"Katana webhook signature\"",
+  "target_test": "npx vitest run tests/mission-control-traffic.test.ts",
   "expected_blast_radius": 5,
   "allowed_files": [
     ".cursor/phase.lock",
-    "src/app/api/webhooks/katana/route.ts",
-    "src/server/katana/variant-webhook.ts",
-    "src/server/stock/release-hold.ts",
-    "tests/katana-variant-webhook.test.ts"
+    "src/server/mission-control/sync-matrix.ts",
+    "src/app/mission-control/health-action.ts",
+    "src/components/mission-control/TrafficLights.tsx",
+    "tests/mission-control-traffic.test.ts"
   ]
 }
