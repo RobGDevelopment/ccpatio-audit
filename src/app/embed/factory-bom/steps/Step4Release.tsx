@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useMemo } from "react";
 import type { AirlockSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
 import type { FactoryProductRow } from "@/server/factory-bom/list-factory-products";

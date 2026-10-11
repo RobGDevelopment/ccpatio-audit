@@ -1,3 +1,5 @@
+"use server";
+
 import { getDb } from "@/server/db/client";
 import { custom_build_jobs, katana_mo_records, order_intake, sku_mappings, factory_release_gate } from "@/server/db/schema";
 import { eq } from "drizzle-orm";

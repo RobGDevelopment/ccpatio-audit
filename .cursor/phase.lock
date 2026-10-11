@@ -1,16 +1,15 @@
 {
-  "phase_id": "mc-6c-traffic-matrix",
-  "intent": "Each spoke shows green, amber, or red. Green is a live token and no failed sync rows. Amber is pending sync rows, or a token ping that is not an auth failure. Red is authFailed or any failed sync row. The grid is read-only.",
+  "phase_id": "hotfix-infrastructure-build",
+  "intent": "Keep postgres out of the factory-release client bundle, and keep Vitest off Playwright specs and live Postgres integration tests.",
   "base_ref": "HEAD",
   "allow_dirty_base": false,
   "override_blast_cap": false,
-  "target_test": "npx vitest run tests/mission-control-traffic.test.ts",
-  "expected_blast_radius": 5,
+  "target_test": "npx vitest run tests/factory-cut-card-token.test.ts",
+  "expected_blast_radius": 4,
   "allowed_files": [
-    ".cursor/phase.lock",
-    "src/server/mission-control/sync-matrix.ts",
-    "src/app/mission-control/health-action.ts",
-    "src/components/mission-control/TrafficLights.tsx",
-    "tests/mission-control-traffic.test.ts"
+    "src/app/embed/factory-bom/steps/Step4Release.tsx",
+    "src/server/factory-bom/release-custom-build.ts",
+    "vitest.config.ts",
+    ".cursor/phase.lock"
   ]
 }
