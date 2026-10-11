@@ -18,6 +18,11 @@ export type VariantUpdateRead =
   | { kind: "invalid"; message: string }
   | { kind: "update"; variantId: number; sku: string | null };
 
+export type StockAdjustmentDeletionRead =
+  | { kind: "ignore" }
+  | { kind: "invalid"; message: string }
+  | { kind: "deleted"; stockAdjustmentNumber: string };
+
 function signaturesMatch(left: Buffer, right: Buffer): boolean {
   if (left.length !== right.length) return false;
   return timingSafeEqual(left, right);
@@ -89,6 +94,38 @@ export function readVariantUpdate(payload: unknown): VariantUpdateRead {
     return { kind: "invalid", message: "variant.updated SKU is empty or too long" };
   }
   return { kind: "update", variantId, sku };
+}
+
+function isStockAdjustmentDeleted(action: string, resourceType: string): boolean {
+  if (action === "stock_adjustment.deleted" || action === "stock_adjustment_deleted") return true;
+  return resourceType === "stock_adjustment" && action === "deleted";
+}
+
+/**
+ * Katana deletion events use the same `{ action, object }` envelope as variant updates.
+ * The adjustment number is what the showroom stored as the HOLD- id.
+ */
+export function readStockAdjustmentDeletion(payload: unknown): StockAdjustmentDeletionRead {
+  const root = asRecord(payload);
+  if (!root) return { kind: "invalid", message: "Body must be a JSON object" };
+  const action = (text(root.action) || text(root.event)).toLowerCase();
+  const resourceType = text(root.resource_type).toLowerCase();
+  if (!isStockAdjustmentDeleted(action, resourceType)) return { kind: "ignore" };
+
+  const object = asRecord(root.object);
+  const data = asRecord(root.data);
+  const nested = asRecord(object?.stock_adjustment) ?? asRecord(data?.stock_adjustment);
+  const stockAdjustmentNumber =
+    text(object?.stock_adjustment_number) ||
+    text(data?.stock_adjustment_number) ||
+    text(nested?.stock_adjustment_number);
+  if (!stockAdjustmentNumber) {
+    return {
+      kind: "invalid",
+      message: "stock_adjustment.deleted is missing stock_adjustment_number",
+    };
+  }
+  return { kind: "deleted", stockAdjustmentNumber };
 }
 
 function skuFromVariantPayload(payload: unknown): string | null {

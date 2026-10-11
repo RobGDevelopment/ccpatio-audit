@@ -4,7 +4,8 @@
  * Verifies Katana's `x-sha2-signature` (HMAC-SHA256 of the raw body, key
  * `KATANA_WEBHOOK_SECRET`). `variant.updated` renames the local SKU for that
  * immutable variant id on `logistics_profiles` and, when one dictionary row
- * matches, `sku_mappings`. Sales orders and other events are acknowledged
+ * matches, `sku_mappings`. `stock_adjustment.deleted` releases a matching
+ * HOLD- material hold. Sales orders and other events are acknowledged
  * and not written.
  */
 import { revalidatePath } from "next/cache";
@@ -13,9 +14,11 @@ import { logPimAudit } from "@/lib/pim-audit";
 import {
   healKatanaVariantSku,
   loadKatanaVariantSku,
+  readStockAdjustmentDeletion,
   readVariantUpdate,
   verifyKatanaWebhookSignature,
 } from "@/server/katana/variant-webhook";
+import { releaseDeletedStockAdjustmentHold } from "@/server/stock/release-hold";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +39,28 @@ export async function POST(req: Request) {
       { error: "invalid_json", message: "Body must be valid JSON" },
       { status: 400 },
     );
+  }
+
+  const deletion = readStockAdjustmentDeletion(payload);
+  if (deletion.kind === "invalid") {
+    return NextResponse.json(
+      { error: "invalid_event", message: deletion.message },
+      { status: 400 },
+    );
+  }
+  if (deletion.kind === "deleted") {
+    const outcome = await releaseDeletedStockAdjustmentHold(deletion.stockAdjustmentNumber);
+    if (outcome === "failed") {
+      return NextResponse.json(
+        { error: "release_failed", message: "Could not release the showroom hold." },
+        { status: 500 },
+      );
+    }
+    if (outcome === "released") {
+      revalidatePath("/showroom");
+      revalidatePath("/embed/showroom");
+    }
+    return NextResponse.json({ ok: true, released: outcome === "released" });
   }
 
   const update = readVariantUpdate(payload);

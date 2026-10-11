@@ -1,16 +1,16 @@
 {
-  "phase_id": "mc-6b-vault-caching",
-  "intent": "Implement Write-Only Key Rotation and 5-minute LRU Cache for the Vault.",
-  "base_ref": "799a7632e474d0b7c6cfb065cb590ee649cb3b51",
+  "phase_id": "mc-katana-webhook",
+  "intent": "Release a showroom hold when Katana deletes its HOLD- stock adjustment.",
+  "base_ref": "e829ce97be2f447f37dec27056aad78cd953b30a",
   "allow_dirty_base": true,
   "override_blast_cap": false,
-  "target_test": "npx vitest run tests/vendor-vault.test.ts",
-  "expected_blast_radius": 1,
+  "target_test": "npx vitest run tests/katana-variant-webhook.test.ts -t \"Katana webhook signature\"",
+  "expected_blast_radius": 5,
   "allowed_files": [
     ".cursor/phase.lock",
-    "src/utils/vault.ts",
-    "src/app/mission-control/actions.ts",
-    "src/components/mission-control/KeyManager.tsx",
-    "tests/vendor-vault.test.ts"
+    "src/app/api/webhooks/katana/route.ts",
+    "src/server/katana/variant-webhook.ts",
+    "src/server/stock/release-hold.ts",
+    "tests/katana-variant-webhook.test.ts"
   ]
 }

@@ -5,6 +5,7 @@ import { closeDb, getDb } from "@/server/db/client";
 import { logistics_profiles, sku_mappings } from "@/server/db/schema";
 import {
   healKatanaVariantSku,
+  readStockAdjustmentDeletion,
   readVariantUpdate,
   verifyKatanaWebhookSignature,
 } from "@/server/katana/variant-webhook";
@@ -42,6 +43,29 @@ describe("Katana webhook signature", () => {
       kind: "ignore",
     });
     expect(readVariantUpdate({ action: "variant.updated", object: {} }).kind).toBe("invalid");
+  });
+
+  it("reads a deleted HOLD- stock adjustment and ignores other events", () => {
+    expect(
+      readStockAdjustmentDeletion({
+        action: "stock_adjustment.deleted",
+        resource_type: "stock_adjustment",
+        object: { id: 9, stock_adjustment_number: "HOLD-8f2a1c3d" },
+      }),
+    ).toEqual({ kind: "deleted", stockAdjustmentNumber: "HOLD-8f2a1c3d" });
+    expect(
+      readStockAdjustmentDeletion({
+        resource_type: "stock_adjustment",
+        action: "deleted",
+        data: { stock_adjustment_number: "HOLD-aaaaaaaa" },
+      }),
+    ).toEqual({ kind: "deleted", stockAdjustmentNumber: "HOLD-aaaaaaaa" });
+    expect(readStockAdjustmentDeletion({ action: "variant.updated", object: { id: 1 } })).toEqual({
+      kind: "ignore",
+    });
+    expect(
+      readStockAdjustmentDeletion({ action: "stock_adjustment.deleted", object: { id: 9 } }).kind,
+    ).toBe("invalid");
   });
 });
 

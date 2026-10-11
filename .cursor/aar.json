@@ -1,23 +1,47 @@
 {
-  "phase_id": "mc-6b-vault-caching",
-  "base_ref": "799a7632e474d0b7c6cfb065cb590ee649cb3b51",
-  "blast_radius": 1,
+  "phase_id": "mc-katana-webhook",
+  "base_ref": "e829ce97be2f447f37dec27056aad78cd953b30a",
+  "blast_radius": 5,
   "counts": {
-    "files": 1,
-    "tracked": 1,
+    "files": 5,
+    "tracked": 5,
     "untracked": 0,
-    "insertions": 10,
-    "deletions": 9
+    "insertions": 140,
+    "deletions": 11
   },
   "files": [
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 10,
+      "insertions": 9,
       "deletions": 9
+    },
+    {
+      "status": "M",
+      "path": "src/app/api/webhooks/katana/route.ts",
+      "insertions": 26,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/katana/variant-webhook.ts",
+      "insertions": 37,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/stock/release-hold.ts",
+      "insertions": 44,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "tests/katana-variant-webhook.test.ts",
+      "insertions": 24,
+      "deletions": 0
     }
   ],
   "untracked": [],
-  "file_list_sha256": "c9b159d97c28209ca316b2b23f323509a4f1c959be63ee9ca97aa6aca7b0c8d2",
+  "file_list_sha256": "04b9ccebd5d6230736d8195691cd903d47767635c8143b4be6999bc704ad81df",
   "notes": ""
 }

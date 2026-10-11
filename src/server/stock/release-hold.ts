@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   KATANA_HOLD_SALES_ORDER,
   KATANA_HOLD_STOCK_ADJUSTMENT,
@@ -207,6 +207,49 @@ export async function releaseHoldById(
   if (row.status === "releasing") return finishReleasingHold(target);
   if (row.status !== "active") return "missed";
   return releaseActiveHold({ target, reason: "manual", releasedBy: actor });
+}
+
+const HOLD_ADJUSTMENT_NO = /^hold-[0-9a-f]{8}$/;
+
+/**
+ * Katana already deleted the HOLD- stock adjustment. Close the ledger row
+ * without sending another DELETE. Sales-order holds and factory conversions stay put.
+ */
+export async function releaseDeletedStockAdjustmentHold(
+  stockAdjustmentNumber: string,
+): Promise<"released" | "ignored" | "failed"> {
+  const orderNo = stockAdjustmentNumber.trim().toLowerCase();
+  if (!HOLD_ADJUSTMENT_NO.test(orderNo)) return "ignored";
+
+  const db = getDb();
+  const [row] = await db
+    .select({
+      id: inventory_holds.id,
+      status: inventory_holds.status,
+      orderNo: inventory_holds.order_no,
+      katanaDummySoId: inventory_holds.katana_dummy_so_id,
+      kind: inventory_holds.converted_order_no,
+    })
+    .from(inventory_holds)
+    .where(sql`lower(${inventory_holds.order_no}) = ${orderNo}`)
+    .limit(1);
+  if (!row || row.kind !== KATANA_HOLD_STOCK_ADJUSTMENT) return "ignored";
+  if (row.status === "released" || row.status === "converted") return "released";
+  if (row.status === "converting") return "ignored";
+
+  if (row.status === "active") {
+    const claimed = await claimActiveHold(
+      { id: row.id, orderNo: row.orderNo, katanaDummySoId: row.katanaDummySoId },
+      "manual",
+      "katana-webhook",
+    );
+    if (!claimed) return "failed";
+  } else if (row.status !== "releasing") {
+    return "ignored";
+  }
+
+  const closed = await markReleased(row.id);
+  return closed ? "released" : "failed";
 }
 
 /** Sweeper and any later manual release. One active row. */
