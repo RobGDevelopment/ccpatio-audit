@@ -69,17 +69,30 @@ const mockDb: any = {
   onConflictDoUpdate: vi.fn().mockReturnThis(),
   transaction: vi.fn().mockImplementation(async (cb: any) => cb(mockDb)),
   then: function(resolve: any) {
-    resolve([{ 
-      status: "success", 
-      payload_hash: "HASH_MATCH", 
-      storage_path: "path", 
-      child: "RM-TEST", 
-      type: "raw_material",
-      sku: "FIN-TEST",
-      itemType: "finished_good",
-      originalName: "Test Product",
-      katanaVariantId: 123
-    }]);
+    resolve([
+      {
+        status: "success",
+        payload_hash: "HASH_MATCH",
+        storage_path: "path",
+        child: "RM-TEST",
+        type: "raw_material",
+        sku: "FIN-TEST",
+        itemType: "finished_good",
+        originalName: "Test Product",
+        katanaVariantId: 123
+      },
+      {
+        status: "success",
+        payload_hash: "HASH_MATCH",
+        storage_path: "path",
+        child: "RM-TEST",
+        type: "raw_material",
+        sku: "RM-TEST",
+        itemType: "raw_material",
+        originalName: "Test RM",
+        katanaVariantId: 456
+      }
+    ]);
   }
 };
 

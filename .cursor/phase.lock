@@ -1,15 +1,11 @@
 {
-  "phase_id": "hotfix-infrastructure-build",
-  "intent": "Keep postgres out of the factory-release client bundle, and keep Vitest off Playwright specs and live Postgres integration tests.",
+  "phase_id": "hotfix-ci-assertions",
   "base_ref": "HEAD",
-  "allow_dirty_base": false,
-  "override_blast_cap": false,
-  "target_test": "npx vitest run tests/factory-cut-card-token.test.ts",
-  "expected_blast_radius": 4,
   "allowed_files": [
-    "src/app/embed/factory-bom/steps/Step4Release.tsx",
-    "src/server/factory-bom/release-custom-build.ts",
-    "vitest.config.ts",
+    "tests/cad-upload-pipeline.test.ts",
+    "tests/publish-idempotency.test.ts",
     ".cursor/phase.lock"
-  ]
+  ],
+  "expected_blast_radius": 3,
+  "target_test": "npx vitest run tests/cad-upload-pipeline.test.ts tests/publish-idempotency.test.ts"
 }

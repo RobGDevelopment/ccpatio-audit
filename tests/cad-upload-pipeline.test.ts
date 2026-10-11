@@ -60,7 +60,7 @@ describe("CAD upload pipeline foundations", () => {
 });
 
 describe("Inngest processCadUpload mapping", () => {
-  it("preserves glb, dae, skp and rejects invalid extensions", async () => {
+  it("preserves glb, dae, skp, blend and rejects invalid extensions", async () => {
     const { processCadUpload } = await import("@/inngest/functions");
     const { NonRetriableError } = await import("inngest");
 
@@ -73,7 +73,7 @@ describe("Inngest processCadUpload mapping", () => {
       run: async (name: string, cb: any) => { throw new Error("STOP_EXECUTION"); }
     };
 
-    const validExts = ["glb", "dae", "skp"];
+    const validExts = ["glb", "dae", "skp", "blend"];
     for (const ext of validExts) {
       const event = {
         data: { uploadId: "123", globalSku: "SKU", storagePath: "path", ext }
@@ -82,7 +82,7 @@ describe("Inngest processCadUpload mapping", () => {
     }
 
     // Invalid ones
-    const invalidExts = ["png", "blend", "pdf", "txt", ""];
+    const invalidExts = ["png", "pdf", "txt", ""];
     for (const ext of invalidExts) {
       const event = {
         data: { uploadId: "123", globalSku: "SKU", storagePath: "path", ext }

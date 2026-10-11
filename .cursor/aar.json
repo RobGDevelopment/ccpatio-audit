@@ -1,16 +1,35 @@
 {
-  "phase_id": "mc-6c-traffic-matrix",
+  "phase_id": "hotfix-ci-assertions",
   "base_ref": "HEAD",
-  "blast_radius": 0,
+  "blast_radius": 3,
   "counts": {
-    "files": 0,
-    "tracked": 0,
+    "files": 3,
+    "tracked": 3,
     "untracked": 0,
-    "insertions": 0,
-    "deletions": 0
+    "insertions": 33,
+    "deletions": 24
   },
-  "files": [],
+  "files": [
+    {
+      "status": "M",
+      "path": ".cursor/phase.lock",
+      "insertions": 6,
+      "deletions": 10
+    },
+    {
+      "status": "M",
+      "path": "tests/cad-upload-pipeline.test.ts",
+      "insertions": 3,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "tests/publish-idempotency.test.ts",
+      "insertions": 24,
+      "deletions": 11
+    }
+  ],
   "untracked": [],
-  "file_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "file_list_sha256": "aa4c5177e1a61c22d4d3edc48e98f0aad4d92364bc393ad04549bbce130a320b",
   "notes": ""
 }
