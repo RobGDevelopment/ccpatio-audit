@@ -1,41 +1,23 @@
 {
-  "phase_id": "hotfix-showroom-materials",
-  "base_ref": "HEAD",
-  "blast_radius": 4,
+  "phase_id": "mc-6b-vault-caching",
+  "base_ref": "799a7632e474d0b7c6cfb065cb590ee649cb3b51",
+  "blast_radius": 1,
   "counts": {
-    "files": 4,
-    "tracked": 4,
+    "files": 1,
+    "tracked": 1,
     "untracked": 0,
-    "insertions": 368,
-    "deletions": 25
+    "insertions": 10,
+    "deletions": 9
   },
   "files": [
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 8,
+      "insertions": 10,
       "deletions": 9
-    },
-    {
-      "status": "M",
-      "path": "src/lib/katana.ts",
-      "insertions": 123,
-      "deletions": 5
-    },
-    {
-      "status": "M",
-      "path": "src/server/stock/create-hold.ts",
-      "insertions": 195,
-      "deletions": 8
-    },
-    {
-      "status": "M",
-      "path": "src/server/stock/release-hold.ts",
-      "insertions": 42,
-      "deletions": 3
     }
   ],
   "untracked": [],
-  "file_list_sha256": "161a88cad88cefb368109297380c28123e7c45db5a0646ef48db0388f35202b3",
+  "file_list_sha256": "c9b159d97c28209ca316b2b23f323509a4f1c959be63ee9ca97aa6aca7b0c8d2",
   "notes": ""
 }
