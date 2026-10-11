@@ -1,13 +1,11 @@
 {
-  "phase_id": "mc-6d-issues-inbox",
-  "base_ref": "HEAD",
+  "phase_id": "hold-closure-blueprint",
+  "intent": "Write the showroom hold closure blueprint. No application code.",
   "allowed_files": [
     ".cursor/phase.lock",
-    "src/server/mission-control/issue-copy.ts",
-    "src/app/mission-control/inbox-action.ts",
-    "src/components/mission-control/IssuesInbox.tsx",
-    "tests/mission-control-issues.test.ts"
+    "SHOWROOM_HOLD_CLOSURE_BUILD_PLAN.md"
   ],
-  "expected_blast_radius": 5,
-  "target_test": "npx vitest run tests/mission-control-issues.test.ts"
+  "expected_blast_radius": 2,
+  "target_test": "npm run typecheck",
+  "base_ref": "HEAD"
 }
