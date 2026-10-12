@@ -138,12 +138,31 @@ export async function processCadUploadJob(
       const snapshot = await parseGlbWeldment(buffer);
 
       if (snapshot.hygiene === "fail") {
-        await db.delete(product_bom_draft).where(and(
-          eq(product_bom_draft.parent_sku, data.globalSku),
-          eq(product_bom_draft.source, "sketchup_geometry")
-        ));
-        
-        const msg = "GEOM_HYGIENE: " + formatGeomHygieneMessage(snapshot.failures);
+        const disposition = (snapshot as { disposition?: string }).disposition;
+        const flagged =
+          disposition === "fused_mesh" || disposition === "non_prism";
+        if (!flagged) {
+          await db.delete(product_bom_draft).where(and(
+            eq(product_bom_draft.parent_sku, data.globalSku),
+            eq(product_bom_draft.source, "sketchup_geometry")
+          ));
+        }
+
+        const prefix =
+          disposition === "fused_mesh"
+            ? "FUSED_MESH"
+            : disposition === "non_prism"
+              ? "NON_PRISM"
+              : "GEOM_HYGIENE";
+        const detail =
+          prefix === "GEOM_HYGIENE"
+            ? formatGeomHygieneMessage(snapshot.failures)
+            : (snapshot.failures ?? [])
+                .map((failure: { name?: string; reason?: string }) =>
+                  `${failure.name ?? "mesh"}: ${failure.reason ?? prefix}`,
+                )
+                .join("; ");
+        const msg = `${prefix}: ${detail}`;
 
         await db.update(cad_uploads)
           .set({ status: "failed", error_message: msg, geometry_snapshot: snapshot, updated_at: new Date() })
@@ -157,9 +176,15 @@ export async function processCadUploadJob(
         eq(product_bom_draft.source, "sketchup_geometry")
       ));
 
+      const flaggedNames = new Set(
+        ((snapshot as { flags?: Array<{ name?: string }> }).flags ?? [])
+          .map((flag) => flag.name)
+          .filter((name): name is string => Boolean(name)),
+      );
       const cutMap = new Map<string, GeometryCut[]>();
       for (const comp of snapshot.components) {
         if (!comp.profile || comp.lengthIn == null) continue;
+        if (flaggedNames.has(comp.name)) continue;
         const rmSku = profileToRmSku(comp.profile);
         const endA = (comp.endA === "45" ? 45 : 90) as 45 | 90;
         const endB = (comp.endB === "45" ? 45 : 90) as 45 | 90;

@@ -1,11 +1,11 @@
 {
-  "phase_id": "sketchup-pipeline-phase-2",
+  "phase_id": "sketchup-pipeline-phase-4",
   "base_ref": "HEAD",
-  "target_test": "npx vitest run tests/glb-weldment.test.ts",
   "expected_blast_radius": 3,
+  "target_test": "npx vitest run tests/dae-weldment.test.ts",
   "allowed_files": [
-    "src/lib/cad-upload/process-job.ts",
-    "tests/glb-weldment.test.ts",
+    "src/lib/sketchup-cutlist/parse-dae-weldment.ts",
+    "tests/dae-weldment.test.ts",
     ".cursor/phase.lock"
   ]
 }

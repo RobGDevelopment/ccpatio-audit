@@ -5,6 +5,8 @@
  * long point and the short point.
  */
 
+import { snapSection } from "./profile-crosswalk";
+
 export type CutEnd = 45 | 90;
 
 export type EdgeCluster = {
@@ -42,7 +44,7 @@ export type ObjWeldmentParse = {
   largestExtentIn: number;
 };
 
-type Vec3 = [number, number, number];
+export type Vec3 = [number, number, number];
 
 type GroupAcc = {
   name: string;
@@ -82,7 +84,7 @@ function readUnits(text: string): string | null {
   return match?.[1]?.toLowerCase() ?? null;
 }
 
-function clusterEdges(lengths: number[]): EdgeCluster[] {
+export function clusterEdges(lengths: number[]): EdgeCluster[] {
   const sorted = [...lengths].sort((a, b) => a - b);
   const buckets: Array<{ sum: number; count: number }> = [];
   for (const length of sorted) {
@@ -160,7 +162,7 @@ function endsFromMiterFace(miterEdgeCount: number): {
   return { endA: 90, endB: 90 };
 }
 
-function classifyPrism(clusters: EdgeCluster[]): {
+export function classifyPrism(clusters: EdgeCluster[]): {
   sectionMajorIn: number;
   sectionMinorIn: number;
   longPointIn: number;
@@ -259,7 +261,7 @@ function classifyPrism(clusters: EdgeCluster[]): {
   };
 }
 
-function boundaryEdges(faces: number[][], verts: Vec3[]): number[] {
+export function boundaryEdges(faces: number[][], verts: Vec3[]): number[] {
   const seen = new Set<string>();
   const lengths: number[] = [];
   for (const face of faces) {
@@ -282,7 +284,7 @@ function boundaryEdges(faces: number[][], verts: Vec3[]): number[] {
   return lengths;
 }
 
-function uniquePositions(faces: number[][], verts: Vec3[]): number {
+export function uniquePositions(faces: number[][], verts: Vec3[]): number {
   const keys = new Set<string>();
   for (const face of faces) {
     for (const idx of face) {
@@ -465,4 +467,158 @@ export function parseObjWeldment(objText: string): ObjWeldmentParse {
     omittedStickLike,
     largestExtentIn: round2(largestExtentIn),
   };
+}
+
+const GLB_PROFILE_CODES = new Set([
+  "SQ2-16",
+  "SQ2x1-16",
+  "RT1.5x0.75-16",
+  "FB0.125x1.5",
+]);
+
+export type InchPrismMeasure =
+  | {
+      kind: "stick";
+      profile: "SQ2-16" | "SQ2x1-16" | "RT1.5x0.75-16" | "FB0.125x1.5";
+      lengthIn: number;
+      endA: CutEnd;
+      endB: CutEnd;
+      lengthConvention: "long_point" | "square";
+      droppedMiterFacesIn: number[];
+    }
+  | { kind: "fused_mesh"; reason: string }
+  | { kind: "non_prism"; reason: string }
+  | { kind: "ignore" };
+
+function faceNormal(face: number[], verts: Vec3[]): Vec3 | null {
+  if (face.length < 3) return null;
+  const a = verts[face[0]! - 1];
+  const b = verts[face[1]! - 1];
+  const c = verts[face[2]! - 1];
+  if (!a || !b || !c) return null;
+  const ux = b[0] - a[0];
+  const uy = b[1] - a[1];
+  const uz = b[2] - a[2];
+  const vx = c[0] - a[0];
+  const vy = c[1] - a[1];
+  const vz = c[2] - a[2];
+  const nx = uy * vz - uz * vy;
+  const ny = uz * vx - ux * vz;
+  const nz = ux * vy - uy * vx;
+  const len = Math.hypot(nx, ny, nz);
+  if (len < 1e-8) return null;
+  return [nx / len, ny / len, nz / len];
+}
+
+/**
+ * Edges of a triangle mesh with coplanar diagonals removed.
+ * A closed solid shares every edge with two triangles. The diagonal of a
+ * split quad is the edge whose two triangles lie on the same plane.
+ */
+function creaseEdges(faces: number[][], verts: Vec3[]): number[] {
+  const seen = new Map<string, { length: number; faces: number[] }>();
+  faces.forEach((face, faceIndex) => {
+    for (let i = 0; i < face.length; i += 1) {
+      const ia = face[i]!;
+      const ib = face[(i + 1) % face.length]!;
+      const va = verts[ia - 1];
+      const vb = verts[ib - 1];
+      if (!va || !vb) continue;
+      const ka = posKey(va);
+      const kb = posKey(vb);
+      if (ka === kb) continue;
+      const key = ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+      const length = Math.hypot(va[0] - vb[0], va[1] - vb[1], va[2] - vb[2]);
+      if (length < 0.02) continue;
+      const prior = seen.get(key);
+      if (prior) prior.faces.push(faceIndex);
+      else seen.set(key, { length, faces: [faceIndex] });
+    }
+  });
+
+  const lengths: number[] = [];
+  for (const edge of seen.values()) {
+    if (edge.faces.length === 2) {
+      const n1 = faceNormal(faces[edge.faces[0]!]!, verts);
+      const n2 = faceNormal(faces[edge.faces[1]!]!, verts);
+      if (n1 && n2) {
+        const dot = n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2];
+        if (Math.abs(dot) >= 0.995) continue;
+      }
+    }
+    lengths.push(edge.length);
+  }
+  return lengths;
+}
+
+/**
+ * Measure one inch-space mesh with the OBJ edge ruler.
+ * Faces are 0-based. A triangulated hexahedron drops coplanar diagonals
+ * before the same prism classifier the quad OBJ path uses.
+ */
+export function measureInchPrism(
+  rawVerts: Array<[number, number, number]>,
+  rawFaces: number[][],
+): InchPrismMeasure {
+  if (rawVerts.length === 0 || rawFaces.length === 0) return { kind: "ignore" };
+  if (rawVerts.length > 24 || rawFaces.length > 24) {
+    return { kind: "fused_mesh", reason: "mesh exceeds prism vertex and face caps" };
+  }
+
+  const verts: Vec3[] = [];
+  const indexOf = new Map<string, number>();
+  for (const raw of rawVerts) {
+    const v: Vec3 = [quant(raw[0]), quant(raw[1]), quant(raw[2])];
+    const key = posKey(v);
+    if (!indexOf.has(key)) {
+      indexOf.set(key, verts.length);
+      verts.push(v);
+    }
+  }
+
+  const faces: number[][] = [];
+  for (const face of rawFaces) {
+    const mapped: number[] = [];
+    for (const idx of face) {
+      const raw = rawVerts[idx];
+      if (!raw) continue;
+      const key = posKey([quant(raw[0]), quant(raw[1]), quant(raw[2])]);
+      const at = indexOf.get(key);
+      if (at == null) continue;
+      if (mapped[mapped.length - 1] !== at + 1) mapped.push(at + 1);
+    }
+    if (mapped.length >= 3 && mapped[0] !== mapped[mapped.length - 1]) faces.push(mapped);
+  }
+
+  if (verts.length > 24 || faces.length > 24) {
+    return { kind: "fused_mesh", reason: "mesh exceeds prism vertex and face caps" };
+  }
+
+  const edges = creaseEdges(faces, verts);
+  const clusters = clusterEdges(edges);
+  const prism = verts.length === 8 ? classifyPrism(clusters) : null;
+  if (prism) {
+    const snap = snapSection(prism.sectionMajorIn, prism.sectionMinorIn);
+    if (snap.flag || !GLB_PROFILE_CODES.has(snap.profileCode)) {
+      return { kind: "non_prism", reason: snap.flag ?? "unsupported_profile" };
+    }
+    return {
+      kind: "stick",
+      profile: snap.profileCode as "SQ2-16" | "SQ2x1-16" | "RT1.5x0.75-16" | "FB0.125x1.5",
+      lengthIn: prism.longPointIn,
+      endA: prism.endA,
+      endB: prism.endB,
+      lengthConvention: prism.lengthConvention,
+      droppedMiterFacesIn: prism.droppedMiterFacesIn,
+    };
+  }
+
+  if (stickLikeAabb(faces, verts)) {
+    return { kind: "non_prism", reason: "stick-like mesh is not an 8-vertex prism" };
+  }
+  const size = extentOf(faces, verts);
+  if (size > 4.5 && verts.length > 8) {
+    return { kind: "fused_mesh", reason: "fused solid has no per-tube groups" };
+  }
+  return { kind: "ignore" };
 }
