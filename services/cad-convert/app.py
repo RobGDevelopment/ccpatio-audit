@@ -38,17 +38,19 @@ async def convert_cad(file: UploadFile = File(...)):
             subprocess.run(blender_cmd, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
             raise HTTPException(status_code=500, detail=f"Blender export failed: {e.stderr}")
+        except FileNotFoundError:
+            raise HTTPException(status_code=500, detail="Blender executable not found in PATH")
             
         if not os.path.exists(output_path):
             raise HTTPException(status_code=500, detail="Output GLB not generated")
             
-        # Trimesh inch check
         try:
             scene = trimesh.load(output_path, force='scene')
-            # GLTF/GLB by specification is always in meters. We might log or verify something here.
-            # But just loading it verifies it is a valid GLB that trimesh can parse.
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Trimesh validation failed: {str(e)}")
+            raise HTTPException(status_code=500, detail="GLB_LOAD_FAILED")
+            
+        if not scene.geometry:
+            raise HTTPException(status_code=500, detail="GLB_LOAD_FAILED")
             
         # Returning the file
         # We need to read it into memory to return it since the tempdir will be destroyed

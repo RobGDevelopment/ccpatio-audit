@@ -1,12 +1,11 @@
 {
-  "phase_id": "sketchup-pipeline-phase-5",
+  "phase_id": "sketchup-pipeline-phase-6",
   "base_ref": "HEAD",
-  "expected_blast_radius": 4,
-  "target_test": "npx vitest run tests/cad-routing-stamp.test.ts",
+  "expected_blast_radius": 3,
+  "target_test": "npx vitest run tests/cad-convert-client.test.ts",
   "allowed_files": [
-    "src/lib/cad-upload/instantiate-from-dae.ts",
-    "src/lib/cad-upload/process-job.ts",
-    "tests/cad-routing-stamp.test.ts",
+    "services/cad-convert/app.py",
+    "tests/cad-convert-client.test.ts",
     ".cursor/phase.lock"
   ]
 }
