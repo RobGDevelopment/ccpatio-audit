@@ -1,32 +1,33 @@
 status=2
 --- stdout ---
 {
-  "phase_id": "mc-6c-traffic-matrix",
-  "phase": "mc-6c-traffic-matrix",
+  "phase_id": "sketchup-pipeline-phase-7",
+  "phase": "sketchup-pipeline-phase-7",
   "verdict": "DEFECT_REJECTED",
   "audit_exit": 2,
   "invariantViolations": [
-    "Blast Radius Breach: diff touches 0 files; expected 5; tolerance 0.",
-    "AAR blast radius 0 disagrees with phase.lock expected_blast_radius 5. Lock wins."
+    "Blast Radius Breach: diff touches 2 files; expected 4; tolerance 0.",
+    "AAR blast radius 2 disagrees with phase.lock expected_blast_radius 4. Lock wins.",
+    "Scope Breach: .cursor/logs/qca-last.log modified outside allowed phase scope."
   ],
   "testResults": {
     "typecheck": "PASS",
     "lint": "PASS",
     "target_test": "PASS"
   },
-  "targetTest": "npx vitest run tests/mission-control-traffic.test.ts",
+  "targetTest": "npx vitest run tests/derive-factory-readiness.test.ts",
   "blastRadius": {
-    "actual": 0,
-    "expected": 5,
+    "actual": 2,
+    "expected": 4,
     "tolerance": 0,
-    "tracked": 0,
+    "tracked": 2,
     "untracked": 0,
     "status": "FAIL"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "git_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    "aar_sha256": "dd02cd99422bf54d5010c37a62afa7964f0c49381d950c37761d2a9a06f58cae",
+    "git_sha256": "dd02cd99422bf54d5010c37a62afa7964f0c49381d950c37761d2a9a06f58cae"
   }
 }
 

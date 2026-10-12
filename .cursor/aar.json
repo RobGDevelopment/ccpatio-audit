@@ -1,35 +1,29 @@
 {
-  "phase_id": "sketchup-pipeline-phase-6",
+  "phase_id": "sketchup-pipeline-phase-7",
   "base_ref": "HEAD",
-  "blast_radius": 3,
+  "blast_radius": 2,
   "counts": {
-    "files": 3,
-    "tracked": 3,
+    "files": 2,
+    "tracked": 2,
     "untracked": 0,
-    "insertions": 27,
-    "deletions": 14
+    "insertions": 12,
+    "deletions": 11
   },
   "files": [
     {
       "status": "M",
+      "path": ".cursor/logs/qca-last.log",
+      "insertions": 11,
+      "deletions": 10
+    },
+    {
+      "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 2,
+      "insertions": 1,
       "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "services/cad-convert/app.py",
-      "insertions": 4,
-      "deletions": 7
-    },
-    {
-      "status": "M",
-      "path": "tests/cad-convert-client.test.ts",
-      "insertions": 21,
-      "deletions": 6
     }
   ],
   "untracked": [],
-  "file_list_sha256": "05954e3fdbde3e391441fe9841a76f84a0e5b5cbf9fa3c6535c259a2215b17fa",
+  "file_list_sha256": "dd02cd99422bf54d5010c37a62afa7964f0c49381d950c37761d2a9a06f58cae",
   "notes": ""
 }
