@@ -4,7 +4,7 @@
   "expected_blast_radius": 3,
   "target_test": "npx vitest run tests/dae-weldment.test.ts",
   "allowed_files": [
-    "src/lib/sketchup-cutlist/parse-dae-weldment.ts",
+    "src/lib/cad-upload/instantiate-from-dae.ts",
     "tests/dae-weldment.test.ts",
     ".cursor/phase.lock"
   ]

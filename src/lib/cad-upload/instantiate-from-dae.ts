@@ -1,11 +1,18 @@
 import { eq } from "drizzle-orm";
 import {
   critiqueCutlistPlan,
+  DEFAULT_TUBE_SCRAP_FACTOR,
+  formatCutNote,
+  inchesToFeet,
   instantiateBravadaClubChair,
   instantiateWaterfallDiningTable,
   parseDaeWeldmentFromXml,
+  profileToRmSku,
+  type CutLine,
+  type DraftBomLine,
   type InstantiatedPlan,
   type WalkerExport,
+  type WalkerStick,
 } from "@/lib/sketchup-cutlist";
 import { runSecondaryExtract } from "@/lib/secondary-extraction";
 import { getDb } from "@/server/db/client";
@@ -23,13 +30,92 @@ export type CadInstantiateResult = {
   estimateWeightLbs?: number;
 };
 
-function buildPlan(walker: WalkerExport, preferredSku?: string): InstantiatedPlan {
+function stickCut(stick: WalkerStick): CutLine | null {
+  const lengthIn = stick.nameLengthIn ?? stick.obbLengthIn;
+  if (lengthIn == null || lengthIn <= 0 || stick.profile === "UNKNOWN") return null;
+  const qtyEa = stick.instanceCount > 0 ? stick.instanceCount : 1;
+  const endA = stick.endA ?? 90;
+  const endB = stick.endB ?? 90;
+  return {
+    role: stick.definitionName,
+    profile: stick.profile,
+    lengthIn,
+    endA,
+    endB,
+    qtyEa,
+    lengthConvention: endA === 45 || endB === 45 ? "long_point" : "square",
+    sourceName: stick.definitionName,
+    confidence: stick.confidence,
+    drawingPartNumber: null,
+  };
+}
+
+/** Unknown Collada files roll up stick profiles. They do not borrow a family fixture. */
+function instantiateGeometryRollup(
+  walker: WalkerExport,
+  preferredSku?: string,
+): InstantiatedPlan {
+  const finSku = (preferredSku || walker.productHint || "GEOM-UNMAPPED").toUpperCase();
+  const byRm = new Map<string, { feet: number; notes: string[]; cutList: CutLine[] }>();
+  for (const stick of walker.sticks) {
+    const cut = stickCut(stick);
+    if (!cut) continue;
+    const rm = profileToRmSku(cut.profile);
+    const bucket = byRm.get(rm) ?? { feet: 0, notes: [], cutList: [] };
+    bucket.feet += inchesToFeet(cut.lengthIn) * cut.qtyEa;
+    bucket.notes.push(
+      formatCutNote({
+        qtyEa: cut.qtyEa,
+        lengthIn: cut.lengthIn,
+        endA: cut.endA,
+        endB: cut.endB,
+        convention: cut.lengthConvention,
+        role: cut.role,
+      }),
+    );
+    bucket.cutList.push(cut);
+    byRm.set(rm, bucket);
+  }
+
+  const lines: DraftBomLine[] = [...byRm.entries()].map(([childSku, bucket]) => ({
+    parentSku: finSku,
+    childSku,
+    quantity: Math.round(bucket.feet * 10000) / 10000,
+    scrapFactor: DEFAULT_TUBE_SCRAP_FACTOR,
+    unitOfMeasure: "ft",
+    notes: bucket.notes.join("; "),
+    cutList: bucket.cutList,
+  }));
+
+  return {
+    finSku,
+    seatSku: finSku,
+    armSku: null,
+    backSku: null,
+    cushSku: null,
+    hubSkus: [
+      {
+        globalSku: finSku,
+        itemType: "finished_good",
+        originalName: walker.productHint ?? finSku,
+        category: "Geometry",
+      },
+    ],
+    lines,
+    flags: [...walker.flags, "geometry_rollup"],
+  };
+}
+
+export function buildPlan(walker: WalkerExport, preferredSku?: string): InstantiatedPlan {
   const hint = `${walker.productHint ?? ""} ${preferredSku ?? ""}`;
   const opts = preferredSku ? { finSku: preferredSku } : undefined;
   if (/WFT|WATERFALL/i.test(hint)) {
     return instantiateWaterfallDiningTable(walker, opts);
   }
-  return instantiateBravadaClubChair(walker, opts);
+  if (/BRV|BRAVADA/i.test(hint)) {
+    return instantiateBravadaClubChair(walker, opts);
+  }
+  return instantiateGeometryRollup(walker, preferredSku);
 }
 
 async function ensureHubSkus(plan: InstantiatedPlan): Promise<void> {
