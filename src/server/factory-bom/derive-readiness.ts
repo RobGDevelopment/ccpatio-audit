@@ -176,7 +176,7 @@ export function buildFactoryEvidence(
 }
 
 export interface CommerceReadinessEvidence {
-  catalogMode: string | undefined;
+  isLive: boolean;
   syncToWoo: boolean;
   imageCount: number;
   isFactoryApproved: boolean;
@@ -189,10 +189,16 @@ export interface CommerceReadiness {
 }
 
 export function deriveCommerceReadiness(e: CommerceReadinessEvidence): CommerceReadiness {
+  if (!e.isLive) {
+    return {
+      katanaRecipe: "dry_run",
+      woo: e.syncToWoo ? "ready" : "held",
+      image: e.imageCount > 0 ? "present" : "missing",
+    };
+  }
+
   return {
-    katanaRecipe: !e.isFactoryApproved 
-      ? "not_approved" 
-      : e.catalogMode === "live" ? "live_gate" : "dry_run",
+    katanaRecipe: !e.isFactoryApproved ? "not_approved" : "live_gate",
     woo: e.syncToWoo ? "ready" : "held",
     image: e.imageCount > 0 ? "present" : "missing",
   };

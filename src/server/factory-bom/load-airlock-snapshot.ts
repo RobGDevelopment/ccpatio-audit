@@ -5,9 +5,12 @@ import {
   cad_uploads,
   factory_release_gate,
   sku_mappings,
+  finished_goods_catalog,
 } from "../db/schema";
 import { eq, inArray, desc, sql } from "drizzle-orm";
 import { deriveCommerceReadiness } from "./derive-readiness";
+
+import { getCatalogPublishMode, canMutateKatanaCatalog } from "../pipeline/catalog-mode";
 
 export type AirlockSnapshot = {
   rootSku: string;
@@ -73,10 +76,17 @@ export async function loadAirlockSnapshot(globalSku: string): Promise<AirlockSna
   const [mapping = null] = await db
     .select({
       sync_to_woo: sku_mappings.sync_to_woo,
-      image_url: sku_mappings.image_url,
     })
     .from(sku_mappings)
     .where(eq(sku_mappings.global_sku, globalSku))
+    .limit(1);
+
+  const [catalog = null] = await db
+    .select({
+      image_url: finished_goods_catalog.image_url,
+    })
+    .from(finished_goods_catalog)
+    .where(eq(finished_goods_catalog.global_sku, globalSku))
     .limit(1);
 
   const isFactoryApproved = 
@@ -84,9 +94,9 @@ export async function loadAirlockSnapshot(globalSku: string): Promise<AirlockSna
     operations.length > 0 && operations.every(o => o.status === "factory_approved");
 
   const commerceReadiness = deriveCommerceReadiness({
-    catalogMode: process.env.CATALOG_PUBLISH_MODE,
+    isLive: canMutateKatanaCatalog(),
     syncToWoo: mapping?.sync_to_woo ?? false,
-    imageCount: mapping?.image_url ? 1 : 0,
+    imageCount: catalog?.image_url?.trim() ? 1 : 0,
     isFactoryApproved,
   });
 
@@ -97,6 +107,6 @@ export async function loadAirlockSnapshot(globalSku: string): Promise<AirlockSna
     cadUpload,
     releaseGate,
     commerceReadiness,
-    catalogPublishMode: process.env.CATALOG_PUBLISH_MODE,
+    catalogPublishMode: getCatalogPublishMode(),
   };
 }

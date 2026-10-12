@@ -228,7 +228,7 @@ describe("buildFactoryEvidence", () => {
 describe("deriveCommerceReadiness", () => {
   it("strictly yields woo: 'held' when syncToWoo is false", () => {
     const evidence: CommerceReadinessEvidence = {
-      catalogMode: "live",
+      isLive: true,
       syncToWoo: false,
       imageCount: 1,
       isFactoryApproved: true,
@@ -239,7 +239,7 @@ describe("deriveCommerceReadiness", () => {
 
   it("yields woo: 'ready' when syncToWoo is true", () => {
     const evidence: CommerceReadinessEvidence = {
-      catalogMode: "live",
+      isLive: true,
       syncToWoo: true,
       imageCount: 1,
       isFactoryApproved: true,
@@ -248,9 +248,9 @@ describe("deriveCommerceReadiness", () => {
     expect(result.woo).toBe("ready");
   });
 
-  it("yields katanaRecipe: 'dry_run' when catalogMode is not live", () => {
+  it("yields katanaRecipe: 'dry_run' when isLive is false", () => {
     const evidence: CommerceReadinessEvidence = {
-      catalogMode: "dry_run",
+      isLive: false,
       syncToWoo: false,
       imageCount: 1,
       isFactoryApproved: true,
@@ -259,9 +259,20 @@ describe("deriveCommerceReadiness", () => {
     expect(result.katanaRecipe).toBe("dry_run");
   });
 
+  it("yields katanaRecipe: 'live_gate' when isLive is true and factory is approved", () => {
+    const evidence: CommerceReadinessEvidence = {
+      isLive: true,
+      syncToWoo: false,
+      imageCount: 1,
+      isFactoryApproved: true,
+    };
+    const result = deriveCommerceReadiness(evidence);
+    expect(result.katanaRecipe).toBe("live_gate");
+  });
+
   it("yields katanaRecipe: 'not_approved' when factory approval is missing", () => {
     const evidence: CommerceReadinessEvidence = {
-      catalogMode: "live",
+      isLive: true,
       syncToWoo: false,
       imageCount: 1,
       isFactoryApproved: false,
@@ -272,7 +283,7 @@ describe("deriveCommerceReadiness", () => {
 
   it("yields image: 'missing' when imageCount is 0", () => {
     const evidence: CommerceReadinessEvidence = {
-      catalogMode: "live",
+      isLive: true,
       syncToWoo: false,
       imageCount: 0,
       isFactoryApproved: true,
@@ -281,3 +292,11 @@ describe("deriveCommerceReadiness", () => {
     expect(result.image).toBe("missing");
   });
 });
+
+import { loadAirlockSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
+describe("loadAirlockSnapshot", () => {
+  it("can be imported and is a function", () => {
+    expect(typeof loadAirlockSnapshot).toBe("function");
+  });
+});
+
