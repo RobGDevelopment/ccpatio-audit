@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { runKatanaStep } from "@/inngest/katana-step";
 import { NonRetriableError } from "inngest";
 import {
   bindMtoFabric,
@@ -31,11 +32,15 @@ import {
 export const ORDER_APPROVED_EVENT = "order.approved";
 
 type StepRunner = {
-  run: (id: string, fn: () => Promise<unknown>) => Promise<unknown>;
+  run: (id: string, fn: () => Promise<any>) => Promise<any>;
 };
 
 async function runStep<T>(step: StepRunner, id: string, fn: () => Promise<T>): Promise<T> {
   return (await step.run(id, fn)) as T;
+}
+
+async function runKatana<T>(step: StepRunner, id: string, fn: () => Promise<T>): Promise<T> {
+  return runKatanaStep(step, id, fn);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -148,7 +153,7 @@ export async function runApprovedFactoryOrder(input: {
         orderIntakeId: loaded.id,
       }),
     );
-    const sales = await runStep(input.step, "ensure-sales-order", async () => {
+    const sales = await runKatana(input.step, "ensure-sales-order", async () => {
       await claimShowroomHolds({
         opportunityId: loaded.ghl_opportunity_id,
         orderIntakeId: loaded.id,
@@ -178,10 +183,10 @@ export async function runApprovedFactoryOrder(input: {
         katanaOrderNo: sales.orderNo,
       }),
     );
-    const moIds = await runStep(input.step, "ensure-manufacturing-orders", () =>
+    const moIds = await runKatana(input.step, "ensure-manufacturing-orders", () =>
       ensureManufacturingOrders(loaded.id, sales.salesOrderId, sales.salesOrderRowIds),
     );
-    await runStep(input.step, "bind-fabric", () => bindFabrics(lines, moIds));
+    await runKatana(input.step, "bind-fabric", () => bindFabrics(lines, moIds));
     await runStep(input.step, "mark-pushed", async () => {
       const db = getDb();
       await db

@@ -1,53 +1,56 @@
 {
-  "phase_id": "hold-7e-ledger-inbox",
-  "base_ref": "1120ac723f9177aaf88c6fcbcd548c9e42d75d24",
+  "phase_id": "mdm-harden-phase-1",
+  "base_ref": "HEAD~1",
   "blast_radius": 6,
   "counts": {
     "files": 6,
-    "tracked": 6,
-    "untracked": 0,
-    "insertions": 196,
-    "deletions": 13
+    "tracked": 4,
+    "untracked": 2,
+    "insertions": 40,
+    "deletions": 20
   },
   "files": [
     {
-      "status": "A",
-      "path": "tests/mission-control-hold-issues.test.ts",
-      "insertions": 71,
+      "status": "??",
+      "path": "src/inngest/katana-step.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/katana-rate-limit.test.ts",
+      "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 10,
-      "deletions": 7
+      "insertions": 9,
+      "deletions": 11
     },
     {
       "status": "M",
-      "path": "src/app/mission-control/inbox-action.ts",
-      "insertions": 29,
-      "deletions": 4
+      "path": "src/inngest/functions.ts",
+      "insertions": 7,
+      "deletions": 5
     },
     {
       "status": "M",
-      "path": "src/components/mission-control/IssuesInbox.tsx",
-      "insertions": 1,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/server/mission-control/issue-copy.ts",
-      "insertions": 46,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/services/inngest-api.ts",
-      "insertions": 39,
+      "path": "src/lib/katana.ts",
+      "insertions": 15,
       "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/ghl/push-factory-order.ts",
+      "insertions": 9,
+      "deletions": 4
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "04a205ba3bdacc8e26dd9b5c3ef0badd8ed6393dddfba11e0d38d822419806ca",
+  "untracked": [
+    "src/inngest/katana-step.ts",
+    "tests/katana-rate-limit.test.ts"
+  ],
+  "file_list_sha256": "ad42ef45f56456f785bbc8d50c379b28ac5eefb82013ca6cfebac302003e39e8",
   "notes": ""
 }

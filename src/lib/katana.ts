@@ -15,6 +15,7 @@
  * compatibility. Does not reintroduce transactional sales-order POSTs.
  */
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import {
@@ -246,6 +247,9 @@ type KatanaFetchOptions = {
 };
 
 
+export type KatanaRateLimitPolicy = "sleep" | "defer";
+export const katanaRateLimitStore = new AsyncLocalStorage<KatanaRateLimitPolicy>();
+
 function resolveKatanaToken(): string {
   const token =
     process.env.KATANA_PERSONAL_ACCESS_TOKEN?.trim() ??
@@ -384,12 +388,23 @@ export async function katanaFetch<T = unknown>(
       ? Math.max(0, resetAt * 1000 - Date.now()) + 250
       : 65000;
 
+    const policy = katanaRateLimitStore.getStore() ?? "sleep";
+
     console.error("[katana] rate limit (429)", {
       path: pathname,
       retry: retryCount + 1,
       resetAt,
       waitMs,
+      policy,
     });
+
+    if (policy === "defer") {
+      throw new KatanaApiError("Katana API rate limit exceeded. Deferring to Inngest.", {
+        status: 429,
+        code: "RATE_LIMIT",
+        rateLimitReset: resetAt,
+      });
+    }
 
     if (retryCount < MAX_RATE_LIMIT_RETRIES) {
       await new Promise((resolve) => setTimeout(resolve, waitMs));

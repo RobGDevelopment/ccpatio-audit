@@ -1,4 +1,5 @@
 import { inngest } from "@/inngest/client";
+import { runKatanaStep } from "./katana-step";
 import {
   ORDER_APPROVED_EVENT,
   runApprovedFactoryOrder,
@@ -418,7 +419,7 @@ export const archiveKatanaVariant = inngest.createFunction(
     triggers: [{ event: "katana/variant.archive" }]
   },
   async ({ event, step }: any) => {
-    await step.run("archive-variant-in-katana", async () => {
+    await runKatanaStep(step, "archive-variant-in-katana", async () => {
       const { getDb } = await import("@/server/db/client");
       const { sku_mappings } = await import("@/server/db/schema");
       const { eq } = await import("drizzle-orm");
@@ -516,7 +517,7 @@ export const publishApprovedProduct = inngest.createFunction(
     });
 
     const [katana, woocommerce, clover] = await Promise.all([
-      step.run("publish-katana", async () => {
+      runKatanaStep(step, "publish-katana", async () => {
         const { publishToKatana } = await import(
           "@/server/mdm/publish-channels"
         );
@@ -664,12 +665,13 @@ export const releaseCustomJob = inngest.createFunction(
     triggers: [{ event: "factory.custom_job.released" }],
     retries: 3,
   },
-  async ({ event }) => {
+  async ({ event, step }) => {
     const data = event.data as { globalSku?: string };
-    if (!data.globalSku) {
+    const globalSku = data.globalSku;
+    if (!globalSku) {
       throw new Error("Missing globalSku in factory.custom_job.released payload");
     }
-    return executeReleaseCustomBuild(data.globalSku);
+    return runKatanaStep(step, "release-custom-job", () => executeReleaseCustomBuild(globalSku));
   },
 );
 
