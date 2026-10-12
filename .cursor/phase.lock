@@ -1,13 +1,12 @@
 {
-  "phase_id": "mdm-harden-phase-1",
-  "expected_blast_radius": 6,
+  "phase_id": "mdm-harden-phase-3",
+  "base_ref": "HEAD",
+  "expected_blast_radius": 4,
   "allowed_files": [
-    "src/lib/katana.ts",
-    "src/inngest/katana-step.ts",
     "src/inngest/functions.ts",
-    "src/server/ghl/push-factory-order.ts",
-    "tests/katana-rate-limit.test.ts",
+    "src/inngest/seo-suggest.ts",
+    "tests/seo-saga-isolation.test.ts",
     ".cursor/phase.lock"
   ],
-  "target_test": "npx vitest run tests/katana-rate-limit.test.ts"
+  "target_test": "npx vitest run tests/seo-saga-isolation.test.ts"
 }

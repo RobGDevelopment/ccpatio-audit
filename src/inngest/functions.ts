@@ -1,5 +1,6 @@
 import { inngest } from "@/inngest/client";
 import { runKatanaStep } from "./katana-step";
+import { suggestProductSeo } from "./seo-suggest";
 import {
   ORDER_APPROVED_EVENT,
   runApprovedFactoryOrder,
@@ -724,3 +725,9 @@ export const unregisteredTransactionalFunctions = [
   processWooCommerceOrder,
   syncGhlOpportunity,
 ] as const;
+
+/**
+ * OpenAI SEO assistant — defined but NOT registered. Catalog publish must not
+ * invoke it. Do not add these to `inngestFunctions` or `serve()`.
+ */
+export const unregisteredSeoFunctions = [suggestProductSeo] as const;
