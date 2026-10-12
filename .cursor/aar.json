@@ -1,56 +1,43 @@
 {
-  "phase_id": "mdm-harden-phase-1",
-  "base_ref": "HEAD~1",
-  "blast_radius": 6,
+  "phase_id": "sketchup-pipeline-phase-5",
+  "base_ref": "HEAD",
+  "blast_radius": 4,
   "counts": {
-    "files": 6,
-    "tracked": 4,
-    "untracked": 2,
-    "insertions": 40,
-    "deletions": 20
+    "files": 4,
+    "tracked": 3,
+    "untracked": 1,
+    "insertions": 178,
+    "deletions": 93
   },
   "files": [
     {
       "status": "??",
-      "path": "src/inngest/katana-step.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/katana-rate-limit.test.ts",
+      "path": "tests/cad-routing-stamp.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 9,
-      "deletions": 11
-    },
-    {
-      "status": "M",
-      "path": "src/inngest/functions.ts",
-      "insertions": 7,
+      "insertions": 6,
       "deletions": 5
     },
     {
       "status": "M",
-      "path": "src/lib/katana.ts",
-      "insertions": 15,
-      "deletions": 0
+      "path": "src/lib/cad-upload/instantiate-from-dae.ts",
+      "insertions": 2,
+      "deletions": 21
     },
     {
       "status": "M",
-      "path": "src/server/ghl/push-factory-order.ts",
-      "insertions": 9,
-      "deletions": 4
+      "path": "src/lib/cad-upload/process-job.ts",
+      "insertions": 170,
+      "deletions": 67
     }
   ],
   "untracked": [
-    "src/inngest/katana-step.ts",
-    "tests/katana-rate-limit.test.ts"
+    "tests/cad-routing-stamp.test.ts"
   ],
-  "file_list_sha256": "ad42ef45f56456f785bbc8d50c379b28ac5eefb82013ca6cfebac302003e39e8",
+  "file_list_sha256": "905a2353906bd3ad2bfaae5d83e7748a79a81764236d8e7aa0c4a088a8b62e35",
   "notes": ""
 }

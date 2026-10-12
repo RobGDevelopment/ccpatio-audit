@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   critiqueCutlistPlan,
   DEFAULT_TUBE_SCRAP_FACTOR,
@@ -177,30 +177,11 @@ async function writeDrafts(plan: InstantiatedPlan): Promise<number> {
           cut_list: cutListPayload,
           updated_at: new Date(),
         },
+        where: sql`${product_bom_draft.source} != 'manager' AND ${product_bom_draft.status} NOT IN ('factory_approved', 'edited')`,
       });
     upserts += 1;
   }
 
-  const weldSkus = [plan.seatSku, plan.armSku, plan.backSku].filter(
-    (s): s is string => Boolean(s),
-  );
-  for (const sku of weldSkus) {
-    const [exists] = await db
-      .select({ id: item_operations_draft.id })
-      .from(item_operations_draft)
-      .where(eq(item_operations_draft.item_sku, sku))
-      .limit(1);
-    if (exists) continue;
-    await db.insert(item_operations_draft).values({
-      item_sku: sku,
-      work_center: "FAB POD A",
-      sequence: 20,
-      run_time_mins: "15",
-      status: "draft_pending_review",
-      source: "sketchup_geometry",
-      notes: "From CAD upload pipeline",
-    });
-  }
 
   return upserts;
 }

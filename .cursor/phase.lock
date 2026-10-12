@@ -1,11 +1,12 @@
 {
-  "phase_id": "sketchup-pipeline-phase-4",
+  "phase_id": "sketchup-pipeline-phase-5",
   "base_ref": "HEAD",
-  "expected_blast_radius": 3,
-  "target_test": "npx vitest run tests/dae-weldment.test.ts",
+  "expected_blast_radius": 4,
+  "target_test": "npx vitest run tests/cad-routing-stamp.test.ts",
   "allowed_files": [
     "src/lib/cad-upload/instantiate-from-dae.ts",
-    "tests/dae-weldment.test.ts",
+    "src/lib/cad-upload/process-job.ts",
+    "tests/cad-routing-stamp.test.ts",
     ".cursor/phase.lock"
   ]
 }

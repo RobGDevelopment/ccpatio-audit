@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import {
   CAD_UPLOADED_EVENT,
   extractSkpThumbnail,
@@ -24,6 +24,7 @@ import {
   resolveLiveIngredient,
 } from "@/lib/level2-bom";
 import { resetReleaseGate } from "@/server/factory-bom/release-gate";
+import { getStandardTrack, isKatanaResource, normalizeKatanaResource } from "@/lib/factory-routing/resources";
 
 const RM_TIG_WIRE = "RM-MET-TIG-WIRE";
 const RM_HW_BOLT = "RM-HW-BOLT";
@@ -470,6 +471,7 @@ export async function processCadUploadJob(
       const mode = est?.cushion_fulfillment_mode || "standard";
       await applyCushionFulfillmentMode(data.globalSku, mode as "standard" | "vacuum_compressed");
 
+      await applyAluminumTrack(data.globalSku);
       await resetReleaseGate(data.globalSku);
 
       return {
@@ -500,6 +502,7 @@ export async function processCadUploadJob(
       return { ok: false, error: msg || "Critic refused draft write" };
     }
 
+    await applyAluminumTrack(result.finSku);
     await resetReleaseGate(data.globalSku);
 
     await db
@@ -537,10 +540,6 @@ export async function applyCushionFulfillmentMode(
   mode: "standard" | "vacuum_compressed"
 ) {
   const db = getDb();
-  
-  await db.update(recipe_estimates_draft)
-    .set({ cushion_fulfillment_mode: mode })
-    .where(eq(recipe_estimates_draft.root_sku, rootSku));
 
   const uploads = await db.select({ snapshot: cad_uploads.geometry_snapshot })
     .from(cad_uploads)
@@ -589,73 +588,177 @@ export async function applyCushionFulfillmentMode(
   const livePackages = new Set(livePackageRows.map((row) => row.sku.trim().toUpperCase()));
 
   for (const parentSku of cushionParents) {
-    await db.delete(product_bom_draft)
-      .where(and(
-        eq(product_bom_draft.parent_sku, parentSku),
-        inArray(product_bom_draft.child_sku, ["RM-PKG-CORRUGATE-OS", "RM-PKG-DUNNAGE-15"]),
-        eq(product_bom_draft.source, "sketchup_geometry")
-      ));
-    await db.delete(product_bom_draft)
-      .where(and(
-        eq(product_bom_draft.parent_sku, parentSku),
-        eq(product_bom_draft.child_sku, "RM-PKG-SHRINK"),
-        eq(product_bom_draft.notes, "cushion"),
-        eq(product_bom_draft.source, "sketchup_geometry")
-      ));
+    // Manage sequence 30 and BOM
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${parentSku}))`);
 
-    for (const line of pkg.lines) {
-      if (!livePackages.has(line.sku.trim().toUpperCase())) continue;
-      await db.insert(product_bom_draft)
-        .values({
-          parent_sku: parentSku,
-          child_sku: line.sku,
-          quantity: line.qty.toFixed(4),
-          scrap_factor: "1",
-          unit_of_measure: line.uom,
-          status: "draft_pending_review",
-          source: "sketchup_geometry",
-          notes: line.notes,
-          cut_list: [],
-        })
-        .onConflictDoNothing({ target: [product_bom_draft.parent_sku, product_bom_draft.child_sku] });
-    }
-    
-    // Manage sequence 30
-    const routes = await db.select().from(item_operations_draft)
-      .where(and(
-        eq(item_operations_draft.item_sku, parentSku),
-        eq(item_operations_draft.sequence, 30)
-      ));
-      
-    if (routes.length === 0) {
-      if (pkg.labor.run > 0) {
-        await db.insert(item_operations_draft).values({
-          item_sku: parentSku,
-          sequence: 30,
-          work_center: "Cushion Stuffing",
-          setup_time_mins: pkg.labor.setup.toString(),
-          run_time_mins: pkg.labor.run.toString(),
-          notes: pkg.labor.notes,
-          source: "sketchup_geometry",
-          status: "draft_pending_review",
-        });
+      await tx.update(recipe_estimates_draft)
+        .set({ cushion_fulfillment_mode: mode })
+        .where(eq(recipe_estimates_draft.root_sku, rootSku));
+
+      await tx.delete(product_bom_draft)
+        .where(and(
+          eq(product_bom_draft.parent_sku, parentSku),
+          inArray(product_bom_draft.child_sku, ["RM-PKG-CORRUGATE-OS", "RM-PKG-DUNNAGE-15"]),
+          eq(product_bom_draft.source, "sketchup_geometry"),
+          notInArray(product_bom_draft.status, ["edited", "factory_approved"]),
+        ));
+      await tx.delete(product_bom_draft)
+        .where(and(
+          eq(product_bom_draft.parent_sku, parentSku),
+          eq(product_bom_draft.child_sku, "RM-PKG-SHRINK"),
+          eq(product_bom_draft.notes, "cushion"),
+          eq(product_bom_draft.source, "sketchup_geometry"),
+          notInArray(product_bom_draft.status, ["edited", "factory_approved"]),
+        ));
+
+      for (const line of pkg.lines) {
+        if (!livePackages.has(line.sku.trim().toUpperCase())) continue;
+        await tx.insert(product_bom_draft)
+          .values({
+            parent_sku: parentSku,
+            child_sku: line.sku,
+            quantity: line.qty.toFixed(4),
+            scrap_factor: "1",
+            unit_of_measure: line.uom,
+            status: "draft_pending_review",
+            source: "sketchup_geometry",
+            notes: line.notes,
+            cut_list: [],
+          })
+          .onConflictDoNothing({ target: [product_bom_draft.parent_sku, product_bom_draft.child_sku] });
       }
-    } else {
-      const r = routes[0];
-      if (r.source === "manager" || r.status === "edited") continue;
-      
-      if (r.notes?.startsWith("CUSHION_MODE:") || r.source === "sketchup_geometry") {
-        await db.update(item_operations_draft)
-          .set({
+
+      const routes = await tx.select().from(item_operations_draft)
+        .where(and(
+          eq(item_operations_draft.item_sku, parentSku),
+          eq(item_operations_draft.sequence, 30)
+        ))
+        .orderBy(asc(item_operations_draft.id));
+        
+      if (routes.length === 0) {
+        if (pkg.labor.run > 0) {
+          await tx.insert(item_operations_draft).values({
+            item_sku: parentSku,
+            sequence: 30,
+            work_center: "Cushion Stuffing",
             setup_time_mins: pkg.labor.setup.toString(),
             run_time_mins: pkg.labor.run.toString(),
             notes: pkg.labor.notes,
-          })
-          .where(and(
-            eq(item_operations_draft.item_sku, parentSku),
-            eq(item_operations_draft.sequence, 30)
-          ));
+            source: "sketchup_geometry",
+            status: "draft_pending_review",
+          });
+        }
+      } else {
+        const isProtected = routes.some(r => r.source === "manager" || r.status === "edited" || r.status === "factory_approved");
+        if (!isProtected) {
+          const r = routes[0];
+          if (r.notes?.startsWith("CUSHION_MODE:") || r.source === "sketchup_geometry") {
+            await tx.update(item_operations_draft)
+              .set({
+                setup_time_mins: pkg.labor.setup.toString(),
+                run_time_mins: pkg.labor.run.toString(),
+                notes: pkg.labor.notes,
+              })
+              .where(eq(item_operations_draft.id, r.id));
+          }
+        }
       }
+    });
+  }
+}
+
+export async function applyAluminumTrack(rootSku: string) {
+  const db = getDb();
+  
+  const skusToStamp = new Set<string>();
+  const queue = [rootSku];
+  const visited = new Set<string>();
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (visited.has(current)) continue;
+    visited.add(current);
+
+    const children = await db
+      .select({ childSku: product_bom_draft.child_sku })
+      .from(product_bom_draft)
+      .where(eq(product_bom_draft.parent_sku, current));
+
+    let hasMetal = false;
+    for (const child of children) {
+      if (child.childSku.startsWith("RM-MET-") && child.childSku !== "RM-MET-TIG-WIRE") {
+        hasMetal = true;
+      }
+      queue.push(child.childSku);
     }
+    
+    if (hasMetal) {
+      skusToStamp.add(current);
+    }
+  }
+
+  const track = getStandardTrack("aluminum_frame");
+  
+  for (const sku of skusToStamp) {
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${sku}))`);
+      const existing = await tx
+        .select({
+          id: item_operations_draft.id,
+          sequence: item_operations_draft.sequence,
+          status: item_operations_draft.status,
+          source: item_operations_draft.source,
+          workCenter: item_operations_draft.work_center,
+        })
+        .from(item_operations_draft)
+        .where(eq(item_operations_draft.item_sku, sku));
+
+      const protectedSequences = new Set(
+        existing
+          .filter((r) => r.status === "edited" || r.source === "manager" || r.status === "factory_approved")
+          .map((r) => r.sequence)
+      );
+
+      const protectedWorkCenters = new Set(
+        existing
+          .filter((r) => r.status === "edited" || r.source === "manager" || r.status === "factory_approved")
+          .map((r) => normalizeKatanaResource(r.workCenter))
+      );
+
+      const now = new Date();
+      for (const step of track) {
+        if (!isKatanaResource(step.resource)) continue;
+        if (protectedWorkCenters.has(step.resource)) continue;
+        if (protectedSequences.has(step.sequence)) continue;
+
+        const sibling = existing.find((r) => r.sequence === step.sequence);
+        if (sibling) {
+          await tx.update(item_operations_draft)
+            .set({
+              work_center: step.resource,
+              setup_time_mins: step.setupTimeMins > 0 ? step.setupTimeMins.toFixed(4) : "0.0000",
+              run_time_mins: step.runTimeMins.toFixed(4),
+              status: "draft_pending_review",
+              source: "sketchup_geometry",
+              notes: step.floorLabel,
+              updated_at: now,
+            })
+            .where(eq(item_operations_draft.id, sibling.id));
+        } else {
+          await tx.insert(item_operations_draft).values({
+            item_sku: sku,
+            work_center: step.resource,
+            sequence: step.sequence,
+            setup_time_mins: step.setupTimeMins > 0 ? step.setupTimeMins.toFixed(4) : "0.0000",
+            run_time_mins: step.runTimeMins.toFixed(4),
+            status: "draft_pending_review",
+            source: "sketchup_geometry",
+            notes: step.floorLabel,
+            updated_at: now,
+          });
+        }
+      }
+    });
   }
 }
