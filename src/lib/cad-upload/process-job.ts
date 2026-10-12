@@ -14,6 +14,7 @@ import { cad_uploads, finished_goods_catalog, item_operations_draft, product_bom
 import { parseGlbWeldment } from "@/lib/sketchup-cutlist/parse-glb-weldment";
 import { profileToRmSku, formatDrawingPartNumber } from "@/lib/sketchup-cutlist/parse-component-name";
 import { formatGeomHygieneMessage } from "@/lib/sketchup-cutlist/component-hygiene";
+import { formatKatanaIngredientNote } from "@/lib/sketchup-cutlist/notes-codec";
 import { calculateCushionPackage } from "@/lib/sketchup-cutlist/derived-heuristics";
 import {
   CAP_LIVE_FALLBACKS,
@@ -43,10 +44,10 @@ type GeometryCut = {
   role: string;
   profile: string;
   lengthIn: number;
-  endA: number | null;
-  endB: number | null;
+  endA: 45 | 90 | null;
+  endB: 45 | 90 | null;
   qtyEa: number;
-  lengthConvention: string;
+  lengthConvention: "long_point" | "short_point" | "square" | "unknown";
   sourceName: string;
   confidence: string;
   drawingPartNumber: string | null;
@@ -160,8 +161,8 @@ export async function processCadUploadJob(
       for (const comp of snapshot.components) {
         if (!comp.profile || comp.lengthIn == null) continue;
         const rmSku = profileToRmSku(comp.profile);
-        const endA = comp.endA === "45" ? 45 : 90;
-        const endB = comp.endB === "45" ? 45 : 90;
+        const endA = (comp.endA === "45" ? 45 : 90) as 45 | 90;
+        const endB = (comp.endB === "45" ? 45 : 90) as 45 | 90;
         const piece = {
           role: comp.role,
           profile: comp.profile,
@@ -169,7 +170,7 @@ export async function processCadUploadJob(
           endA,
           endB,
           qtyEa: 1,
-          lengthConvention: comp.lengthConvention === "long_point" ? "long_point" : "square",
+          lengthConvention: (comp.lengthConvention === "long_point" ? "long_point" : "square") as "long_point" | "square",
           sourceName: comp.name,
           confidence: comp.confidence,
           drawingPartNumber: formatDrawingPartNumber({
@@ -216,6 +217,7 @@ export async function processCadUploadJob(
         unitOfMeasure: string;
         notes: string;
         cutList: GeometryCut[];
+        scrapFactor?: string;
       }): Promise<boolean> {
         const storedSku = liveByUpper.get(input.childSku.trim().toUpperCase());
         const quantity = round4(input.quantity);
@@ -226,7 +228,7 @@ export async function processCadUploadJob(
             parent_sku: data.globalSku,
             child_sku: storedSku,
             quantity: quantity.toFixed(4),
-            scrap_factor: "1",
+            scrap_factor: input.scrapFactor ?? "1",
             unit_of_measure: input.unitOfMeasure,
             status: "draft_pending_review",
             source: "sketchup_geometry",
@@ -247,8 +249,9 @@ export async function processCadUploadJob(
           childSku: rmSku,
           quantity: totalIn / 12,
           unitOfMeasure: "ft",
-          notes: `${cuts.length} pieces from ${rmSku}`,
+          notes: formatKatanaIngredientNote(cuts as any),
           cutList: cuts,
+          scrapFactor: "1.08",
         });
         if (wrote) linesWritten++;
       }
