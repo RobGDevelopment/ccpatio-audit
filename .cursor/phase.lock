@@ -1,12 +1,14 @@
 {
-  "phase_id": "sketchup-pipeline-phase-6",
-  "intent": "The Python service is a byte converter with an honest health check. Inch math and named-node refusal stay in Node.",
+  "phase_id": "sketchup-pipeline-phase-7",
   "base_ref": "HEAD",
-  "expected_blast_radius": 2,
-  "target_test": "npx vitest run tests/cad-convert-client.test.ts",
+  "expected_blast_radius": 4,
+  "intent": "Step 4 shows Katana publish mode and Woo non-readiness without changing either.",
+  "target_test": "npx vitest run tests/derive-factory-readiness.test.ts",
   "allowed_files": [
-    "services/cad-convert/app.py",
-    "tests/cad-convert-client.test.ts",
-    ".cursor/phase.lock"
+    ".cursor/phase.lock",
+    "src/server/factory-bom/derive-readiness.ts",
+    "src/server/factory-bom/load-airlock-snapshot.ts",
+    "src/app/embed/factory-bom/steps/Step4Release.tsx",
+    "tests/derive-factory-readiness.test.ts"
   ]
 }

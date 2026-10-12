@@ -7,6 +7,7 @@ import {
   sku_mappings,
 } from "../db/schema";
 import { eq, inArray, desc, sql } from "drizzle-orm";
+import { deriveCommerceReadiness } from "./derive-readiness";
 
 export type AirlockSnapshot = {
   rootSku: string;
@@ -14,6 +15,8 @@ export type AirlockSnapshot = {
   operations: (typeof item_operations_draft.$inferSelect)[];
   cadUpload: (typeof cad_uploads.$inferSelect) | null;
   releaseGate: (typeof factory_release_gate.$inferSelect) | null;
+  commerceReadiness: import("./derive-readiness").CommerceReadiness;
+  catalogPublishMode: string | undefined;
 };
 
 // Adapted from actions.ts collectDraftParents to get the full tree
@@ -67,11 +70,33 @@ export async function loadAirlockSnapshot(globalSku: string): Promise<AirlockSna
     .where(eq(factory_release_gate.root_sku, globalSku))
     .limit(1);
 
+  const [mapping = null] = await db
+    .select({
+      sync_to_woo: sku_mappings.sync_to_woo,
+      image_url: sku_mappings.image_url,
+    })
+    .from(sku_mappings)
+    .where(eq(sku_mappings.global_sku, globalSku))
+    .limit(1);
+
+  const isFactoryApproved = 
+    lines.length > 0 && lines.every(l => l.status === "factory_approved") &&
+    operations.length > 0 && operations.every(o => o.status === "factory_approved");
+
+  const commerceReadiness = deriveCommerceReadiness({
+    catalogMode: process.env.CATALOG_PUBLISH_MODE,
+    syncToWoo: mapping?.sync_to_woo ?? false,
+    imageCount: mapping?.image_url ? 1 : 0,
+    isFactoryApproved,
+  });
+
   return {
     rootSku: globalSku,
     lines,
     operations,
     cadUpload,
     releaseGate,
+    commerceReadiness,
+    catalogPublishMode: process.env.CATALOG_PUBLISH_MODE,
   };
 }

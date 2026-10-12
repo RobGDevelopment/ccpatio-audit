@@ -174,3 +174,26 @@ export function buildFactoryEvidence(
   }
   return out;
 }
+
+export interface CommerceReadinessEvidence {
+  catalogMode: string | undefined;
+  syncToWoo: boolean;
+  imageCount: number;
+  isFactoryApproved: boolean;
+}
+
+export interface CommerceReadiness {
+  katanaRecipe: "dry_run" | "live_gate" | "not_approved";
+  woo: "held" | "ready";
+  image: "present" | "missing";
+}
+
+export function deriveCommerceReadiness(e: CommerceReadinessEvidence): CommerceReadiness {
+  return {
+    katanaRecipe: !e.isFactoryApproved 
+      ? "not_approved" 
+      : e.catalogMode === "live" ? "live_gate" : "dry_run",
+    woo: e.syncToWoo ? "ready" : "held",
+    image: e.imageCount > 0 ? "present" : "missing",
+  };
+}

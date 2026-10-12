@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   buildFactoryEvidence,
   deriveFactoryReadiness,
+  deriveCommerceReadiness,
   relatedParents,
   type FactoryEvidence,
   type FactoryEvidenceSources,
+  type CommerceReadinessEvidence,
 } from "@/server/factory-bom/derive-readiness";
 
 const none: FactoryEvidence = {
@@ -220,5 +222,62 @@ describe("buildFactoryEvidence", () => {
     expect(map.size).toBe(2);
     expect(deriveFactoryReadiness(map.get(SKU)!).state).toBe("published");
     expect(deriveFactoryReadiness(map.get(other)!).state).toBe("missing_cad");
+  });
+});
+
+describe("deriveCommerceReadiness", () => {
+  it("strictly yields woo: 'held' when syncToWoo is false", () => {
+    const evidence: CommerceReadinessEvidence = {
+      catalogMode: "live",
+      syncToWoo: false,
+      imageCount: 1,
+      isFactoryApproved: true,
+    };
+    const result = deriveCommerceReadiness(evidence);
+    expect(result.woo).toBe("held");
+  });
+
+  it("yields woo: 'ready' when syncToWoo is true", () => {
+    const evidence: CommerceReadinessEvidence = {
+      catalogMode: "live",
+      syncToWoo: true,
+      imageCount: 1,
+      isFactoryApproved: true,
+    };
+    const result = deriveCommerceReadiness(evidence);
+    expect(result.woo).toBe("ready");
+  });
+
+  it("yields katanaRecipe: 'dry_run' when catalogMode is not live", () => {
+    const evidence: CommerceReadinessEvidence = {
+      catalogMode: "dry_run",
+      syncToWoo: false,
+      imageCount: 1,
+      isFactoryApproved: true,
+    };
+    const result = deriveCommerceReadiness(evidence);
+    expect(result.katanaRecipe).toBe("dry_run");
+  });
+
+  it("yields katanaRecipe: 'not_approved' when factory approval is missing", () => {
+    const evidence: CommerceReadinessEvidence = {
+      catalogMode: "live",
+      syncToWoo: false,
+      imageCount: 1,
+      isFactoryApproved: false,
+    };
+    const result = deriveCommerceReadiness(evidence);
+    expect(result.katanaRecipe).toBe("not_approved");
+  });
+
+  it("yields image: 'missing' when imageCount is 0", () => {
+    const evidence: CommerceReadinessEvidence = {
+      catalogMode: "live",
+      syncToWoo: false,
+      imageCount: 0,
+      isFactoryApproved: true,
+    };
+    const result = deriveCommerceReadiness(evidence);
+    expect(result.image).toBe("missing");
   });
 });

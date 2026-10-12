@@ -133,6 +133,15 @@ export function Step4Release({
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2 rounded-xl border border-blue-200 bg-blue-50 p-6 mb-4">
+        <h3 className="font-semibold text-sm text-blue-900">Commerce Readiness Checklist</h3>
+        <ul className="text-sm text-blue-800 space-y-1">
+          <li>Katana Recipe: <strong>{snapshot.commerceReadiness.katanaRecipe}</strong> (Mode: {snapshot.catalogPublishMode || "unknown"})</li>
+          <li>WooCommerce Sync: <strong>{snapshot.commerceReadiness.woo}</strong></li>
+          <li>Primary Image: <strong>{snapshot.commerceReadiness.image}</strong></li>
+        </ul>
+      </div>
+
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-bold text-zinc-800">Quarantine Gate Attestation</h2>
         <p className="text-sm text-zinc-500">Please confirm all structural parameters before releasing to the live factory floor.</p>
