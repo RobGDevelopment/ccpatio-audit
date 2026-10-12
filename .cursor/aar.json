@@ -1,43 +1,35 @@
 {
-  "phase_id": "sketchup-pipeline-phase-5",
+  "phase_id": "sketchup-pipeline-phase-6",
   "base_ref": "HEAD",
-  "blast_radius": 4,
+  "blast_radius": 3,
   "counts": {
-    "files": 4,
+    "files": 3,
     "tracked": 3,
-    "untracked": 1,
-    "insertions": 178,
-    "deletions": 93
+    "untracked": 0,
+    "insertions": 27,
+    "deletions": 14
   },
   "files": [
     {
-      "status": "??",
-      "path": "tests/cad-routing-stamp.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 6,
-      "deletions": 5
-    },
-    {
-      "status": "M",
-      "path": "src/lib/cad-upload/instantiate-from-dae.ts",
       "insertions": 2,
-      "deletions": 21
+      "deletions": 1
     },
     {
       "status": "M",
-      "path": "src/lib/cad-upload/process-job.ts",
-      "insertions": 170,
-      "deletions": 67
+      "path": "services/cad-convert/app.py",
+      "insertions": 4,
+      "deletions": 7
+    },
+    {
+      "status": "M",
+      "path": "tests/cad-convert-client.test.ts",
+      "insertions": 21,
+      "deletions": 6
     }
   ],
-  "untracked": [
-    "tests/cad-routing-stamp.test.ts"
-  ],
-  "file_list_sha256": "905a2353906bd3ad2bfaae5d83e7748a79a81764236d8e7aa0c4a088a8b62e35",
+  "untracked": [],
+  "file_list_sha256": "05954e3fdbde3e391441fe9841a76f84a0e5b5cbf9fa3c6535c259a2215b17fa",
   "notes": ""
 }

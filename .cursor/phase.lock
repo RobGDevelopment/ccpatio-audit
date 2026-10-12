@@ -1,7 +1,8 @@
 {
   "phase_id": "sketchup-pipeline-phase-6",
+  "intent": "The Python service is a byte converter with an honest health check. Inch math and named-node refusal stay in Node.",
   "base_ref": "HEAD",
-  "expected_blast_radius": 3,
+  "expected_blast_radius": 2,
   "target_test": "npx vitest run tests/cad-convert-client.test.ts",
   "allowed_files": [
     "services/cad-convert/app.py",

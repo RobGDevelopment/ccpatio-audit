@@ -38,18 +38,15 @@ async def convert_cad(file: UploadFile = File(...)):
             subprocess.run(blender_cmd, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
             raise HTTPException(status_code=500, detail=f"Blender export failed: {e.stderr}")
-        except FileNotFoundError:
-            raise HTTPException(status_code=500, detail="Blender executable not found in PATH")
+        except (FileNotFoundError, PermissionError):
+            raise HTTPException(status_code=500, detail="Blender executable not found in PATH or permission denied")
             
         if not os.path.exists(output_path):
             raise HTTPException(status_code=500, detail="Output GLB not generated")
             
-        try:
-            scene = trimesh.load(output_path, force='scene')
-        except Exception as e:
-            raise HTTPException(status_code=500, detail="GLB_LOAD_FAILED")
+        scene = trimesh.load(output_path, force='scene')
             
-        if not scene.geometry:
+        if not scene.geometry or sum(len(getattr(g, 'faces', [])) for g in scene.geometry.values()) == 0:
             raise HTTPException(status_code=500, detail="GLB_LOAD_FAILED")
             
         # Returning the file
