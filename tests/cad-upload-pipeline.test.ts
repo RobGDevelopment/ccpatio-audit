@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { cadIngestExtension } from "@/app/admin/factory-bom/actions";
 import { extractSkpThumbnail } from "@/lib/cad-upload/skp-thumbnail";
 import {
   classifyExtrusion,
@@ -56,6 +57,44 @@ describe("CAD upload pipeline foundations", () => {
     expect(extracted![0]).toBe(0x89);
     expect(extracted![1]).toBe(0x50);
     expect(extracted!.length).toBeGreaterThan(200);
+  });
+});
+
+describe("CAD ingest gateway", () => {
+  it("accepts dae, glb, blend, and skp and rejects every other extension", async () => {
+    expect(await cadIngestExtension("FIN-WFT-DIN-TAB-72X28.dae")).toBe("dae");
+    expect(await cadIngestExtension("model.GLB")).toBe("glb");
+    expect(await cadIngestExtension("chair.blend")).toBe("blend");
+    expect(await cadIngestExtension("preview.skp")).toBe("skp");
+    expect(await cadIngestExtension("chair.obj")).toBeNull();
+    expect(await cadIngestExtension("notes.pdf")).toBeNull();
+    expect(await cadIngestExtension("no-extension")).toBeNull();
+  });
+
+  it("dropzones and the commerce vault advertise the same geometry extensions", () => {
+    const admin = fs.readFileSync(
+      path.join(process.cwd(), "src/app/admin/factory-bom/CadUploadDropzone.tsx"),
+      "utf8",
+    );
+    const intake = fs.readFileSync(
+      path.join(process.cwd(), "src/app/embed/factory-bom/IntakeDropzone.tsx"),
+      "utf8",
+    );
+    const fork = fs.readFileSync(
+      path.join(process.cwd(), "src/app/embed/factory-bom/FunnelFork.tsx"),
+      "utf8",
+    );
+    const vault = fs.readFileSync(
+      path.join(process.cwd(), "src/app/embed/admin/master-catalog/ecommerce/AssetVaultDropzone.tsx"),
+      "utf8",
+    );
+    const env = fs.readFileSync(path.join(process.cwd(), ".env.example"), "utf8");
+    const picker = 'accept=".dae,.glb,.skp,.blend,image/png,image/jpeg,image/webp"';
+    expect(admin).toContain(picker);
+    expect(intake).toContain(picker);
+    expect(fork).toContain('.endsWith(".blend")');
+    expect(vault).toContain('accept=".dae,.glb,.skp,.blend"');
+    expect(env).toMatch(/^CAD_CONVERT_URL=$/m);
   });
 });
 

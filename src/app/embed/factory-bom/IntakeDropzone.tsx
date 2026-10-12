@@ -72,10 +72,10 @@ export function IntakeDropzone({ opportunityId, restrictPdf = false }: { opportu
       >
         <h3 className="text-lg font-medium text-slate-800">Start Airlock Intake</h3>
         <p className="mt-2 text-sm text-slate-500">
-          Drop {!restrictPdf ? <span className="font-mono font-medium">.pdf</span> : null} {!restrictPdf ? "or " : ""}<span className="font-mono font-medium">.glb</span> or <span className="font-mono font-medium">.dae</span> for cut-list drafts
+          Drop {!restrictPdf ? <span className="font-mono font-medium">.pdf</span> : null} {!restrictPdf ? "or " : ""}<span className="font-mono font-medium">.glb</span>, <span className="font-mono font-medium">.dae</span>, or <span className="font-mono font-medium">.blend</span> for cut-list drafts
         </p>
         <p className="mt-1 text-xs text-slate-400">
-          Optional: .skp for thumbnail
+          .blend converts to .glb, then the GLB parser runs. Optional: .skp for thumbnail only.
         </p>
         <button
           type="button"
@@ -89,7 +89,7 @@ export function IntakeDropzone({ opportunityId, restrictPdf = false }: { opportu
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".dae,.glb,.skp,image/png,image/jpeg,image/webp"
+          accept=".dae,.glb,.skp,.blend,image/png,image/jpeg,image/webp"
           multiple
           onChange={(e) => handleFiles(e.target.files)}
         />

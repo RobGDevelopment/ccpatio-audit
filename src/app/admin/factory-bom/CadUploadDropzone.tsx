@@ -80,7 +80,7 @@ export function CadUploadDropzone({
     const images = files.filter((f) => f.type.startsWith("image/"));
     const cad = files.find((f) => {
       const n = f.name.toLowerCase();
-      return n.endsWith(".dae") || n.endsWith(".glb") || n.endsWith(".skp");
+      return n.endsWith(".dae") || n.endsWith(".glb") || n.endsWith(".blend") || n.endsWith(".skp");
     });
 
     setBusy(true);
@@ -107,7 +107,7 @@ export function CadUploadDropzone({
 
       if (!cad) {
         if (images.length === 0) {
-          setError("Drop a .glb or .dae (geometry) or .skp (preview) file");
+          setError("Drop a .glb, .dae, or .blend (geometry) or .skp (thumbnail only) file");
         }
         return;
       }
@@ -192,10 +192,10 @@ export function CadUploadDropzone({
         }`}
       >
         <p className="text-sm text-slate-800">
-          Drop <span className="font-mono">.glb</span> or <span className="font-mono">.dae</span> for cut-list drafts
+          Drop <span className="font-mono">.glb</span>, <span className="font-mono">.dae</span>, or <span className="font-mono">.blend</span> for cut-list drafts
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          Optional: .skp for thumbnail
+          .blend converts to .glb, then the GLB parser runs. Optional: .skp for thumbnail only.
         </p>
         <button
           type="button"
@@ -209,7 +209,7 @@ export function CadUploadDropzone({
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".dae,.glb,.skp,image/png,image/jpeg,image/webp"
+          accept=".dae,.glb,.skp,.blend,image/png,image/jpeg,image/webp"
           multiple
           onChange={(e) => void handleFiles(e.target.files)}
         />

@@ -550,7 +550,7 @@ export function AssetVaultDropzone({
                 </span>
               )}
             </div>
-            <p className="text-[10px] text-slate-400">.dae / .skp · Factory BOM</p>
+            <p className="text-[10px] text-slate-400">.dae / .glb / .blend / .skp · Factory BOM</p>
             {cad && (
               <p className="text-[10px] text-slate-500 truncate" title={cad.originalFilename}>
                 <Box className="mr-1 inline h-3 w-3 text-slate-400" />
@@ -565,7 +565,7 @@ export function AssetVaultDropzone({
           <input
             type="file"
             ref={cadInput}
-            accept=".dae,.skp"
+            accept=".dae,.glb,.skp,.blend"
             onChange={handleCad}
             className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
             disabled={busy}

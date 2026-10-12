@@ -1574,6 +1574,20 @@ export async function getLatestCadUpload(
   };
 }
 
+export type CadIngestExt = "dae" | "glb" | "skp" | "blend";
+
+/** Gateway allow-list. `.skp` is thumbnail-only and stays fail-closed for geometry. */
+export async function cadIngestExtension(filename: string): Promise<CadIngestExt | null> {
+  const trimmed = filename.trim();
+  const extRaw = trimmed.includes(".")
+    ? trimmed.slice(trimmed.lastIndexOf(".") + 1).toLowerCase()
+    : "";
+  if (extRaw === "dae" || extRaw === "glb" || extRaw === "skp" || extRaw === "blend") {
+    return extRaw;
+  }
+  return null;
+}
+
 export async function requestCadUpload(input: {
   globalSku: string;
   filename: string;
@@ -1610,13 +1624,11 @@ export async function requestCadUpload(input: {
     };
   }
 
-  const extRaw = filename.includes(".")
-    ? filename.slice(filename.lastIndexOf(".") + 1).toLowerCase()
-    : "";
-  if (extRaw !== "dae" && extRaw !== "skp" && extRaw !== "glb") {
+  const extRaw = await cadIngestExtension(filename);
+  if (!extRaw) {
     return {
       ok: false,
-      error: "Only .dae or .glb (geometry) or .skp (thumbnail) CAD files are accepted",
+      error: "Only .dae, .glb, or .blend (geometry) or .skp (thumbnail) CAD files are accepted",
     };
   }
 

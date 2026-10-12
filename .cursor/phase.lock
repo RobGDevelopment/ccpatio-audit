@@ -1,12 +1,16 @@
 {
-  "phase_id": "mdm-harden-phase-3",
+  "phase_id": "sketchup-pipeline-phase-1",
   "base_ref": "HEAD",
-  "expected_blast_radius": 4,
+  "expected_blast_radius": 8,
   "allowed_files": [
-    "src/inngest/functions.ts",
-    "src/inngest/seo-suggest.ts",
-    "tests/seo-saga-isolation.test.ts",
+    ".env.example",
+    "src/app/admin/factory-bom/actions.ts",
+    "src/app/admin/factory-bom/CadUploadDropzone.tsx",
+    "src/app/embed/factory-bom/IntakeDropzone.tsx",
+    "src/app/embed/factory-bom/FunnelFork.tsx",
+    "src/app/embed/admin/master-catalog/ecommerce/AssetVaultDropzone.tsx",
+    "tests/cad-upload-pipeline.test.ts",
     ".cursor/phase.lock"
   ],
-  "target_test": "npx vitest run tests/seo-saga-isolation.test.ts"
+  "target_test": "npx vitest run tests/cad-upload-pipeline.test.ts"
 }
