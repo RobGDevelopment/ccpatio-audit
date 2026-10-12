@@ -16,6 +16,7 @@
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
+import { wonStageIdsFromEnv } from "@/server/ghl/factory-stage";
 import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import {
@@ -1536,6 +1537,7 @@ type GhlSalesOrderInput = {
   id: string;
   name?: string;
   status?: string;
+  pipeline_stage_id?: string;
   monetary_value?: string | number;
   contact?: {
     email?: string;
@@ -1558,23 +1560,30 @@ type GhlSalesOrderInput = {
   }>;
 };
 
-export function isGhlWonOpportunity(status: string | undefined): boolean {
+export const GHL_WON_STATUS = new Set(["won", "closed won", "closed_won"]);
+
+export function isGhlWonOpportunity(
+  status: string | undefined,
+  pipelineStageId?: string | null,
+): boolean {
+  if (pipelineStageId) {
+    const stageIds = wonStageIdsFromEnv();
+    if (stageIds.includes(pipelineStageId.trim())) {
+      return true;
+    }
+  }
+
   if (!status?.trim()) {
     return false;
   }
   const normalized = status.trim().toLowerCase();
-  return (
-    normalized === "won" ||
-    normalized === "closed won" ||
-    normalized === "closed_won" ||
-    normalized.includes("won")
-  );
+  return GHL_WON_STATUS.has(normalized);
 }
 
 export function mapGhlOpportunityToKatanaSalesOrder(
   opportunity: GhlSalesOrderInput,
 ): KatanaSalesOrderPayload | null {
-  if (!isGhlWonOpportunity(opportunity.status)) {
+  if (!isGhlWonOpportunity(opportunity.status, opportunity.pipeline_stage_id)) {
     return null;
   }
 

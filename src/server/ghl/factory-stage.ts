@@ -9,6 +9,15 @@ export function factoryStageIdsFromEnv(
     .filter((part) => part.length > 0);
 }
 
+export function wonStageIdsFromEnv(
+  raw: string | undefined = process.env.GHL_WON_STAGE_IDS,
+): string[] {
+  return (raw ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
 export function isProduceFactoryOrderStage(
   input: { stageName?: string | null; pipelineStageId?: string | null },
   stageIds: string[] = factoryStageIdsFromEnv(),
