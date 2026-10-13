@@ -11,11 +11,14 @@ export type OhCrapReason =
   | "validation_failed"
   | "katana_rejected"
   | "missing_line_items"
+  | "function_failed"
+  | "qbo_token_persist_failed"
+  | "qbo_auth_failed"
   | "unknown";
 
 export type OhCrapAlertInput = {
   reason: OhCrapReason;
-  source: "ghl" | "woocommerce" | "katana" | "system";
+  source: "ghl" | "woocommerce" | "katana" | "qbo" | "system";
   externalId: string;
   sku?: string;
   message: string;

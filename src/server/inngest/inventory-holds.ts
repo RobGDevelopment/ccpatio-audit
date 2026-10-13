@@ -5,6 +5,7 @@ import { notifyHoldExpiring } from "@/server/ghl/hold-warning";
 import { getDb } from "@/server/db/client";
 import { inventory_holds } from "@/server/db/schema";
 import { sweepExpiredHolds } from "@/server/stock/sweep-expired-holds";
+import { KATANA_TENANT_CONCURRENCY } from "@/server/sre/katana-throttle";
 
 const WARNING_BATCH = 100;
 
@@ -123,7 +124,8 @@ export const autoReleaseExpiredHolds = inngest.createFunction(
     id: "auto-release-expired-holds",
     name: "Auto-release expired inventory holds",
     triggers: [{ cron: "0 * * * *" }],
-    concurrency: { limit: 1 },
+    // Fn-scoped serialization (existing) plus the single-tenant Katana limit.
+    concurrency: [{ limit: 1 }, KATANA_TENANT_CONCURRENCY],
   },
   async ({ step }) => {
     return step.run("release-expired-holds", async () => {

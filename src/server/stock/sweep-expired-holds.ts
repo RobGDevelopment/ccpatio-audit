@@ -4,6 +4,7 @@ import { getDb } from "@/server/db/client";
 import { inventory_holds, order_intake } from "@/server/db/schema";
 import { ghlFactoryOrderNo } from "@/server/ghl/hold-order";
 import { convertOneHold } from "@/server/stock/convert-holds";
+import { KATANA_TENANT_CONCURRENCY } from "@/server/sre/katana-throttle";
 import {
   finishReleasingHold,
   releaseActiveHold,
@@ -209,7 +210,8 @@ export const sweepExpiredInventoryHolds = inngest.createFunction(
     id: "sweep-expired-inventory-holds",
     name: "Sweep expired inventory holds",
     triggers: [{ cron: "*/15 * * * *" }],
-    concurrency: { limit: 1 },
+    // Fn-scoped serialization (existing) plus the single-tenant Katana limit.
+    concurrency: [{ limit: 1 }, KATANA_TENANT_CONCURRENCY],
   },
   async ({ step }) => {
     return step.run("sweep-expired-holds", () => sweepExpiredHolds());

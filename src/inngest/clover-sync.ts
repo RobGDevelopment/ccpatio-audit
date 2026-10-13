@@ -4,19 +4,25 @@ import { pushToQBO } from "@/server/integrations/qbo/client";
 import { getDb } from "@/server/db/client";
 import { sku_mappings } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
+import { getLedgerPipelineMode } from "@/server/pipeline/ledger-mode";
 
-export const syncCloverPayment = inngest.createFunction(
-  { 
-    id: 'clover-payment-sync',
-    triggers: [{ event: 'clover/payment.created' }]
-  },
-  async ({ event, step }) => {
+/**
+ * Handler body, exported so the ledger containment gate can be unit tested
+ * without an Inngest runtime.
+ */
+export async function runCloverPaymentSync({
+  event,
+  step,
+}: {
+  event: { data: unknown };
+  step: { run: <T>(id: string, fn: () => Promise<T>) => Promise<T> };
+}) {
     const { merchantId, paymentId } = event.data as { merchantId: string, paymentId: string };
 
     // Step 1: Hydrate
     const cloverOrder = await step.run("fetch-clover-order", async () => {
       return await fetchCloverOrder(merchantId, paymentId);
-    });
+    }) as Awaited<ReturnType<typeof fetchCloverOrder>>;
 
     // Step 2: Translate
     const translatedLineItems = await step.run("translate-line-items", async () => {
@@ -61,16 +67,42 @@ export const syncCloverPayment = inngest.createFunction(
           }
         })),
         CustomerRef: {
+          // TODO(step-8): hardcoded placeholder CustomerRef; replaced by real customer resolution.
           value: "1" // Hardcoded placeholder for now
         }
       };
     });
 
+    // LEDGER CONTAINMENT GATE (fail closed): only an explicit LEDGER_PIPELINE_MODE=live
+    // may reach QuickBooks. Evaluated on every Inngest (re)invocation of this handler.
+    const mode = getLedgerPipelineMode();
+    if (mode !== "live") {
+      console.log(
+        JSON.stringify({
+          tag: "ledger-containment",
+          fn: "clover-payment-sync",
+          mode,
+          dryRun: true,
+          paymentId,
+          lineCount: translatedLineItems.length,
+        }),
+      );
+      return { success: true as const, dryRun: true as const, mode, qboPayload };
+    }
+
     // Step 4: Push
+    // TODO(step-8): SalesReceipt endpoint is replaced by Journal Entry / Customer Deposit routing.
     const result = await step.run("push-to-qbo", async () => {
       return await pushToQBO(qboPayload);
     });
 
-    return { success: true, qboResult: result };
-  }
+    return { success: true as const, dryRun: false as const, mode, qboResult: result };
+}
+
+export const syncCloverPayment = inngest.createFunction(
+  {
+    id: 'clover-payment-sync',
+    triggers: [{ event: 'clover/payment.created' }]
+  },
+  async ({ event, step }) => runCloverPaymentSync({ event, step: step as never }),
 );

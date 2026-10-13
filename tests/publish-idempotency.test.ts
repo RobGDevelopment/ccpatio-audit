@@ -109,7 +109,7 @@ describe("Idempotent Network Skip", () => {
       ok: true,
       idempotent: true,
       dossierHash: "HASH_MATCH",
-      message: "Idempotent skip: dossier hash unchanged"
+      message: "Catalog recipes posted to Katana (Synced: idempotent skip)"
     });
     expect(syncBOMToKatana).not.toHaveBeenCalled();
   });

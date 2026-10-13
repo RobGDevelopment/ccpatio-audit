@@ -20,6 +20,7 @@ export const coreEnvSchema = z.object({
   KATANA_E2E_MIRROR: z.string().optional(),
   CATALOG_PUBLISH_MODE: z.enum(["log", "live"]).default("log"),
   ORDER_PIPELINE_MODE: z.enum(["log", "live"]).default("log"),
+  LEDGER_PIPELINE_MODE: z.enum(["log", "live"]).default("log"),
   KATANA_USE_BOM_ROWS: z.string().optional(),
 
   // QuickBooks Online (QBO) — explicitly decoupled from NODE_ENV

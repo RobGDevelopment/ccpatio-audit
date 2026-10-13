@@ -11,6 +11,7 @@ import {
   index,
   char,
   date,
+  doublePrecision,
   integer,
   jsonb,
   numeric,
@@ -1634,3 +1635,70 @@ export const factory_release_gate = pgTable("factory_release_gate", {
     sql`(status = 'quarantined') OR (status = 'released' AND released_by IS NOT NULL AND released_at IS NOT NULL AND dossier_hash IS NOT NULL AND jsonb_array_length(blocking_codes) = 0)`
   )
 ]);
+
+/* ---------------------------------------------------------------------------
+ * Phase 9 — SRE primitives (migration 0054). ADDITIVE ONLY.
+ * RLS is enabled with NO policies: deny-all for the Supabase Data API; the app
+ * connects as the table owner via POSTGRES_URL, which bypasses RLS.
+ * ------------------------------------------------------------------------- */
+
+/** Global dead-letter queue: one row per failed Inngest run (unique run_id => idempotent). */
+export const dlq_events = pgTable(
+  "dlq_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    run_id: text("run_id").notNull().unique(),
+    function_id: text("function_id").notNull(),
+    event_id: text("event_id"),
+    event_name: text("event_name").notNull(),
+    error_name: text("error_name"),
+    error_message: text("error_message").notNull(),
+    error_stack: text("error_stack"),
+    original_event: jsonb("original_event").notNull(),
+    alert_sent: boolean("alert_sent").notNull().default(false),
+    status: text("status", { enum: ["open", "resolved"] })
+      .notNull()
+      .default("open"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("dlq_events_function_created_idx").on(table.function_id, table.created_at)],
+).enableRLS();
+
+export const sagaStatusEnum = pgEnum("saga_status", [
+  "PENDING",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "COMPENSATING",
+  "COMPENSATED",
+  "SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION",
+]);
+
+/**
+ * Saga status ledger ONLY (path_a_cad | path_b_woo | clover_qbo). No poller,
+ * no claim columns, no lease columns.
+ */
+export const saga_runs = pgTable(
+  "saga_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    saga_type: text("saga_type").notNull(),
+    correlation_key: text("correlation_key").notNull(),
+    status: sagaStatusEnum("status").notNull().default("PENDING"),
+    current_step: text("current_step"),
+    paid_at: timestamp("paid_at", { withTimezone: true }),
+    last_error: text("last_error"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("saga_runs_type_correlation_uidx").on(table.saga_type, table.correlation_key),
+  ],
+).enableRLS();
+
+/** Cross-instance token bucket (Katana 1 req/s). One row per bucket key. */
+export const rate_limit_buckets = pgTable("rate_limit_buckets", {
+  key: text("key").primaryKey(),
+  tokens: doublePrecision("tokens").notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}).enableRLS();

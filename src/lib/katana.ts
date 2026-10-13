@@ -357,6 +357,24 @@ export function createIntervalPacer(intervalMs: number): () => Promise<void> {
   };
 }
 
+/**
+ * Pacer used when nobody installed one. Three throttle layers exist and they are NOT
+ * interchangeable: an in-process pacer (above) is per-serverless-instance only; the
+ * Postgres token bucket (src/server/sre/katana-throttle.ts) is the cross-instance 1 req/s
+ * guard; the Inngest concurrency key `katana-tenant` is the third layer for scheduled work.
+ *
+ * Default ON in the app runtime. OFF under Vitest or with KATANA_SHARED_BUCKET=off.
+ * A pacer installed through `setKatanaRequestPacer` (CLI scripts) ALWAYS wins.
+ */
+async function resolveRequestPacer(): Promise<(() => Promise<void>) | null> {
+  if (katanaRequestPacer) return katanaRequestPacer;
+  if (process.env.VITEST || process.env.KATANA_SHARED_BUCKET?.trim().toLowerCase() === "off") {
+    return null;
+  }
+  const throttle = await import("@/server/sre/katana-throttle");
+  return throttle.isKatanaSharedBucketEnabled() ? throttle.getKatanaSharedBucketPacer() : null;
+}
+
 export async function katanaFetch<T = unknown>(
   pathname: string,
   options: KatanaFetchOptions = {},
@@ -365,8 +383,9 @@ export async function katanaFetch<T = unknown>(
   const retryCount = options.retryCount ?? 0;
   const url = `${(options.baseUrl ?? resolveKatanaApiBase()).replace(/\/$/, "")}${pathname}`;
 
-  if (katanaRequestPacer) {
-    await katanaRequestPacer();
+  const pacer = await resolveRequestPacer();
+  if (pacer) {
+    await pacer();
   }
 
   const response = await fetch(url, {

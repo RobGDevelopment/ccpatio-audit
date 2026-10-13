@@ -21,6 +21,8 @@ import {
 import { sendOhCrapAlert } from "@/server/alerts/oh-crap";
 import { GHL_OPPORTUNITY_WON_EVENT, ghlOpportunityIdempotencyKey } from "@/server/ghl/ingress";
 import { syncCloverPayment } from "./clover-sync";
+import { globalDlqHandler } from "./dlq";
+import { KATANA_TENANT_CONCURRENCY } from "@/server/sre/katana-throttle";
 import {
   ghlOpportunitySyncSchema,
   type GhlOpportunitySync,
@@ -417,7 +419,8 @@ export const archiveKatanaVariant = inngest.createFunction(
   { 
     id: "archive-katana-variant", 
     name: "Archive Katana Variant on Discontinue",
-    triggers: [{ event: "katana/variant.archive" }]
+    triggers: [{ event: "katana/variant.archive" }],
+    concurrency: KATANA_TENANT_CONCURRENCY,
   },
   async ({ event, step }: any) => {
     await runKatanaStep(step, "archive-variant-in-katana", async () => {
@@ -453,10 +456,14 @@ export const publishApprovedProduct = inngest.createFunction(
     id: "publish-approved-product",
     name: "Publish Approved Product",
     triggers: [{ event: "product.approved" }],
-    concurrency: {
-      limit: 1,
-      key: "event.data.globalSku",
-    },
+    // Per-SKU serialization AND the single-tenant Katana limit (Inngest allows 2 entries).
+    concurrency: [
+      {
+        limit: 1,
+        key: "event.data.globalSku",
+      },
+      KATANA_TENANT_CONCURRENCY,
+    ],
     onFailure: async ({ event }) => {
       const original = event.data.event;
       const globalSku = String(
@@ -558,6 +565,8 @@ export const systemHealthPing = inngest.createFunction(
     id: "system-health-ping",
     name: "system.health.ping",
     triggers: [{ cron: "0 6 * * *" }],
+    // Pings Katana directly (raw fetch, outside katanaFetch): serialize with the tenant limit.
+    concurrency: KATANA_TENANT_CONCURRENCY,
   },
   async ({ step }) => {
     return step.run("ping-catalog-spokes", async () => {
@@ -664,6 +673,7 @@ export const releaseCustomJob = inngest.createFunction(
     id: "release-custom-job",
     name: "Release Custom Job to Katana",
     triggers: [{ event: "factory.custom_job.released" }],
+    concurrency: KATANA_TENANT_CONCURRENCY,
     retries: 3,
   },
   async ({ event, step }) => {
@@ -681,6 +691,7 @@ export const pushApprovedFactoryOrder = inngest.createFunction(
     id: "push-approved-factory-order",
     name: "Push approved GHL factory order to Katana",
     triggers: [{ event: ORDER_APPROVED_EVENT }],
+    concurrency: KATANA_TENANT_CONCURRENCY,
     retries: 3,
   },
   async ({ event, step }) => {
@@ -715,6 +726,7 @@ export const inngestFunctions = [
   sendHoldExpirationWarnings,
   autoReleaseExpiredHolds,
   syncCloverPayment,
+  globalDlqHandler,
 ];
 
 /**

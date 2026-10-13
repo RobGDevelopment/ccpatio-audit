@@ -159,9 +159,12 @@ describe("SRE Hardening Check", () => {
       // Strip SQL line comments so prose cannot satisfy or trip a check.
       const code = () => sqlText().replace(/--.*$/gm, "");
 
-      it("is registered in the journal as the last entry", () => {
-        const entries = journal().entries;
-        expect(entries[entries.length - 1]!.tag).toBe(tag);
+      it("is registered in the journal, immediately before the Phase 9 SRE migration", () => {
+        const tags = journal().entries.map((e) => e.tag);
+        const at = tags.indexOf(tag);
+        expect(at, `${tag} is not in _journal.json`).toBeGreaterThan(0);
+        // Phase 9 appended 0054 after it; this migration must not move.
+        expect(tags[at + 1]).toBe("0054_sre_dlq_saga_buckets");
       });
 
       it("enables RLS on both tables and revokes anon and authenticated", () => {
@@ -180,10 +183,15 @@ describe("SRE Hardening Check", () => {
     });
 
     it("the QBO mutex runs on the dedicated connection, not the shared pool", () => {
-      const source = read("src/server/integrations/qbo/client.ts");
-      const fetchFn = source.slice(source.indexOf("async function qboFetch"));
-      expect(fetchFn.slice(0, 600)).toContain("getMutexDb()");
+      // Phase 9 Task 4: the lock moved into token-refresh.ts. Plain token reads use the
+      // shared pool (getDb) so the single mutex connection is never starved by reads.
+      const source = read("src/server/integrations/qbo/token-refresh.ts");
+      const lockFn = source.slice(source.indexOf("export async function withQboRefreshLock"));
+      expect(lockFn.slice(0, 600)).toContain("getMutexDb()");
       expect(source).toContain("pg_advisory_xact_lock");
+      expect(source).not.toMatch(/pg_advisory_lock\b/);
+      const clientSource = read("src/server/integrations/qbo/client.ts");
+      expect(clientSource).not.toContain("getMutexDb");
       const client = read("src/server/db/client.ts");
       expect(client).toMatch(/max: 1/);
       expect(client).toMatch(/prepare: false/);
