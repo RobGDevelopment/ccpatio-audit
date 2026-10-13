@@ -47,6 +47,31 @@ export async function logIncomingWebhook(
   return "inserted";
 }
 
+/**
+ * Atomic insert-once for the audit row. `INSERT ... ON CONFLICT (idempotency_key) DO NOTHING`:
+ * a concurrent redelivery cannot raise an unhandled 23505, and an already `processed` row is
+ * NEVER touched (unlike {@link logIncomingWebhook}, which flips it to `duplicate`).
+ */
+export async function insertIncomingWebhookOnce(
+  input: WebhookLogInput,
+  db: Pick<ReturnType<typeof getDb>, "insert"> = getDb(),
+): Promise<"inserted" | "duplicate"> {
+  const rows = await db
+    .insert(incoming_webhooks)
+    .values({
+      source: input.source,
+      event_name: input.eventName,
+      idempotency_key: input.idempotencyKey,
+      payload: input.payload as object,
+      status: input.status,
+      error_message: input.errorMessage ?? null,
+      updated_at: new Date(),
+    })
+    .onConflictDoNothing({ target: incoming_webhooks.idempotency_key })
+    .returning({ id: incoming_webhooks.id });
+  return rows.length > 0 ? "inserted" : "duplicate";
+}
+
 export async function updateIncomingWebhookStatus(
   idempotencyKey: string,
   status: "processed" | "failed",

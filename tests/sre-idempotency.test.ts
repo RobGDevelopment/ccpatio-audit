@@ -8,6 +8,8 @@ import {
   qboRequestId,
 } from "@/server/sre/idempotency";
 import { ghlFactoryOrderNo } from "@/server/ghl/hold-order";
+import { mapWooOrderToKatanaSalesOrder } from "@/lib/katana";
+import type { WooOrderWebhook } from "@/server/woocommerce/ingress.schema";
 
 describe("inngestEventId", () => {
   it("is deterministic and namespaced", () => {
@@ -53,6 +55,43 @@ describe("katanaOrderNo", () => {
     expect(() => katanaOrderNo("clover", "1")).toThrow(/unsupported source/);
     expect(() => katanaOrderNo("woo", "unknown")).toThrow(/externalId is missing/);
     expect(() => katanaOrderNo("ghl", "")).toThrow(/externalId is missing/);
+  });
+
+  describe("D1: Woo `number` is the single source of truth", () => {
+    it.each([
+      ["1042", "1042"],
+      ["  1042  ", "1042"],
+      [1042, "1042"],
+      ["", "WOO-981"],
+      ["  ", "WOO-981"],
+      [null, "WOO-981"],
+      [undefined, "WOO-981"],
+    ] as const)("number %j -> %s", (number, expected) => {
+      expect(katanaOrderNo("woo", 981, { number })).toBe(expected);
+      expect(katanaOrderNo("woocommerce", "981", { number })).toBe(expected);
+    });
+
+    it.each(["1042", "  1042 ", "", "  ", undefined, "A-7"] as const)(
+      "drift guard: helper equals mapWooOrderToKatanaSalesOrder().orderNo for number %j",
+      (number) => {
+        const order = {
+          id: 981,
+          number,
+          status: "processing",
+          currency: "USD",
+          meta_data: [],
+          line_items: [{ name: "x", product_id: 1, quantity: 1, sku: "FIN-X", meta_data: [] }],
+        } as unknown as WooOrderWebhook;
+        expect(mapWooOrderToKatanaSalesOrder(order).orderNo).toBe(
+          katanaOrderNo("woo", order.id, { number }),
+        );
+        expect(mapWooOrderToKatanaSalesOrder(order).orderNo.trim()).not.toBe("");
+      },
+    );
+
+    it("ghl ignores `number` and is unchanged", () => {
+      expect(katanaOrderNo("ghl", "opp_42", { number: "7" })).toBe("GHL-opp_42");
+    });
   });
 });
 

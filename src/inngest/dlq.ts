@@ -9,8 +9,10 @@
  *   3. alert_sent=true
  * If the alert fails we THROW so Inngest retries; the unique run_id makes the retry safe.
  */
+import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { inngest } from "@/inngest/client";
+import { resolveDlqContext } from "@/inngest/dlq-context";
 import { getDb } from "@/server/db/client";
 import { dlq_events } from "@/server/db/schema";
 import { sendOhCrapAlert, type OhCrapAlertResult } from "@/server/alerts/oh-crap";
@@ -153,26 +155,80 @@ const defaultDeps: DlqDeps = {
 };
 
 export type DlqOutcome =
-  | { status: "ignored"; reason: "self_loop" | "missing_run_id" }
-  | { status: "recorded"; inserted: boolean; alerted: boolean };
+  | { status: "ignored"; reason: "self_loop" }
+  | { status: "recorded"; inserted: boolean; alerted: boolean; synthetic?: true };
 
-/** Testable core of the global DLQ handler. */
+/** Prefix on `error_message` when the failure event had no `run_id`. */
+export const DLQ_MALFORMED_PREFIX = "[malformed failure event: no run_id] ";
+
+/** Alert reaches nobody: the handler cannot alert about itself (loop guard), so log loudly. */
+export const DLQ_ALERT_UNDELIVERED_TAG = "dlq-alert-undelivered";
+
+/**
+ * Deterministic stand-in for a missing `run_id`:
+ * `norunid:<function_id|unknown>:<event.id | first 16 hex of sha256(redacted event JSON)>`.
+ * Same input => same key, so redelivery stays idempotent on the unique `run_id` column.
+ */
+export function syntheticRunId(data: FunctionFailedData): string {
+  const fn = data.function_id?.trim() || "unknown";
+  const eventId = typeof data.event?.id === "string" ? data.event.id.trim() : "";
+  if (eventId) return `norunid:${fn}:${eventId}`;
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(redactSecrets(data.event ?? null)) ?? "null";
+  } catch {
+    serialized = "unserializable";
+  }
+  const digest = createHash("sha256").update(serialized).digest("hex").slice(0, 16);
+  return `norunid:${fn}:${digest}`;
+}
+
+/** The `attempt` / `maxAttempts` the Inngest handler context exposes (BaseContext). */
+export type DlqAttemptContext = { attempt?: number; maxAttempts?: number };
+
+function isFinalAttempt(ctx: DlqAttemptContext): boolean {
+  if (typeof ctx.attempt !== "number") return false;
+  const max = typeof ctx.maxAttempts === "number" ? ctx.maxAttempts : 1 + DLQ_HANDLER_RETRIES;
+  return ctx.attempt >= max - 1;
+}
+
+/** `retries` of `globalDlqHandler` (so total attempts = retries + 1). */
+export const DLQ_HANDLER_RETRIES = 4;
+
+/**
+ * Testable core of the global DLQ handler.
+ *
+ * NEVER DROPS a failure: the only ignored event is the DLQ handler's own failure (loop guard).
+ * A missing `run_id` gets a synthetic deterministic key, a missing `function_id` records
+ * `"unknown"`.
+ */
 export async function handleFunctionFailed(
   data: FunctionFailedData,
   deps: DlqDeps = defaultDeps,
+  attemptCtx: DlqAttemptContext = {},
 ): Promise<DlqOutcome> {
   const functionId = data.function_id ?? "";
   if (isDlqHandlerFunction(functionId)) {
     return { status: "ignored", reason: "self_loop" };
   }
-  const runId = data.run_id;
-  if (!runId) {
-    return { status: "ignored", reason: "missing_run_id" };
+
+  const synthetic = !data.run_id;
+  const runId = data.run_id || syntheticRunId(data);
+  const baseMessage = data.error?.message?.trim() || "Unknown error (no message on failure event)";
+  const errorMessage = synthetic ? `${DLQ_MALFORMED_PREFIX}${baseMessage}` : baseMessage;
+
+  if (synthetic) {
+    console.error(
+      JSON.stringify({
+        tag: "dlq-malformed-failure-event",
+        functionId: functionId || "unknown",
+        eventId: data.event?.id ?? null,
+        syntheticRunId: runId,
+      }),
+    );
   }
 
-  const errorMessage = data.error?.message?.trim() || "Unknown error (no message on failure event)";
-
-  // 1. DB row first (idempotent on run_id).
+  // 1. DB row first (idempotent on run_id). If this throws, Inngest retries the handler.
   const inserted = await deps.record({
     runId,
     functionId: functionId || "unknown",
@@ -183,34 +239,59 @@ export async function handleFunctionFailed(
     errorStack: data.error?.stack ?? null,
     originalEvent: data.event ?? {},
   });
+  const outcome = (alerted: boolean): DlqOutcome => ({
+    status: "recorded",
+    inserted,
+    alerted,
+    ...(synthetic ? { synthetic: true as const } : {}),
+  });
 
   // Double delivery / retry after a successful alert must not alert twice.
   if (await deps.isAlertSent(runId)) {
-    return { status: "recorded", inserted, alerted: false };
+    return outcome(false);
   }
 
-  // 2. Alert. ok:false => throw so Inngest retries (safe: row exists, run_id is unique).
+  // 2. The ONE alert for this run. Per-function id + resolution link come from the resolver
+  //    (it replaced the old per-function onFailure alerts, which doubled every alert).
+  const context = resolveDlqContext(functionId, data.event);
   const result = await deps.alert({
     reason: "function_failed",
-    source: "system",
-    externalId: runId,
-    message: `${functionId || "unknown function"} exhausted retries: ${scrubSecretText(errorMessage).slice(0, 500)}`,
+    source: context.source ?? "system",
+    externalId: context.externalId ?? runId,
+    ...(context.sku ? { sku: context.sku } : {}),
+    ...(context.resolutionPath ? { resolutionPath: context.resolutionPath } : {}),
+    message: `${functionId || "unknown function"} exhausted retries: ${scrubSecretText(errorMessage).slice(0, 500)} [run ${runId}]`,
   });
   if (!result.ok) {
+    if (isFinalAttempt(attemptCtx)) {
+      // Final attempt, alert still undeliverable (e.g. no OH_CRAP_ADMIN_EMAIL). This handler
+      // cannot alert about itself (loop guard), so the row stays alert_sent=false and this
+      // line is the loud signal. No UI / redrive endpoint (out of scope).
+      console.error(
+        JSON.stringify({
+          tag: DLQ_ALERT_UNDELIVERED_TAG,
+          runId,
+          functionId: functionId || "unknown",
+          error: scrubSecretText(result.error).slice(0, 300),
+        }),
+      );
+    }
+    // ok:false => throw so Inngest retries (safe: row exists, run_id is unique).
     throw new Error(`DLQ alert failed for run ${runId}: ${result.error}`);
   }
 
   // 3. Mark delivered.
   await deps.markAlertSent(runId);
-  return { status: "recorded", inserted, alerted: true };
+  return outcome(true);
 }
 
 export const globalDlqHandler = inngest.createFunction(
   {
     id: GLOBAL_DLQ_HANDLER_ID,
     name: "Global DLQ handler",
-    retries: 4,
+    retries: DLQ_HANDLER_RETRIES,
     triggers: [{ event: "inngest/function.failed" }],
   },
-  async ({ event }) => handleFunctionFailed(event.data as FunctionFailedData),
+  async ({ event, attempt, maxAttempts }) =>
+    handleFunctionFailed(event.data as FunctionFailedData, undefined, { attempt, maxAttempts }),
 );

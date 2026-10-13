@@ -51,7 +51,7 @@ function httpStatus(error: unknown): number | null {
   return null;
 }
 
-/** 401/403 → NonRetriableError so Inngest stops and onFailure emails IT. */
+/** 401/403 -> NonRetriableError so Inngest stops and the global DLQ (src/inngest/dlq.ts) emails IT. */
 export function throwProviderAuthOrRethrow(
   channel: string,
   error: unknown,

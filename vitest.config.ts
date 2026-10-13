@@ -20,6 +20,7 @@ const dbIntegrationTests = [
   "tests/sre-schema-smoke.test.ts",
   "tests/sre-token-bucket.test.ts",
   "tests/vault-buckets.test.ts",
+  "tests/woo-saga-store.test.ts",
 ];
 
 export default defineConfig({

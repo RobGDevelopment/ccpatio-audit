@@ -16,6 +16,8 @@ export const coreEnvSchema = z.object({
   KATANA_API_KEY: z.string().optional(),
   KATANA_PERSONAL_ACCESS_TOKEN: z.string().optional(),
   KATANA_WEBHOOK_SECRET: z.string().optional(),
+  // WooCommerce order webhook HMAC secret (roadmap step 6). Optional here: the route fails closed (503) without it.
+  WOOCOMMERCE_WEBHOOK_SECRET: z.string().optional(),
   KATANA_API_BASE: z.string().optional(),
   KATANA_E2E_MIRROR: z.string().optional(),
   CATALOG_PUBLISH_MODE: z.enum(["log", "live"]).default("log"),

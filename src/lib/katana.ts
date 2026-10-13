@@ -34,6 +34,7 @@ import {
   getCatalogPublishMode,
 } from "@/server/pipeline/catalog-mode";
 import type { WooOrderWebhook } from "@/server/woocommerce/ingress.schema";
+import { katanaOrderNo } from "@/server/sre/idempotency";
 import {
   katanaIsSellableProduct,
   katanaProductSyncFlags,
@@ -363,11 +364,20 @@ export function createIntervalPacer(intervalMs: number): () => Promise<void> {
  * Postgres token bucket (src/server/sre/katana-throttle.ts) is the cross-instance 1 req/s
  * guard; the Inngest concurrency key `katana-tenant` is the third layer for scheduled work.
  *
- * Default ON in the app runtime. OFF under Vitest or with KATANA_SHARED_BUCKET=off.
- * A pacer installed through `setKatanaRequestPacer` (CLI scripts) ALWAYS wins.
+ * Default ON in the app runtime ONLY (Next route handlers, the Inngest serve route, server
+ * actions). Next 16 inlines the literal `process.env.NEXT_RUNTIME` as "nodejs" / "edge" in
+ * every server bundle (next/dist/build/define-env.js) and leaves it undefined in plain
+ * Node, so tsx CLI scripts and Vitest get NO default pacer: the shared bucket's Postgres
+ * client would otherwise keep their event loop alive forever. OFF as well with
+ * KATANA_SHARED_BUCKET=off. A pacer installed through `setKatanaRequestPacer` (CLI scripts)
+ * ALWAYS wins.
+ *
+ * NOTE: keep the literal `process.env.NEXT_RUNTIME` here. It is replaced at build time; a
+ * lookup through an aliased/destructured env object would NOT be and would read undefined.
  */
 async function resolveRequestPacer(): Promise<(() => Promise<void>) | null> {
   if (katanaRequestPacer) return katanaRequestPacer;
+  if (!process.env.NEXT_RUNTIME) return null;
   if (process.env.VITEST || process.env.KATANA_SHARED_BUCKET?.trim().toLowerCase() === "off") {
     return null;
   }
@@ -1515,7 +1525,7 @@ export function mapWooOrderToKatanaSalesOrder(
   ].filter((row): row is KatanaSalesOrderAddress => row !== null);
 
   return {
-    orderNo: order.number ?? `WOO-${order.id}`,
+    orderNo: katanaOrderNo("woo", order.id, { number: order.number }),
     source: "woocommerce",
     externalId: String(order.id),
     currency: order.currency ?? "USD",

@@ -17,7 +17,7 @@ export function getDb(): MiddlewareDb {
   if (!url) {
     throw new Error("POSTGRES_URL is not set");
   }
-  queryClient = postgres(url, { prepare: false });
+  queryClient = postgres(url, { prepare: false, idle_timeout: 20, connect_timeout: 10 });
   dbSingleton = drizzle(queryClient, { schema });
   return dbSingleton;
 }

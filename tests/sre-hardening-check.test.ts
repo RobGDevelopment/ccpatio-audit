@@ -79,11 +79,11 @@ describe("SRE Hardening Check", () => {
       expect(text).toMatch(/effect_claims/);
     });
 
-    it("V8 order functions stay unregistered", () => {
+    it("Woo saga (roadmap step 6) is registered; the legacy GHL Won order function stays unregistered", () => {
       const source = read("src/inngest/functions.ts");
       const match = source.match(/export const inngestFunctions = \[([\s\S]*?)\];/);
       expect(match, "inngestFunctions array not found").not.toBeNull();
-      expect(match![1]).not.toContain("processWooCommerceOrder");
+      expect(match![1]).toContain("processWooCommerceOrder");
       expect(match![1]).not.toContain("syncGhlOpportunity");
     });
   });

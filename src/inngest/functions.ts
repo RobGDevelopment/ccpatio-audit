@@ -16,12 +16,12 @@ import {
   createMakeToOrderManufacturingOrders,
   KatanaApiError,
   mapGhlOpportunityToKatanaSalesOrder,
-  mapWooOrderToKatanaSalesOrder,
 } from "@/lib/katana";
 import { sendOhCrapAlert } from "@/server/alerts/oh-crap";
 import { GHL_OPPORTUNITY_WON_EVENT, ghlOpportunityIdempotencyKey } from "@/server/ghl/ingress";
 import { syncCloverPayment } from "./clover-sync";
 import { globalDlqHandler } from "./dlq";
+import { processWooCommerceOrder } from "./woo-order";
 import { KATANA_TENANT_CONCURRENCY } from "@/server/sre/katana-throttle";
 import {
   ghlOpportunitySyncSchema,
@@ -37,10 +37,6 @@ import {
   logIncomingWebhook,
   updateIncomingWebhookStatus,
 } from "@/server/webhooks/incoming-log";
-import {
-  parseWooOrderWebhook,
-  type SkuIngressIssue,
-} from "@/server/woocommerce/ingress.schema";
 
 export type { GhlOpportunitySync };
 export { ghlOpportunitySyncSchema } from "@/server/ghl/ingress.schema";
@@ -49,10 +45,6 @@ function ghlEventOpportunityPayload(data: unknown): unknown {
   if (!data || typeof data !== "object") return data;
   const record = data as Record<string, unknown>;
   return record.opportunity ?? data;
-}
-
-function formatIssues(issues: SkuIngressIssue[]): string {
-  return issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ");
 }
 
 function formatKatanaFailure(error: unknown): string {
@@ -95,128 +87,9 @@ async function alertPipelineFailure(input: {
   });
 }
 
-export const processWooCommerceOrder = inngest.createFunction(
-  {
-    id: "process-woocommerce-order",
-    name: "Process WooCommerce Order",
-    triggers: [{ event: "woo.order.validated" }],
-    onFailure: async ({ error, event }) => {
-      const data = event.data.event?.data as { id?: unknown } | undefined;
-      await alertPipelineFailure({
-        reason: "unknown",
-        source: "woocommerce",
-        externalId: String(data?.id ?? "unknown"),
-        sku: firstSkuFromPayload(data),
-        message: error.message,
-        rawPayload: event.data,
-      });
-    },
-  },
-  async ({ event, step }) => {
-    const mode = getOrderPipelineMode();
-    const idempotencyKey = `woo-order-${String(event.data.id ?? "unknown")}`;
-
-    const parsed = parseWooOrderWebhook(event.data);
-    if (!parsed.ok) {
-      await step.run("log-invalid-woo-order", async () => {
-        await logIncomingWebhook({
-          source: "woocommerce",
-          eventName: event.name,
-          idempotencyKey,
-          payload: event.data,
-          status: "failed",
-          errorMessage: formatIssues(parsed.issues),
-        });
-        await alertPipelineFailure({
-          reason: "validation_failed",
-          source: "woocommerce",
-          externalId: String((event.data as { id?: unknown })?.id ?? "unknown"),
-          message: formatIssues(parsed.issues),
-          rawPayload: event.data,
-        });
-      });
-      return {
-        ok: false,
-        reason: "validation_failed",
-        issues: parsed.issues,
-        pipelineMode: mode,
-      };
-    }
-
-    const logResult = await step.run("log-woo-order", async () =>
-      logIncomingWebhook({
-        source: "woocommerce",
-        eventName: event.name,
-        idempotencyKey,
-        payload: parsed.data,
-        status: "received",
-      }),
-    );
-
-    if (logResult === "duplicate") {
-      return { ok: true, duplicate: true, orderId: parsed.data.id, pipelineMode: mode };
-    }
-
-    if (!canMutateKatanaOrders(mode)) {
-      await step.run("mark-woo-order-log-only", async () => {
-        await updateIncomingWebhookStatus(
-          idempotencyKey,
-          "processed",
-          `ORDER_PIPELINE_MODE=${mode} — Katana SO/MTO skipped (${pipelineModeLabel(mode)}).`,
-        );
-      });
-      return {
-        ok: true,
-        duplicate: false,
-        orderId: parsed.data.id,
-        lineItemCount: parsed.data.line_items.length,
-        katanaSalesOrderCreated: false,
-        pipelineMode: mode,
-        dryRun: true,
-      };
-    }
-
-    try {
-      const salesOrder = await step.run("create-katana-sales-order", async () => {
-        const orderPayload = mapWooOrderToKatanaSalesOrder(parsed.data);
-        return createKatanaSalesOrder(orderPayload);
-      });
-
-      const mtoOrders = await step.run("create-katana-mto-orders", async () =>
-        createMakeToOrderManufacturingOrders(salesOrder.salesOrderRowIds),
-      );
-
-      await step.run("mark-woo-order-processed", async () => {
-        await updateIncomingWebhookStatus(idempotencyKey, "processed");
-      });
-
-      return {
-        ok: true,
-        duplicate: false,
-        orderId: parsed.data.id,
-        lineItemCount: parsed.data.line_items.length,
-        katanaSalesOrderId: salesOrder.salesOrderId,
-        katanaOrderNo: salesOrder.orderNo,
-        manufacturingOrderIds: mtoOrders.map((mo) => mo.manufacturingOrderId),
-        pipelineMode: mode,
-      };
-    } catch (error: unknown) {
-      const message = formatKatanaFailure(error);
-      await step.run("mark-woo-order-failed", async () => {
-        await updateIncomingWebhookStatus(idempotencyKey, "failed", message);
-        await alertPipelineFailure({
-          reason: "katana_rejected",
-          source: "woocommerce",
-          externalId: String(parsed.data.id),
-          sku: firstSkuFromPayload(parsed.data),
-          message,
-          rawPayload: parsed.data,
-        });
-      });
-      throw error instanceof Error ? error : new Error(message);
-    }
-  },
-);
+// The Woo paid-order saga lives in ./woo-order (Phase 10, roadmap step 6). Re-exported so existing
+// imports keep working. It is REGISTERED below; it has no alerting onFailure (global DLQ alerts).
+export { processWooCommerceOrder };
 
 export const syncGhlOpportunity = inngest.createFunction(
   {
@@ -464,31 +337,9 @@ export const publishApprovedProduct = inngest.createFunction(
       },
       KATANA_TENANT_CONCURRENCY,
     ],
-    onFailure: async ({ event }) => {
-      const original = event.data.event;
-      const globalSku = String(
-        (original?.data as { globalSku?: unknown } | undefined)?.globalSku ??
-          "",
-      );
-      const exportId = String(
-        (original?.data as { exportId?: unknown } | undefined)?.exportId ?? "",
-      );
-      const errMsg =
-        typeof event.data.error?.message === "string"
-          ? event.data.error.message
-          : "publish-approved-product exhausted retries";
-
-      await sendOhCrapAlert({
-        reason: "unknown",
-        source: "system",
-        externalId: exportId || globalSku || event.data.run_id,
-        sku: globalSku || undefined,
-        message: errMsg,
-        resolutionPath: globalSku
-          ? `/admin/quarantine?sku=${encodeURIComponent(globalSku)}`
-          : "/admin/quarantine",
-      });
-    },
+    // No onFailure alert: the global DLQ (src/inngest/dlq.ts + dlq-context.ts) is the single
+    // alert authority and carries the /admin/quarantine?sku= link. A second alert here would
+    // double every exhausted run.
   },
   async ({ event, step }) => {
     const globalSku = String(event.data.globalSku ?? "").trim().toUpperCase();
@@ -591,12 +442,10 @@ export const processCadUpload = inngest.createFunction(
       limit: 1,
       key: "event.data.globalSku",
     },
+    // Non-alert side effect only. The ALERT comes from the global DLQ (single authority,
+    // carries the /admin/factory-bom?sku= link via dlq-context.ts).
     onFailure: async ({ event }) => {
       const original = event.data.event;
-      const globalSku = String(
-        (original?.data as { globalSku?: unknown } | undefined)?.globalSku ??
-          "",
-      );
       const uploadId = String(
         (original?.data as { uploadId?: unknown } | undefined)?.uploadId ?? "",
       );
@@ -622,17 +471,6 @@ export const processCadUpload = inngest.createFunction(
           /* best-effort */
         }
       }
-
-      await sendOhCrapAlert({
-        reason: "unknown",
-        source: "system",
-        externalId: uploadId || globalSku || event.data.run_id,
-        sku: globalSku || undefined,
-        message: errMsg,
-        resolutionPath: globalSku
-          ? `/admin/factory-bom?sku=${encodeURIComponent(globalSku)}`
-          : "/admin/factory-bom",
-      });
     },
   },
   async ({ event, step }) => {
@@ -711,8 +549,9 @@ export const pushApprovedFactoryOrder = inngest.createFunction(
 );
 
 /**
- * Served by `/api/inngest`. Woo and the legacy GHL Won auto-push stay
- * unregistered. `order.approved` is the only GHL factory writer (§2.4).
+ * Served by `/api/inngest`. The Woo paid-order saga (roadmap step 6) is registered; it is
+ * dry-run unless ORDER_PIPELINE_MODE=live. The legacy GHL Won auto-push stays unregistered.
+ * `order.approved` is the only GHL factory writer (§2.4).
  */
 export const inngestFunctions = [
   sendStaffFeedbackDigest,
@@ -726,17 +565,15 @@ export const inngestFunctions = [
   sendHoldExpirationWarnings,
   autoReleaseExpiredHolds,
   syncCloverPayment,
+  processWooCommerceOrder,
   globalDlqHandler,
 ];
 
 /**
- * V8 order pipeline — defined but NOT registered. Do not add these to
- * `inngestFunctions` or `serve()`. Native vendor connectors own orders.
+ * Legacy GHL Won order pipeline — defined but NOT registered. Do not add this to
+ * `inngestFunctions` or `serve()`. `order.approved` owns GHL factory orders.
  */
-export const unregisteredTransactionalFunctions = [
-  processWooCommerceOrder,
-  syncGhlOpportunity,
-] as const;
+export const unregisteredTransactionalFunctions = [syncGhlOpportunity] as const;
 
 /**
  * OpenAI SEO assistant — defined but NOT registered. Catalog publish must not

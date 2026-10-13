@@ -11,6 +11,9 @@ import {
   redactSecrets,
   scrubSecretText,
   truncateStack,
+  DLQ_ALERT_UNDELIVERED_TAG,
+  DLQ_MALFORMED_PREFIX,
+  syntheticRunId,
   type DlqDeps,
   type FunctionFailedData,
 } from "@/inngest/dlq";
@@ -115,11 +118,150 @@ describe("loop guard", () => {
     expect(deps.alert).not.toHaveBeenCalled();
   });
 
-  it("ignores events without a run id (cannot be made idempotent)", async () => {
+  it("only the self-loop is ever ignored: a failure event with no run_id is RECORDED, never dropped (D5)", async () => {
     const deps = makeDeps();
     const out = await handleFunctionFailed({ function_id: "fn-a" }, deps);
-    expect(out).toEqual({ status: "ignored", reason: "missing_run_id" });
-    expect(deps.record).not.toHaveBeenCalled();
+    expect(out).toEqual({ status: "recorded", inserted: true, alerted: true, synthetic: true });
+    expect(deps.record).toHaveBeenCalledTimes(1);
+    expect(deps.alert).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("D5: failure events without a run_id", () => {
+  const noRun = (over: Partial<FunctionFailedData> = {}): FunctionFailedData => ({
+    function_id: "ccpatio-middleware-fn-a",
+    error: { message: "kaboom" },
+    event: { id: "evt-77", name: "x/y", data: { a: 1 } },
+    ...over,
+  });
+
+  it("synthesizes a stable `norunid:<fn>:<event.id>` key, prefixes the message, and alerts", async () => {
+    const deps = makeDeps();
+    await handleFunctionFailed(noRun(), deps);
+    expect(deps.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: "norunid:ccpatio-middleware-fn-a:evt-77",
+        errorMessage: `${DLQ_MALFORMED_PREFIX}kaboom`,
+      }),
+    );
+    expect(DLQ_MALFORMED_PREFIX).toBe("[malformed failure event: no run_id] ");
+    expect(deps.alert).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to the first 16 hex of sha256 of the redacted event when there is no event.id", () => {
+    const key = syntheticRunId({ function_id: "fn-b", event: { name: "x", data: { token: "A", n: 1 } } });
+    expect(key).toMatch(/^norunid:fn-b:[0-9a-f]{16}$/);
+    // Redaction happens BEFORE hashing, so a rotated secret does not fork the key...
+    expect(key).toBe(
+      syntheticRunId({ function_id: "fn-b", event: { name: "x", data: { token: "B", n: 1 } } }),
+    );
+    // ...but real content differences do.
+    expect(key).not.toBe(
+      syntheticRunId({ function_id: "fn-b", event: { name: "x", data: { token: "A", n: 2 } } }),
+    );
+  });
+
+  it("the same malformed event delivered twice yields ONE row and ONE alert", async () => {
+    const rows = new Set<string>();
+    const alertedRuns = new Set<string>();
+    const alert = vi.fn(async () => ({ ok: true as const, emailed: true, resolutionUrl: "u" }));
+    const deps = makeDeps({
+      record: vi.fn(async (input: { runId: string }) => {
+        const fresh = !rows.has(input.runId);
+        rows.add(input.runId);
+        return fresh;
+      }),
+      isAlertSent: vi.fn(async (runId: string) => alertedRuns.has(runId)),
+      markAlertSent: vi.fn(async (runId: string) => {
+        alertedRuns.add(runId);
+      }),
+      alert,
+    });
+    const first = await handleFunctionFailed(noRun(), deps);
+    const second = await handleFunctionFailed(noRun(), deps);
+    expect(first).toMatchObject({ inserted: true, alerted: true, synthetic: true });
+    expect(second).toMatchObject({ inserted: false, alerted: false, synthetic: true });
+    expect(rows.size).toBe(1);
+    expect(alert).toHaveBeenCalledTimes(1);
+  });
+
+  it("a missing function_id records \"unknown\" instead of being ignored", async () => {
+    const deps = makeDeps();
+    const out = await handleFunctionFailed({ run_id: "r-1", error: { message: "m" } }, deps);
+    expect(out).toEqual({ status: "recorded", inserted: true, alerted: true });
+    expect(deps.record).toHaveBeenCalledWith(
+      expect.objectContaining({ runId: "r-1", functionId: "unknown" }),
+    );
+    // Neither run_id nor function_id: still recorded.
+    const bare = makeDeps();
+    await handleFunctionFailed({}, bare);
+    expect(bare.record).toHaveBeenCalledWith(
+      expect.objectContaining({ functionId: "unknown", runId: expect.stringMatching(/^norunid:unknown:[0-9a-f]{16}$/) }),
+    );
+  });
+
+  it("writes one structured console.error line for the malformed event", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await handleFunctionFailed(noRun(), makeDeps());
+      const lines = spy.mock.calls.map((c) => String(c[0]));
+      const structured = lines.filter((l) => l.includes("dlq-malformed-failure-event"));
+      expect(structured).toHaveLength(1);
+      expect(JSON.parse(structured[0]!)).toMatchObject({
+        tag: "dlq-malformed-failure-event",
+        syntheticRunId: "norunid:ccpatio-middleware-fn-a:evt-77",
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("if even the synthetic row cannot be persisted, it THROWS so Inngest retries", async () => {
+    const deps = makeDeps({
+      record: vi.fn(async () => {
+        throw new Error("db down");
+      }),
+    });
+    await expect(handleFunctionFailed(noRun(), deps)).rejects.toThrow(/db down/);
+    expect(deps.alert).not.toHaveBeenCalled();
+  });
+});
+
+describe("D5: alert undeliverable (no OH_CRAP_ADMIN_EMAIL)", () => {
+  const failing = () => ({ ok: false as const, error: "OH_CRAP_ADMIN_EMAIL is not set" });
+  const sample: FunctionFailedData = { function_id: "fn", run_id: "run-u", error: { message: "m" } };
+
+  it("throws every attempt (so Inngest retries) and emits ONE loud JSON line only on the final attempt", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const deps = makeDeps({ alert: vi.fn(async () => failing()) });
+        await expect(
+          handleFunctionFailed(sample, deps, { attempt, maxAttempts: 5 }),
+        ).rejects.toThrow(/DLQ alert failed for run run-u/);
+        expect(deps.markAlertSent).not.toHaveBeenCalled(); // row stays alert_sent=false
+      }
+      const loud = spy.mock.calls
+        .map((c) => String(c[0]))
+        .filter((l) => l.includes(DLQ_ALERT_UNDELIVERED_TAG));
+      expect(loud).toHaveLength(1);
+      expect(JSON.parse(loud[0]!)).toMatchObject({ tag: "dlq-alert-undelivered", runId: "run-u" });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("stays quiet when no attempt context is supplied (non-final or unknown)", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const deps = makeDeps({ alert: vi.fn(async () => failing()) });
+      await expect(handleFunctionFailed(sample, deps)).rejects.toThrow();
+      expect(
+        spy.mock.calls.map((c) => String(c[0])).some((l) => l.includes(DLQ_ALERT_UNDELIVERED_TAG)),
+      ).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 
@@ -210,7 +352,7 @@ describe("handleFunctionFailed ordering", () => {
   it("alert payload uses function_failed/system and carries no token values", async () => {
     const deps = makeDeps();
     await handleFunctionFailed(
-      { ...failure, error: { message: "refresh failed Bearer abc123SECRET" } },
+      { ...failure, function_id: "ccpatio-middleware-some-other-fn", error: { message: "refresh failed Bearer abc123SECRET" } },
       deps,
     );
     const alertInput = (deps.alert as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
@@ -220,8 +362,25 @@ describe("handleFunctionFailed ordering", () => {
     };
     expect(alertInput.reason).toBe("function_failed");
     expect(alertInput.source).toBe("system");
-    expect(alertInput.externalId).toBe("run-123");
+    expect(alertInput.externalId).toBe("run-123"); // unknown function: generic alert keyed by run id
     expect(JSON.stringify(alertInput)).not.toContain("abc123SECRET");
+  });
+
+  it("D4: a known function's alert carries the resolver context (id + resolution link), exactly once", async () => {
+    const deps = makeDeps();
+    await handleFunctionFailed(failure, deps); // publish-approved-product, globalSku ABC
+    expect(deps.alert).toHaveBeenCalledTimes(1);
+    expect(deps.alert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reason: "function_failed",
+        source: "system",
+        externalId: "ABC",
+        sku: "ABC",
+        resolutionPath: "/admin/quarantine?sku=ABC",
+      }),
+    );
+    const sent = JSON.stringify((deps.alert as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0]);
+    expect(sent).not.toContain("t0p"); // event token never reaches the alert
   });
 
   it("tolerates a failure event with no message", async () => {

@@ -29,9 +29,11 @@ import {
   getLedgerPipelineMode,
 } from "@/server/pipeline/ledger-mode";
 import { runCloverPaymentSync } from "@/inngest/clover-sync";
+import { canMutateKatanaOrders, getOrderPipelineMode } from "@/server/pipeline/mode";
 import { coreEnvSchema } from "@/env";
 
 const ORIGINAL = process.env.LEDGER_PIPELINE_MODE;
+const ORIGINAL_ORDER = process.env.ORDER_PIPELINE_MODE;
 
 function fakeStep() {
   return { run: async <T,>(_id: string, fn: () => Promise<T>) => fn() };
@@ -51,7 +53,41 @@ beforeEach(() => {
 afterEach(() => {
   if (ORIGINAL === undefined) delete process.env.LEDGER_PIPELINE_MODE;
   else process.env.LEDGER_PIPELINE_MODE = ORIGINAL;
+  if (ORIGINAL_ORDER === undefined) delete process.env.ORDER_PIPELINE_MODE;
+  else process.env.ORDER_PIPELINE_MODE = ORIGINAL_ORDER;
   vi.restoreAllMocks();
+});
+
+describe("getOrderPipelineMode (fail closed; Woo/GHL order gate)", () => {
+  it("defaults to log when unset", () => {
+    delete process.env.ORDER_PIPELINE_MODE;
+    expect(getOrderPipelineMode()).toBe("log");
+    expect(canMutateKatanaOrders()).toBe(false);
+  });
+
+  it.each([
+    ["live", "live"],
+    ["LIVE", "live"],
+    [" LIVE ", "live"],
+    [" live ", "live"],
+    ["Live", "live"],
+    ["\tLIVE\n", "live"],
+    ["approve", "approve"],
+    [" Approve ", "approve"],
+    ["log", "log"],
+    ["", "log"],
+    ["   ", "log"],
+    ["garbage", "log"],
+    ["liv", "log"],
+    ["live!", "log"],
+    ["true", "log"],
+    ["1", "log"],
+    ["live live", "log"],
+  ])("resolves %j -> %s and only live may mutate Katana", (raw, expected) => {
+    process.env.ORDER_PIPELINE_MODE = raw;
+    expect(getOrderPipelineMode()).toBe(expected);
+    expect(canMutateKatanaOrders()).toBe(expected === "live");
+  });
 });
 
 describe("getLedgerPipelineMode (fail closed)", () => {

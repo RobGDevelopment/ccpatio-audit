@@ -11,6 +11,7 @@
  *     explicitly ALWAYS wins over the shared bucket.
  */
 import { KatanaApiError } from "@/lib/katana";
+import { sendOhCrapAlert } from "@/server/alerts/oh-crap";
 import { getDb } from "@/server/db/client";
 import { acquireToken } from "@/server/sre/token-bucket";
 
@@ -50,26 +51,92 @@ function isUndefinedTable(error: unknown): boolean {
   return false;
 }
 
-let warnedNoDb = false;
-let warnedNoTable = false;
+/** `KatanaApiError.code` when migration 0054 (`rate_limit_buckets`) has not been applied. */
+export const KATANA_RATE_LIMIT_TABLE_MISSING = "RATE_LIMIT_TABLE_MISSING";
+/** `KatanaApiError.code` when there is no POSTGRES_URL to coordinate the bucket through. */
+export const KATANA_RATE_LIMIT_NO_DATABASE = "RATE_LIMIT_NO_DATABASE";
+/** At most one table-missing ops alert per process per window (the throw is never limited). */
+export const KATANA_TABLE_MISSING_ALERT_WINDOW_MS = 10 * 60 * 1000;
 
-/** Postgres-backed pacer for `setKatanaRequestPacer` semantics: resolves when a token is ours. */
+let lastTableMissingAlertAt: number | null = null;
+
+/** Test seam: forget when the last table-missing alert fired. */
+export function resetKatanaThrottleAlertState(): void {
+  lastTableMissingAlertAt = null;
+}
+
+export type KatanaSharedBucketDeps = {
+  acquire?: typeof acquireToken;
+  getDb?: typeof getDb;
+  alert?: typeof sendOhCrapAlert;
+  now?: () => number;
+};
+
+async function alertTableMissingOnce(
+  alert: typeof sendOhCrapAlert,
+  now: number,
+): Promise<void> {
+  if (
+    lastTableMissingAlertAt !== null &&
+    now - lastTableMissingAlertAt < KATANA_TABLE_MISSING_ALERT_WINDOW_MS
+  ) {
+    return;
+  }
+  // Claim the window BEFORE awaiting so concurrent callers cannot all alert.
+  lastTableMissingAlertAt = now;
+  try {
+    const result = await alert({
+      reason: "unknown",
+      source: "katana",
+      externalId: "rate_limit_buckets",
+      message:
+        "Katana shared rate-limit bucket table rate_limit_buckets is missing (apply migration 0054). " +
+        "Katana calls are BLOCKED (fail closed) until it exists.",
+    });
+    if (!result.ok) {
+      console.error("[katana] table-missing alert could not be delivered:", result.error);
+    }
+  } catch (alertError) {
+    // The caller is about to throw the real error; an alert failure must never mask it.
+    console.error(
+      "[katana] table-missing alert threw:",
+      alertError instanceof Error ? alertError.message : String(alertError),
+    );
+  }
+}
+
+/**
+ * Postgres-backed pacer for `setKatanaRequestPacer` semantics: resolves when a token is ours.
+ *
+ * FAILS CLOSED. Katana is a single live tenant with no sandbox, so an unenforceable bucket
+ * must stop the request rather than let it through unthrottled:
+ *  - `rate_limit_buckets` missing (42P01, also under `cause`) -> `KatanaApiError` 503
+ *    `RATE_LIMIT_TABLE_MISSING` + a rate-limited ops alert.
+ *  - POSTGRES_URL missing -> `KatanaApiError` 503 `RATE_LIMIT_NO_DATABASE`. The only
+ *    supported escape hatch is the explicit `KATANA_SHARED_BUCKET=off`, which is honoured
+ *    BEFORE this pacer is ever resolved (`isKatanaSharedBucketEnabled`).
+ * Both are non-429 so `runKatanaStep` does not turn them into a 65s `RetryAfterError`.
+ * Every other error from `acquireToken` still throws unchanged.
+ */
 export function createKatanaSharedBucketPacer(
   env: Record<string, string | undefined> = process.env,
+  deps: KatanaSharedBucketDeps = {},
 ): () => Promise<void> {
+  const acquire = deps.acquire ?? acquireToken;
+  const resolveDb = deps.getDb ?? getDb;
+  const alert = deps.alert ?? sendOhCrapAlert;
+  const now = deps.now ?? Date.now;
   return async () => {
     if (!env.POSTGRES_URL) {
-      // No database to coordinate through (e.g. a read-only CLI script). We cannot enforce
-      // the shared bucket, so do not block the request; Katana's own 429 handling remains.
-      if (!warnedNoDb) {
-        warnedNoDb = true;
-        console.warn("[katana] POSTGRES_URL unset: shared rate-limit bucket disabled for this process.");
-      }
-      return;
+      throw new KatanaApiError(
+        "Katana shared rate-limit bucket cannot run: POSTGRES_URL is not set. " +
+          "Refusing to call Katana unthrottled (set KATANA_SHARED_BUCKET=off to opt out explicitly).",
+        { status: 503, code: KATANA_RATE_LIMIT_NO_DATABASE },
+      );
     }
     try {
-      await acquireToken({
-        db: getDb(),
+      await acquire({
+        db: resolveDb(),
         key: KATANA_BUCKET_KEY,
         capacity: KATANA_BUCKET_CAPACITY,
         ratePerSec: KATANA_BUCKET_RATE_PER_SEC,
@@ -81,16 +148,13 @@ export function createKatanaSharedBucketPacer(
           ),
       });
     } catch (error) {
-      // Deploy-order safety: if migration 0054 has not been applied yet, do not take every
-      // Katana call down with it. Loud, once per process. Any OTHER error still throws.
       if (isUndefinedTable(error)) {
-        if (!warnedNoTable) {
-          warnedNoTable = true;
-          console.error(
-            "[katana] rate_limit_buckets table is missing (apply migration 0054). Shared bucket disabled until then.",
-          );
-        }
-        return;
+        await alertTableMissingOnce(alert, now());
+        throw new KatanaApiError(
+          "Katana shared rate-limit bucket table rate_limit_buckets is missing: migration 0054 has not been applied. " +
+            "Blocking the Katana call (fail closed).",
+          { status: 503, code: KATANA_RATE_LIMIT_TABLE_MISSING },
+        );
       }
       throw error;
     }

@@ -6,8 +6,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * MDM hub registry. Do not re-register `processWooCommerceOrder` or
- * `syncGhlOpportunity` (V8 transactional bus — retired).
+ * MDM hub registry. `processWooCommerceOrder` IS registered (roadmap step 6, dry-run unless
+ * ORDER_PIPELINE_MODE=live). Do not re-register `syncGhlOpportunity` (legacy GHL Won bus, retired).
  * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md Phase 0.
  * Smart holds: `sendHoldExpirationWarnings` (08:00) and
  * `autoReleaseExpiredHolds` (hourly) are registered via `inngestFunctions`.
