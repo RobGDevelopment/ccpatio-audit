@@ -33,4 +33,11 @@ export async function resetReleaseGate(
       target: factory_release_gate.root_sku,
       set: setPayload,
     });
+
+  try {
+    const { invalidateFinalization } = await import("@/server/factory-bom/finalize-design");
+    await invalidateFinalization(rootSku);
+  } catch {
+    /* best-effort */
+  }
 }
