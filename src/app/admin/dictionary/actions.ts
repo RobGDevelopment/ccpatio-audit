@@ -959,6 +959,8 @@ export async function syncFinishedGoodToKatanaAction(
 export async function syncBOMToKatanaAction(
   finishedGoodSku: string,
 ): Promise<KatanaSyncActionResult> {
+  const { assertKatanaWriteAllowed } = await import("@/server/path-a/katana-fence");
+  await assertKatanaWriteAllowed(finishedGoodSku);
   const result = await syncBOMTreeToKatana(finishedGoodSku);
   if (result.ok) {
     revalidateDictionary();

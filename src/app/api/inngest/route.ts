@@ -4,6 +4,7 @@ import { inngestFunctions } from "@/inngest/functions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 /**
  * MDM hub registry. `processWooCommerceOrder` IS registered (roadmap step 6, dry-run unless

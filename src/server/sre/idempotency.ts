@@ -53,11 +53,14 @@ const KATANA_ORDER_NO_PREFIX: Record<string, string> = {
   ghl: "GHL",
   woo: "WOO",
   woocommerce: "WOO",
+  path_a: "PA",
+  "path-a": "PA",
 };
 
 /**
  * Katana sales-order number. MUST match the existing conventions:
  *  - GHL: `GHL-<opportunityId>` (src/server/ghl/hold-order.ts `ghlFactoryOrderNo`)
+ *  - Path A: `PA-<opportunityId>` (Phase 11 Path A Sales Order)
  *  - Woo: the Woo order `number` when it is a non-empty string, otherwise
  *    `WOO-<orderId>`. `mapWooOrderToKatanaSalesOrder` (src/lib/katana.ts) CALLS this
  *    helper so the idempotency lookup and the created SO can never drift apart.
@@ -73,7 +76,7 @@ export function katanaOrderNo(
   const key = requireId("source", source).toLowerCase();
   const prefix = KATANA_ORDER_NO_PREFIX[key];
   if (!prefix) {
-    throw new Error(`katanaOrderNo: unsupported source "${source}" (expected ghl or woo).`);
+    throw new Error(`katanaOrderNo: unsupported source "${source}" (expected ghl, woo, or path_a).`);
   }
   if (prefix === "WOO" && opts?.number !== null && opts?.number !== undefined) {
     const custom = String(opts.number).trim();

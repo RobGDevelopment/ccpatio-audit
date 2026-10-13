@@ -56,6 +56,7 @@ type GeometryCut = {
 
 export async function processCadUploadJob(
   data: CadUploadedEventData,
+  options?: { allowSyncConvert?: boolean },
 ): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
   const db = getDb();
   const uploadId = data.uploadId;
@@ -71,6 +72,11 @@ export async function processCadUploadJob(
     let ext = data.ext;
 
     if (ext === "blend") {
+      if (options?.allowSyncConvert === false) {
+        throw new Error(
+          "Synchronous Blender conversion is disabled in Inngest runtime. Dispatch via runCadConvertHandoff.",
+        );
+      }
       const { convertBlendToGlb } = await import("./convert-client");
       const converted = await convertBlendToGlb(buffer, `upload-${uploadId}.blend`);
       buffer = converted.glb;

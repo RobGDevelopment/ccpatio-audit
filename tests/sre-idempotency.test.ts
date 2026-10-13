@@ -51,10 +51,16 @@ describe("katanaOrderNo", () => {
     expect(katanaOrderNo("woocommerce", "981")).toBe("WOO-981");
   });
 
+  it("formats Path A sales order numbers (PA-<oppId>)", () => {
+    expect(katanaOrderNo("path_a", "opp_42")).toBe("PA-opp_42");
+    expect(katanaOrderNo("path-a", "opp_42")).toBe("PA-opp_42");
+  });
+
   it("rejects unknown sources and missing ids", () => {
     expect(() => katanaOrderNo("clover", "1")).toThrow(/unsupported source/);
     expect(() => katanaOrderNo("woo", "unknown")).toThrow(/externalId is missing/);
     expect(() => katanaOrderNo("ghl", "")).toThrow(/externalId is missing/);
+    expect(() => katanaOrderNo("path_a", "")).toThrow(/externalId is missing/);
   });
 
   describe("D1: Woo `number` is the single source of truth", () => {

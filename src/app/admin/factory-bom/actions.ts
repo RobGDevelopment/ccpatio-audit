@@ -1146,6 +1146,16 @@ export async function publishApprovedRecipeToKatana(
   const sku = rootSku.trim().toUpperCase();
   if (!sku) return { ok: false, error: "SKU is required" };
 
+  const { classifyCustomSku } = await import("@/server/path-a/katana-fence");
+  const customInfo = await classifyCustomSku(sku);
+  if (customInfo.type !== "not_custom") {
+    return {
+      ok: false,
+      error: "PATH_A_USE_FINALIZE",
+      message: "Custom orders must be finalized via Path A, not released directly to Katana.",
+    };
+  }
+
   const snapshot = await loadAirlockSnapshot(sku);
   const db = getDb();
   const allSkus = new Set<string>();

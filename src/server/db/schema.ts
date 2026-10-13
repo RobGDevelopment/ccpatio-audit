@@ -514,10 +514,46 @@ export const custom_build_jobs = pgTable(
     designer_name: text("designer_name"),
     packet_storage_path: text("packet_storage_path"),
     created_by: text("created_by").notNull(),
+    katana_sales_order_id: integer("katana_sales_order_id"),
+    katana_order_no: text("katana_order_no"),
+    katana_mo_ids: jsonb("katana_mo_ids"),
+    ghl_sync_hash: text("ghl_sync_hash"),
+    ghl_synced_at: timestamp("ghl_synced_at", { withTimezone: true }),
     created_at: timestamp("created_at").defaultNow().notNull(),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
   }
 );
+
+/** Child items for a custom build job, tracking individual custom SKUs under an opportunity. */
+export const custom_build_job_items = pgTable(
+  "custom_build_job_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    job_id: uuid("job_id")
+      .notNull()
+      .references(() => custom_build_jobs.id, { onDelete: "restrict" }),
+    global_sku: text("global_sku")
+      .notNull()
+      .unique()
+      .references(() => sku_mappings.global_sku, { onUpdate: "cascade", onDelete: "restrict" }),
+    quantity: integer("quantity").notNull().default(1),
+    design_status: text("design_status").notNull().default("awaiting_cad"),
+    cad_upload_id: uuid("cad_upload_id")
+      .references(() => cad_uploads.id, { onDelete: "set null" }),
+    finalized_dossier_hash: text("finalized_dossier_hash"),
+    finalized_at: timestamp("finalized_at", { withTimezone: true }),
+    finalized_by: text("finalized_by"),
+    katana_sales_order_row_id: integer("katana_sales_order_row_id"),
+    katana_mo_id: integer("katana_mo_id"),
+    released_at: timestamp("released_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("custom_build_job_items_job_idx").on(table.job_id),
+    check("custom_build_job_items_quantity_positive", sql`${table.quantity} > 0`),
+  ],
+).enableRLS();
 
 export const skuMappingsRelations = relations(sku_mappings, ({ many }) => ({
   bomAsParent: many(product_bom, { relationName: "bom_parent" }),
@@ -1110,7 +1146,7 @@ export const channel_sync = pgTable(
  */
 export const incoming_webhooks = pgTable("incoming_webhooks", {
   id: uuid("id").defaultRandom().primaryKey(),
-  source: text("source", { enum: ["woocommerce", "ghl"] }).notNull(),
+  source: text("source", { enum: ["woocommerce", "ghl", "cad_convert"] }).notNull(),
   event_name: text("event_name").notNull(),
   idempotency_key: text("idempotency_key").notNull().unique(),
   payload: jsonb("payload").notNull(),
@@ -1672,6 +1708,7 @@ export const sagaStatusEnum = pgEnum("saga_status", [
   "COMPENSATING",
   "COMPENSATED",
   "SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION",
+  "AWAITING_DEPOSIT",
 ]);
 
 /**
@@ -1688,11 +1725,23 @@ export const saga_runs = pgTable(
     current_step: text("current_step"),
     paid_at: timestamp("paid_at", { withTimezone: true }),
     last_error: text("last_error"),
+    release_requested_at: timestamp("release_requested_at", { withTimezone: true }),
+    release_source: text("release_source"),
+    release_requested_by: text("release_requested_by"),
+    release_reason: text("release_reason"),
+    deposit_cents: integer("deposit_cents"),
+    deposit_ref: text("deposit_ref"),
+    deposit_recorded_at: timestamp("deposit_recorded_at", { withTimezone: true }),
+    release_attempts: integer("release_attempts"),
+    released_at: timestamp("released_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex("saga_runs_type_correlation_uidx").on(table.saga_type, table.correlation_key),
+    index("saga_runs_awaiting_deposit_idx")
+      .on(table.updated_at)
+      .where(sql`${table.status} = 'AWAITING_DEPOSIT'`),
   ],
 ).enableRLS();
 

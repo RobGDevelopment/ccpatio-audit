@@ -124,6 +124,8 @@ export async function publishToKatana(
   }
 
   const globalSku = stagedGraph.rootSku.toUpperCase();
+  const { assertKatanaWriteAllowed } = await import("@/server/path-a/katana-fence");
+  await assertKatanaWriteAllowed(globalSku);
   const foundationPlan = buildKatanaPublishPlan(stagedGraph);
   const payloadHash = hashChannelPayload({
     channel: "katana",

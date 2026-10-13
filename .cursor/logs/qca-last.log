@@ -1,11 +1,14 @@
-status=0
+status=2
 --- stdout ---
 {
   "phase_id": "phase-8-env-and-qa",
   "phase": "phase-8-env-and-qa",
-  "verdict": "CERTIFIED",
-  "audit_exit": 0,
-  "invariantViolations": [],
+  "verdict": "DEFECT_REJECTED",
+  "audit_exit": 2,
+  "invariantViolations": [
+    "Blast Radius Breach: diff touches 2 files; expected 27; tolerance 0.",
+    "AAR blast radius 2 disagrees with phase.lock expected_blast_radius 27. Lock wins."
+  ],
   "testResults": {
     "typecheck": "PASS",
     "lint": "PASS",
@@ -13,17 +16,17 @@ status=0
   },
   "targetTest": "npx vitest run tests/env.test.ts",
   "blastRadius": {
-    "actual": 27,
+    "actual": 2,
     "expected": 27,
     "tolerance": 0,
-    "tracked": 19,
-    "untracked": 8,
-    "status": "PASS"
+    "tracked": 2,
+    "untracked": 0,
+    "status": "FAIL"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "0749886f62665620e891ff60a10872d71fd684c783e30d93b4c0333fd62bd2e1",
-    "git_sha256": "0749886f62665620e891ff60a10872d71fd684c783e30d93b4c0333fd62bd2e1"
+    "aar_sha256": "94ab6f78d63b3ae522fb6057bc6b973bda67ee646801ce97cf2867abc8003bc6",
+    "git_sha256": "94ab6f78d63b3ae522fb6057bc6b973bda67ee646801ce97cf2867abc8003bc6"
   }
 }
 

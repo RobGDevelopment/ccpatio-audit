@@ -1047,6 +1047,8 @@ export async function ensureKatanaVariantForSku(
   sku: string,
 ): Promise<KatanaSyncResult> {
   const needle = sku.trim().toUpperCase();
+  const { assertKatanaWriteAllowed } = await import("@/server/path-a/katana-fence");
+  await assertKatanaWriteAllowed(needle);
   const db = getDb();
   const [mapping] = await db
     .select()
@@ -1187,6 +1189,8 @@ export async function syncBOMToKatana(
   if (!needle) {
     return { ok: false, error: "Parent SKU is required" };
   }
+  const { assertKatanaWriteAllowed } = await import("@/server/path-a/katana-fence");
+  await assertKatanaWriteAllowed(needle);
 
   const catalogMode = getCatalogPublishMode();
   const allowMutate = canMutateKatanaCatalog(catalogMode);

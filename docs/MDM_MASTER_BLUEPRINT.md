@@ -74,6 +74,8 @@ The owner has ratified **`FINAL_INTEGRATION_ROADMAP.md` as the supreme, binding 
 
 **The Phase 0 "410 rule" is formally overridden.** Woo order webhooks no longer have to answer `410` as a matter of policy. The `410` stays in code only until roadmap step 6 (Path B Link) is built and certified, then `/api/webhooks/woocommerce` goes live in `log` mode. Every other conflicting legacy ban (§0.1, §0.3, §2.2, §2.5, §3.1, §5.3, §5.5, §5A.6, §8) is overridden to the extent the table below states.
 
+> **Superseded by roadmap step 6 (Phase 10).** `POST /api/webhooks/woocommerce` is no longer `410`: it verifies the Woo HMAC on the raw body, quarantines invalid orders (202), and enqueues paid orders to `process-woocommerce-order` in `log` mode (dry run, zero Katana calls) until `ORDER_PIPELINE_MODE=live`. Every remaining "Woo stays 410" statement below is historical. See `PHASE_10_EXECUTION_BLUEPRINT.md`.
+
 **Now authorized.** Each is built Inngest-native, gated by a `log` / `live` mode flag that defaults to `log`, and backed by additive schema only.
 
 | Capability | Authorized scope | Ban lifted |

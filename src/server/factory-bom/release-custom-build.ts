@@ -18,6 +18,16 @@ export async function releaseCustomJobAction(globalSku: string) {
 }
 
 export async function executeReleaseCustomBuild(globalSku: string) {
+  const { assertKatanaWriteAllowed, classifyCustomSku } = await import(
+    "@/server/path-a/katana-fence"
+  );
+  const classification = await classifyCustomSku(globalSku);
+  if (classification.type !== "not_custom") {
+    // Single writer: custom SKUs are owned by Function 2 (path-a-release-to-production)
+    return { receipt: true, deferredToPathA: true };
+  }
+
+  await assertKatanaWriteAllowed(globalSku);
   const db = getDb();
 
   const skuMeta = await db.query.sku_mappings.findFirst({

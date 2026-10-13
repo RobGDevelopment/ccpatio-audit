@@ -37,6 +37,62 @@ export async function createMigratedPglite() {
       await pg.exec(statement);
     }
   }
+  // Align saga_runs table columns with schema.ts so store.insertOnce works on this instance,
+  // while strictly preserving the 0054 six-value enum check.
+  const schemaColumns = [
+    'ALTER TABLE "saga_runs" ADD COLUMN IF NOT EXISTS "release_requested_at" timestamp with time zone;',
+    'ALTER TABLE "saga_runs" ADD COLUMN IF NOT EXISTS "release_source" text;',
+    'ALTER TABLE "saga_runs" ADD COLUMN IF NOT EXISTS "release_requested_by" text;',
+    'ALTER TABLE "saga_runs" ADD COLUMN IF NOT EXISTS "release_reason" text;',
+    'ALTER TABLE "saga_runs" ADD COLUMN IF NOT EXISTS "deposit_cents" integer;',
+    'ALTER TABLE "saga_runs" ADD COLUMN IF NOT EXISTS "deposit_ref" text;',
+    'ALTER TABLE "saga_runs" ADD COLUMN IF NOT EXISTS "deposit_recorded_at" timestamp with time zone;',
+    'ALTER TABLE "saga_runs" ADD COLUMN IF NOT EXISTS "release_attempts" integer;',
+    'ALTER TABLE "saga_runs" ADD COLUMN IF NOT EXISTS "released_at" timestamp with time zone;',
+  ];
+  for (const statement of schemaColumns) {
+    await pg.exec(statement);
+  }
   const db = drizzle(pg);
   return { pg, db };
 }
+
+/** Test-only minimal stubs for FK references not present in the isolated migration set. */
+export const PATH_A_STUBS_SQL = `
+CREATE TABLE IF NOT EXISTS "sku_mappings" (
+  "global_sku" text PRIMARY KEY
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "cad_uploads" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid()
+);
+`;
+
+/**
+ * Phase 11 PGlite with real 0052, 0054, and 0055 SQL applied.
+ * Preserves 0054 test isolation while proving 0055 additive changes.
+ */
+export async function createPathAPglite() {
+  const pg = new PGlite();
+  const files = [
+    "0005_incoming_webhooks.sql",
+  ];
+  for (const file of files) {
+    const text = fs.readFileSync(path.join(MIGRATIONS, file), "utf8");
+    for (const statement of statementsOf(text)) {
+      await pg.exec(statement);
+    }
+  }
+  for (const statement of statementsOf(PATH_A_STUBS_SQL)) {
+    await pg.exec(statement);
+  }
+  for (const file of ["0052_custom_build_jobs.sql", "0054_sre_dlq_saga_buckets.sql", "0055_path_a_stateless_release.sql"]) {
+    const text = fs.readFileSync(path.join(MIGRATIONS, file), "utf8");
+    for (const statement of statementsOf(text)) {
+      await pg.exec(statement);
+    }
+  }
+  const db = drizzle(pg);
+  return { pg, db };
+}
+

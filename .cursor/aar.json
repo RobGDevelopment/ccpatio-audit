@@ -1,188 +1,29 @@
 {
   "phase_id": "phase-8-env-and-qa",
   "base_ref": "HEAD",
-  "blast_radius": 27,
+  "blast_radius": 2,
   "counts": {
-    "files": 27,
-    "tracked": 19,
-    "untracked": 8,
-    "insertions": 600,
-    "deletions": 218
+    "files": 2,
+    "tracked": 2,
+    "untracked": 0,
+    "insertions": 15,
+    "deletions": 12
   },
   "files": [
     {
-      "status": "??",
-      "path": "FINAL_INTEGRATION_ROADMAP.md",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "data_migration/3rd Party Items/express_garden_prefab.csv",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/env.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/db/migrations/0053_rls_qbo_tokens_incoming_webhooks.sql",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/db/migrations/meta/0053_snapshot.json",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/db-connection-mode.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/env.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/sre-hardening-check.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
       "status": "M",
       "path": ".cursor/logs/qca-last.log",
-      "insertions": 14,
-      "deletions": 18
-    },
-    {
-      "status": "M",
-      "path": ".cursor/phase.lock",
-      "insertions": 31,
-      "deletions": 9
+      "insertions": 13,
+      "deletions": 10
     },
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
       "insertions": 2,
       "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": ".env.example",
-      "insertions": 9,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "CLAUDE.md",
-      "insertions": 12,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "docs/MDM_MASTER_BLUEPRINT.md",
-      "insertions": 47,
-      "deletions": 5
-    },
-    {
-      "status": "M",
-      "path": "playwright.config.ts",
-      "insertions": 17,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/app/admin/factory-bom/FactoryBomWorkbench.tsx",
-      "insertions": 14,
-      "deletions": 3
-    },
-    {
-      "status": "M",
-      "path": "src/app/admin/factory-bom/actions.ts",
-      "insertions": 50,
-      "deletions": 8
-    },
-    {
-      "status": "M",
-      "path": "src/app/admin/shared/ToastProvider.tsx",
-      "insertions": 4,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/app/api/auth/qbo/callback/route.ts",
-      "insertions": 4,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/app/api/qa/katana-mirror/[...path]/route.ts",
-      "insertions": 23,
-      "deletions": 6
-    },
-    {
-      "status": "M",
-      "path": "src/components/KatanaSyncButton.tsx",
-      "insertions": 94,
-      "deletions": 83
-    },
-    {
-      "status": "M",
-      "path": "src/lib/embed-actor-params.ts",
-      "insertions": 2,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/client.ts",
-      "insertions": 135,
-      "deletions": 28
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/migrations/meta/_journal.json",
-      "insertions": 51,
-      "deletions": 37
-    },
-    {
-      "status": "M",
-      "path": "src/server/integrations/qbo/client.ts",
-      "insertions": 81,
-      "deletions": 15
-    },
-    {
-      "status": "M",
-      "path": "tests/e2e/factory-bom-lifecycle.spec.ts",
-      "insertions": 2,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "tests/e2e/helpers/factory-bom-seed.ts",
-      "insertions": 8,
-      "deletions": 0
     }
   ],
-  "untracked": [
-    "FINAL_INTEGRATION_ROADMAP.md",
-    "data_migration/3rd Party Items/express_garden_prefab.csv",
-    "src/env.ts",
-    "src/server/db/migrations/0053_rls_qbo_tokens_incoming_webhooks.sql",
-    "src/server/db/migrations/meta/0053_snapshot.json",
-    "tests/db-connection-mode.test.ts",
-    "tests/env.test.ts",
-    "tests/sre-hardening-check.test.ts"
-  ],
-  "file_list_sha256": "0749886f62665620e891ff60a10872d71fd684c783e30d93b4c0333fd62bd2e1",
+  "untracked": [],
+  "file_list_sha256": "94ab6f78d63b3ae522fb6057bc6b973bda67ee646801ce97cf2867abc8003bc6",
   "notes": ""
 }

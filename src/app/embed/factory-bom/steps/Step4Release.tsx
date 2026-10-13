@@ -182,7 +182,11 @@ export function Step4Release({
             checked={quarantineConfirmed}
             onChange={(e) => setQuarantineConfirmed(e.target.checked)}
           />
-          <span className="text-sm font-medium text-zinc-700">Acknowledgement: I am releasing this to live Katana production.</span>
+          <span className="text-sm font-medium text-zinc-700">
+            {snapshot.rootSku.startsWith("JOB-")
+              ? "Acknowledgement: I am finalizing this design for factory readiness (no Katana write)."
+              : "Acknowledgement: I am releasing this to live Katana production."}
+          </span>
         </label>
       </div>
 
@@ -202,6 +206,21 @@ export function Step4Release({
         onClick={async () => {
           setIsPublishing(true);
           try {
+            if (snapshot.rootSku.startsWith("JOB-")) {
+              const { finalizeDesignAction } = await import("@/app/admin/path-a/actions");
+              const res = await finalizeDesignAction({ globalSku: snapshot.rootSku });
+              if ((res as any).blockingCodes && (res as any).blockingCodes.length > 0) {
+                alert("Finalize blocked: " + (res as any).blockingCodes.join(", "));
+                return;
+              }
+              if (!res.ok) {
+                alert("Finalize error: " + ((res as any).error || (res as any).message || "Unknown error"));
+                return;
+              }
+              router.refresh();
+              return;
+            }
+
             const res = await publishApprovedRecipeToKatana(snapshot.rootSku);
             if (res.blockingCodes && res.blockingCodes.length > 0) {
               alert("Publish blocked: " + res.blockingCodes.join(", "));
@@ -210,9 +229,6 @@ export function Step4Release({
             if (!res.ok) {
               alert("Publish error: " + (res.message || "Unknown error"));
               return;
-            }
-            if (snapshot.rootSku.startsWith("JOB-")) {
-              await releaseCustomJobAction(snapshot.rootSku);
             }
             router.refresh();
           } catch (err: any) {
@@ -223,7 +239,13 @@ export function Step4Release({
         }}
         className={releaseButton}
       >
-        {isPublishing ? "Releasing..." : "Release to Katana"}
+        {isPublishing
+          ? snapshot.rootSku.startsWith("JOB-")
+            ? "Finalizing..."
+            : "Releasing..."
+          : snapshot.rootSku.startsWith("JOB-")
+            ? "Finalize design (no Katana write)"
+            : "Release to Katana"}
       </button>
     </div>
   );

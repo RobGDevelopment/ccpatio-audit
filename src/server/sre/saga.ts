@@ -23,7 +23,8 @@ export type SagaStatusValue =
   | "COMPLETED"
   | "COMPENSATING"
   | "COMPENSATED"
-  | "SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION";
+  | "SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION"
+  | "AWAITING_DEPOSIT";
 
 export type CompensationAction =
   | { action: "retry_ledger" }

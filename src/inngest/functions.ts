@@ -449,6 +449,9 @@ export const processCadUpload = inngest.createFunction(
       const uploadId = String(
         (original?.data as { uploadId?: unknown } | undefined)?.uploadId ?? "",
       );
+      const globalSku = String(
+        (original?.data as { globalSku?: unknown } | undefined)?.globalSku ?? "",
+      ).trim().toUpperCase();
       const errMsg =
         typeof event.data.error?.message === "string"
           ? event.data.error.message
@@ -467,6 +470,32 @@ export const processCadUpload = inngest.createFunction(
               updated_at: new Date(),
             })
             .where(eq(cad_uploads.id, uploadId));
+        } catch {
+          /* best-effort */
+        }
+      }
+
+      if (globalSku) {
+        try {
+          const { classifyCustomSku } = await import("@/server/path-a/katana-fence");
+          const classification = await classifyCustomSku(globalSku);
+          if (classification.type === "custom_job_bound") {
+            const { createItemStore } = await import("@/server/path-a/item-store");
+            const { createSagaStore } = await import("@/server/sre/saga-store");
+            const { PATH_A_SAGA_TYPE } = await import("@/server/path-a/saga-state");
+            const itemStore = createItemStore();
+            const sagaStore = createSagaStore();
+            await itemStore.setItemStatus({
+              globalSku,
+              from: ["awaiting_cad", "needs_review", "cad_failed"],
+              to: "cad_failed",
+            });
+            await sagaStore.setStep(
+              PATH_A_SAGA_TYPE,
+              classification.opportunityId,
+              `cad_failed:${errMsg.slice(0, 50)}`,
+            );
+          }
         } catch {
           /* best-effort */
         }
@@ -497,12 +526,59 @@ export const processCadUpload = inngest.createFunction(
       throw new NonRetriableError(`Invalid CAD extension: ${data.ext}`);
     }
 
-    return step.run("process-cad-bytes", async () => {
+    let effectiveStoragePath = data.storagePath;
+    let effectiveExt = data.ext;
+
+    if (data.ext === "blend") {
+      const { runCadConvertHandoff } = await import("@/inngest/cad-handoff");
+      const handoffResult = await runCadConvertHandoff({ step, data });
+      if (!handoffResult.ok) {
+        const { NonRetriableError } = await import("inngest");
+        throw new NonRetriableError(handoffResult.error);
+      }
+      effectiveStoragePath = handoffResult.glbStoragePath;
+      effectiveExt = "glb";
+    }
+
+    const jobResult = await step.run("process-cad-bytes", async () => {
       const { processCadUploadJob } = await import(
         "@/lib/cad-upload/process-job"
       );
-      return processCadUploadJob(data);
+      return processCadUploadJob(
+        {
+          ...data,
+          storagePath: effectiveStoragePath,
+          ext: effectiveExt,
+        },
+        { allowSyncConvert: false },
+      );
     });
+
+    if (!jobResult.ok) {
+      const { NonRetriableError } = await import("inngest");
+      throw new NonRetriableError(jobResult.error);
+    }
+
+    const { classifyCustomSku } = await import("@/server/path-a/katana-fence");
+    const classification = await classifyCustomSku(data.globalSku);
+    if (classification.type === "custom_job_bound") {
+      await step.run("post-extract-advance", async () => {
+        const { createItemStore } = await import("@/server/path-a/item-store");
+        const { createReleaseStore } = await import("@/server/path-a/release-store");
+        const itemStore = createItemStore();
+        const releaseStore = createReleaseStore();
+
+        await itemStore.setItemStatus({
+          globalSku: data.globalSku,
+          from: ["awaiting_cad", "needs_review"],
+          to: "needs_review",
+        });
+
+        await releaseStore.advanceSaga(classification.opportunityId);
+      });
+    }
+
+    return jobResult;
   },
 );
 
