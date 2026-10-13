@@ -11,6 +11,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useToast } from "@/app/admin/shared/ToastProvider";
+import { useRouter } from "next/navigation";
 import {
   approveDraftRecipe,
   deleteDraftBomLine,
@@ -220,6 +221,7 @@ export function FactoryBomWorkbench({
   /** Fill the parent (GHL iframe) instead of assuming a 56px page header. */
   embedded?: boolean;
 }) {
+  const router = useRouter();
   const toast = useToast();
   const inSidebar = Boolean(initialSku && products.some((row) => row.sku === initialSku));
   const heldLinked = !inSidebar && linkedProduct ? linkedProduct : null;
@@ -633,11 +635,20 @@ export function FactoryBomWorkbench({
               onSaveEstimateOverrides={onSaveEstimateOverrides}
               onPublishKatana={async () => {
                 const result = await publishApprovedRecipeToKatana(selectedSku);
-                if (!result.ok) return { ok: false, error: result.error };
+                if (!result.ok) {
+                  setError(result.error);
+                  toast.error(result.error);
+                  return { ok: false, error: result.error };
+                }
+                const msg =
+                  result.message ??
+                  "Catalog BOM posted (or dry-run) via POST /bom_rows (recipes fallback)";
+                toast.success(msg);
+                router.refresh();
+                await reload(selectedSku);
                 return {
                   ok: true,
-                  message:
-                    "Catalog BOM posted (or dry-run) via POST /bom_rows (recipes fallback)",
+                  message: msg,
                 };
               }}
             />

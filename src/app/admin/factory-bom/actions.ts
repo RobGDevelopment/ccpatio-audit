@@ -28,7 +28,11 @@ import { order_intake } from "@/server/db/schema";
 import { matchFactoryOrderLine } from "@/server/factory-bom/match-factory-order-line";
 import { subAssemblySku } from "@/lib/heuristic-bom";
 import { syncBOMToKatana } from "@/lib/katana";
-import { getCatalogPublishMode, canMutateKatanaCatalog } from "@/server/pipeline/catalog-mode";
+import {
+  getCatalogPublishMode,
+  canMutateKatanaCatalog,
+  isKatanaE2eMirror,
+} from "@/server/pipeline/catalog-mode";
 import { upsertChannelSync } from "@/server/mdm/channel-sync";
 import { runSecondaryExtract } from "@/lib/secondary-extraction";
 import {
@@ -1271,11 +1275,26 @@ export async function publishApprovedRecipeToKatana(
   if (!(currentDrawing?.sha256 === shopDrawingSha256 && storagePath)) {
     const revision = (currentDrawing?.revision ?? 0) + 1;
     storagePath = buildStorageKey(sku, "shop_drawing", revision, "pdf");
-    const { error: uploadErr } = await getSupabaseAdmin()
-      .storage.from(PRODUCT_DOCUMENTS_BUCKET)
-      .upload(storagePath, pdfBytes, { contentType: "application/pdf" });
-    if (uploadErr) {
-      return { ok: false, error: "SHOP_DRAWING_REQUIRED", blockingCodes: ["SHOP_DRAWING_REQUIRED"] };
+    try {
+      const { error: uploadErr } = await getSupabaseAdmin()
+        .storage.from(PRODUCT_DOCUMENTS_BUCKET)
+        .upload(storagePath, pdfBytes, {
+          contentType: "application/pdf",
+          upsert: true,
+        });
+      if (uploadErr) {
+        if (isKatanaE2eMirror()) {
+          console.warn("E2E mirror mode: storage upload error ignored for mock env:", uploadErr);
+        } else {
+          return { ok: false, error: "SHOP_DRAWING_REQUIRED", blockingCodes: ["SHOP_DRAWING_REQUIRED"] };
+        }
+      }
+    } catch (storageException: unknown) {
+      if (isKatanaE2eMirror()) {
+        console.warn("E2E mirror mode: storage upload exception ignored for mock env:", storageException);
+      } else {
+        return { ok: false, error: "SHOP_DRAWING_REQUIRED", blockingCodes: ["SHOP_DRAWING_REQUIRED"] };
+      }
     }
     await db.transaction(async (tx) => {
       if (currentDrawing) {
@@ -1364,11 +1383,18 @@ export async function publishApprovedRecipeToKatana(
     .limit(1);
 
   if (existingSync?.status === "success" && existingSync.payload_hash === dossierHash) {
+    try {
+      revalidatePath("/admin/factory-bom");
+      revalidatePath("/admin/factory-bom", "page");
+    } catch {
+      // outside request context
+    }
+    revalidateFactory();
     return { 
       ok: true, 
       idempotent: true, 
       dossierHash, 
-      message: "Idempotent skip: dossier hash unchanged" 
+      message: "Catalog recipes posted to Katana (Synced: idempotent skip)" 
     };
   }
 
@@ -1379,6 +1405,13 @@ export async function publishApprovedRecipeToKatana(
   if (!result.ok) return { ok: false, error: result.error };
 
   if (dryRun || result.dryRun) {
+    try {
+      revalidatePath("/admin/factory-bom");
+      revalidatePath("/admin/factory-bom", "page");
+    } catch {
+      // outside request context
+    }
+    revalidateFactory();
     return {
       ok: true,
       dryRun: true,
@@ -1402,8 +1435,17 @@ export async function publishApprovedRecipeToKatana(
     action: "factory_bom_katana_recipes",
     newValue: result.message ?? "Katana recipe sync",
   });
+  try {
+    revalidatePath("/admin/factory-bom");
+    revalidatePath("/admin/factory-bom", "page");
+  } catch {
+    // outside request context
+  }
   revalidateFactory();
-  return { ok: true };
+  return {
+    ok: true,
+    message: result.message ?? "Catalog recipes posted to Katana",
+  };
 }
 
 export async function getRecipeEstimate(

@@ -49,7 +49,8 @@ export async function GET(
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  const { path = [] } = await context.params;
+  const { path: rawPath = [] } = await context.params;
+  const path = rawPath[0] === "v1" ? rawPath.slice(1) : rawPath;
   if (path[0] === "captures" && path.length === 1) {
     return NextResponse.json({ ok: true, captures });
   }
@@ -85,12 +86,27 @@ export async function GET(
 
   if (path[0] === "variants" && path.length === 2 && /^\d+$/.test(path[1] ?? "")) {
     const id = Number(path[1]);
+    const db = getDb();
+    const [row] = await db
+      .select({
+        sku: sku_mappings.global_sku,
+        type: sku_mappings.item_type,
+        variantId: sku_mappings.katana_variant_id,
+        materialId: sku_mappings.katana_material_id,
+      })
+      .from(sku_mappings)
+      .where(eq(sku_mappings.katana_variant_id, id))
+      .limit(1);
+
+    const isMaterial = row?.type === "raw_material";
     return NextResponse.json({
       id,
-      sku: `MIRROR-${id}`,
-      type: "product",
-      product_id: id,
-      material_id: null,
+      sku: row?.sku ?? `MIRROR-${id}`,
+      type: isMaterial ? "material" : "product",
+      product_id: isMaterial ? null : id,
+      material_id: isMaterial ? (row?.materialId ?? id) : null,
+      purchase_price: null,
+      sales_price: null,
     });
   }
 
@@ -172,8 +188,9 @@ export async function GET(
 async function captureMutation(
   method: string,
   request: Request,
-  path: string[],
+  rawPath: string[],
 ): Promise<NextResponse> {
+  const path = rawPath[0] === "v1" ? rawPath.slice(1) : rawPath;
   const joined = `/${path.join("/")}`;
   let body: unknown = null;
   try {

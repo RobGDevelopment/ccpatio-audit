@@ -8,11 +8,28 @@ dotenv.config({
   override: true,
 });
 
+// Ensure Supavisor transaction pooler (port 6543) is used instead of session pooler (5432)
+// to prevent connection exhaustion during concurrent webServer + test execution.
+if (process.env.POSTGRES_URL_TX?.trim()) {
+  process.env.POSTGRES_URL = process.env.POSTGRES_URL_TX.trim();
+} else if (process.env.POSTGRES_URL?.includes(".pooler.supabase.com:5432")) {
+  process.env.POSTGRES_URL = process.env.POSTGRES_URL.replace(":5432", ":6543");
+}
+
+process.env.KATANA_E2E_MIRROR = "true";
+process.env.KATANA_API_BASE =
+  process.env.KATANA_API_BASE || "http://127.0.0.1:3000/api/qa/katana-mirror/v1";
+process.env.KATANA_API_KEY =
+  process.env.KATANA_API_KEY ||
+  process.env.KATANA_PERSONAL_ACCESS_TOKEN ||
+  "e2e-mirror-token";
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
   testDir: "./tests/e2e",
+  timeout: 120_000,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/server/db/client";
 import { qbo_auth_tokens } from "@/server/db/schema";
+import { getQboTokenId } from "@/server/integrations/qbo/client";
 import { eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
@@ -51,12 +52,13 @@ export async function GET(req: Request) {
   const db = getDb();
 
   const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+  const targetId = getQboTokenId();
 
-  // Upsert the tokens for our singleton row
+  // Upsert the tokens for this environment row
   await db
     .insert(qbo_auth_tokens)
     .values({
-      id: true,
+      id: targetId,
       realm_id: realmId,
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token,

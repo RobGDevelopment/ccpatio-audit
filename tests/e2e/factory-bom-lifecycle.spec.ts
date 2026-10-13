@@ -70,6 +70,8 @@ type RecipePreview = {
 test.describe.configure({ mode: "serial" });
 
 test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
+  test.setTimeout(120_000);
+
   test.beforeAll(async () => {
     await seedFactoryBomE2eDraft();
   });

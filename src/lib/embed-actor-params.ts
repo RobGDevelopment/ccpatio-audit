@@ -29,9 +29,10 @@ function pick(pairs: Iterable<[string, string]>, keys: readonly string[]): strin
 }
 
 function pairsFromRecord(
-  input: Record<string, string | string[] | undefined>,
+  input: Record<string, string | string[] | undefined> | null | undefined,
 ): [string, string][] {
   const pairs: [string, string][] = [];
+  if (!input) return pairs;
   for (const [key, value] of Object.entries(input)) {
     const values = Array.isArray(value) ? value : [value];
     for (const item of values) {

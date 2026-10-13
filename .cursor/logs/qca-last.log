@@ -1,33 +1,29 @@
-status=2
+status=0
 --- stdout ---
 {
-  "phase_id": "sketchup-pipeline-phase-7",
-  "phase": "sketchup-pipeline-phase-7",
-  "verdict": "DEFECT_REJECTED",
-  "audit_exit": 2,
-  "invariantViolations": [
-    "Blast Radius Breach: diff touches 2 files; expected 4; tolerance 0.",
-    "AAR blast radius 2 disagrees with phase.lock expected_blast_radius 4. Lock wins.",
-    "Scope Breach: .cursor/logs/qca-last.log modified outside allowed phase scope."
-  ],
+  "phase_id": "phase-8-env-and-qa",
+  "phase": "phase-8-env-and-qa",
+  "verdict": "CERTIFIED",
+  "audit_exit": 0,
+  "invariantViolations": [],
   "testResults": {
     "typecheck": "PASS",
     "lint": "PASS",
     "target_test": "PASS"
   },
-  "targetTest": "npx vitest run tests/derive-factory-readiness.test.ts",
+  "targetTest": "npx vitest run tests/env.test.ts",
   "blastRadius": {
-    "actual": 2,
-    "expected": 4,
+    "actual": 27,
+    "expected": 27,
     "tolerance": 0,
-    "tracked": 2,
-    "untracked": 0,
-    "status": "FAIL"
+    "tracked": 19,
+    "untracked": 8,
+    "status": "PASS"
   },
   "aarParity": {
     "status": "PASS",
-    "aar_sha256": "dd02cd99422bf54d5010c37a62afa7964f0c49381d950c37761d2a9a06f58cae",
-    "git_sha256": "dd02cd99422bf54d5010c37a62afa7964f0c49381d950c37761d2a9a06f58cae"
+    "aar_sha256": "0749886f62665620e891ff60a10872d71fd684c783e30d93b4c0333fd62bd2e1",
+    "git_sha256": "0749886f62665620e891ff60a10872d71fd684c783e30d93b4c0333fd62bd2e1"
   }
 }
 

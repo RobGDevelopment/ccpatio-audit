@@ -13,6 +13,7 @@ import {
   sku_mappings,
   channel_sync,
   factory_release_gate,
+  product_assets,
 } from "../../../src/server/db/schema";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.test.local") });
@@ -20,6 +21,12 @@ dotenv.config({
   path: path.resolve(process.cwd(), ".env.local"),
   override: true,
 });
+
+if (process.env.POSTGRES_URL_TX?.trim()) {
+  process.env.POSTGRES_URL = process.env.POSTGRES_URL_TX.trim();
+} else if (process.env.POSTGRES_URL && process.env.POSTGRES_URL.includes(".pooler.supabase.com:5432")) {
+  process.env.POSTGRES_URL = process.env.POSTGRES_URL.replace(":5432", ":6543");
+}
 
 export const E2E_FG_SKU = "FIN-TEST-SOFA";
 export const E2E_FRAME_SKU = "SA-TEST-SOFA-FRAME";
@@ -136,6 +143,7 @@ export async function cleanupFactoryBomE2eSeed(): Promise<void> {
   await db.delete(sku_mappings).where(inArray(sku_mappings.global_sku, [...OWNED_SKUS]));
   await db.delete(channel_sync).where(eq(channel_sync.global_sku, E2E_FG_SKU));
   await db.delete(factory_release_gate).where(eq(factory_release_gate.root_sku, E2E_FG_SKU));
+  await db.delete(product_assets).where(inArray(product_assets.global_sku, [...OWNED_SKUS]));
 }
 
 export async function seedFactoryBomE2eDraft(): Promise<void> {

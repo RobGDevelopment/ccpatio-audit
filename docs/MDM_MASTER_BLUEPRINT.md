@@ -2,7 +2,7 @@
 
 **Document ID:** `MDM_MASTER_BLUEPRINT`  
 **Path:** `docs/MDM_MASTER_BLUEPRINT.md`  
-**Status:** ACTIVE — Absolute single source of truth  
+**Status:** ACTIVE — Binding single source of truth. **AMENDED 2026-10-12 by §0.5:** `FINAL_INTEGRATION_ROADMAP.md` overrides any clause below that conflicts with it  
 **Effective:** 2026-09-13  
 **Owner:** Lead Systems Architect  
 **Audience:** Coding agents, client IT, successor developers  
@@ -17,11 +17,15 @@ This file is the **binding source of truth** for all product, schema, API, UI, a
 
 When any older blueprint, sprint plan, SOP matrix, topology story, or `PROGRESS.md` entry disagrees with this file, **this file wins**.
 
+**Sole exception: §0.5.** `FINAL_INTEGRATION_ROADMAP.md` outranks this file wherever the two conflict.
+
 ### 0.1 Superseded documents (do not implement)
 
 The following artifacts describe a **transactional V8 integration bus** (GHL/Woo orders → Katana sales orders / make-to-order → QBO invoices → Clover deposit matching, custom outbox, custom DLQ, Redis CCR). That product is cancelled.
 
 Coding agents **must not** implement, extend, or “complete” those plans. Phase 0 requires a historical banner on each file (see §8).
+
+> **§0.5 override (2026-10-12).** The Inngest-native WooCommerce order path, Clover-to-QBO sagas, QBO token mutex, global DLQ table, and CAD-to-Katana pipeline are now authorized by `FINAL_INTEGRATION_ROADMAP.md`. They are built from that roadmap, not from the void documents below. The V8 custom outbox, Redis CCR leases, and `effect_claims` remain void.
 
 | Legacy document | Why it is void |
 |---|---|
@@ -58,9 +62,36 @@ The VividWorks / PrimeView contract (Master SKU dictionary, Katana `POST /sales_
 
 That packet does **not** authorize a custom QBO mutex, Clover deposit matching, or WooCommerce order ingress. The order paths this repository may implement are the scoped GHL factory pipeline in §2.4 and the commercial document lane in §2.5. Every other commercial flow still hits Katana through native connectors. Catalog and BOM remain the hub's primary job.
 
+> **Overridden by §0.5.** The vendor packet is not the authority for the QBO mutex, Clover-to-QBO sagas, or WooCommerce order ingress. `FINAL_INTEGRATION_ROADMAP.md` is, and it authorizes all three.
+
 ### 0.4 Repository location (do not recreate `/middleware`)
 
 The Next.js App Router application lives at the **repository root** (`src/`, `package.json`, `drizzle.config.ts`). There is no `middleware/` package. Deploy to Vercel from repo root. Do not scaffold a second Next.js app.
+
+### 0.5 Governance override — 2026-10-12 (`phase-8-infrastructure-hardening`)
+
+The owner has ratified **`FINAL_INTEGRATION_ROADMAP.md` as the supreme, binding source of truth for the remainder of this build.** It overrides every legacy Phase 0 ban in this file, including those in §0.1, §0.3, §2.2, §2.5, §3.1, §5.3, §5.5, §5A.6, and §8. Anything the roadmap does not address stays governed by this file. Where this file and the roadmap conflict, the roadmap wins. If an agent cannot tell which applies, it halts and asks.
+
+**The Phase 0 "410 rule" is formally overridden.** Woo order webhooks no longer have to answer `410` as a matter of policy. The `410` stays in code only until roadmap step 6 (Path B Link) is built and certified, then `/api/webhooks/woocommerce` goes live in `log` mode. Every other conflicting legacy ban (§0.1, §0.3, §2.2, §2.5, §3.1, §5.3, §5.5, §5A.6, §8) is overridden to the extent the table below states.
+
+**Now authorized.** Each is built Inngest-native, gated by a `log` / `live` mode flag that defaults to `log`, and backed by additive schema only.
+
+| Capability | Authorized scope | Ban lifted |
+|---|---|---|
+| Path B WooCommerce order ingress | `POST /api/webhooks/woocommerce` verifies the Woo HMAC on the raw body and dispatches to Inngest. The `410` stays until that roadmap step is certified. | §2.2 Woo row, §2.5, §5.3, §8.1 task 3 |
+| Clover to QBO saga | A Clover payment is linked to the internal order and posted to QBO as a one-way ledger write. QBO is never read back as a source of truth. | §2.2 Clover and QBO rows, §2.5 |
+| QBO token mutex | One worker rotates the QBO OAuth token under a Postgres advisory lock. Others wait and read the rotated token. | §0.3, §2.2 QBO row |
+| Global DLQ | A `dlq_events` table, an Inngest `inngest/function.failed` handler, and an Oh-Crap alert. **No DLQ UI and no `/api/admin/redrive`.** IT still retries from the Inngest dashboard. | §3.1, §5.5 |
+| CAD to Katana pipeline | An async CAD extraction callback resumes an Inngest saga, which sanitizes the BOM and writes a Katana sales order plus manufacturing orders. Writes stay behind a mode flag. | §5.5 "auto-Katana from CAD" |
+
+**Still forbidden.** The V8 custom outbox, Redis CCR leases, `effect_claims`, Trigger.dev, a DLQ UI, `/api/admin/redrive`, JSONB BOM trees, visual field mappers, and auto-Approve of catalog products from CAD. Products still reach the catalog only through a human Approve.
+
+**Hard guardrails that no phase may relax.**
+
+1. Katana is a single live tenant. There is no sandbox. The only protection is the mode flags.
+2. Schema changes are additive only. No table drops, no `drizzle-kit push`, and no hub data wipe against the live database.
+3. A paid order is never deleted. A ledger failure retries the ledger leg.
+4. Pre-payment compensation deletes manufacturing orders first, then the sales order.
 
 ---
 
@@ -110,6 +141,8 @@ This Next.js application is the **PIM + BOM translation + catalog fan-out** hub,
 | Clover tender → accounting | Clover / QBO native | No fuzzy deposit matcher, no custom recon DLQ |
 | Quote → Clover deposit → Katana | This hub, §2.5 | Stock-only deposit may create `GHL-{opportunityId}` and delete `HOLD-` orders. Configured lines still wait for §2.4 triage. The payment path does not create a manufacturing order |
 
+> **§0.5 override.** The Woo, QBO, and Clover rows above no longer read "no code". `FINAL_INTEGRATION_ROADMAP.md` authorizes WooCommerce order ingress, the QBO mutex, and Clover-to-QBO sagas. Katana native connectors still own inventory COGS flowing to QBO.
+
 GoHighLevel remains the staff CRM. The hub does not write invoices or move GHL pipeline stages. It writes a Katana sales order and Make-to-Order manufacturing order only after a person maps `FIN-*` and `FAB-*` SKUs, except a stock-only quote under §2.5, which may create the sales order and still does not create a manufacturing order.
 
 ### 2.3 Why not WordPress middleware
@@ -142,7 +175,7 @@ The factory path in §2.4 is unchanged for configured goods. A collected deposit
 
 A quote made entirely of showroom holds may, on that same deposit, create the `GHL-{opportunityId}` sales order and delete the `HOLD-` orders. It does not create a manufacturing order.
 
-Won still does not create a sales order. WooCommerce order intake stays closed. There is no QuickBooks mutex and no custom dead-letter screen. Delivery is not a manufacturing-order task. One opportunity has one factory intake.
+Won still does not create a sales order. ~~WooCommerce order intake stays closed. There is no QuickBooks mutex.~~ *(Overridden by §0.5: Woo order intake and the QBO mutex are authorized.)* There is still no custom dead-letter screen. Delivery is not a manufacturing-order task. One opportunity has one factory intake.
 
 Manager overrides of freight, promise date, and hold expiry require `Ops_Manager` or `SuperAdmin` on a real operator session. The embed key is not that session.
 
@@ -166,7 +199,7 @@ These choices are closed. Do not substitute without an explicit architect change
 
 - **Trigger.dev** — do not install; Inngest is the durable runner.  
 - **Custom background cron processes** (node-cron, Vercel cron hitting business logic, `pg_cron` workers for fan-out). The only scheduled work is an **Inngest cron** for token health (`system.health.ping`).  
-- **Custom Dead Letter Queue UI** and **`/api/admin/redrive`**. IT retries from the Inngest Cloud dashboard.  
+- **Custom Dead Letter Queue UI** and **`/api/admin/redrive`**. IT retries from the Inngest Cloud dashboard. (§0.5 authorizes a `dlq_events` table and handler only, never a UI or redrive route.)  
 - **Visual Zapier-style field mapper UIs.** Mappers are hardcoded TypeScript.  
 - **JSONB BOM trees** as the system of record. Adjacency list only.  
 - **Rebuilding `/middleware` as a second app.**  
@@ -308,8 +341,10 @@ flowchart TB
 
 ### 5.3 Built but out of MDM scope (remain dormant)
 
+> **§0.5 override.** Woo order ingress and the Clover-to-QBO saga are now in scope. They activate through `FINAL_INTEGRATION_ROADMAP.md` steps, not by re-registering the V8 functions below.
+
 - Inngest `processWooCommerceOrder` / `syncGhlOpportunity` — defined, **not** in `inngestFunctions`. The registered order writer is `order.approved` only, and only when `GHL_FACTORY_ORDERS=live`.  
-- Woo order webhooks stay **`410`**. GHL `POST /api/webhooks/ghl` accepts **Produce Factory Order** into `order_intake`.  
+- Woo order webhooks answer **`410`** today. §0.5 overrides the Phase 0 410 rule, and the route goes live at roadmap step 6. GHL `POST /api/webhooks/ghl` accepts **Produce Factory Order** into `order_intake`.  
 - `quarantined_orders` = legacy Woo **order** Zod-fail — **not** product quarantine.  
 - `orchestrator.ts` deleted; **dual Katana manufacturing writers remain** (mapper Path A vs `syncBOMToKatana` Path B) — see §5B Tier 1.  
 - `ORDER_PIPELINE_MODE` still gates Factory Publish — rename/replace required (§5B). It must **not** be the switch for GHL order POSTs. That switch is `GHL_FACTORY_ORDERS`.
@@ -331,6 +366,8 @@ flowchart TB
 ### 5.5 Explicitly not built (and must stay unbuilt)
 
 V8 transactional bus; Woo/GHL → Katana SO/MTO; QBO mutex; Clover deposit matcher; custom DLQ / `/api/admin/redrive`; visual Zapier mappers; Trigger.dev; JSONB BOM trees; auto-Approve / auto-Katana from CAD; full `.skp` geometry in Node; R3F configurator as MDM dependency.
+
+> **§0.5 override.** Woo to Katana order flow, the QBO mutex, the Clover-to-QBO matcher, a `dlq_events` DLQ (table and handler, no UI), and auto-Katana from CAD are authorized by `FINAL_INTEGRATION_ROADMAP.md`. Still unbuilt and forbidden: the V8 bus itself, the outbox, Redis CCR, `effect_claims`, any DLQ UI or `/api/admin/redrive`, visual mappers, Trigger.dev, JSONB BOM trees, and auto-Approve of catalog products from CAD.
 
 ---
 
@@ -404,6 +441,8 @@ Woo/Clover catalog writers exist for Path A only.
 |---|---|
 | `processWooCommerceOrder` | V8 order → Katana SO/MTO |
 | `syncGhlOpportunity` | V8 GHL → Katana SO/MTO |
+
+> **§0.5 override.** These two V8 functions stay unregistered. The replacement Woo and GHL paths are new Inngest functions defined by `FINAL_INTEGRATION_ROADMAP.md`, not a re-registration of these.
 
 ### 5A.7 Tests (representative)
 
@@ -509,6 +548,7 @@ Writes use `POSTGRES_URL` (Drizzle), which **bypasses Row Level Security**. Edge
 | `/api/qa-test` | Must not remain a public dictionary writer in production; gate with a secret or disable outside QA. |
 | Katana stub webhook | No HMAC today. Do not use as a transactional listener. HMAC or `410` if kept. |
 | Public schema | Enable RLS; grant nothing to `anon` / `authenticated` for hub tables. Service role / connection string only. |
+| Woo, Clover, QBO (§0.5) | Woo: HMAC-SHA256 over the raw body (`X-WC-Webhook-Signature`). Clover: static `x-clover-auth` token compared with `timingSafeEqual`. `qbo_auth_tokens` and `incoming_webhooks` must have RLS enabled and `anon` / `authenticated` revoked. |
 | Secrets | Never `NEXT_PUBLIC_` for Katana, Woo, Clover, SketchUp, or `SUPABASE_SERVICE_ROLE_KEY`. |
 
 Approve is a **Server Action** (cookie session), not a public API.
@@ -542,7 +582,9 @@ Approve is a **Server Action** (cookie session), not a public API.
 
 - None required beyond this blueprint (already created).
 
-### 8.4 Success criteria — **met**
+### 8.4 Success criteria — **met** *(historical; scope widened by §0.5 on 2026-10-12)*
+
+> The Phase 0 goal was to stop agents from improvising the V8 bus. §0.5 replaces that with a ratified plan. An agent may now justify Woo orders, QBO, Clover-to-QBO, the mutex, the DLQ table, and CAD-to-Katana, but only through `FINAL_INTEGRATION_ROADMAP.md`. The V8 outbox, CCR, and `effect_claims` stay void.
 
 - A new coding agent that reads the repo cannot justify Woo → Katana orders, QBO, Clover matching, or the unregistered `ghl/opportunity.won` auto-push. The authorized GHL → Katana paths are §2.4 (`order.approved`) and the stock-only deposit conversion in §2.5. Won auto-push stays unregistered.  
 - Inngest Cloud does not receive `woo.order.validated` or `ghl/opportunity.won` **consumers** from this app.  

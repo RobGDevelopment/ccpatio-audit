@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useOptionalToast } from "@/app/admin/shared/ToastProvider";
 
 type SyncOutcome = { ok: true; message: string } | { ok: false; error: string };
 
@@ -21,28 +22,38 @@ export function KatanaSyncButton({
     type: "success" | "error";
     message: string;
   } | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
+  const globalToast = useOptionalToast();
 
   function showToast(type: "success" | "error", message: string): void {
     setToast({ type, message });
-    window.setTimeout(() => setToast(null), 4200);
+    if (globalToast) {
+      if (type === "success") {
+        globalToast.success(message);
+      } else {
+        globalToast.error(message);
+      }
+    }
+    window.setTimeout(() => setToast(null), 10000);
   }
 
-  function handleClick(): void {
-    startTransition(async () => {
-      try {
-        const result = await onSync();
-        if (result.ok) {
-          showToast("success", result.message);
-        } else {
-          showToast("error", result.error);
-        }
-      } catch (error: unknown) {
-        const message =
-          error instanceof Error ? error.message : "Katana sync failed";
-        showToast("error", message);
+  async function handleClick(): Promise<void> {
+    if (isPending) return;
+    setIsPending(true);
+    try {
+      const result = await onSync();
+      if (result.ok) {
+        showToast("success", result.message);
+      } else {
+        showToast("error", result.error);
       }
-    });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Katana sync failed";
+      showToast("error", message);
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (
