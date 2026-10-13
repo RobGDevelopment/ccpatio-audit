@@ -22,6 +22,11 @@ export const GHL_EMBED_PRINCIPAL_EMAIL = "ghl-embed@ccpatio.com";
 export type PimSession = {
   email: string;
   name: string;
+  /**
+   * Optional GHL role stub (M4). Currently unpopulated until future GHL SSO phase.
+   * Must come from a verified GHL identity, never from a request header, query string, or unsigned cookie.
+   */
+  ghl_role?: string | null;
 };
 
 /** True only for the synthetic iframe principal (never for a human operator). */
