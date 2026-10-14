@@ -95,6 +95,32 @@ const RESOLVERS: ReadonlyArray<{ functionId: string; resolve: Resolver }> = [
       };
     },
   },
+  {
+    functionId: "path-a-release-to-production",
+    resolve: (data) => {
+      const oppId = textOf(data?.ghlOpportunityId);
+      return {
+        externalId: oppId || undefined,
+        resolutionPath: oppId
+          ? `/admin/path-a?opp=${encodeURIComponent(oppId)}`
+          : "/admin/path-a",
+        source: "katana",
+      };
+    },
+  },
+  {
+    functionId: "path-a-ghl-sync",
+    resolve: (data) => {
+      const oppId = textOf(data?.ghlOpportunityId);
+      return {
+        externalId: oppId || undefined,
+        resolutionPath: oppId
+          ? `/admin/path-a?opp=${encodeURIComponent(oppId)}`
+          : "/admin/path-a",
+        source: "ghl",
+      };
+    },
+  },
 ];
 
 /**

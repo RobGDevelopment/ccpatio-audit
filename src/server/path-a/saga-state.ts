@@ -36,7 +36,7 @@ export class PathAItemTransitionError extends Error {
   }
 }
 
-const LEGAL_SAGA_TRANSITIONS: Record<SagaStatusValue, readonly SagaStatusValue[]> = {
+const LEGAL_SAGA_TRANSITIONS: Partial<Record<SagaStatusValue, readonly SagaStatusValue[]>> = {
   PENDING: ["PENDING", "AWAITING_DEPOSIT"],
   AWAITING_DEPOSIT: ["AWAITING_DEPOSIT", "PENDING", "IN_PROGRESS"],
   IN_PROGRESS: ["IN_PROGRESS", "COMPLETED", "SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION"],
@@ -45,9 +45,6 @@ const LEGAL_SAGA_TRANSITIONS: Record<SagaStatusValue, readonly SagaStatusValue[]
     "IN_PROGRESS",
   ],
   COMPLETED: ["COMPLETED"],
-  // Path A never enters compensating/compensated
-  COMPENSATING: [],
-  COMPENSATED: [],
 };
 
 export function assertLegalSagaTransition(

@@ -915,7 +915,7 @@ function buildChecklist(wb: ExcelJS.Workbook, materials: ExistingMaterial[]): vo
       "Woo line sku = Master SKU; attrs not SKU suffixes",
       "PrimeView",
       "OPEN",
-      "See tab 04 + CAPITAL_STACK_VENDOR_HANDOFF.md",
+      "See tab 04 (CAPITAL_STACK_VENDOR_HANDOFF.md was retired in Phase B1)",
     ],
     [
       "Pillow vs cushion fabric rules documented",

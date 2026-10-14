@@ -50,10 +50,18 @@ import {
 import {
   defaultWooKatanaDeps,
   isOwnWooSalesOrder,
-  WOO_MO_LISTING_LIMIT,
+  matchSalesOrderRowsToLines,
+  WOO_MAX_LINE_ITEMS,
+  type KatanaSoRow,
   type WooKatanaDeps,
 } from "@/server/woocommerce/katana-deps";
 import { runWooLedgerLeg } from "@/server/woocommerce/ledger-leg";
+import {
+  hubResolveDeps,
+  resolveWooOrder,
+  type ResolvedWooLine,
+  type WooResolveDeps,
+} from "@/server/woocommerce/sku-resolver";
 
 export type WooSagaStep = {
   run: <T>(id: string, fn: () => Promise<T>) => Promise<T>;
@@ -62,6 +70,8 @@ export type WooSagaStep = {
 export type WooSagaDeps = {
   store: SagaStore;
   katana: WooKatanaDeps;
+  /** Hub database authority for SKUs, finishes and recipes (Phase B1). */
+  resolve: WooResolveDeps;
   /** Updates the `incoming_webhooks` audit row (keyed by the delivery key). */
   updateAudit: (
     idempotencyKey: string,
@@ -77,6 +87,7 @@ export function defaultWooSagaDeps(): WooSagaDeps {
   return {
     store: sagaStore,
     katana: defaultWooKatanaDeps,
+    resolve: hubResolveDeps(),
     updateAudit: updateIncomingWebhookStatus,
     getModes: () => ({
       orderMode: getOrderPipelineMode(),
@@ -130,13 +141,25 @@ function paidAtFor(order: WooOrderWebhook, now: Date): Date {
   return now;
 }
 
-type SalesOrderResult = { salesOrderId: number; rowIds: number[]; created: boolean };
+/** Each Katana row paired with the index of its Woo line in the resolved `lines` array. */
+type SalesOrderResult = {
+  salesOrderId: number;
+  rowLines: Array<{ rowId: number; lineIndex: number }>;
+  created: boolean;
+};
 
 async function ensureSalesOrder(
   order: WooOrderWebhook,
   orderNo: string,
+  lines: ResolvedWooLine[],
   katana: WooKatanaDeps,
 ): Promise<SalesOrderResult> {
+  const pair = (rows: KatanaSoRow[]) =>
+    matchSalesOrderRowsToLines(rows, lines).map(({ line, rowId }) => ({
+      rowId,
+      lineIndex: lines.indexOf(line),
+    }));
+
   const existing = await katana.findSalesOrderByOrderNo(orderNo);
 
   if (existing) {
@@ -151,13 +174,23 @@ async function ensureSalesOrder(
     if (!Number.isFinite(salesOrderId) || salesOrderId <= 0) {
       throw new KatanaApiError(`Katana sales order ${orderNo} has no usable id.`, { status: 422 });
     }
-    const rowIds = await katana.getSalesOrderRowIds(existing);
-    return { salesOrderId, rowIds, created: false };
+    const rows = await katana.getSalesOrderRows(existing);
+    return { salesOrderId, rowLines: pair(rows), created: false };
   }
 
-  const payload = { ...mapWooOrderToKatanaSalesOrder(order), idempotencyKey: orderNo };
+  const payload = { ...mapWooOrderToKatanaSalesOrder(order, lines), idempotencyKey: orderNo };
   const created = await katana.createSalesOrder(payload);
-  return { salesOrderId: created.salesOrderId, rowIds: created.salesOrderRowIds, created: true };
+  const returned: KatanaSoRow[] = (created.salesOrderRows ?? []).map((r) => ({
+    id: r.id,
+    sku: r.sku ? r.sku : null,
+    lineKey: r.lineKey ?? null,
+  }));
+  // The POST response may omit rows or row attributes: re-read the order in that case.
+  const rows =
+    returned.length === lines.length && returned.every((r) => r.lineKey !== null)
+      ? returned
+      : await katana.getSalesOrderRows({ id: created.salesOrderId });
+  return { salesOrderId: created.salesOrderId, rowLines: pair(rows), created: true };
 }
 
 type MoRowResult = { rowId: number; moId: number; reused: boolean };
@@ -179,12 +212,25 @@ export async function runWooOrderSaga({
   }
   const order = parsed.data;
   const orderKey = String(order.id);
-  const orderNo = katanaOrderNo("woo", order.id, { number: order.number });
+  // Phase B1: the Katana order number is strictly `WOO-<id>` (the Woo display `number` is ignored).
+  const orderNo = katanaOrderNo("woo", order.id);
   const deliveryKey = readDeliveryKey(event.data);
   const lineCount = order.line_items.length;
 
   const markAudit = async (status: "processed" | "failed", message?: string) => {
     if (deliveryKey) await deps.updateAudit(deliveryKey, status, message);
+  };
+
+  /** Hub DB authority. A rejection here is a data problem a retry cannot fix. */
+  const resolveLines = async (requireKatanaIds: boolean): Promise<ResolvedWooLine[]> => {
+    const resolution = await resolveWooOrder(order, deps.resolve, { requireKatanaIds });
+    if (!resolution.ok) {
+      const detail = resolution.issues.map((i) => `${i.path}: ${i.message}`).join("; ");
+      throw new NonRetriableError(
+        `WooCommerce order ${order.id} failed SKU/finish validation against the hub: ${detail}`,
+      );
+    }
+    return resolution.lines;
   };
 
   // 1. saga-start: insert-once (the unique index decides a race), then read back.
@@ -221,6 +267,19 @@ export async function runWooOrderSaga({
   const mode = modes.orderMode;
 
   if (!canMutateKatanaOrders(mode)) {
+    // Validate against the hub even in a dry run, so the log shows exactly what a live run would
+    // write. A rejection is loud (non-retriable -> DLQ) and does not touch the saga row.
+    const dryLines = await step.run("resolve-specs-dry-run", async () => {
+      try {
+        return await resolveLines(false);
+      } catch (error) {
+        await markAudit(
+          "failed",
+          error instanceof Error ? error.message.slice(0, 500) : "spec validation failed",
+        );
+        throw error;
+      }
+    });
     await step.run("woo-dry-run", async () => {
       console.log(
         JSON.stringify({
@@ -229,6 +288,11 @@ export async function runWooOrderSaga({
           orderNo,
           lineCount,
           mode,
+          lines: dryLines.map((l) => ({
+            sku: l.spec.sku,
+            quantity: l.spec.quantity,
+            finishes: l.finishes.map((f) => `${f.slot}=${f.sku}:${f.mode}`),
+          })),
         }),
       );
       // Never poison the saga: PENDING/dry_run_logged keeps the order processable after the
@@ -263,24 +327,19 @@ export async function runWooOrderSaga({
       deps.store.setStatus(WOO_SAGA_TYPE, orderKey, "IN_PROGRESS"),
     );
 
-    if (lineCount > WOO_MO_LISTING_LIMIT) {
+    if (lineCount > WOO_MAX_LINE_ITEMS) {
       throw new NonRetriableError(
-        `WooCommerce order ${order.id} has ${lineCount} lines (> ${WOO_MO_LISTING_LIMIT}); ` +
+        `WooCommerce order ${order.id} has ${lineCount} lines (> ${WOO_MAX_LINE_ITEMS}); ` +
           "the MO duplicate check cannot page that far. Manual review required.",
       );
     }
 
+    // Re-validate against the hub at run time (the DB may have moved since ingress) and require
+    // the Katana variant ids the MO binding needs. Memoized: one run sees one answer.
+    const lines = await step.run("resolve-specs", () => resolveLines(true));
+
     salesOrder = await runKatanaStep<SalesOrderResult>(step, "ensure-katana-sales-order", () =>
-      wooKatanaCall(async () => {
-        const result = await ensureSalesOrder(order, orderNo, deps.katana);
-        if (result.rowIds.length !== lineCount) {
-          throw new KatanaApiError(
-            `${orderNo} has ${result.rowIds.length} sales order rows for ${lineCount} Woo line items.`,
-            { status: 422 },
-          );
-        }
-        return result;
-      }),
+      wooKatanaCall(() => ensureSalesOrder(order, orderNo, lines, deps.katana)),
     );
     const soResult = salesOrder;
     await step.run("saga-so-created", () =>
@@ -288,7 +347,8 @@ export async function runWooOrderSaga({
     );
 
     failedLeg = "manufacturing_orders";
-    for (const rowId of soResult.rowIds) {
+    for (const { rowId, lineIndex } of soResult.rowLines) {
+      const line = lines[lineIndex];
       const row = await runKatanaStep<MoRowResult>(step, `mto-row-${rowId}`, () =>
         wooKatanaCall(async () => {
           // NOT idempotent at Katana: check for an existing MO on this row BEFORE creating.
@@ -298,6 +358,32 @@ export async function runWooOrderSaga({
         }),
       );
       moIds.push(row.moId);
+
+      // Swap the nested generic placeholder rows for the customer's finishes. Strict and
+      // idempotent: an already-bound tree is a success, any Katana failure throws.
+      const swaps = line.finishes.filter((f) => f.mode === "swap");
+      if (swaps.length > 0) {
+        await runKatanaStep(step, `bind-finishes-${rowId}`, () =>
+          wooKatanaCall(async () => {
+            const bound: Array<{ slot: string; sku: string; patchedCount: number; alreadyBound: boolean }> = [];
+            for (const finish of swaps) {
+              if (finish.variantId === null || finish.genericVariantId === null) {
+                throw new NonRetriableError(
+                  `Finish ${finish.slot}=${finish.sku} on row ${rowId} is missing a Katana variant id.`,
+                );
+              }
+              const result = await deps.katana.bindPlaceholder({
+                moId: row.moId,
+                genericVariantId: finish.genericVariantId,
+                specificVariantId: finish.variantId,
+                label: `${finish.slot} ${finish.sku}`,
+              });
+              bound.push({ slot: finish.slot, sku: finish.sku, ...result });
+            }
+            return bound;
+          }),
+        );
+      }
     }
     await step.run("saga-mo-created", () =>
       deps.store.setStep(WOO_SAGA_TYPE, orderKey, "mo_created"),

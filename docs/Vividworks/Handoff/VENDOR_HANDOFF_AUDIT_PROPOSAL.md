@@ -6,7 +6,7 @@
 **Owner:** Enterprise Systems Architect (audit)  
 **Sole workbook under review:** `docs/Vividworks/Handoff/Spark_Generated/Vividworks_Primeview E-Commerce Handoff (Spark).xlsx`  
 **Canonical generator:** `npm run ecom:harden-spark` → `scripts/harden-spark-handoff-mq.ts`  
-**Binding SoT:** `docs/MDM_MASTER_BLUEPRINT.md` + `docs/CAPITAL_STACK_VENDOR_HANDOFF.md`
+**Binding SoT:** `docs/MDM_MASTER_BLUEPRINT.md` + `.cursor/phase-b1.md` (`docs/CAPITAL_STACK_VENDOR_HANDOFF.md` was deleted in Phase B1)
 
 ---
 
@@ -35,7 +35,7 @@ This proposal lists opportunities only. **Do not implement until items are expli
 | Research merge | `docs/Vividworks/Handoff/_research_merged.json` |
 | Research blank schema | `docs/Vividworks/Handoff/RESEARCH_PROMPT_FILL_HANDOFF_BLANKS.md` |
 | Hex library | `scripts/lib/material-hex-preview.ts` |
-| Capital Stack | `docs/CAPITAL_STACK_VENDOR_HANDOFF.md` |
+| Capital Stack | (deleted in Phase B1) |
 | VW SOW | `docs/Vividworks/APPENDIX 2 CCPatio SOW 11-September-2026.docx` |
 | PrimeView proposal | `docs/Vividworks/Primeview/Sep 1, 2026 _ E-Commerce Website Proposal I CC Patio.docx` |
 | Live Spark blank census | measured 2026-09-11 against current Spark `.xlsx` |
@@ -62,7 +62,7 @@ Goal: force Mia/Kian decisions into Q&A, not into typing 265 product rows. Every
 | Column | Current state | Pre-population opportunity | Source(s) | Confidence / caveat |
 |---|---|---|---|---|
 | **Drawing** | 265/265 blank (text); images often missing | Re-attach Website Products / handoff images by Master SKU; fall back to catalog stills | `scripts/lib/website-products-handoff.ts`, `docs/data_sheets/Vividworks_Primeview E-Commerce Handoff.xlsx` → Copy of Website Products | High for matched SKUs; unmatched SOW rows stay blank |
-| **Collection** | ~215 blank | Derive from Master SKU grammar `FIN-{COL}-…` via collection code map (BRV→Bravada, BRK→Brooklyn, OCN→Ocean, …) | `docs/CAPITAL_STACK_VENDOR_HANDOFF.md` §1.2; SKU engine | **Very high** — pure parse |
+| **Collection** | ~215 blank | Derive from Master SKU grammar `FIN-{COL}-…` via collection code map (BRV→Bravada, BRK→Brooklyn, OCN→Ocean, …) | SKU engine (the retired Capital Stack doc §1.2 is deleted) | **Very high** — pure parse |
 | **Web Base Price ($)** | Mostly filled | Fill remaining from phase CSVs `MSRP` / Website Products `msrp`; never invent | `vividworks_phase1_products.csv`, `vividworks_phase2_products.csv`, Website Products | High where matched; research sample only covers a cluster of historical `noPrice` SKUs |
 | **MSRP Aluminum ($)** | Formula / partial | Keep XLOOKUP(`MSRP_MARKUP_MULT`); seed Web Base first | Q&A Q01 + Tab 01 E | Already automated once E is filled |
 | **Dimensions (LxWxH)** | ~11 blank | Parse from Product Name (`34" x 34" x 31"`) and/or phase CSV / google_tab3_import | Name regex; `google_tab3_import.csv`; phase CSVs | High for name-encoded dims |

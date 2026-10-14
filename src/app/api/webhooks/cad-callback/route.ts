@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  // (1) await req.text() ONCE, never req.json()
+  // (1) Read raw body once, never parse JSON stream directly
   const rawBody = await req.text();
 
   // (2) CAD_CALLBACK_SECRET unset or blank -> 503

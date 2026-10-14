@@ -11,6 +11,11 @@ import {
 import { executeReleaseCustomBuild } from "@/server/factory-bom/release-custom-build";
 import { syncBOMToKatana, ensureKatanaVariantForSku } from "@/lib/katana";
 import { publishToKatana } from "@/server/mdm/publish-channels";
+import { createFakeDb, type FakeTables } from "./helpers/path-a-fake-db";
+import {
+  assertKatanaWriteAllowedForSalesOrderRows,
+  assertKatanaWriteAllowedForSkus,
+} from "@/server/path-a/katana-fence";
 
 describe("classifyCustomSku", () => {
   it("classifies catalog SKUs as not_custom", async () => {
@@ -240,5 +245,101 @@ describe("Neutralizing legacy writers for custom SKUs", () => {
   it("executeReleaseCustomBuild returns deferredToPathA for custom SKUs", async () => {
     const res = await executeReleaseCustomBuild("JOB-CUSTOM-CHAIR");
     expect(res).toEqual({ receipt: true, deferredToPathA: true });
+  });
+});
+
+describe("B3: SKU-list and sales-order-row fences (real fence logic over a table-aware fake DB)", () => {
+  const OPP = "opp-fence";
+  function world(sagaStatus: string | null, requested: boolean, items: Array<{ global_sku: string; katana_sales_order_row_id: number }> = []) {
+    const tables: FakeTables = {
+      sku_mappings: [
+        { global_sku: "FIN-CHAIR-1", attributes: {} },
+        { global_sku: "JOB-A-SOFA", attributes: { custom_build: true, job_id: "job-1" } },
+      ],
+      custom_build_jobs: [{ id: "job-1", ghl_opportunity_id: OPP }],
+      saga_runs:
+        sagaStatus === null
+          ? []
+          : [
+              {
+                saga_type: "path_a_cad",
+                correlation_key: OPP,
+                status: sagaStatus,
+                release_requested_at: requested ? new Date() : null,
+              },
+            ],
+      custom_build_job_items: items as unknown as FakeTables[string],
+    };
+    return createFakeDb(tables).db;
+  }
+
+  it("assertKatanaWriteAllowedForSkus passes a catalog-only list", async () => {
+    const db = world("AWAITING_DEPOSIT", false);
+    await expect(assertKatanaWriteAllowedForSkus(["FIN-CHAIR-1"], () => db as never)).resolves.toBeUndefined();
+  });
+
+  it("assertKatanaWriteAllowedForSkus blocks the whole list when ONE custom SKU is pre-release", async () => {
+    const db = world("AWAITING_DEPOSIT", true);
+    await expect(
+      assertKatanaWriteAllowedForSkus(["FIN-CHAIR-1", "JOB-A-SOFA"], () => db as never),
+    ).rejects.toMatchObject({ code: "PATH_A_FENCE_BLOCKED" });
+  });
+
+  it("assertKatanaWriteAllowedForSkus lets a claimed (IN_PROGRESS + requested) custom SKU through", async () => {
+    const db = world("IN_PROGRESS", true);
+    await expect(assertKatanaWriteAllowedForSkus(["JOB-A-SOFA"], () => db as never)).resolves.toBeUndefined();
+  });
+
+  it("assertKatanaWriteAllowedForSkus blocks a custom SKU whose saga row is missing", async () => {
+    const db = world(null, false);
+    await expect(assertKatanaWriteAllowedForSkus(["JOB-A-SOFA"], () => db as never)).rejects.toMatchObject({
+      code: "PATH_A_NO_SAGA",
+    });
+  });
+
+  it("assertKatanaWriteAllowedForSalesOrderRows resolves each row id to its custom SKU and fences it", async () => {
+    const db = world("AWAITING_DEPOSIT", true, [{ global_sku: "JOB-A-SOFA", katana_sales_order_row_id: 9001 }]);
+    await expect(assertKatanaWriteAllowedForSalesOrderRows([9001], () => db as never)).rejects.toMatchObject({
+      code: "PATH_A_FENCE_BLOCKED",
+    });
+  });
+
+  it("assertKatanaWriteAllowedForSalesOrderRows allows the same row once the saga is claimed", async () => {
+    const db = world("IN_PROGRESS", true, [{ global_sku: "JOB-A-SOFA", katana_sales_order_row_id: 9001 }]);
+    await expect(assertKatanaWriteAllowedForSalesOrderRows([9001], () => db as never)).resolves.toBeUndefined();
+  });
+
+  it("assertKatanaWriteAllowedForSalesOrderRows passes rows that no custom item owns (catalog/Woo orders)", async () => {
+    const db = world("AWAITING_DEPOSIT", true, [{ global_sku: "JOB-A-SOFA", katana_sales_order_row_id: 9001 }]);
+    await expect(assertKatanaWriteAllowedForSalesOrderRows([123456], () => db as never)).resolves.toBeUndefined();
+  });
+
+  it("assertKatanaWriteAllowedForSalesOrderRows fails closed when custom_build_job_items schema is missing (42P01 / 42703)", async () => {
+    for (const code of ["42P01", "42703"]) {
+      const err = Object.assign(new Error("relation custom_build_job_items does not exist"), { code });
+      const db = {
+        select: () => ({
+          from: () => {
+            throw err;
+          },
+        }),
+      };
+      await expect(
+        assertKatanaWriteAllowedForSalesOrderRows([9001], () => db as never),
+      ).rejects.toMatchObject({
+        code: "PATH_A_SCHEMA_MISSING",
+      });
+    }
+  });
+
+  it("assertKatanaWriteAllowedForSalesOrderRows does NOT swallow unrelated DB errors", async () => {
+    const db = {
+      select: () => ({
+        from: () => {
+          throw new Error("connection reset");
+        },
+      }),
+    };
+    await expect(assertKatanaWriteAllowedForSalesOrderRows([9001], () => db as never)).rejects.toThrow("connection reset");
   });
 });

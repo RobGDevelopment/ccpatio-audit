@@ -88,6 +88,60 @@ export const pathAReleaseEventSchema = z
 
 export type PathAReleaseEventPayload = z.infer<typeof pathAReleaseEventSchema>;
 
+/**
+ * Builds a release event payload and validates it against `pathAReleaseEventSchema`.
+ * Throws a ZodError for an unknown source, a blank requester, or a deposit without money fields,
+ * so a sender can never emit a payload Function 2 would have to guess about (QCA m2).
+ */
+export function buildPathAReleaseEventData(input: {
+  ghlOpportunityId: string;
+  source: PathAReleaseSource;
+  requestedBy: string;
+  reason?: string | null;
+  depositCents?: number | null;
+  depositRef?: string | null;
+  attempt: number;
+}): PathAReleaseEventPayload {
+  return pathAReleaseEventSchema.parse({
+    ghlOpportunityId: input.ghlOpportunityId,
+    source: input.source,
+    requestedBy: input.requestedBy,
+    ...(input.reason ? { reason: input.reason } : {}),
+    ...(input.depositCents != null ? { depositCents: input.depositCents } : {}),
+    ...(input.depositRef ? { depositRef: input.depositRef } : {}),
+    attempt: input.attempt,
+  });
+}
+
+/** The columns of `saga_runs` that record who/what requested a release. */
+export type RecordedReleaseRequest = {
+  release_source: string | null;
+  release_requested_by: string | null;
+  release_reason: string | null;
+  deposit_cents: number | null;
+  deposit_ref: string | null;
+};
+
+/**
+ * Retry and early-deposit replay re-send the request that was ALREADY recorded in the database,
+ * so the payload is rebuilt from the saga row (never invented by the caller).
+ */
+export function buildPathAReleaseEventDataFromSaga(
+  ghlOpportunityId: string,
+  saga: RecordedReleaseRequest,
+  attempt: number,
+): PathAReleaseEventPayload {
+  return buildPathAReleaseEventData({
+    ghlOpportunityId,
+    source: saga.release_source as PathAReleaseSource,
+    requestedBy: saga.release_requested_by ?? "",
+    reason: saga.release_reason,
+    depositCents: saga.deposit_cents,
+    depositRef: saga.deposit_ref,
+    attempt,
+  });
+}
+
 export const cadConvertCompletedSchema = z.object({
   jobId: z.string().optional(),
   uploadId: z.string().trim().min(1, "uploadId is required"),

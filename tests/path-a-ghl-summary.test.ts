@@ -98,6 +98,7 @@ describe("Path A GHL Summary Builder (Task 8.1)", () => {
       opportunityId: "opp-huge",
       opportunityName: "Very Large Custom Pergola Project with Lots of Items",
       sagaStatus: "AWAITING_DEPOSIT",
+      appUrl: "https://app.ccpatio.com",
       items: [
         {
           globalSku: "JOB-HUGE-PROJECT",
@@ -110,5 +111,45 @@ describe("Path A GHL Summary Builder (Task 8.1)", () => {
 
     expect(summary.length).toBeLessThanOrEqual(MAX_GHL_SUMMARY_LENGTH);
     expect(summary).toContain("... [truncated, see MDM: https://app.ccpatio.com/admin/path-a?opp=opp-huge]");
+  });
+
+  it("m3: never invents a host when appUrl is not supplied", () => {
+    const summary = buildGhlOpportunitySummary({
+      opportunityId: "opp-nohost",
+      sagaStatus: "AWAITING_DEPOSIT",
+      items: [{ globalSku: "JOB-X", quantity: 1, status: "finalized" }],
+    });
+    expect(summary).not.toContain("app.ccpatio.com");
+    expect(summary).not.toContain("Dashboard:");
+  });
+
+  it("m3: the truncation marker carries no invented host either", () => {
+    const huge = Array.from({ length: 200 }, (_, i) => ({
+      childSku: `RM-MATERIAL-LONG-SKU-NAME-NUMBER-${i}`,
+      quantity: "10.5000",
+    }));
+    const summary = buildGhlOpportunitySummary({
+      opportunityId: "opp-huge2",
+      sagaStatus: "AWAITING_DEPOSIT",
+      items: [{ globalSku: "JOB-H", quantity: 1, status: "finalized", bomLines: huge }],
+    });
+    expect(summary.length).toBeLessThanOrEqual(MAX_GHL_SUMMARY_LENGTH);
+    expect(summary).not.toContain("app.ccpatio.com");
+  });
+
+  it("labels the real manual-intervention saga status", () => {
+    expect(formatSagaStateLabel("SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION")).toBe(
+      "MANUAL REVIEW REQUIRED",
+    );
+  });
+
+  it("tolerates an item with an undefined status instead of throwing", () => {
+    expect(() =>
+      buildGhlOpportunitySummary({
+        opportunityId: "opp-undef",
+        sagaStatus: "PENDING",
+        items: [{ globalSku: "JOB-U", quantity: 1, status: undefined as unknown as string }],
+      }),
+    ).not.toThrow();
   });
 });

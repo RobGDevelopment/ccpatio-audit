@@ -23,6 +23,11 @@ export const coreEnvSchema = z.object({
   CATALOG_PUBLISH_MODE: z.enum(["log", "live"]).default("log"),
   ORDER_PIPELINE_MODE: z.enum(["log", "live"]).default("log"),
   LEDGER_PIPELINE_MODE: z.enum(["log", "live"]).default("log"),
+  PATH_A_GHL_SYNC_MODE: z.enum(["log", "live"]).default("log"),
+  GHL_OPPORTUNITY_BUILD_SUMMARY_FIELD_ID: z.string().optional(),
+  CAD_CALLBACK_SECRET: z.string().optional(),
+  CAD_CONVERT_TOKEN: z.string().optional(),
+  CAD_CONVERT_TIMEOUT_MINUTES: z.string().optional(),
   KATANA_USE_BOM_ROWS: z.string().optional(),
 
   // QuickBooks Online (QBO) — explicitly decoupled from NODE_ENV

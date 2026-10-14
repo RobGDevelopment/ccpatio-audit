@@ -63,22 +63,37 @@ describe("katanaOrderNo", () => {
     expect(() => katanaOrderNo("path_a", "")).toThrow(/externalId is missing/);
   });
 
-  describe("D1: Woo `number` is the single source of truth", () => {
+  describe("Phase B1 D8: Woo Katana order number is strictly WOO-<id>", () => {
+    // The helper's signature has no override. These calls bypass the type system on purpose to
+    // prove a stray third argument (the removed `{ number }` backdoor) is IGNORED at runtime.
+    const withLegacyOverride = katanaOrderNo as unknown as (
+      source: string,
+      externalId: string | number,
+      opts?: { number?: string | number | null },
+    ) => string;
+
     it.each([
-      ["1042", "1042"],
-      ["  1042  ", "1042"],
-      [1042, "1042"],
-      ["", "WOO-981"],
-      ["  ", "WOO-981"],
-      [null, "WOO-981"],
-      [undefined, "WOO-981"],
-    ] as const)("number %j -> %s", (number, expected) => {
-      expect(katanaOrderNo("woo", 981, { number })).toBe(expected);
-      expect(katanaOrderNo("woocommerce", "981", { number })).toBe(expected);
+      ["1042"],
+      ["  1042  "],
+      [1042],
+      ["A-7"],
+      [""],
+      ["  "],
+      [null],
+      [undefined],
+    ] as const)("ignores the removed `number` override %j", (number) => {
+      expect(withLegacyOverride("woo", 981, { number })).toBe("WOO-981");
+      expect(withLegacyOverride("woocommerce", "981", { number })).toBe("WOO-981");
     });
 
+    it("declares no third parameter (the override cannot be reintroduced silently)", () => {
+      expect(katanaOrderNo.length).toBe(2);
+    });
+
+    // The Woo mapper (and therefore the saga) is strictly `WOO-<id>` and ignores the Woo display
+    // `number`; this guard pins the mapper to the strict form.
     it.each(["1042", "  1042 ", "", "  ", undefined, "A-7"] as const)(
-      "drift guard: helper equals mapWooOrderToKatanaSalesOrder().orderNo for number %j",
+      "drift guard: mapWooOrderToKatanaSalesOrder().orderNo is strictly WOO-<id> for number %j",
       (number) => {
         const order = {
           id: 981,
@@ -88,15 +103,13 @@ describe("katanaOrderNo", () => {
           meta_data: [],
           line_items: [{ name: "x", product_id: 1, quantity: 1, sku: "FIN-X", meta_data: [] }],
         } as unknown as WooOrderWebhook;
-        expect(mapWooOrderToKatanaSalesOrder(order).orderNo).toBe(
-          katanaOrderNo("woo", order.id, { number }),
-        );
-        expect(mapWooOrderToKatanaSalesOrder(order).orderNo.trim()).not.toBe("");
+        expect(mapWooOrderToKatanaSalesOrder(order).orderNo).toBe("WOO-981");
+        expect(mapWooOrderToKatanaSalesOrder(order).orderNo).toBe(katanaOrderNo("woo", order.id));
       },
     );
 
     it("ghl ignores `number` and is unchanged", () => {
-      expect(katanaOrderNo("ghl", "opp_42", { number: "7" })).toBe("GHL-opp_42");
+      expect(withLegacyOverride("ghl", "opp_42", { number: "7" })).toBe("GHL-opp_42");
     });
   });
 });

@@ -7,11 +7,13 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import {
+  custom_build_job_items,
   custom_build_jobs,
   saga_runs,
   sku_mappings,
 } from "@/server/db/schema";
 import { PATH_A_SAGA_TYPE } from "./saga-state";
+import type { ReleaseDb } from "./release-store";
 
 export class PathAFenceError extends Error {
   public readonly code: string;
@@ -32,7 +34,7 @@ export type SkuCustomClassification =
  */
 export async function classifyCustomSku(
   globalSku: string,
-  resolveDb: () => any = getDb,
+  resolveDb: () => ReleaseDb = getDb,
 ): Promise<SkuCustomClassification> {
   const db = resolveDb();
   const sku = globalSku.trim().toUpperCase();
@@ -46,14 +48,14 @@ export async function classifyCustomSku(
     .where(eq(sku_mappings.global_sku, sku))
     .limit(1);
 
-  const attrs = mapping?.attributes as Record<string, any> | undefined;
+  const attrs = mapping?.attributes as Record<string, unknown> | undefined;
   const isCustom = Boolean(attrs?.custom_build) || sku.startsWith("JOB-");
 
   if (!isCustom) {
     return { type: "not_custom" };
   }
 
-  const jobId = attrs?.job_id;
+  const jobId = typeof attrs?.job_id === "string" ? attrs.job_id : undefined;
   if (!jobId) {
     return { type: "custom_without_opportunity", jobId: null };
   }
@@ -87,7 +89,7 @@ export async function classifyCustomSku(
  */
 export async function assertKatanaWriteAllowed(
   globalSku: string,
-  resolveDb: () => any = getDb,
+  resolveDb: () => ReleaseDb = getDb,
 ): Promise<void> {
   try {
     const classification = await classifyCustomSku(globalSku, resolveDb);
@@ -134,23 +136,84 @@ export async function assertKatanaWriteAllowed(
         "PATH_A_FENCE_BLOCKED",
       );
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof PathAFenceError) {
       throw err;
     }
     // Check for Postgres 42P01 (undefined_table) or 42703 (undefined_column)
-    const code = err?.code || err?.cause?.code;
-    if (
-      code === "42P01" ||
-      code === "42703" ||
-      String(err?.message).includes("42P01") ||
-      String(err?.message).includes("42703")
-    ) {
+    if (isMissingRelationError(err)) {
       throw new PathAFenceError(
-        `Migration 0055 schema missing on database host (${code}). Failing closed for custom SKU ${globalSku}.`,
+        `Migration 0055 schema missing on database host. Failing closed for custom SKU ${globalSku}.`,
         "PATH_A_SCHEMA_MISSING",
       );
     }
     throw err;
   }
+}
+
+function isMissingRelationError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { code?: unknown; cause?: unknown; message?: unknown };
+  const cause = e.cause && typeof e.cause === "object" ? (e.cause as { code?: unknown }) : undefined;
+  const code = typeof e.code === "string" ? e.code : typeof cause?.code === "string" ? cause.code : "";
+  const message = typeof e.message === "string" ? e.message : "";
+  return (
+    code === "42P01" ||
+    code === "42703" ||
+    message.includes("42P01") ||
+    message.includes("42703")
+  );
+}
+
+/**
+ * Fences a whole SKU list (e.g. every row of one Katana Sales Order). The list
+ * is blocked if ANY custom SKU in it is not yet claimed for release.
+ * SKUs are normalised and de-duplicated; each is checked via assertKatanaWriteAllowed.
+ */
+export async function assertKatanaWriteAllowedForSkus(
+  skus: readonly string[],
+  resolveDb: () => ReleaseDb = getDb,
+): Promise<void> {
+  const unique = [...new Set(skus.map((s) => s.trim().toUpperCase()).filter(Boolean))];
+  for (const sku of unique) {
+    await assertKatanaWriteAllowed(sku, resolveDb);
+  }
+}
+
+/**
+ * Fences Katana write operations addressed by Sales Order ROW id (Make-to-Order MO
+ * creation). Each row id is resolved to the custom item that owns it
+ * (custom_build_job_items.katana_sales_order_row_id) and that SKU is fenced.
+ * Rows no custom item owns (catalog / Woo orders) pass. A missing items table
+ * (42P01/42703) fails closed (D4). Any other DB error propagates.
+ */
+export async function assertKatanaWriteAllowedForSalesOrderRows(
+  rowIds: readonly number[],
+  resolveDb: () => ReleaseDb = getDb,
+): Promise<void> {
+  const owners: string[] = [];
+  for (const rowId of [...new Set(rowIds)]) {
+    let owner: { global_sku: string } | undefined;
+    try {
+      const db = resolveDb();
+      const rows = await db
+        .select({ global_sku: custom_build_job_items.global_sku })
+        .from(custom_build_job_items)
+        .where(eq(custom_build_job_items.katana_sales_order_row_id, rowId))
+        .limit(1);
+      owner = rows[0];
+    } catch (err: unknown) {
+      if (isMissingRelationError(err)) {
+        throw new PathAFenceError(
+          `Migration 0055 schema missing on database host. Failing closed for sales order rows.`,
+          "PATH_A_SCHEMA_MISSING",
+        );
+      }
+      throw err;
+    }
+    if (owner?.global_sku) {
+      owners.push(owner.global_sku);
+    }
+  }
+  await assertKatanaWriteAllowedForSkus(owners, resolveDb);
 }

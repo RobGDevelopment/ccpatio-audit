@@ -10,6 +10,7 @@ import { type PimSession } from "@/lib/pim-audit";
 import { hasOverrideAuthority } from "./authz";
 import {
   createReleaseStore,
+  type ReleaseDb,
   type ReleaseStore,
 } from "./release-store";
 import {
@@ -18,16 +19,22 @@ import {
 } from "@/server/sre/saga-store";
 import { PATH_A_SAGA_TYPE } from "./saga-state";
 import {
+  buildPathAReleaseEventData,
   PATH_A_RELEASE_TO_PRODUCTION_EVENT,
   pathAReleaseEventId,
 } from "./events";
 import { inngest } from "@/inngest/client";
 
+/** Another actor/source already recorded the release request (internal; never shown to the UI). */
+class ReleaseConflictError extends Error {}
+
 export type ReleaseRequestDeps = {
   releaseStore?: ReleaseStore;
+  /** Builds the release store bound to a transaction handle (defaults to createReleaseStore). */
+  txReleaseStore?: (tx: ReleaseDb) => ReleaseStore;
   sagaStore?: SagaStore;
-  inngestSend?: (event: any) => Promise<any>;
-  db?: any;
+  inngestSend?: (event: Parameters<typeof inngest.send>[0]) => Promise<unknown>;
+  db?: ReleaseDb;
 };
 
 export async function requestManagementOverride(
@@ -80,8 +87,10 @@ export async function requestManagementOverride(
   const operatorEmail = session!.email;
 
   // 4. ONE transaction: requestRelease + audit log insert
-  const requestResult = await db.transaction(async (tx: any) => {
-    const txReleaseStore = createReleaseStore(() => tx);
+  const requestResult = await db.transaction(async (tx: ReleaseDb) => {
+    const txReleaseStore = deps.txReleaseStore
+      ? deps.txReleaseStore(tx)
+      : createReleaseStore(() => tx);
     const result = await txReleaseStore.requestRelease({
       oppId: ghlOpportunityId,
       source: "management_override",
@@ -93,9 +102,8 @@ export async function requestManagementOverride(
       if (result.sameSource && result.requestedBy === operatorEmail) {
         // Idempotent re-request by same actor: allow through to re-send event
       } else {
-        throw new Error(
-          `Release already requested by ${result.requestedBy ?? "unknown"}`,
-        );
+        // Never put the other operator's identity or raw DB text into a UI-visible error.
+        throw new ReleaseConflictError("release already requested by another actor");
       }
     }
 
@@ -107,12 +115,16 @@ export async function requestManagementOverride(
     });
 
     return result;
-  }).catch((err: Error) => {
-    return { error: err.message };
+  }).catch((err: unknown) => {
+    return { failure: err };
   });
 
-  if ("error" in requestResult) {
-    return { ok: false, error: requestResult.error };
+  if ("failure" in requestResult) {
+    if (requestResult.failure instanceof ReleaseConflictError) {
+      return { ok: false, error: "release_already_requested" };
+    }
+    console.error("[requestManagementOverride] release request transaction failed:", requestResult.failure);
+    return { ok: false, error: "release_request_failed" };
   }
 
   // 5. Won or re-requested: bump attempt and send Inngest event
@@ -126,11 +138,13 @@ export async function requestManagementOverride(
     await sendFn({
       id: eventId,
       name: PATH_A_RELEASE_TO_PRODUCTION_EVENT,
-      data: {
+      data: buildPathAReleaseEventData({
         ghlOpportunityId,
+        source: "management_override",
+        requestedBy: operatorEmail,
+        reason: trimmedReason,
         attempt,
-        triggerSource: "management_override",
-      },
+      }),
     });
   } catch (sendErr) {
     console.error("[requestManagementOverride] Inngest send error:", sendErr);
@@ -143,6 +157,7 @@ export async function requestManagementOverride(
 export type RecordDepositResult =
   | { outcome: "released"; attempt: number }
   | { outcome: "recorded_early" }
+  | { outcome: "recorded_already_requested" }
   | { outcome: "recorded_post_completion" }
   | { outcome: "invalid_input"; error: string };
 
@@ -179,16 +194,16 @@ export async function recordDepositAndRequestRelease(
   // D8: insert saga row PENDING / deposit_received_early if none exists
   const existing = await releaseStore.getSaga(ghlOpportunityId);
   if (!existing) {
-    await sagaStore.insertOnce(
-      PATH_A_SAGA_TYPE,
-      ghlOpportunityId,
-      "PENDING",
-      { step: "deposit_received_early" },
-    );
+    await sagaStore.insertOnce({
+      sagaType: PATH_A_SAGA_TYPE,
+      correlationKey: ghlOpportunityId,
+      status: "PENDING",
+      currentStep: "deposit_received_early",
+    });
   }
 
   // Request release with source customer_deposit (records money regardless of race)
-  await releaseStore.requestRelease({
+  const requested = await releaseStore.requestRelease({
     oppId: ghlOpportunityId,
     source: "customer_deposit",
     requestedBy: "system:deposit",
@@ -201,18 +216,26 @@ export async function recordDepositAndRequestRelease(
     return { outcome: "recorded_post_completion" };
   }
 
+  // A request from ANOTHER source (e.g. a management override) already exists and already sent
+  // its own release event. The deposit is recorded (requestRelease COALESCEs the money fields);
+  // sending a second release event would double-trigger Function 2.
+  if (requested.outcome === "already_requested" && !requested.sameSource) {
+    return { outcome: "recorded_already_requested" };
+  }
+
   if (currentSaga?.status === "AWAITING_DEPOSIT") {
     const attempt = await releaseStore.bumpReleaseAttempt(ghlOpportunityId);
     await sendFn({
       id: pathAReleaseEventId(ghlOpportunityId, { depositRef: cleanRef }),
       name: PATH_A_RELEASE_TO_PRODUCTION_EVENT,
-      data: {
+      data: buildPathAReleaseEventData({
         ghlOpportunityId,
-        attempt,
-        triggerSource: "customer_deposit",
-        depositRef: cleanRef,
+        source: "customer_deposit",
+        requestedBy: "system:deposit",
         depositCents,
-      },
+        depositRef: cleanRef,
+        attempt,
+      }),
     });
     return { outcome: "released", attempt };
   }

@@ -30,7 +30,7 @@ Playwright already deep-links `/embed/factory-bom?sku=` (`tests/e2e/factory-bom-
 | Lane | Writer | What it creates |
 |---|---|---|
 | Factory recipe | `syncBOMToKatana` in `src/lib/katana.ts` | Recipes, BOM rows, operations. Drafts in `product_bom_draft` never go out. Live `product_bom` is the only source. |
-| Sales-order MTO | `pushApprovedFactoryOrder` in `src/inngest/functions.ts`, `src/server/katana/katana.service.ts` | `POST /manufacturing_order_make_to_order` from a Katana sales-order row after human triage. Gate: `GHL_FACTORY_ORDERS=live`. |
+| Sales-order MTO | `pushApprovedFactoryOrder` in `src/inngest/functions.ts`; Woo orders via `src/inngest/woo-order.ts`; shared Katana writers in `src/lib/katana.ts` | `POST /manufacturing_order_make_to_order` from a Katana sales-order row after human triage. Gate: `GHL_FACTORY_ORDERS=live`. |
 
 `src/server/actions/*` is the commercial desk (`order-desk`, `dispatch`, `freight`, `logistics`, `inventory`, `generatePdf`). Factory BOM mutations live in `src/app/admin/factory-bom/actions.ts`. Phase 5 does not move them into `src/server/actions` and does not add a third BOM table.
 

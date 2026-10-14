@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sql } from "drizzle-orm";
 import { createPathAPglite } from "./helpers/pglite";
 import { createItemStore } from "@/server/path-a/item-store";
-import { createReleaseStore } from "@/server/path-a/release-store";
+import { createReleaseStore, SagaDesignLockedError, type ReleaseDb } from "@/server/path-a/release-store";
 import { createSagaStore } from "@/server/sre/saga-store";
 import { PATH_A_SAGA_TYPE } from "@/server/path-a/saga-state";
 
@@ -19,8 +19,8 @@ let sagaStore: ReturnType<typeof createSagaStore>;
 
 beforeAll(async () => {
   h = await createPathAPglite();
-  itemStore = createItemStore(() => h.db);
-  releaseStore = createReleaseStore(() => h.db);
+  itemStore = createItemStore(() => h.db as unknown as ReleaseDb);
+  releaseStore = createReleaseStore(() => h.db as unknown as ReleaseDb);
   sagaStore = createSagaStore(() => h.db as never);
 }, 60_000);
 
@@ -257,8 +257,12 @@ describe("Path A Stores (PGlite)", () => {
     const claimedCount = claims.filter((c) => c.outcome === "claimed").length;
     const resumedCount = claims.filter((c) => c.outcome === "resumed").length;
 
+    // QCA M5: a loser that reads AWAITING_DEPOSIT and loses the CAS gets `not_ready` (never
+    // `resumed`); a loser that reads after the winner committed sees IN_PROGRESS (crash-resume).
+    const notReadyCount = claims.filter((c) => c.outcome === "not_ready").length;
+
     expect(claimedCount).toBe(1);
-    expect(resumedCount).toBe(2);
+    expect(resumedCount + notReadyCount).toBe(2);
 
     const saga = await releaseStore.getSaga(oppId);
     expect(saga?.status).toBe("IN_PROGRESS");
@@ -383,4 +387,86 @@ describe("Path A Stores (PGlite)", () => {
       "JOB-TABLE-M",
     ].sort());
   });
+
+  it("D5: advanceSaga failure inside transaction correctly rolls back item status", async () => {
+    const oppId = "opp-d5-atomicity-rollback";
+    const sku = "JOB-D5-ROLLBACK";
+
+    const [job] = (
+      await h.db.execute(sql`
+        INSERT INTO custom_build_jobs (client_slug, display_name, ghl_opportunity_id, created_by)
+        VALUES ('client-d5', 'Job D5', ${oppId}, 'designer@ccpatio.com')
+        RETURNING id
+      `)
+    ).rows as { id: string }[];
+
+    await h.db.execute(sql`INSERT INTO sku_mappings (global_sku) VALUES (${sku})`);
+    await itemStore.ensureItem({ jobId: job.id, globalSku: sku });
+
+    // Item starts in awaiting_cad and transitions to needs_review
+    const [initialItem] = await itemStore.listItemsForOpportunity(oppId);
+    expect(initialItem.design_status).toBe("awaiting_cad");
+
+    await itemStore.setItemStatus({
+      globalSku: sku,
+      from: ["awaiting_cad"],
+      to: "needs_review",
+    });
+
+    const [reviewItem] = await itemStore.listItemsForOpportunity(oppId);
+    expect(reviewItem.design_status).toBe("needs_review");
+
+    // Create saga in IN_PROGRESS (past pause)
+    await h.db.execute(sql`
+      INSERT INTO saga_runs (saga_type, correlation_key, status, current_step)
+      VALUES (${PATH_A_SAGA_TYPE}, ${oppId}, 'IN_PROGRESS', 'release_in_progress')
+    `);
+
+    // Execute atomic transaction that updates item to finalized, then calls advanceSaga (which throws)
+    let caughtErr: Error | null = null;
+    try {
+      await (h.db as any).transaction(async (tx: any) => {
+        const txItemStore = createItemStore(() => tx as unknown as ReleaseDb);
+        const txReleaseStore = createReleaseStore(() => tx as unknown as ReleaseDb);
+
+        const itemRes = await txItemStore.setItemStatus({
+          globalSku: sku,
+          from: ["needs_review", "finalized"],
+          to: "finalized",
+          finalizedDossierHash: "hash-d5-test",
+          finalizedBy: "lead@ccpatio.com",
+        });
+        expect(itemRes.updated).toBe(true);
+
+        // This must throw because saga is IN_PROGRESS (past pause)
+        await txReleaseStore.advanceSaga(oppId);
+      });
+    } catch (e: unknown) {
+      caughtErr = e instanceof Error ? e : new Error(String(e));
+    }
+
+    expect(caughtErr).toBeDefined();
+    expect(caughtErr).toBeInstanceOf(SagaDesignLockedError);
+    expect(caughtErr?.message).toContain("advanceSaga aborted");
+
+    // Atomicity assertion: item status MUST have rolled back to needs_review
+    const [afterItem] = await itemStore.listItemsForOpportunity(oppId);
+    expect(afterItem.design_status).toBe("needs_review");
+    expect(afterItem.finalized_dossier_hash).toBeNull();
+  });
+
+  it("D3: markSagaManual cannot downgrade a saga that is already COMPLETED", async () => {
+    const oppId = "opp-d3-completed-guard";
+    await h.db.execute(sql`
+      INSERT INTO saga_runs (saga_type, correlation_key, status, current_step)
+      VALUES (${PATH_A_SAGA_TYPE}, ${oppId}, 'COMPLETED', 'released_to_production')
+    `);
+
+    await releaseStore.markSagaManual(oppId, "test_leg", new Error("post completion failure"));
+
+    const saga = await releaseStore.getSaga(oppId);
+    expect(saga?.status).toBe("COMPLETED");
+    expect(saga?.current_step).toBe("released_to_production");
+  });
 });
+

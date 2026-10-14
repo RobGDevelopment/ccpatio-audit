@@ -87,3 +87,33 @@ export async function updateIncomingWebhookStatus(
     })
     .where(eq(incoming_webhooks.idempotency_key, idempotencyKey));
 }
+
+export type IncomingWebhookRow = {
+  status: "received" | "processed" | "failed" | "duplicate";
+  payload: unknown;
+};
+
+export async function getIncomingWebhook(
+  idempotencyKey: string,
+  db: Pick<ReturnType<typeof getDb>, "select"> = getDb(),
+): Promise<IncomingWebhookRow | null> {
+  const [row] = await db
+    .select({ status: incoming_webhooks.status, payload: incoming_webhooks.payload })
+    .from(incoming_webhooks)
+    .where(eq(incoming_webhooks.idempotency_key, idempotencyKey))
+    .limit(1);
+  return row ?? null;
+}
+
+/** Replace payload and status of an audit row (used for the Woo paid-baseline row). */
+export async function setIncomingWebhookPayload(
+  idempotencyKey: string,
+  status: "received" | "processed" | "failed",
+  payload: unknown,
+  db: Pick<ReturnType<typeof getDb>, "update"> = getDb(),
+): Promise<void> {
+  await db
+    .update(incoming_webhooks)
+    .set({ status, payload: payload as object, updated_at: new Date() })
+    .where(eq(incoming_webhooks.idempotency_key, idempotencyKey));
+}

@@ -7,7 +7,7 @@ import {
   type WooSagaDeps,
   type WooSagaStep,
 } from "@/inngest/woo-order";
-import { KatanaApiError, katanaRateLimitStore } from "@/lib/katana";
+import { KatanaApiError, katanaRateLimitStore, readRowAttribute, WOO_LINE_KEY_ATTRIBUTE } from "@/lib/katana";
 import { katanaOrderNo } from "@/server/sre/idempotency";
 import {
   assertNeverDeletePaid,
@@ -16,32 +16,30 @@ import {
   type SagaStatusValue,
 } from "@/server/sre/saga";
 import type { SagaRunRow, SagaStore } from "@/server/sre/saga-store";
-import { isOwnWooSalesOrder, type WooKatanaDeps } from "@/server/woocommerce/katana-deps";
+import {
+  isOwnWooSalesOrder,
+  WOO_MAX_LINE_ITEMS,
+  type KatanaSoRow,
+  type WooKatanaDeps,
+} from "@/server/woocommerce/katana-deps";
 import { runWooLedgerLeg } from "@/server/woocommerce/ledger-leg";
+import type { WooResolveDeps } from "@/server/woocommerce/sku-resolver";
+import { BASE_SKU, FAB_SKU, PWD_SKU, VARIANT, makeHub, wooLine, wooOrder as fakeWooOrder } from "./helpers/woo-fakes";
 
-const VALID_SKU = "FIN-ACC-BAS-THU-JAN-16-2025-11";
 const DELIVERY = "woo-delivery:d-1";
 
+/** A paid Woo order with `lines` identical chairs (line ids 1..n), carrying the delivery key. */
 function wooOrder(lines = 2, overrides: Record<string, unknown> = {}) {
   return {
-    id: 1042,
-    number: "1042",
-    status: "processing",
-    currency: "USD",
-    date_paid: "2026-10-13T12:00:00",
+    ...fakeWooOrder({
+      line_items: Array.from({ length: lines }, (_, i) => wooLine({ id: i + 1, quantity: 1 })),
+    }),
     _cc_delivery_key: DELIVERY,
-    line_items: Array.from({ length: lines }, (_, i) => ({
-      id: i + 1,
-      name: `Item ${i + 1}`,
-      product_id: 7,
-      quantity: 1,
-      sku: VALID_SKU,
-      total: "100.00",
-    })),
     ...overrides,
   };
 }
-const ORDER_NO = katanaOrderNo("woo", 1042, { number: "1042" });
+// Phase B1: strictly WOO-<id>, whatever the Woo display `number` says.
+const ORDER_NO = katanaOrderNo("woo", 1042);
 
 type MemRow = Pick<SagaRunRow, "status" | "current_step" | "last_error"> & Record<string, unknown>;
 
@@ -105,9 +103,12 @@ function memoStep(): WooSagaStep & { ran: string[] } {
   };
 }
 
+type Bind = { moId: number; genericVariantId: number; specificVariantId: number; label: string };
+
 function fakeKatana(opts: {
   existingSo?: Record<string, unknown> | null;
-  existingSoRows?: number[];
+  /** Rows of an existing SO as the saga would read them. */
+  existingRows?: KatanaSoRow[];
 } = {}) {
   const state = {
     created: [] as Array<Record<string, unknown>>,
@@ -119,7 +120,13 @@ function fakeKatana(opts: {
     createSoError: null as Error | null,
     nextMo: 9000,
     so: null as Record<string, unknown> | null,
-    soRows: [] as number[],
+    soRows: [] as KatanaSoRow[],
+    /** Every bindPlaceholder call, including idempotent repeats. */
+    binds: [] as Bind[],
+    /** Placeholders already swapped (moId:generic), so a repeat reports alreadyBound. */
+    bound: new Set<string>(),
+    bindError: null as Error | null,
+    returnRowsFromCreate: true,
   };
   const deps: WooKatanaDeps = {
     async findSalesOrderByOrderNo() {
@@ -127,14 +134,18 @@ function fakeKatana(opts: {
       state.soLookups += 1;
       return opts.existingSo ?? state.so;
     },
-    async getSalesOrderRowIds() {
-      return opts.existingSoRows ?? state.soRows;
+    async getSalesOrderRows() {
+      return opts.existingRows ?? state.soRows;
     },
     async createSalesOrder(payload) {
       state.deferPolicies.push(katanaRateLimitStore.getStore());
       if (state.createSoError) throw state.createSoError;
       state.created.push(payload as unknown as Record<string, unknown>);
-      state.soRows = payload.salesOrderRows.map((_, i) => 11 + i);
+      state.soRows = payload.salesOrderRows.map((row, i) => ({
+        id: 11 + i,
+        sku: row.sku,
+        lineKey: readRowAttribute({ attributes: row.attributes }, WOO_LINE_KEY_ATTRIBUTE),
+      }));
       // From now on Katana "has" this order: a lookup by order_no finds it.
       state.so = {
         id: 500,
@@ -147,7 +158,10 @@ function fakeKatana(opts: {
         orderNo: payload.orderNo,
         customerId: 1,
         rowCount: payload.salesOrderRows.length,
-        salesOrderRowIds: state.soRows,
+        salesOrderRowIds: state.soRows.map((r) => r.id),
+        salesOrderRows: state.returnRowsFromCreate
+          ? state.soRows.map((r) => ({ id: r.id, variant_id: VARIANT.base, sku: r.sku ?? undefined, lineKey: r.lineKey }))
+          : undefined,
       };
     },
     async findMoIdForRow(_soId, rowId) {
@@ -165,6 +179,15 @@ function fakeKatana(opts: {
       state.moCreates.push(rowId);
       return state.nextMo;
     },
+    async bindPlaceholder(input) {
+      state.deferPolicies.push(katanaRateLimitStore.getStore());
+      state.binds.push(input);
+      if (state.bindError) throw state.bindError;
+      const key = `${input.moId}:${input.genericVariantId}`;
+      if (state.bound.has(key)) return { patchedCount: 0, alreadyBound: true };
+      state.bound.add(key);
+      return { patchedCount: 1, alreadyBound: false };
+    },
   };
   return { deps, state };
 }
@@ -174,11 +197,13 @@ function makeDeps(opts: {
   katana: WooKatanaDeps;
   orderMode?: "log" | "approve" | "live";
   ledgerMode?: "log" | "live";
+  resolve?: WooResolveDeps;
 }) {
   const audit: Array<{ key: string; status: string; message?: string }> = [];
   const deps: WooSagaDeps = {
     store: opts.store,
     katana: opts.katana,
+    resolve: opts.resolve ?? makeHub(),
     updateAudit: async (key, status, message) => {
       audit.push({ key, status, message });
     },
@@ -208,14 +233,37 @@ describe("Woo saga: mode gate (ORDER_PIPELINE_MODE)", () => {
       expect(k.state.soLookups).toBe(0);
       expect(k.state.created).toHaveLength(0);
       expect(k.state.moCreates).toHaveLength(0);
+      expect(k.state.binds).toHaveLength(0);
       expect(row()).toMatchObject({ status: "PENDING", current_step: "dry_run_logged" });
       expect(audit).toEqual([
         { key: DELIVERY, status: "processed", message: expect.stringContaining("dry run") },
       ]);
       const line = logSpy.mock.calls.map((c: unknown[]) => String(c[0])).find((l: string) => l.includes("woo-order-dry-run"));
-      expect(JSON.parse(line!)).toMatchObject({ tag: "woo-order-dry-run", orderId: 1042, orderNo: ORDER_NO, lineCount: 2, mode: orderMode });
+      expect(JSON.parse(line!)).toMatchObject({
+        tag: "woo-order-dry-run",
+        orderId: 1042,
+        orderNo: ORDER_NO,
+        lineCount: 2,
+        mode: orderMode,
+        lines: [
+          { sku: BASE_SKU, quantity: 1, finishes: [`fabric=${FAB_SKU}:swap`, `powder_coat=${PWD_SKU}:swap`, "frame=MET-ALUM:attribute_only"] },
+          { sku: BASE_SKU, quantity: 1 },
+        ],
+      });
     });
   }
+
+  it("a dry run validates against the hub: an invalid order is NonRetriable, audit failed, saga row untouched", async () => {
+    const { store, row } = memStore();
+    const hub = makeHub();
+    hub.records.delete(FAB_SKU);
+    const { deps, audit } = makeDeps({ store, katana: fakeKatana().deps, orderMode: "log", resolve: hub });
+    await expect(runWooOrderSaga({ event: { data: wooOrder() }, step: memoStep(), deps })).rejects.toBeInstanceOf(
+      NonRetriableError,
+    );
+    expect(audit.at(-1)).toMatchObject({ key: DELIVERY, status: "failed", message: expect.stringContaining(FAB_SKU) });
+    expect(row()?.status).toBe("IN_PROGRESS"); // inserted by saga-start; the dry run never marks it
+  });
 
   it("a dry run never clobbers a saga that is already further along", async () => {
     const { store, row } = memStore({ status: "IN_PROGRESS", current_step: "mo_created" });
@@ -260,7 +308,7 @@ describe("Woo saga: mode gate (ORDER_PIPELINE_MODE)", () => {
 });
 
 describe("Woo saga: live path", () => {
-  it("creates the SO with idempotencyKey=orderNo, then ONE MO per row, then parks at the ledger dry-run", async () => {
+  it("creates the SO (WOO-<id>, price 0, keyed rows), then ONE MO per row, binds the finishes, parks at the ledger dry-run", async () => {
     const { store, row } = memStore();
     const k = fakeKatana();
     const { deps, audit } = makeDeps({ store, katana: k.deps, orderMode: "live", ledgerMode: "log" });
@@ -269,10 +317,14 @@ describe("Woo saga: live path", () => {
 
     expect(k.state.created).toHaveLength(1);
     expect(k.state.created[0]).toMatchObject({
-      orderNo: ORDER_NO,
-      idempotencyKey: ORDER_NO,
+      orderNo: "WOO-1042",
+      idempotencyKey: "WOO-1042",
       ecommerceOrderId: "1042",
       ecommerceOrderType: "woocommerce",
+      salesOrderRows: [
+        { sku: BASE_SKU, pricePerUnit: 0, attributes: expect.arrayContaining([{ key: "woo_line_key", value: "1" }]) },
+        { sku: BASE_SKU, pricePerUnit: 0, attributes: expect.arrayContaining([{ key: "woo_line_key", value: "2" }]) },
+      ],
     });
     expect(k.state.moCreates).toEqual([11, 12]);
     expect(result).toMatchObject({
@@ -280,6 +332,7 @@ describe("Woo saga: live path", () => {
       dryRun: false,
       pipelineMode: "live",
       ledgerMode: "log",
+      orderNo: "WOO-1042",
       katanaSalesOrderId: 500,
       ledgerMarker: "ledger_dry_run",
     });
@@ -287,6 +340,46 @@ describe("Woo saga: live path", () => {
     expect(row()).toMatchObject({ status: "IN_PROGRESS", current_step: "ledger_dry_run" });
     expect(row()?.status).not.toBe("COMPLETED");
     expect(audit.at(-1)).toMatchObject({ key: DELIVERY, status: "processed" });
+  });
+
+  it("the order number is WOO-<id> even when Woo's display `number` differs", async () => {
+    const { store } = memStore();
+    const k = fakeKatana();
+    const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live" });
+    const result = await runWooOrderSaga({ event: { data: wooOrder(1, { number: "ABC-9" }) }, step: memoStep(), deps });
+    expect(result).toMatchObject({ orderNo: "WOO-1042" });
+    expect(k.state.created[0]).toMatchObject({ orderNo: "WOO-1042" });
+  });
+
+  it("binds each swap-mode finish on each row's own MO; the attribute-only frame is never bound", async () => {
+    const { store } = memStore();
+    const k = fakeKatana();
+    const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live" });
+    const step = memoStep();
+    await runWooOrderSaga({ event: { data: wooOrder() }, step, deps });
+
+    const mo = (row: number) => k.state.moByRow.get(row)!;
+    expect(k.state.binds).toEqual([
+      { moId: mo(11), genericVariantId: VARIANT.genericFab, specificVariantId: VARIANT.fab, label: `fabric ${FAB_SKU}` },
+      { moId: mo(11), genericVariantId: VARIANT.genericPwd, specificVariantId: VARIANT.pwd, label: `powder_coat ${PWD_SKU}` },
+      { moId: mo(12), genericVariantId: VARIANT.genericFab, specificVariantId: VARIANT.fab, label: `fabric ${FAB_SKU}` },
+      { moId: mo(12), genericVariantId: VARIANT.genericPwd, specificVariantId: VARIANT.pwd, label: `powder_coat ${PWD_SKU}` },
+    ]);
+    expect(k.state.binds.some((b) => b.specificVariantId === VARIANT.alum)).toBe(false);
+    expect(step.ran).toEqual(
+      expect.arrayContaining(["resolve-specs", "mto-row-11", "bind-finishes-11", "mto-row-12", "bind-finishes-12"]),
+    );
+  });
+
+  it("an item with no finishes (no configurable placeholders) binds nothing", async () => {
+    const { store } = memStore();
+    const hub = makeHub({ recipes: new Map([[BASE_SKU, ["SA-TST-CHA-LEG", "RM-TUBE-1"]]]) });
+    const k = fakeKatana();
+    const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live", resolve: hub });
+    const order = wooOrder(1, { line_items: [wooLine({ id: 1, meta_data: [] })] });
+    const result = await runWooOrderSaga({ event: { data: order }, step: memoStep(), deps });
+    expect(result).toMatchObject({ ok: true });
+    expect(k.state.binds).toHaveLength(0);
   });
 
   it("every Katana call runs inside runKatanaStep (defer policy active)", async () => {
@@ -298,17 +391,31 @@ describe("Woo saga: live path", () => {
     expect(new Set(k.state.deferPolicies)).toEqual(new Set(["defer"]));
   });
 
-  it("an existing OWN sales order is adopted: zero create calls", async () => {
+  it("an existing OWN sales order is adopted: zero create calls, rows paired by woo_line_key", async () => {
     const { store } = memStore();
     const k = fakeKatana({
       existingSo: { id: 500, order_no: ORDER_NO, ecommerce_order_id: "1042", ecommerce_order_type: "woocommerce" },
-      existingSoRows: [11, 12],
+      // Deliberately reversed: pairing must follow the key, not the position.
+      existingRows: [
+        { id: 12, sku: BASE_SKU, lineKey: "2" },
+        { id: 11, sku: BASE_SKU, lineKey: "1" },
+      ],
     });
     const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live" });
     const result = await runWooOrderSaga({ event: { data: wooOrder() }, step: memoStep(), deps });
     expect(k.state.created).toHaveLength(0);
-    expect(k.state.moCreates).toEqual([11, 12]);
+    expect(k.state.moCreates.sort()).toEqual([11, 12]);
     expect(result).toMatchObject({ ok: true, katanaSalesOrderId: 500 });
+  });
+
+  it("when the POST response omits row attributes, the rows are re-read before pairing", async () => {
+    const { store } = memStore();
+    const k = fakeKatana();
+    k.state.returnRowsFromCreate = false;
+    const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live" });
+    const result = await runWooOrderSaga({ event: { data: wooOrder() }, step: memoStep(), deps });
+    expect(result).toMatchObject({ ok: true });
+    expect(k.state.moCreates).toEqual([11, 12]);
   });
 
   it("an existing FOREIGN order_no (cross-source collision) is NonRetriable, never adopted, saga manual", async () => {
@@ -399,16 +506,18 @@ describe("Woo saga: live path", () => {
     const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live" });
     const step = memoStep();
     await runWooOrderSaga({ event: { data: wooOrder() }, step, deps });
+    const bindsAfterFirst = k.state.binds.length;
     await runWooOrderSaga({ event: { data: wooOrder() }, step, deps });
     expect(k.state.created).toHaveLength(1);
     expect(k.state.moCreates).toEqual([11, 12]);
+    expect(k.state.binds).toHaveLength(bindsAfterFirst);
   });
 
   it("row count mismatch between Woo lines and Katana rows is NonRetriable", async () => {
     const { store } = memStore();
     const k = fakeKatana({
       existingSo: { id: 500, ecommerce_order_id: "1042", ecommerce_order_type: "woocommerce" },
-      existingSoRows: [11],
+      existingRows: [{ id: 11, sku: BASE_SKU, lineKey: "1" }],
     });
     const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live" });
     await expect(runWooOrderSaga({ event: { data: wooOrder(2) }, step: memoStep(), deps })).rejects.toBeInstanceOf(
@@ -417,14 +526,116 @@ describe("Woo saga: live path", () => {
     expect(k.state.moCreates).toHaveLength(0);
   });
 
-  it("an order larger than the MO listing page is refused up front (no Katana call)", async () => {
+  it(`an order with more than ${WOO_MAX_LINE_ITEMS} lines is refused up front (no Katana call), saga manual`, async () => {
+    const { store, row } = memStore();
+    const k = fakeKatana();
+    const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live" });
+    await expect(
+      runWooOrderSaga({ event: { data: wooOrder(WOO_MAX_LINE_ITEMS + 1) }, step: memoStep(), deps }),
+    ).rejects.toBeInstanceOf(NonRetriableError);
+    expect(k.state.soLookups).toBe(0);
+    expect(row()?.status).toBe("SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION");
+  });
+
+  it(`exactly ${WOO_MAX_LINE_ITEMS} lines is accepted`, async () => {
     const { store } = memStore();
     const k = fakeKatana();
     const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live" });
-    await expect(runWooOrderSaga({ event: { data: wooOrder(51) }, step: memoStep(), deps })).rejects.toBeInstanceOf(
+    const result = await runWooOrderSaga({ event: { data: wooOrder(WOO_MAX_LINE_ITEMS) }, step: memoStep(), deps });
+    expect(result).toMatchObject({ ok: true });
+    expect(k.state.moCreates).toHaveLength(WOO_MAX_LINE_ITEMS);
+  });
+});
+
+describe("Woo saga: hub validation at run time (Phase B1)", () => {
+  it("an order that went stale since ingress (finish no longer web-sellable) is NonRetriable before ANY Katana call", async () => {
+    const { store, row } = memStore();
+    const hub = makeHub();
+    hub.records.set(FAB_SKU, { ...hub.records.get(FAB_SKU)!, attributes: { web_sellable: false } });
+    const k = fakeKatana();
+    const { deps, audit } = makeDeps({ store, katana: k.deps, orderMode: "live", resolve: hub });
+
+    await expect(runWooOrderSaga({ event: { data: wooOrder() }, step: memoStep(), deps })).rejects.toBeInstanceOf(
       NonRetriableError,
     );
     expect(k.state.soLookups).toBe(0);
+    expect(k.state.created).toHaveLength(0);
+    expect(row()?.status).toBe("SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION");
+    expect(row()?.last_error).toContain("failed SKU/finish validation");
+    expect(audit.at(-1)).toMatchObject({ status: "failed" });
+  });
+
+  it("a finish with no Katana variant id is NonRetriable in live mode (cannot bind it)", async () => {
+    const { store } = memStore();
+    const hub = makeHub();
+    hub.records.set(PWD_SKU, { ...hub.records.get(PWD_SKU)!, katanaVariantId: null });
+    const k = fakeKatana();
+    const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live", resolve: hub });
+    await expect(runWooOrderSaga({ event: { data: wooOrder() }, step: memoStep(), deps })).rejects.toBeInstanceOf(
+      NonRetriableError,
+    );
+    expect(k.state.created).toHaveLength(0);
+  });
+
+  it("a hub outage is NOT NonRetriable (plain error, Inngest retries)", async () => {
+    const { store } = memStore();
+    const hub = makeHub();
+    hub.lookupSkus = async () => {
+      throw new Error("db down");
+    };
+    const { deps } = makeDeps({ store, katana: fakeKatana().deps, orderMode: "live", resolve: hub });
+    const error = await runWooOrderSaga({ event: { data: wooOrder() }, step: memoStep(), deps }).catch((e) => e);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(NonRetriableError);
+  });
+});
+
+describe("Woo saga: finish binding failure and idempotency", () => {
+  it("a 422 from the strict bind (placeholder missing from the tree) is NonRetriable + manual, never swallowed", async () => {
+    const { store, row } = memStore();
+    const k = fakeKatana();
+    k.state.bindError = new KatanaApiError("tree has neither placeholder nor specific variant", { status: 422 });
+    const { deps, audit } = makeDeps({ store, katana: k.deps, orderMode: "live" });
+
+    await expect(runWooOrderSaga({ event: { data: wooOrder() }, step: memoStep(), deps })).rejects.toBeInstanceOf(
+      NonRetriableError,
+    );
+    expect(row()?.status).toBe("SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION");
+    expect(row()?.last_error).toContain("neither placeholder");
+    expect(audit.at(-1)).toMatchObject({ status: "failed" });
+    expect(k.state.moCreates).toEqual([11]); // stopped at the first row; nothing past the failure
+  });
+
+  it("a transient bind failure (503) is retryable; the re-run creates no duplicates and completes the binds", async () => {
+    const { store, row } = memStore();
+    const k = fakeKatana();
+    k.state.bindError = new KatanaApiError("Katana 503", { status: 503 });
+    const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live" });
+
+    const error = await runWooOrderSaga({ event: { data: wooOrder() }, step: memoStep(), deps }).catch((e) => e);
+    expect(error).toBeInstanceOf(KatanaApiError);
+    expect(error).not.toBeInstanceOf(NonRetriableError);
+
+    k.state.bindError = null;
+    row()!.status = "IN_PROGRESS";
+    const result = await runWooOrderSaga({ event: { data: wooOrder() }, step: memoStep(), deps });
+    expect(result).toMatchObject({ ok: true });
+    expect(k.state.created).toHaveLength(1);
+    expect(k.state.moCreates).toEqual([11, 12]); // each row's MO created exactly once
+    expect(k.state.bound.size).toBe(4); // 2 rows x (fabric + powder), each swapped once
+  });
+
+  it("re-running a finished order re-binds idempotently (alreadyBound), changing nothing", async () => {
+    const { store } = memStore();
+    const k = fakeKatana();
+    const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live" });
+    await runWooOrderSaga({ event: { data: wooOrder() }, step: memoStep(), deps });
+    const boundBefore = new Set(k.state.bound);
+
+    await runWooOrderSaga({ event: { data: wooOrder() }, step: memoStep(), deps });
+    expect(k.state.bound).toEqual(boundBefore);
+    expect(k.state.created).toHaveLength(1);
+    expect(k.state.moCreates).toEqual([11, 12]);
   });
 });
 
@@ -510,14 +721,13 @@ describe("Woo saga: guards and idempotency layers", () => {
     expect(k.state.moCreates).toEqual([11, 12]);
   });
 
-
-  it("an invalid payload is NonRetriable before any store or Katana access", async () => {
+  it("a structurally invalid payload is NonRetriable before any store or Katana access", async () => {
     const { store, row } = memStore();
     const k = fakeKatana();
     const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live" });
     await expect(
       runWooOrderSaga({
-        event: { data: wooOrder(1, { line_items: [{ name: "x", product_id: 1, quantity: 1, sku: "BAD" }] }) },
+        event: { data: wooOrder(1, { line_items: [{ name: "x", product_id: 1, quantity: 1, sku: "" }] }) },
         step: memoStep(),
         deps,
       }),

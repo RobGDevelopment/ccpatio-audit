@@ -55,12 +55,9 @@ Every superseded document listed above must begin with:
 
 ### 0.3 Related companion — vendor capital-stack handoff
 
-The VividWorks / PrimeView contract (Master SKU dictionary, Katana `POST /sales_orders` target, and internal Katana↔QBO / GHL / Clover / SketchUp map) lives in:
+The WooCommerce (Primeview) order contract is defined by `.cursor/phase-b1.md` (Phase B1) and `FINAL_INTEGRATION_ROADMAP.md` step 6. `docs/CAPITAL_STACK_VENDOR_HANDOFF.md` (and its `.pdf`) was **deleted in Phase B1**: VividWorks is retired, Primeview owns the CPQ, and Primeview has no direct Katana access.
 
-- [`docs/CAPITAL_STACK_VENDOR_HANDOFF.md`](./CAPITAL_STACK_VENDOR_HANDOFF.md)
-- [`docs/CAPITAL_STACK_VENDOR_HANDOFF.pdf`](./CAPITAL_STACK_VENDOR_HANDOFF.pdf)
-
-That packet does **not** authorize a custom QBO mutex, Clover deposit matching, or WooCommerce order ingress. The order paths this repository may implement are the scoped GHL factory pipeline in §2.4 and the commercial document lane in §2.5. Every other commercial flow still hits Katana through native connectors. Catalog and BOM remain the hub's primary job.
+The retired packet did **not** authorize a custom QBO mutex, Clover deposit matching, or WooCommerce order ingress. The order paths this repository may implement are the scoped GHL factory pipeline in §2.4 and the commercial document lane in §2.5. Every other commercial flow still hits Katana through native connectors. Catalog and BOM remain the hub's primary job.
 
 > **Overridden by §0.5.** The vendor packet is not the authority for the QBO mutex, Clover-to-QBO sagas, or WooCommerce order ingress. `FINAL_INTEGRATION_ROADMAP.md` is, and it authorizes all three.
 
@@ -85,6 +82,8 @@ The owner has ratified **`FINAL_INTEGRATION_ROADMAP.md` as the supreme, binding 
 | QBO token mutex | One worker rotates the QBO OAuth token under a Postgres advisory lock. Others wait and read the rotated token. | §0.3, §2.2 QBO row |
 | Global DLQ | A `dlq_events` table, an Inngest `inngest/function.failed` handler, and an Oh-Crap alert. **No DLQ UI and no `/api/admin/redrive`.** IT still retries from the Inngest dashboard. | §3.1, §5.5 |
 | CAD to Katana pipeline | An async CAD extraction callback resumes an Inngest saga, which sanitizes the BOM and writes a Katana sales order plus manufacturing orders. Writes stay behind a mode flag. | §5.5 "auto-Katana from CAD" |
+
+> **Built in Phase 11 (roadmap step 7), see PHASE_11_EXECUTION_BLUEPRINT.md.** Owner directive 2026-10-13: Katana is not touched until a deposit clears or management overrides (this reorders roadmap §1 Path A steps 4 and 5), and no Katana delete executor exists.
 
 **Still forbidden.** The V8 custom outbox, Redis CCR leases, `effect_claims`, Trigger.dev, a DLQ UI, `/api/admin/redrive`, JSONB BOM trees, visual field mappers, and auto-Approve of catalog products from CAD. Products still reach the catalog only through a human Approve.
 
@@ -454,7 +453,7 @@ Woo/Clover catalog writers exist for Path A only.
 
 ### 5A.8 Side lanes (not hub completeness)
 
-- E-com / Vividworks handoff: `docs/CAPITAL_STACK_VENDOR_HANDOFF.md` + `scripts/` npm ecom/vendor tasks.  
+- E-com handoff `scripts/` npm ecom/vendor tasks (the Capital Stack handoff document was deleted in Phase B1).  
 - Heuristic/collection seed CLIs.  
 - Mission Control IT UI (`/mission-control`).
 

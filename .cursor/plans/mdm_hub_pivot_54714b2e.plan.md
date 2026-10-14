@@ -109,7 +109,7 @@ Disable and later extract/archive:
 - `[src/lib/katana.ts](src/lib/katana.ts)` functions `createKatanaSalesOrder`, `createMakeToOrderManufacturingOrders`, `mapWooOrderToKatanaSalesOrder`, `mapGhlOpportunityToKatanaSalesOrder` (keep product/material/recipe sync)
 - `[src/server/pipeline/mode.ts](src/server/pipeline/mode.ts)` `ORDER_PIPELINE_MODE` as an **order** gate
 - `[src/app/api/sandbox/katana-mto-test/route.ts](src/app/api/sandbox/katana-mto-test/route.ts)`
-- Dead stubs: `[src/server/katana/katana.service.ts](src/server/katana/katana.service.ts)`, `[src/lib/qbo-queue.ts](src/lib/qbo-queue.ts)`, `[src/lib/katana-api.ts](src/lib/katana-api.ts)`
+- Dead stubs: `[src/lib/qbo-queue.ts](src/lib/qbo-queue.ts)`, `[src/lib/katana-api.ts](src/lib/katana-api.ts)`
 
 Keep (in-scope master sync, but stop calling them from dictionary Save; only from Approve):
 

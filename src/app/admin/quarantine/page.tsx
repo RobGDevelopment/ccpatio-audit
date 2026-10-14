@@ -7,13 +7,54 @@ import {
   flattenDraftBom,
   parseDraftProduct,
 } from "@/server/sketchup/draft-bom";
+import { parseWooOrderWebhook } from "@/server/woocommerce/ingress.schema";
+import { extractWooLineSpecs } from "@/server/woocommerce/line-specs";
+import {
+  listOpenWooQuarantine,
+  type WooQuarantineRow,
+} from "@/server/woocommerce/quarantine-store";
 import {
   QuarantineClient,
   type QuarantineDetail,
   type QuarantineListItem,
 } from "./QuarantineClient";
+import {
+  WooQuarantinePanel,
+  type WooQuarantineListItem,
+} from "./WooQuarantinePanel";
 
 export const dynamic = "force-dynamic";
+
+function wooListItem(row: WooQuarantineRow): WooQuarantineListItem {
+  const parsed = parseWooOrderWebhook(row.rawPayload);
+  let wooStatus: string | null = null;
+  let customer: string | null = null;
+  let lines: string[] = [];
+  if (parsed.ok) {
+    wooStatus = String(parsed.data.status);
+    customer =
+      [parsed.data.billing?.first_name, parsed.data.billing?.last_name]
+        .filter(Boolean)
+        .join(" ")
+        .trim() || null;
+    lines = extractWooLineSpecs(parsed.data).specs.map((spec) => {
+      const finishes = Object.entries(spec.finishes)
+        .map(([slot, sku]) => `${slot}=${sku}`)
+        .join(" ");
+      return `${spec.sku} x${spec.quantity}${finishes ? ` ${finishes}` : ""}`;
+    });
+  }
+  return {
+    id: row.id,
+    externalId: row.externalId,
+    status: row.status === "post_payment_edit" ? "post_payment_edit" : "pending_review",
+    updatedAt: row.updatedAt.toISOString(),
+    wooStatus,
+    customer,
+    lines,
+    issues: row.issues,
+  };
+}
 
 function productNameFromPayload(raw: unknown): string | null {
   if (!raw || typeof raw !== "object") return null;
@@ -26,11 +67,14 @@ function productNameFromPayload(raw: unknown): string | null {
 export default async function QuarantinePage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string }>;
+  searchParams: Promise<{ id?: string; source?: string; externalId?: string }>;
 }) {
   const session = await getPimSession();
   const params = await searchParams;
   const db = getDb();
+  const wooItems = (await listOpenWooQuarantine()).map(wooListItem);
+  const wooFocus =
+    params.source === "woocommerce" ? params.externalId?.trim() || null : null;
 
   const rows = await db
     .select()
@@ -116,6 +160,8 @@ export default async function QuarantinePage({
             ) : null}
           </p>
         </header>
+
+        <WooQuarantinePanel items={wooItems} focusExternalId={wooFocus} />
 
         <QuarantineClient items={items} selected={selected} />
       </div>

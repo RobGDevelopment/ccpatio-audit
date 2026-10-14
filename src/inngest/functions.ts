@@ -22,6 +22,8 @@ import { GHL_OPPORTUNITY_WON_EVENT, ghlOpportunityIdempotencyKey } from "@/serve
 import { syncCloverPayment } from "./clover-sync";
 import { globalDlqHandler } from "./dlq";
 import { processWooCommerceOrder } from "./woo-order";
+import { pathAReleaseToProduction } from "./path-a-release";
+import { pathAGhlSync } from "./path-a-ghl-sync";
 import { KATANA_TENANT_CONCURRENCY } from "@/server/sre/katana-throttle";
 import {
   ghlOpportunitySyncSchema,
@@ -457,49 +459,10 @@ export const processCadUpload = inngest.createFunction(
           ? event.data.error.message
           : "process-cad-upload exhausted retries";
 
-      if (uploadId) {
-        try {
-          const { getDb } = await import("@/server/db/client");
-          const { cad_uploads } = await import("@/server/db/schema");
-          const { eq } = await import("drizzle-orm");
-          await getDb()
-            .update(cad_uploads)
-            .set({
-              status: "failed",
-              error_message: errMsg,
-              updated_at: new Date(),
-            })
-            .where(eq(cad_uploads.id, uploadId));
-        } catch {
-          /* best-effort */
-        }
-      }
-
-      if (globalSku) {
-        try {
-          const { classifyCustomSku } = await import("@/server/path-a/katana-fence");
-          const classification = await classifyCustomSku(globalSku);
-          if (classification.type === "custom_job_bound") {
-            const { createItemStore } = await import("@/server/path-a/item-store");
-            const { createSagaStore } = await import("@/server/sre/saga-store");
-            const { PATH_A_SAGA_TYPE } = await import("@/server/path-a/saga-state");
-            const itemStore = createItemStore();
-            const sagaStore = createSagaStore();
-            await itemStore.setItemStatus({
-              globalSku,
-              from: ["awaiting_cad", "needs_review", "cad_failed"],
-              to: "cad_failed",
-            });
-            await sagaStore.setStep(
-              PATH_A_SAGA_TYPE,
-              classification.opportunityId,
-              `cad_failed:${errMsg.slice(0, 50)}`,
-            );
-          }
-        } catch {
-          /* best-effort */
-        }
-      }
+      // Both side effects run and nothing is swallowed: a failure here is visible in the run
+      // (QCA m1), instead of vanishing inside an empty catch.
+      const { handleCadUploadFailure } = await import("@/inngest/cad-failure");
+      await handleCadUploadFailure({ uploadId, globalSku, errMsg });
     },
   },
   async ({ event, step }) => {
@@ -525,6 +488,11 @@ export const processCadUpload = inngest.createFunction(
       const { NonRetriableError } = await import("inngest");
       throw new NonRetriableError(`Invalid CAD extension: ${data.ext}`);
     }
+
+    // M4: guard + record EVERY extension, not just .blend. A re-upload past the release pause is
+    // rejected as a change order here, and the saga/item rows exist before post-extract-advance.
+    const { runCadIntake } = await import("@/inngest/cad-handoff");
+    const intake = await runCadIntake({ step, data });
 
     let effectiveStoragePath = data.storagePath;
     let effectiveExt = data.ext;
@@ -559,22 +527,22 @@ export const processCadUpload = inngest.createFunction(
       throw new NonRetriableError(jobResult.error);
     }
 
-    const { classifyCustomSku } = await import("@/server/path-a/katana-fence");
-    const classification = await classifyCustomSku(data.globalSku);
-    if (classification.type === "custom_job_bound") {
+    const opportunityId = intake.opportunityId;
+    if (opportunityId) {
       await step.run("post-extract-advance", async () => {
+        const { advanceSagaAfterExtract } = await import(
+          "@/inngest/cad-handoff"
+        );
         const { createItemStore } = await import("@/server/path-a/item-store");
-        const { createReleaseStore } = await import("@/server/path-a/release-store");
-        const itemStore = createItemStore();
-        const releaseStore = createReleaseStore();
-
-        await itemStore.setItemStatus({
+        const { createReleaseStore } = await import(
+          "@/server/path-a/release-store"
+        );
+        await advanceSagaAfterExtract({
           globalSku: data.globalSku,
-          from: ["awaiting_cad", "needs_review"],
-          to: "needs_review",
+          opportunityId,
+          itemStore: createItemStore(),
+          releaseStore: createReleaseStore(),
         });
-
-        await releaseStore.advanceSaga(classification.opportunityId);
       });
     }
 
@@ -628,6 +596,7 @@ export const pushApprovedFactoryOrder = inngest.createFunction(
  * Served by `/api/inngest`. The Woo paid-order saga (roadmap step 6) is registered; it is
  * dry-run unless ORDER_PIPELINE_MODE=live. The legacy GHL Won auto-push stays unregistered.
  * `order.approved` is the only GHL factory writer (§2.4).
+ * Phase 11 Path A stateless Katana release and GHL sync are registered (default mode: log).
  */
 export const inngestFunctions = [
   sendStaffFeedbackDigest,
@@ -642,6 +611,8 @@ export const inngestFunctions = [
   autoReleaseExpiredHolds,
   syncCloverPayment,
   processWooCommerceOrder,
+  pathAReleaseToProduction,
+  pathAGhlSync,
   globalDlqHandler,
 ];
 

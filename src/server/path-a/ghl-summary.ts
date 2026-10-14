@@ -40,6 +40,7 @@ export function formatSagaStateLabel(status: string): string {
     case "IN_PROGRESS":
       return "RELEASING TO PRODUCTION";
     case "FAILED":
+    case "SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION":
       return "MANUAL REVIEW REQUIRED";
     default:
       return "DESIGNING";
@@ -54,10 +55,15 @@ export function buildGhlOpportunitySummary(input: GhlSummaryInput): string {
     katanaOrderNo,
     katanaMoIds,
     items,
-    appUrl = "https://app.ccpatio.com",
+    appUrl,
   } = input;
 
-  const deepLink = `${appUrl}/admin/path-a?opp=${encodeURIComponent(opportunityId)}`;
+  // No invented host: a wrong environment's URL in a customer-facing GHL record is worse than
+  // no link. The deep link is emitted only when the caller supplies the configured app URL.
+  const baseUrl = appUrl?.trim().replace(/\/$/, "");
+  const deepLink = baseUrl
+    ? `${baseUrl}/admin/path-a?opp=${encodeURIComponent(opportunityId)}`
+    : null;
   const title = opportunityName?.trim() || opportunityId;
   const statusLabel = formatSagaStateLabel(sagaStatus);
 
@@ -65,8 +71,10 @@ export function buildGhlOpportunitySummary(input: GhlSummaryInput): string {
     `=== CC CUSTOM BUILD SUMMARY ===`,
     `Opportunity: ${title}`,
     `Status: ${statusLabel}`,
-    `Dashboard: ${deepLink}`,
   ];
+  if (deepLink) {
+    headerLines.push(`Dashboard: ${deepLink}`);
+  }
 
   if (katanaOrderNo) {
     headerLines.push(`Katana Order: ${katanaOrderNo}`);
@@ -86,7 +94,8 @@ export function buildGhlOpportunitySummary(input: GhlSummaryInput): string {
     const hashStr = item.finalizedDossierHash
       ? ` [dossier:${item.finalizedDossierHash.slice(0, 10)}]`
       : "";
-    lines.push(`• ${item.globalSku} x${item.quantity} — ${nameStr} — ${item.status.toUpperCase()}${hashStr}`);
+    const statusText = (item.status ?? "unknown").toUpperCase();
+    lines.push(`• ${item.globalSku} x${item.quantity} — ${nameStr} — ${statusText}${hashStr}`);
 
     if (item.bomLines && item.bomLines.length > 0) {
       const sortedBom = [...item.bomLines].sort((a, b) =>
@@ -103,7 +112,9 @@ export function buildGhlOpportunitySummary(input: GhlSummaryInput): string {
   let fullText = `${headerLines.join("\n")}\n\nITEMS:\n${itemSections.join("\n\n")}`;
 
   if (fullText.length > MAX_GHL_SUMMARY_LENGTH) {
-    const truncationNotice = `\n\n... [truncated, see MDM: ${deepLink}]`;
+    const truncationNotice = deepLink
+      ? `\n\n... [truncated, see MDM: ${deepLink}]`
+      : `\n\n... [truncated]`;
     const available = MAX_GHL_SUMMARY_LENGTH - truncationNotice.length;
     fullText = fullText.slice(0, available) + truncationNotice;
   }

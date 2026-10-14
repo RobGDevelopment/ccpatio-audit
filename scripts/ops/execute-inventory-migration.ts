@@ -18,7 +18,6 @@ import { loadEnvConfig } from "@next/env";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { eq, like, or } from "drizzle-orm";
-import { GLOBAL_E2E_SKU_SET } from "../../src/generated/global-e2e-skus";
 import {
   KatanaApiError,
   createIntervalPacer,
@@ -298,28 +297,17 @@ function resolveFirepit(indexes: Indexes, code: string): string | null {
   );
 }
 
-function assertDictionary(sku: string, warnings: string[]): void {
-  if (GLOBAL_E2E_SKU_SET.has(sku)) return;
-  warnings.push(
-    `${sku} is in sku_mappings and not in global-e2e-skus.ts (seeded after the dictionary was generated).`,
-  );
-}
-
 type Parsed = {
   lines: CountLine[];
   hold: Map<string, number>;
   balanceBreaks: string[];
   unmapped: string[];
-  dictionaryWarnings: string[];
 };
 
 function parseInventories(indexes: Indexes): Parsed {
   const lines: CountLine[] = [];
   const balanceBreaks: string[] = [];
   const unmapped: string[] = [];
-  const dictionaryWarnings: string[] = [];
-  const seenWarn = new Set<string>();
-
   const fabricRows = readCsvRecords(findCsv("Fabric"));
   for (const row of fabricRows) {
     const name = (row.FABRIC ?? "").trim();
@@ -352,10 +340,6 @@ function parseInventories(indexes: Indexes): Parsed {
       }
       continue;
     }
-    if (!seenWarn.has(sku)) {
-      seenWarn.add(sku);
-      assertDictionary(sku, dictionaryWarnings);
-    }
     lines.push({
       family: "fabric",
       sku,
@@ -380,10 +364,6 @@ function parseInventories(indexes: Indexes): Parsed {
       if (quantity > 0) unmapped.push(`dekton ${type} ${suffix} qty=${quantity}`);
       continue;
     }
-    if (!seenWarn.has(sku)) {
-      seenWarn.add(sku);
-      assertDictionary(sku, dictionaryWarnings);
-    }
     lines.push({
       family: "dekton",
       sku,
@@ -406,10 +386,6 @@ function parseInventories(indexes: Indexes): Parsed {
     if (!sku) {
       if (quantity > 0) unmapped.push(`firepit ${code} qty=${quantity}`);
       continue;
-    }
-    if (!seenWarn.has(sku)) {
-      seenWarn.add(sku);
-      assertDictionary(sku, dictionaryWarnings);
     }
     lines.push({
       family: "firepit",
@@ -437,7 +413,6 @@ function parseInventories(indexes: Indexes): Parsed {
     hold: holdFrom(lines),
     balanceBreaks,
     unmapped,
-    dictionaryWarnings,
   };
 }
 
@@ -1001,8 +976,6 @@ async function main(): Promise<void> {
       `${parsed.balanceBreaks.length} balance breaks, ${parsed.unmapped.length} unmapped rows with quantity. No Katana writes.`,
     );
   }
-  for (const warning of parsed.dictionaryWarnings) console.log(`  dictionary: ${warning}`);
-
   const plans = packPlans(parsed.lines);
   console.log(
     `  lines=${parsed.lines.length} stocktakes=${plans.length} hold=${parsed.hold.size} SKUs / ${yards} yards`,

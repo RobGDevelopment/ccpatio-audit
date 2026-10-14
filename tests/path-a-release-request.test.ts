@@ -5,6 +5,7 @@ import {
 } from "@/server/path-a/release-request";
 import { canOverrideDesign } from "@/app/admin/path-a/actions";
 import { type PimSession } from "@/lib/pim-audit";
+import { pathAReleaseEventSchema } from "@/server/path-a/events";
 
 const hoisted = vi.hoisted(() => ({
   inngestSends: [] as any[],
@@ -63,11 +64,14 @@ describe("Path A Release Request & Deposit Seam (Task 6)", () => {
     };
 
     const sagaStore: any = {
-      insertOnce: vi.fn(async (type: string, key: string, status: string, opts: any) => {
+      insertOnce: vi.fn(async (arg1: any, arg2?: any, arg3?: any, opts?: any) => {
+        const key = typeof arg1 === "object" ? arg1.correlationKey : arg2;
+        const status = typeof arg1 === "object" ? arg1.status : arg3;
+        const step = typeof arg1 === "object" ? arg1.currentStep : opts?.step;
         if (!fakeSagas.has(key)) {
           fakeSagas.set(key, {
             status,
-            current_step: opts?.step,
+            current_step: step,
             releaseRequestedAt: null,
           });
         }
@@ -173,7 +177,9 @@ describe("Path A Release Request & Deposit Seam (Task 6)", () => {
         { releaseStore, sagaStore, db, inngestSend: sendFn },
       );
       expect(shortRes.ok).toBe(false);
-      expect(shortRes.error).toContain("between 10 and 500 characters");
+      if (!shortRes.ok) {
+        expect(shortRes.error).toContain("between 10 and 500 characters");
+      }
 
       const longRes = await requestManagementOverride(
         {
@@ -184,7 +190,9 @@ describe("Path A Release Request & Deposit Seam (Task 6)", () => {
         { releaseStore, sagaStore, db, inngestSend: sendFn },
       );
       expect(longRes.ok).toBe(false);
-      expect(longRes.error).toContain("between 10 and 500 characters");
+      if (!longRes.ok) {
+        expect(longRes.error).toContain("between 10 and 500 characters");
+      }
     });
 
     it("rejects override when saga is not in AWAITING_DEPOSIT", async () => {
@@ -227,7 +235,11 @@ describe("Path A Release Request & Deposit Seam (Task 6)", () => {
 
       expect(hoisted.inngestSends).toHaveLength(1);
       expect(hoisted.inngestSends[0].name).toBe("path-a/release-to-production");
-      expect(hoisted.inngestSends[0].data.triggerSource).toBe("management_override");
+      const data = hoisted.inngestSends[0].data;
+      expect(data.source).toBe("management_override");
+      expect(data.requestedBy).toBe("manager@ccpatio.com");
+      expect(data.triggerSource).toBeUndefined();
+      expect(pathAReleaseEventSchema.safeParse(data).success).toBe(true);
       expect(hoisted.inngestSends[0].id).toContain("override");
     });
 
@@ -247,6 +259,67 @@ describe("Path A Release Request & Deposit Seam (Task 6)", () => {
 
       expect(res.ok).toBe(false);
       expect(sendFn).not.toHaveBeenCalled();
+    });
+
+    it("M7: never returns raw internal error text to the UI (generic code, details only logged)", async () => {
+      const { releaseStore, sagaStore, db, sendFn } = createMockStores();
+      fakeSagas.set("opp-1", { status: "AWAITING_DEPOSIT", releaseRequestedAt: null });
+      hoisted.failAuditInsert = true;
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+      const res = await requestManagementOverride(
+        { ghlOpportunityId: "opp-1", reason: "Owner requested immediate fabrication start", session: adminSession },
+        { releaseStore, sagaStore, db, inngestSend: sendFn },
+      );
+
+      expect(res).toEqual({ ok: false, error: "release_request_failed" });
+      expect(JSON.stringify(res)).not.toContain("DB crash");
+      expect(errSpy).toHaveBeenCalled();
+      errSpy.mockRestore();
+    });
+
+    it("M7: a different operator's earlier request yields a stable conflict code with no operator email", async () => {
+      const { releaseStore, sagaStore, db, sendFn } = createMockStores();
+      fakeSagas.set("opp-1", {
+        status: "AWAITING_DEPOSIT",
+        releaseRequestedAt: new Date(),
+        releaseRequestedBy: "someone.else@ccpatio.com",
+        releaseRequestedSource: "management_override",
+      });
+
+      const res = await requestManagementOverride(
+        { ghlOpportunityId: "opp-1", reason: "Owner requested immediate fabrication start", session: adminSession },
+        {
+          releaseStore,
+          txReleaseStore: () => releaseStore,
+          sagaStore,
+          db,
+          inngestSend: sendFn,
+        },
+      );
+
+      expect(res).toEqual({ ok: false, error: "release_already_requested" });
+      expect(JSON.stringify(res)).not.toContain("someone.else");
+      expect(sendFn).not.toHaveBeenCalled();
+    });
+
+    it("idempotent re-request by the SAME operator re-sends the event with a bumped attempt", async () => {
+      const { releaseStore, sagaStore, db, sendFn } = createMockStores();
+      fakeSagas.set("opp-1", {
+        status: "AWAITING_DEPOSIT",
+        releaseRequestedAt: new Date(),
+        releaseRequestedBy: "manager@ccpatio.com",
+        releaseRequestedSource: "management_override",
+      });
+
+      const res = await requestManagementOverride(
+        { ghlOpportunityId: "opp-1", reason: "Owner requested immediate fabrication start", session: adminSession },
+        { releaseStore, sagaStore, db, inngestSend: sendFn },
+      );
+
+      expect(res).toEqual({ ok: true });
+      expect(sendFn).toHaveBeenCalledTimes(1);
+      expect(pathAReleaseEventSchema.safeParse(hoisted.inngestSends[0].data).success).toBe(true);
     });
   });
 
@@ -299,8 +372,54 @@ describe("Path A Release Request & Deposit Seam (Task 6)", () => {
       expect(res).toEqual({ outcome: "released", attempt: 1 });
       expect(sendFn).toHaveBeenCalledTimes(1);
       expect(hoisted.inngestSends[0].name).toBe("path-a/release-to-production");
-      expect(hoisted.inngestSends[0].data.triggerSource).toBe("customer_deposit");
-      expect(hoisted.inngestSends[0].data.depositRef).toBe("QBO-DEP-202");
+      const data = hoisted.inngestSends[0].data;
+      expect(data.source).toBe("customer_deposit");
+      expect(data.requestedBy).toBe("system:deposit");
+      expect(data.depositRef).toBe("QBO-DEP-202");
+      expect(data.depositCents).toBe(250000);
+      expect(data.triggerSource).toBeUndefined();
+      expect(pathAReleaseEventSchema.safeParse(data).success).toBe(true);
+    });
+
+    it("M7: deposit arriving after a management override is RECORDED but sends NO second release event", async () => {
+      const { releaseStore, sagaStore, db, sendFn } = createMockStores();
+      fakeSagas.set("opp-held", {
+        status: "AWAITING_DEPOSIT",
+        releaseRequestedAt: new Date("2026-10-13T10:00:00Z"),
+        releaseRequestedBy: "manager@ccpatio.com",
+        releaseRequestedSource: "management_override",
+      });
+
+      const res = await recordDepositAndRequestRelease(
+        { ghlOpportunityId: "opp-held", depositCents: 75000, depositRef: "QBO-DEP-404" },
+        { releaseStore, sagaStore, db, inngestSend: sendFn },
+      );
+
+      expect(releaseStore.requestRelease).toHaveBeenCalledTimes(1);
+      expect(res).toEqual({ outcome: "recorded_already_requested" });
+      expect(sendFn).not.toHaveBeenCalled();
+      expect(releaseStore.bumpReleaseAttempt).not.toHaveBeenCalled();
+    });
+
+    it("M7: a re-delivered deposit whose first send failed IS re-sent (same deposit source, same ref id)", async () => {
+      const { releaseStore, sagaStore, db, sendFn } = createMockStores();
+      fakeSagas.set("opp-redeliver", {
+        status: "AWAITING_DEPOSIT",
+        releaseRequestedAt: new Date("2026-10-13T10:00:00Z"),
+        releaseRequestedBy: "system:deposit",
+        releaseRequestedSource: "customer_deposit",
+        depositAmountCents: 250000,
+        depositRef: "QBO-DEP-202",
+      });
+
+      const res = await recordDepositAndRequestRelease(
+        { ghlOpportunityId: "opp-redeliver", depositCents: 250000, depositRef: "QBO-DEP-202" },
+        { releaseStore, sagaStore, db, inngestSend: sendFn },
+      );
+
+      expect(res.outcome).toBe("released");
+      expect(sendFn).toHaveBeenCalledTimes(1);
+      expect(pathAReleaseEventSchema.safeParse(hoisted.inngestSends[0].data).success).toBe(true);
     });
 
     it("records deposit post-completion without emitting new release event", async () => {

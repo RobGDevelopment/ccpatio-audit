@@ -24,7 +24,8 @@ import {
 } from "@/lib/katana";
 import { getDb } from "@/server/db/client";
 import { getSupabaseSecretKey, getSupabaseUrl, createSupabaseFetch } from "@/lib/supabase-env";
-import { logPimAudit, resolvePimOperator } from "@/lib/pim-audit";
+import { getPimSession, logPimAudit, resolvePimOperator } from "@/lib/pim-audit";
+import { PathAFenceError } from "@/server/path-a/katana-fence";
 import {
   finished_goods_catalog,
   item_operations,
@@ -948,25 +949,51 @@ export type KatanaSyncActionResult =
 export async function syncFinishedGoodToKatanaAction(
   sku: string,
 ): Promise<KatanaSyncActionResult> {
-  const result = await syncFinishedGoodToKatana(sku);
-  if (result.ok) {
-    revalidateDictionary();
-    return { ok: true, message: result.message };
+  // Server Actions are publicly invocable endpoints: a Katana writer needs an operator session.
+  const session = await getPimSession();
+  if (!session) {
+    return { ok: false, error: "not_authenticated" };
   }
-  return { ok: false, error: result.error };
+  try {
+    const result = await syncFinishedGoodToKatana(sku);
+    if (result.ok) {
+      revalidateDictionary();
+      return { ok: true, message: result.message };
+    }
+    return { ok: false, error: result.error };
+  } catch (error: unknown) {
+    // The Path A fence refuses pre-release custom SKUs; surface that as a normal failure.
+    if (error instanceof PathAFenceError) {
+      return { ok: false, error: error.message };
+    }
+    throw error;
+  }
 }
 
 export async function syncBOMToKatanaAction(
   finishedGoodSku: string,
 ): Promise<KatanaSyncActionResult> {
-  const { assertKatanaWriteAllowed } = await import("@/server/path-a/katana-fence");
-  await assertKatanaWriteAllowed(finishedGoodSku);
-  const result = await syncBOMTreeToKatana(finishedGoodSku);
-  if (result.ok) {
-    revalidateDictionary();
-    return { ok: true, message: result.message };
+  // Server Actions are publicly invocable endpoints: a Katana writer needs an operator session (D4).
+  const session = await getPimSession();
+  if (!session) {
+    return { ok: false, error: "not_authenticated" };
   }
-  return { ok: false, error: result.error };
+  try {
+    const { assertKatanaWriteAllowed } = await import("@/server/path-a/katana-fence");
+    await assertKatanaWriteAllowed(finishedGoodSku);
+    const result = await syncBOMTreeToKatana(finishedGoodSku);
+    if (result.ok) {
+      revalidateDictionary();
+      return { ok: true, message: result.message };
+    }
+    return { ok: false, error: result.error };
+  } catch (error: unknown) {
+    // The Path A fence refuses pre-release custom SKUs; surface that as a normal failure.
+    if (error instanceof PathAFenceError) {
+      return { ok: false, error: error.message };
+    }
+    throw error;
+  }
 }
 
 const ALLOWED_NA_FIELDS = new Set([

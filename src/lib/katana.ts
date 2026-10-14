@@ -28,12 +28,9 @@ import {
   type ItemType,
 } from "@/server/db/schema";
 import { coerceHubItemType } from "@/lib/raw-material-sku";
-import {
-  canMutateKatanaCatalog,
-  catalogPublishModeLabel,
-  getCatalogPublishMode,
-} from "@/server/pipeline/catalog-mode";
 import type { WooOrderWebhook } from "@/server/woocommerce/ingress.schema";
+import { extractWooLineSpecs, wooLineKey } from "@/server/woocommerce/line-specs";
+import type { ResolvedWooLine } from "@/server/woocommerce/sku-resolver";
 import { katanaOrderNo } from "@/server/sre/idempotency";
 import {
   katanaIsSellableProduct,
@@ -57,6 +54,7 @@ import {
   collectNestedManufacturingOrderIds,
   findRecipeRowsByVariantId,
   isMoInParentTree,
+  isNestedMoOrderNo,
   parseKatanaListPayload,
   parseMoRecipeRow,
   parseMoTreeNode,
@@ -64,6 +62,11 @@ import {
   type KatanaMoRecipeRow,
   type KatanaMoTreeNode,
 } from "@/lib/katana-mto";
+import {
+  canMutateKatanaCatalog,
+  catalogPublishModeLabel,
+  getCatalogPublishMode,
+} from "@/server/pipeline/catalog-mode";
 
 const KATANA_API_BASE_DEFAULT = "https://api.katanamrp.com/v1";
 const MAX_RATE_LIMIT_RETRIES = 3;
@@ -183,7 +186,12 @@ export type KatanaSalesOrderRowInput = {
   variantId?: number;
   /** When set, sent on the sales-order row so the line commits at this location. */
   locationId?: number;
+  /** Extra row attributes (merged after the default `global_sku`). */
+  attributes?: Array<{ key: string; value: string }>;
 };
+
+/** Sales-order row attribute that maps a Katana row back to its Woo line item. */
+export const WOO_LINE_KEY_ATTRIBUTE = "woo_line_key";
 
 export type KatanaSalesOrderPayload = {
   orderNo: string;
@@ -210,6 +218,13 @@ export type KatanaSalesOrderCreateResult = {
   rowCount: number;
   /** Katana sales_order_rows[].id — required for Make-to-Order POSTs. */
   salesOrderRowIds: number[];
+  salesOrderRows?: Array<{
+    id: number;
+    variant_id: number;
+    sku?: string;
+    /** Value of the `woo_line_key` row attribute, when present. */
+    lineKey?: string | null;
+  }>;
 };
 
 export type KatanaMakeToOrderResult = {
@@ -991,6 +1006,11 @@ export async function syncFinishedGoodToKatana(
     return { ok: false, error: "SKU is required" };
   }
 
+  // Path A write fence (M1: zero ghost demand). Deliberately OUTSIDE the try/catch
+  // below: a refusal must surface as a thrown PathAFenceError, never as `{ ok: false }` data.
+  const { assertKatanaWriteAllowed } = await import("@/server/path-a/katana-fence");
+  await assertKatanaWriteAllowed(needle);
+
   try {
     const db = getDb();
     const [row] = await db
@@ -1178,26 +1198,34 @@ function minsToSeconds(raw: string | null | undefined): number | null {
  * 2. POST /bom_rows/batch/create (KATANA_USE_BOM_ROWS, default on) with
  *    quantity * scrap_factor; fall back to POST /recipes if unsupported
  * 3. POST /product_operation_rows (minutes → seconds)
- * Gated by CATALOG_PUBLISH_MODE === live (or KATANA_E2E_MIRROR / legacy ORDER_PIPELINE_MODE=live).
+ * Gated by options.catalogMode === "live" or CATALOG_PUBLISH_MODE === "live" (or KATANA_E2E_MIRROR).
  * Does not POST sales orders / MTO.
  */
 export async function syncBOMToKatana(
   parentSku: string,
-  options: { allowEmpty?: boolean, idempotencyKey?: string, fromAirlock?: boolean } = {},
+  options: {
+    allowEmpty?: boolean;
+    idempotencyKey?: string;
+    fromAirlock?: boolean;
+    catalogMode?: "log" | "live";
+    db?: ReturnType<typeof getDb>;
+    katanaFetch?: typeof katanaFetch;
+  } = {},
 ): Promise<KatanaBomSyncResult> {
   const needle = parentSku.trim().toUpperCase();
   if (!needle) {
     return { ok: false, error: "Parent SKU is required" };
   }
   const { assertKatanaWriteAllowed } = await import("@/server/path-a/katana-fence");
-  await assertKatanaWriteAllowed(needle);
+  await assertKatanaWriteAllowed(needle, options.db ? () => options.db! : undefined);
+  const db = options.db ?? getDb();
 
   const catalogMode = getCatalogPublishMode();
-  const allowMutate = canMutateKatanaCatalog(catalogMode);
+  const explicitMode = options.catalogMode;
+  const allowMutate = explicitMode !== undefined ? explicitMode === "live" : canMutateKatanaCatalog(catalogMode);
   const allowEmpty = options.allowEmpty === true;
 
   try {
-    const db = getDb();
     const visited = new Set<string>();
     let totalRecipeRows = 0;
     let totalOperationRows = 0;
@@ -1365,7 +1393,7 @@ export async function syncBOMToKatana(
 
       if (allowMutate && operationPayload.length > 0 && productVariantId) {
         // Katana public API: POST /product_operation_rows (product operations)
-        await katanaFetch("/product_operation_rows", {
+        await (options.katanaFetch ?? katanaFetch)("/product_operation_rows", {
           method: "POST",
           idempotencyKey: options.idempotencyKey,
           body: {
@@ -1415,7 +1443,7 @@ export async function syncBOMToKatana(
         operationRows: totalOperationRows,
         nodesSynced,
         dryRun: true,
-        message: `[${catalogPublishModeLabel(catalogMode)}] Dry-run: would sync ${nodesSynced} node(s), ${totalRecipeRows} recipe row(s), ${totalOperationRows} operation row(s) for ${needle}. Set CATALOG_PUBLISH_MODE=live (or ORDER_PIPELINE_MODE=live) to push.`,
+        message: `[${catalogPublishModeLabel(catalogMode)}] Dry-run: would sync ${nodesSynced} node(s), ${totalRecipeRows} recipe row(s), ${totalOperationRows} operation row(s) for ${needle}. Set CATALOG_PUBLISH_MODE=live to push.`,
       };
     }
 
@@ -1513,53 +1541,73 @@ function wooAddressToKatana(
   };
 }
 
+/**
+ * Phase B1: WooCommerce order -> Katana sales order.
+ *
+ * Katana receives ONLY the physical manufacturing spec plus delivery data:
+ *   - order_no is strictly `WOO-<id>` (operator decision; the Woo display `number` is ignored),
+ *   - customer name, email and the SHIPPING address only (no phone, no company on the customer,
+ *     no billing address),
+ *   - `price_per_unit` is 0 on every row (the commercial ledger is QBO's, roadmap step 8),
+ *   - every row carries `woo_line_key` and the chosen finishes as attributes.
+ * The Woo `order_key` (an order-access token) is never sent; `customer_ref` is `woo:<id>`.
+ *
+ * `lines` are the resolved specs from `resolveWooOrder`. When omitted, plain specs are derived
+ * from the payload (no finishes).
+ */
 export function mapWooOrderToKatanaSalesOrder(
   order: WooOrderWebhook,
+  lines?: ResolvedWooLine[],
 ): KatanaSalesOrderPayload {
-  const billing = order.billing;
-  const shipping = order.shipping ?? order.billing;
-  const customerName =
-    [billing?.first_name, billing?.last_name].filter(Boolean).join(" ").trim() ||
-    billing?.company?.trim() ||
-    "WooCommerce Customer";
+  const resolved: Array<Pick<ResolvedWooLine, "spec" | "finishes">> =
+    lines ??
+    extractWooLineSpecs(order).specs.map((spec) => ({ spec, finishes: [] }));
 
-  const addresses = [
-    wooAddressToKatana(billing, "billing"),
-    wooAddressToKatana(shipping, "shipping"),
-  ].filter((row): row is KatanaSalesOrderAddress => row !== null);
+  const billing = order.billing;
+  const shipping = order.shipping;
+  const nameOf = (a: typeof billing) =>
+    [a?.first_name, a?.last_name].filter(Boolean).join(" ").trim();
+  const customerName =
+    nameOf(billing) || nameOf(shipping) || billing?.company?.trim() || "WooCommerce Customer";
+
+  // Shipping address only. Fall back to the billing block (typed as shipping) when Woo sent no
+  // shipping content. The phone number is not forwarded.
+  const shippingAddress =
+    wooAddressToKatana(shipping ? { ...shipping, phone: undefined } : undefined, "shipping") ??
+    wooAddressToKatana(billing ? { ...billing, phone: undefined } : undefined, "shipping");
+  const addresses = shippingAddress ? [shippingAddress] : [];
+
+  const lineSummaries = resolved.map(({ spec, finishes }, i) => {
+    const parts = finishes.map((f) =>
+      f.mode === "attribute_only" ? `${f.slot}=${f.sku} [attribute only]` : `${f.slot}=${f.sku}`,
+    );
+    return `L${i + 1} ${spec.sku} x${spec.quantity}${parts.length ? ` ${parts.join(" ")}` : ""}`;
+  });
 
   return {
-    orderNo: katanaOrderNo("woo", order.id, { number: order.number }),
+    orderNo: katanaOrderNo("woo", order.id),
     source: "woocommerce",
     externalId: String(order.id),
     currency: order.currency ?? "USD",
     customer: {
       name: customerName,
-      email: billing?.email ?? null,
+      email: billing?.email?.trim() || null,
       firstName: billing?.first_name ?? null,
       lastName: billing?.last_name ?? null,
-      company: billing?.company ?? null,
-      phone: billing?.phone ?? null,
       currency: order.currency ?? "USD",
       referenceId: order.customer_id ? `woo-customer-${order.customer_id}` : null,
     },
-    salesOrderRows: order.line_items.map((item) => {
-      const lineTotal = parseUnitPrice(item.total);
-      const unitPrice =
-        item.price != null && Number.isFinite(item.price)
-          ? item.price
-          : item.quantity > 0
-            ? lineTotal / item.quantity
-            : 0;
-
-      return {
-        sku: item.sku,
-        quantity: item.quantity,
-        pricePerUnit: unitPrice,
-      };
-    }),
-    additionalInfo: `source=woocommerce | woo_order=${order.id}`,
-    customerRef: order.order_key ?? String(order.id),
+    salesOrderRows: resolved.map(({ spec, finishes }) => ({
+      sku: spec.sku,
+      quantity: spec.quantity,
+      pricePerUnit: 0,
+      attributes: [
+        { key: WOO_LINE_KEY_ATTRIBUTE, value: wooLineKey(spec) },
+        ...finishes.map((f) => ({ key: `finish_${f.slot}`, value: f.sku })),
+      ],
+    })),
+    additionalInfo: [`source=woocommerce | woo_order=${order.id}`, ...lineSummaries].join(" | "),
+    customerRef: `woo:${order.id}`,
     ecommerceOrderType: "woocommerce",
     ecommerceOrderId: String(order.id),
     addresses,
@@ -1758,7 +1806,7 @@ async function resolveKatanaCustomerId(
 
   const customerAddresses = addresses.map((address) => ({
     ...katanaAddressPayload(address),
-    default: address.entityType === "billing",
+    default: address.entityType === "billing" || addresses.length === 1,
   }));
 
   const { data } = await katanaFetch<{ id: number }>("/customers", {
@@ -1915,6 +1963,11 @@ export async function createKatanaSalesOrder(
     );
   }
 
+  // Path A write fence (M1: zero ghost demand): a Sales Order carrying ANY custom SKU
+  // that is not yet claimed for release must make zero Katana calls (customer POST included).
+  const { assertKatanaWriteAllowedForSkus } = await import("@/server/path-a/katana-fence");
+  await assertKatanaWriteAllowedForSkus(orderPayload.salesOrderRows.map((row) => row.sku));
+
   const resolvedRows: Array<{
     variant_id: number;
     quantity: number;
@@ -1940,7 +1993,10 @@ export async function createKatanaSalesOrder(
       quantity: row.quantity,
       price_per_unit: row.pricePerUnit,
       ...(row.locationId != null ? { location_id: row.locationId } : {}),
-      attributes: [{ key: "global_sku", value: row.sku.trim().toUpperCase() }],
+      attributes: [
+        { key: "global_sku", value: row.sku.trim().toUpperCase() },
+        ...(row.attributes ?? []),
+      ],
     });
   }
 
@@ -1997,13 +2053,38 @@ export async function createKatanaSalesOrder(
     salesOrderRowIds = extractSalesOrderRowIds(fetched.data);
   }
 
+  const rawRows = Array.isArray(data.sales_order_rows) ? data.sales_order_rows : [];
+  const returnedRows = rawRows.map((raw: unknown) => {
+    const r = asRecord(raw) ?? {};
+    return {
+      id: Number(r.id),
+      variant_id: Number(r.variant_id),
+      sku: String(readRowAttribute(r, "global_sku") ?? r.sku ?? ""),
+      lineKey: readRowAttribute(r, WOO_LINE_KEY_ATTRIBUTE),
+    };
+  });
+
   return {
     salesOrderId,
     orderNo: orderPayload.orderNo,
     customerId,
     rowCount: resolvedRows.length,
     salesOrderRowIds,
+    salesOrderRows: returnedRows,
   };
+}
+
+/** Read a `{key,value}` attribute off a Katana sales-order row (null when absent). */
+export function readRowAttribute(row: unknown, key: string): string | null {
+  const attrs = asRecord(row)?.attributes;
+  if (!Array.isArray(attrs)) return null;
+  for (const attr of attrs) {
+    const rec = asRecord(attr);
+    if (rec?.key === key && rec.value != null && String(rec.value).trim()) {
+      return String(rec.value).trim();
+    }
+  }
+  return null;
 }
 
 function extractSalesOrderRowIds(data: Record<string, unknown>): number[] {
@@ -2026,8 +2107,10 @@ function extractSalesOrderRowIds(data: Record<string, unknown>): number[] {
  * Create Make-to-Order manufacturing orders for each sales order row.
  * POST /manufacturing_order_make_to_order { sales_order_row_id, create_subassemblies }
  *
- * `createSubassemblies` defaults to **false**. Live Woo / GHL Inngest callers must
- * omit the flag so factory MOs stay flat until Phase 4 is wired on purpose.
+ * `createSubassemblies` defaults to **false** (flat MOs). Callers opt in explicitly:
+ *  - Woo order saga (Phase B1, `src/server/woocommerce/katana-deps.ts`) passes `true` so the
+ *    saga can walk the MO tree and apply the strict finish placeholder swap.
+ *  - GHL factory orders and Path A pass `false` / omit the flag (flat MOs).
  */
 export async function createMakeToOrderManufacturingOrders(
   salesOrderRowIds: number[],
@@ -2043,7 +2126,16 @@ export async function createMakeToOrderManufacturingOrders(
         { status: 422 },
       );
     }
+  }
 
+  // Path A write fence (M1): MO creation is addressed by sales-order ROW id; resolve
+  // each row to the custom item that owns it and refuse before any Katana call.
+  const { assertKatanaWriteAllowedForSalesOrderRows } = await import(
+    "@/server/path-a/katana-fence"
+  );
+  await assertKatanaWriteAllowedForSalesOrderRows(salesOrderRowIds);
+
+  for (const salesOrderRowId of salesOrderRowIds) {
     const { data } = await katanaFetch<Record<string, unknown>>(
       "/manufacturing_order_make_to_order",
       {
@@ -2376,4 +2468,195 @@ export async function bindMtoFabric(
       `Manufacturing order ${parentMoId} has no fabric recipe row for variant ${specificVariantId}.`,
     { status: 422 },
   );
+}
+
+// ---------------------------------------------------------------------------
+// Phase B1: strict placeholder bind for WooCommerce MTO trees
+// ---------------------------------------------------------------------------
+
+const MO_LISTING_PAGE_SIZE = 50;
+const MO_LISTING_MAX_PAGES = 10;
+
+/**
+ * Every manufacturing order hanging off a sales order (parents AND create_subassemblies
+ * children), paged. Throws on any API error and when the listing is not exhausted within
+ * `MO_LISTING_MAX_PAGES` pages: a silently truncated listing would hide an existing MO and
+ * cause a duplicate MTO.
+ */
+export async function listKatanaManufacturingOrderNodesForSalesOrder(
+  salesOrderId: number,
+): Promise<KatanaMoTreeNode[]> {
+  const nodes: KatanaMoTreeNode[] = [];
+  for (let page = 1; page <= MO_LISTING_MAX_PAGES; page += 1) {
+    const query = new URLSearchParams();
+    query.set("sales_order_id", String(salesOrderId));
+    query.set("limit", String(MO_LISTING_PAGE_SIZE));
+    query.set("page", String(page));
+    const { data } = await katanaFetch<unknown>(`/manufacturing_orders?${query.toString()}`);
+    const records = parseKatanaListPayload(data);
+    for (const record of records) {
+      const node = parseMoTreeNode(record);
+      if (node) nodes.push(node);
+    }
+    if (records.length < MO_LISTING_PAGE_SIZE) return nodes;
+  }
+  throw new KatanaApiError(
+    `Sales order ${salesOrderId} has more than ${MO_LISTING_MAX_PAGES * MO_LISTING_PAGE_SIZE} manufacturing orders; the listing cannot be exhausted.`,
+    { status: 422 },
+  );
+}
+
+/**
+ * Pick the PARENT manufacturing order for a sales-order row. With `create_subassemblies`,
+ * child MOs can carry the same `sales_order_row_id`; a child's order_no is `{parent} / n`, so the
+ * root is the matching node that is not nested under another matching node. If order numbers do
+ * not disambiguate, the lowest id wins (the parent is created before its children); the strict
+ * bind then fails loudly if that guess is wrong.
+ */
+export function pickRootMoNodeForRow(
+  nodes: KatanaMoTreeNode[],
+  salesOrderRowId: number,
+): number | null {
+  const matched = nodes.filter((n) => n.sales_order_row_id === salesOrderRowId);
+  if (matched.length === 0) return null;
+  const roots = matched.filter(
+    (n) =>
+      !matched.some(
+        (other) =>
+          other.id !== n.id &&
+          other.order_no !== null &&
+          n.order_no !== null &&
+          isNestedMoOrderNo(other.order_no, n.order_no),
+      ),
+  );
+  const pool = roots.length > 0 ? roots : matched;
+  return Math.min(...pool.map((n) => n.id));
+}
+
+async function loadManufacturingOrderTreeNodeStrict(
+  manufacturingOrderId: number,
+): Promise<{ node: KatanaMoTreeNode; nestedMoIds: number[] }> {
+  const { data } = await katanaFetch<unknown>(`/manufacturing_orders/${manufacturingOrderId}`);
+  const record = parseKatanaListPayload(data)[0];
+  const node = record ? parseMoTreeNode(record) : null;
+  if (!node) {
+    throw new KatanaApiError(
+      `Manufacturing order ${manufacturingOrderId} could not be parsed.`,
+      { status: 502, details: data },
+    );
+  }
+  return {
+    node,
+    nestedMoIds: collectNestedManufacturingOrderIds(data).filter((id) => id !== manufacturingOrderId),
+  };
+}
+
+export type MtoPlaceholderBindResult = {
+  parentMoId: number;
+  genericVariantId: number;
+  specificVariantId: number;
+  patched: MtoIngredientOverridePatch[];
+  /** True when nothing needed patching because the specific variant was already on the tree. */
+  alreadyBound: boolean;
+  inspectedMoIds: number[];
+};
+
+/**
+ * Replace a generic placeholder recipe row (for example RM-FAB-GENERIC) with the customer's
+ * specific variant on a parent MO and every nested sub-assembly MO.
+ *
+ * Unlike `applyMtoIngredientOverrides` this NEVER swallows an error: any failed read or PATCH
+ * throws, and a tree that carries neither the placeholder nor the specific variant throws a 422.
+ * Idempotent: a tree that already carries the specific variant and no placeholder is a success.
+ */
+export async function bindMtoPlaceholderStrict(
+  parentMoId: number,
+  options: { genericVariantId: number; specificVariantId: number; label: string },
+): Promise<MtoPlaceholderBindResult> {
+  const { genericVariantId, specificVariantId, label } = options;
+  for (const [name, value] of [
+    ["parentMoId", parentMoId],
+    ["genericVariantId", genericVariantId],
+    ["specificVariantId", specificVariantId],
+  ] as const) {
+    if (!Number.isInteger(value) || value <= 0) {
+      throw new KatanaApiError(`bindMtoPlaceholderStrict: invalid ${name}=${value} (${label}).`, {
+        status: 422,
+      });
+    }
+  }
+  if (genericVariantId === specificVariantId) {
+    throw new KatanaApiError(
+      `bindMtoPlaceholderStrict: generic and specific variant are identical (${label}).`,
+      { status: 422 },
+    );
+  }
+
+  const parentLoaded = await loadManufacturingOrderTreeNodeStrict(parentMoId);
+  const parent = parentLoaded.node;
+  const queue: number[] = [parentMoId];
+  const inspected = new Set<number>();
+  const patched: MtoIngredientOverridePatch[] = [];
+  let alreadyBound = false;
+  let listedSiblings = false;
+
+  const enqueue = (ids: number[]) => {
+    for (const id of ids) {
+      if (Number.isInteger(id) && id > 0 && !inspected.has(id) && !queue.includes(id)) {
+        queue.push(id);
+      }
+    }
+  };
+  enqueue(parentLoaded.nestedMoIds);
+
+  for (;;) {
+    while (queue.length > 0) {
+      const moId = queue.shift();
+      if (moId === undefined || inspected.has(moId)) continue;
+      inspected.add(moId);
+
+      const rows = await listManufacturingOrderRecipeRows(moId);
+      for (const row of findRecipeRowsByVariantId(rows, genericVariantId)) {
+        await katanaFetch(`/manufacturing_order_recipe_rows/${row.id}`, {
+          method: "PATCH",
+          body: { variant_id: specificVariantId },
+        });
+        patched.push({
+          recipeRowId: row.id,
+          manufacturingOrderId: row.manufacturing_order_id,
+          fromVariantId: genericVariantId,
+          toVariantId: specificVariantId,
+        });
+      }
+      if (rows.some((row) => row.variant_id === specificVariantId)) alreadyBound = true;
+      enqueue(collectChildMoIdsFromRecipeRows(rows));
+    }
+
+    if (patched.length > 0 || alreadyBound || listedSiblings || parent.sales_order_id === null) {
+      break;
+    }
+    // Nothing found on the known tree: look for sub-assembly MOs that Katana did not link on
+    // the recipe rows (children are named `{parent} / n`).
+    listedSiblings = true;
+    const siblings = await listKatanaManufacturingOrderNodesForSalesOrder(parent.sales_order_id);
+    enqueue(siblings.filter((c) => isMoInParentTree(c, parent)).map((c) => c.id));
+    if (queue.length === 0) break;
+  }
+
+  if (patched.length === 0 && !alreadyBound) {
+    throw new KatanaApiError(
+      `Manufacturing order tree ${parentMoId} has neither placeholder variant ${genericVariantId} nor ` +
+        `${label} variant ${specificVariantId} (inspected MOs: ${[...inspected].join(", ")}).`,
+      { status: 422 },
+    );
+  }
+
+  return {
+    parentMoId,
+    genericVariantId,
+    specificVariantId,
+    patched,
+    alreadyBound: patched.length === 0 && alreadyBound,
+    inspectedMoIds: [...inspected],
+  };
 }

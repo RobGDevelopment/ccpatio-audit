@@ -3,7 +3,7 @@
  * Pure: no env, no headers, no cookies, no email or domain literals.
  * Fails closed unless session has a verified ghl_role in PATH_A_OVERRIDE_ROLES.
  */
-import { isEmbedPrincipal, type PimSession } from "@/lib/pim-audit";
+import { isEmbedPrincipal, type PimSession } from "../../lib/pim-audit";
 
 export const PATH_A_OVERRIDE_ROLES = ["admin"] as const;
 

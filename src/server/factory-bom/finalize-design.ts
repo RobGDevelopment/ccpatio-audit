@@ -16,12 +16,13 @@ import {
   product_bom_draft,
   sku_mappings,
 } from "@/server/db/schema";
-import { loadAirlockSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
 import { evaluateAirlock } from "@/server/factory-bom/evaluate-airlock";
 import { renderShopDrawingPdf } from "@/server/factory-bom/shop-drawing";
 import { computeDossierHash } from "@/server/factory-bom/dossier-hash";
 import { resetReleaseGate } from "@/server/factory-bom/release-gate";
-import { approveDraftRecipe } from "@/app/admin/factory-bom/actions";
+import { approveDraftRecipeCore } from "@/server/factory-bom/approve-draft-recipe";
+import { loadAirlockSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
+import { isKatanaE2eMirror } from "@/server/pipeline/catalog-mode";
 import {
   buildStorageKey,
   sha256Hex,
@@ -30,7 +31,6 @@ import {
   getSupabaseAdmin,
   PRODUCT_DOCUMENTS_BUCKET,
 } from "@/lib/supabase-storage";
-import { isKatanaE2eMirror } from "@/server/pipeline/catalog-mode";
 import type { AirlockDossier } from "@/server/factory-bom/airlock.schema";
 
 export type FinalizeDesignCoreResult =
@@ -311,7 +311,7 @@ export async function finalizeDesignCore(
     return { ok: false, error: "CHECKLIST", blockingCodes: ["CHECKLIST"] };
   }
 
-  const approveRes = await approveDraftRecipe(sku, { actor });
+  const approveRes = await approveDraftRecipeCore(sku, actor);
   if (!approveRes.ok) return approveRes;
 
   await db

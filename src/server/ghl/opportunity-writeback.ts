@@ -19,7 +19,10 @@ import {
   type GhlSummaryInput,
   type GhlSummaryItem,
 } from "@/server/path-a/ghl-summary";
-import { ghlGet, ghlPost, ghlPut } from "./private-api";
+import { asGhlRecord, ghlGet, ghlPost, ghlPut } from "./private-api";
+
+/** The drizzle handle type; tests inject a table-aware fake cast to this. */
+export type WritebackDb = ReturnType<typeof getDb>;
 
 export type GhlSyncMode = "log" | "live";
 
@@ -34,7 +37,7 @@ export function getGhlOpportunityBuildSummaryFieldId(): string {
 }
 
 export type GhlWritebackDeps = {
-  db?: any;
+  db?: WritebackDb;
   getGhl?: typeof ghlGet;
   putGhl?: typeof ghlPut;
   postGhl?: typeof ghlPost;
@@ -44,7 +47,7 @@ export type GhlWritebackDeps = {
 
 export async function loadOpportunitySummaryData(
   opportunityId: string,
-  db: any = getDb(),
+  db: WritebackDb = getDb(),
 ): Promise<{ input: GhlSummaryInput; currentHash: string | null } | null> {
   const [job] = await db
     .select({
@@ -73,7 +76,7 @@ export async function loadOpportunitySummaryData(
     )
     .limit(1);
 
-  const items = await db
+  const items: Array<typeof custom_build_job_items.$inferSelect> = await db
     .select()
     .from(custom_build_job_items)
     .where(eq(custom_build_job_items.job_id, job.id));
@@ -81,7 +84,8 @@ export async function loadOpportunitySummaryData(
   const itemSummaries: GhlSummaryItem[] = [];
   for (const item of items) {
     let bomLines: GhlSummaryBomLine[] = [];
-    if (item.status === "finalized" || item.status === "released") {
+    // design_status is the real column (there is no `status` on custom_build_job_items).
+    if (item.design_status === "finalized" || item.design_status === "released") {
       const lines = await db
         .select({
           childSku: product_bom.child_sku,
@@ -95,7 +99,7 @@ export async function loadOpportunitySummaryData(
     itemSummaries.push({
       globalSku: item.global_sku,
       quantity: Number(item.quantity),
-      status: item.status,
+      status: item.design_status,
       finalizedDossierHash: item.finalized_dossier_hash,
       bomLines,
     });
@@ -106,9 +110,12 @@ export async function loadOpportunitySummaryData(
     opportunityName: job.displayName,
     sagaStatus: saga?.status ?? "PENDING",
     katanaOrderNo: job.katanaOrderNo,
-    katanaMoIds: job.katanaMoIds as number[] | null,
+    katanaMoIds: Array.isArray(job.katanaMoIds)
+      ? job.katanaMoIds.filter((id): id is number => typeof id === "number")
+      : null,
     items: itemSummaries,
-    appUrl: process.env.NEXT_PUBLIC_APP_URL || "https://app.ccpatio.com",
+    // Configuration only: no hard-coded production host (the summary omits the link without it).
+    appUrl: process.env.NEXT_PUBLIC_APP_URL?.trim() || undefined,
   };
 
   return { input, currentHash: job.ghlSyncHash };
@@ -170,8 +177,11 @@ export async function syncOpportunitySummaryToGhl(
     if (!oppRes.ok) {
       throw new Error(`GHL Opportunity lookup failed: ${oppRes.error}`);
     }
-    const oppRecord = (oppRes.body as any)?.opportunity ?? oppRes.body;
-    const contactId = oppRecord?.contactId || oppRecord?.contact?.id;
+    const oppBody = asGhlRecord(oppRes.body);
+    const oppRecord = asGhlRecord(oppBody?.opportunity) ?? oppBody;
+    const nestedContactId = asGhlRecord(oppRecord?.contact)?.id;
+    const rawContactId = oppRecord?.contactId || nestedContactId;
+    const contactId = typeof rawContactId === "string" ? rawContactId.trim() : "";
     if (!contactId) {
       throw new Error(`GHL Opportunity has no attached contactId for note creation`);
     }

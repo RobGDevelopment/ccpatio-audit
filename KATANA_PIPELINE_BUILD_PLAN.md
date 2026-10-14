@@ -24,9 +24,9 @@ Two lanes already exist. Do not merge them.
 | Lane | Owner | Katana surface | Airlock |
 |---|---|---|---|
 | Factory manufacturing (this blueprint) | `syncBOMToKatana` in `src/lib/katana.ts`, aliased `publishHubManufacturingToKatana` | `POST /bom_rows/batch/create` with `POST /recipes` fallback, then `POST /product_operation_rows` | `product_bom_draft`, `item_operations_draft`, `recipe_estimates_draft`, `cad_uploads` |
-| Sales-order MTO | `src/server/katana/katana.service.ts` | `POST /manufacturing_orders` | Woo order Zod plus `sku_mappings` IDs. Out of scope here |
+| Sales-order MTO | `createKatanaSalesOrder` and `createMakeToOrderManufacturingOrders` in `src/lib/katana.ts`, driven by `src/inngest/woo-order.ts` | `POST /manufacturing_order_make_to_order` | Woo order Zod plus hub-DB SKU validation. Out of scope here |
 
-`src/server/katana/katana.service.ts` must not gain recipe or operation writers. Catalog publish stays behind `canMutateKatanaCatalog()` in `src/server/pipeline/catalog-mode.ts` (`CATALOG_PUBLISH_MODE=live`, or `KATANA_E2E_MIRROR=true`). Default mode is dry-run. `ORDER_PIPELINE_MODE` gates sales orders only. Do not use it as the factory switch.
+The sales-order MTO writers in `src/lib/katana.ts` and `src/inngest/woo-order.ts` must not gain recipe or operation writers. Catalog publish stays behind `canMutateKatanaCatalog()` in `src/server/pipeline/catalog-mode.ts` (`CATALOG_PUBLISH_MODE=live`, or `KATANA_E2E_MIRROR=true`). Default mode is dry-run. `ORDER_PIPELINE_MODE` gates sales orders only. Do not use it as the factory switch.
 
 ### 0.2 What the scan found (2026-10-08)
 
@@ -770,7 +770,7 @@ When `canMutateKatanaCatalog()` is false, `syncBOMToKatana` already returns `dry
 **Packet `airlock-4-publish-gate`**
 
 - `src/app/admin/factory-bom/actions.ts` (`publishApprovedRecipeToKatana` and the shared approve path)
-- `src/lib/katana.ts` only for the idempotency key and the "do not coerce scrap" hard error when called from the airlock. Keep the change inside `syncBOMToKatana`. Do not edit `katana.service.ts`.
+- `src/lib/katana.ts` only for the idempotency key and the "do not coerce scrap" hard error when called from the airlock. Keep the change inside `syncBOMToKatana`. Do not touch the sales-order MTO writers in the same file.
 - `src/server/factory-bom/dossier-hash.ts`
 - `src/server/factory-bom/shop-drawing.ts` only if the release action needs a type export that `airlock-2.5-shop-pdf` did not add
 - `.cursor/phase.lock`

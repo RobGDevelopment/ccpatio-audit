@@ -5,21 +5,25 @@
  * hub here. This SUPERSEDES the earlier 410 "retired" stub described in
  * docs/MDM_MASTER_BLUEPRINT.md Phase 0.
  *
- * The route is a thin, fast ingress: verify -> validate -> audit -> classify -> enqueue.
+ * The route is a thin, fast ingress:
+ *   verify -> structural parse -> classify -> (paid: baseline decision) -> validate against the
+ *   live hub DB -> audit -> enqueue.
  * It performs NO Katana, QBO or Clover I/O. The Inngest function `process-woocommerce-order`
  * (src/inngest/woo-order.ts) does the heavy work behind ORDER_PIPELINE_MODE (default `log`,
  * i.e. a dry run) and LEDGER_PIPELINE_MODE (default `log`).
  *
+ * Phase B1: SKU authority is the hub database (sku-resolver.ts), not a static dictionary. The
+ * only accepted finish keys are fabric / powder_coat / frame (finish-keys.ts). A paid order that
+ * changes after its first paid delivery was processed is quarantined as `post_payment_edit` and
+ * alerted, never reprocessed (paid-baseline.ts).
+ *
  * Non-2xx is reserved for: missing secret (503), bad signature (401), unparseable JSON (400)
  * and a persistence/enqueue failure (500). WooCommerce disables a webhook after repeated
- * non-2xx deliveries, so a SKU validation problem is quarantined and acknowledged (202).
+ * non-2xx deliveries, so a validation problem is quarantined and acknowledged (202).
  */
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
 import { inngest } from "@/inngest/client";
 import { sendOhCrapAlert } from "@/server/alerts/oh-crap";
-import { getDb } from "@/server/db/client";
-import { quarantined_orders } from "@/server/db/schema";
 import { getOrderPipelineMode } from "@/server/pipeline/mode";
 import { sagaStore } from "@/server/sre/saga-store";
 import {
@@ -42,6 +46,16 @@ import {
   type SkuIngressIssue,
 } from "@/server/woocommerce/ingress.schema";
 import { classifyWooOrder } from "@/server/woocommerce/order-state";
+import { fingerprintWooOrder } from "@/server/woocommerce/order-fingerprint";
+import {
+  decidePaidDelivery,
+  markBaselineEnqueued,
+} from "@/server/woocommerce/paid-baseline";
+import {
+  quarantineOnce,
+  resolvePendingReviewForOrder,
+} from "@/server/woocommerce/quarantine-store";
+import { hubResolveDeps, resolveWooOrder } from "@/server/woocommerce/sku-resolver";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,48 +77,8 @@ function readOrderId(parsedJson: unknown): string | null {
   return null;
 }
 
-/**
- * One `pending_review` row per order across redeliveries: refresh the existing row instead of
- * piling up duplicates. Returns whether a NEW row was created (alert only then).
- */
-async function quarantineOnce(input: {
-  externalId: string;
-  rawPayload: unknown;
-  issues: SkuIngressIssue[];
-}): Promise<"inserted" | "updated"> {
-  const db = getDb();
-  const [existing] = await db
-    .select({ id: quarantined_orders.id })
-    .from(quarantined_orders)
-    .where(
-      and(
-        eq(quarantined_orders.source, "woocommerce"),
-        eq(quarantined_orders.external_id, input.externalId),
-        eq(quarantined_orders.status, "pending_review"),
-      ),
-    )
-    .limit(1);
-
-  if (existing) {
-    await db
-      .update(quarantined_orders)
-      .set({
-        raw_payload: input.rawPayload as object,
-        issues: input.issues,
-        updated_at: new Date(),
-      })
-      .where(eq(quarantined_orders.id, existing.id));
-    return "updated";
-  }
-
-  await db.insert(quarantined_orders).values({
-    source: "woocommerce",
-    external_id: input.externalId,
-    raw_payload: input.rawPayload as object,
-    issues: input.issues,
-    updated_at: new Date(),
-  });
-  return "inserted";
+function resolutionPathFor(externalId: string): string {
+  return `/admin/quarantine?source=woocommerce&externalId=${encodeURIComponent(externalId)}`;
 }
 
 async function alertBestEffort(input: Parameters<typeof sendOhCrapAlert>[0]): Promise<void> {
@@ -126,6 +100,49 @@ async function alertBestEffort(input: Parameters<typeof sendOhCrapAlert>[0]): Pr
       error: errorText(error),
     });
   }
+}
+
+/** The audit row is bookkeeping once the real outcome is persisted: a failure is logged, not fatal. */
+async function markAudit(
+  deliveryKey: string,
+  orderId: string,
+  status: "processed" | "failed",
+  message: string,
+): Promise<void> {
+  try {
+    await updateIncomingWebhookStatus(deliveryKey, status, message);
+  } catch (error) {
+    logRoute("error", "woo-audit-mark-failed", { orderId, status, error: errorText(error) });
+  }
+}
+
+/** Persist a `pending_review` quarantine row, alert once, and answer 202. */
+async function quarantineInvalid(input: {
+  externalId: string;
+  rawPayload: unknown;
+  issues: SkuIngressIssue[];
+}): Promise<NextResponse> {
+  let result: Awaited<ReturnType<typeof quarantineOnce>>;
+  try {
+    // Persist BEFORE alerting so the order is never lost on the floor.
+    result = await quarantineOnce({ ...input, status: "pending_review" });
+  } catch (error) {
+    logRoute("error", "woo-quarantine-persist-failed", {
+      externalId: input.externalId,
+      error: errorText(error),
+    });
+    return NextResponse.json({ error: "persistence_failed" }, { status: 500 });
+  }
+  if (result === "inserted") {
+    await alertBestEffort({
+      reason: "validation_failed",
+      source: "woocommerce",
+      externalId: input.externalId,
+      message: formatQuarantineAlert({ orderId: input.externalId, issues: input.issues }),
+      resolutionPath: resolutionPathFor(input.externalId),
+    });
+  }
+  return NextResponse.json({ accepted: true, quarantined: true }, { status: 202 });
 }
 
 export async function POST(req: Request) {
@@ -170,24 +187,7 @@ export async function POST(req: Request) {
 
   if (!parsed.ok) {
     const externalId = readOrderId(parsedJson) ?? deliveryKey;
-    let quarantine: "inserted" | "updated";
-    try {
-      // Persist BEFORE alerting so the order is never lost on the floor.
-      quarantine = await quarantineOnce({ externalId, rawPayload: parsedJson, issues: parsed.issues });
-    } catch (error) {
-      logRoute("error", "woo-quarantine-persist-failed", { externalId, error: errorText(error) });
-      return NextResponse.json({ error: "persistence_failed" }, { status: 500 });
-    }
-    if (quarantine === "inserted") {
-      await alertBestEffort({
-        reason: "validation_failed",
-        source: "woocommerce",
-        externalId,
-        message: formatQuarantineAlert({ orderId: externalId, issues: parsed.issues }),
-        resolutionPath: `/admin/quarantine?source=woocommerce&externalId=${encodeURIComponent(externalId)}`,
-      });
-    }
-    return NextResponse.json({ accepted: true, quarantined: true }, { status: 202 });
+    return quarantineInvalid({ externalId, rawPayload: parsedJson, issues: parsed.issues });
   }
 
   const order = parsed.data;
@@ -233,22 +233,112 @@ export async function POST(req: Request) {
         source: "woocommerce",
         externalId: orderId,
         message: `WooCommerce order ${orderId}: paid order changed to ${String(order.status)}, manual review. Katana order NOT touched.`,
-        resolutionPath: `/admin/quarantine?source=woocommerce&externalId=${encodeURIComponent(orderId)}`,
+        resolutionPath: resolutionPathFor(orderId),
       });
     }
     return NextResponse.json({ accepted: true, needsHuman: true }, { status: 200 });
   }
 
-  if (orderClass === "awaiting_payment") {
-    return NextResponse.json({ accepted: true, awaiting_payment: true }, { status: 200 });
-  }
   if (orderClass === "terminal_unpaid") {
     return NextResponse.json({ accepted: true, ignored: true, reason: "terminal_unpaid" }, { status: 200 });
   }
 
-  // Paid. ALWAYS send, even when the audit row was a duplicate: Inngest dedupes by event id,
-  // so a re-send is free, whereas short-circuiting would lose the order whenever the first
-  // delivery inserted the row and `inngest.send` then failed.
+  if (orderClass === "awaiting_payment") {
+    // Validate early so a bad SKU or finish is visible before the customer pays. A valid order
+    // resolves this quarantine row when the paid delivery arrives.
+    let early: Awaited<ReturnType<typeof resolveWooOrder>>;
+    try {
+      early = await resolveWooOrder(order, hubResolveDeps(), { requireKatanaIds: false });
+    } catch (error) {
+      logRoute("error", "woo-resolve-failed", { orderId, error: errorText(error) });
+      return NextResponse.json({ error: "persistence_failed" }, { status: 500 });
+    }
+    if (!early.ok) {
+      return quarantineInvalid({ externalId: orderId, rawPayload: order, issues: early.issues });
+    }
+    return NextResponse.json({ accepted: true, awaiting_payment: true }, { status: 200 });
+  }
+
+  // ---- Paid ------------------------------------------------------------------------------
+  const fingerprint = fingerprintWooOrder(order);
+  let decision: Awaited<ReturnType<typeof decidePaidDelivery>>;
+  try {
+    decision = await decidePaidDelivery({ orderId, deliveryKey, fingerprint, topic });
+  } catch (error) {
+    logRoute("error", "woo-baseline-failed", { orderId, error: errorText(error) });
+    return NextResponse.json({ error: "persistence_failed" }, { status: 500 });
+  }
+
+  if (decision.kind === "unchanged") {
+    await markAudit(
+      deliveryKey,
+      orderId,
+      "processed",
+      `Order ${orderId}: no manufacturing change since the paid delivery; acknowledged.`,
+    );
+    return NextResponse.json({ accepted: true, unchanged: true }, { status: 200 });
+  }
+
+  if (decision.kind === "edited") {
+    const issues: SkuIngressIssue[] = [
+      {
+        path: "(order)",
+        message:
+          "Order changed after payment (line items, finishes, shipping address, or customer). The paid order is already in the pipeline and is NOT reprocessed. Review by hand.",
+      },
+      { path: "(fingerprint)", message: fingerprint },
+    ];
+    let result: Awaited<ReturnType<typeof quarantineOnce>>;
+    try {
+      result = await quarantineOnce({
+        externalId: orderId,
+        rawPayload: order,
+        issues,
+        status: "post_payment_edit",
+      });
+    } catch (error) {
+      logRoute("error", "woo-quarantine-persist-failed", { orderId, error: errorText(error) });
+      return NextResponse.json({ error: "persistence_failed" }, { status: 500 });
+    }
+    if (result !== "unchanged") {
+      await alertBestEffort({
+        reason: "unknown",
+        source: "woocommerce",
+        externalId: orderId,
+        message: `WooCommerce order ${orderId} was edited AFTER payment. Katana was NOT updated and the order was NOT reprocessed. Compare the edit against the Katana sales order by hand.`,
+        resolutionPath: resolutionPathFor(orderId),
+      });
+    }
+    await markAudit(deliveryKey, orderId, "processed", `Order ${orderId}: post-payment edit quarantined.`);
+    return NextResponse.json(
+      { accepted: true, quarantined: true, reason: "post_payment_edit" },
+      { status: 202 },
+    );
+  }
+
+  // first | redelivery: validate against the live hub database before enqueueing.
+  let resolution: Awaited<ReturnType<typeof resolveWooOrder>>;
+  try {
+    resolution = await resolveWooOrder(order, hubResolveDeps(), { requireKatanaIds: false });
+  } catch (error) {
+    logRoute("error", "woo-resolve-failed", { orderId, error: errorText(error) });
+    return NextResponse.json({ error: "persistence_failed" }, { status: 500 });
+  }
+  if (!resolution.ok) {
+    const response = await quarantineInvalid({
+      externalId: orderId,
+      rawPayload: order,
+      issues: resolution.issues,
+    });
+    if (response.status === 202) {
+      await markAudit(deliveryKey, orderId, "failed", `Order ${orderId} quarantined: validation failed.`);
+    }
+    return response;
+  }
+
+  // ALWAYS send, even when the audit row was a duplicate: Inngest dedupes by event id, so a
+  // re-send is free, whereas short-circuiting would lose the order whenever the first delivery
+  // inserted the row and `inngest.send` then failed.
   try {
     await inngest.send({
       id: wooEventId(order),
@@ -258,12 +348,24 @@ export async function POST(req: Request) {
   } catch (error) {
     const message = `inngest.send failed: ${errorText(error)}`;
     logRoute("error", "woo-enqueue-failed", { orderId, error: message });
-    try {
-      await updateIncomingWebhookStatus(deliveryKey, "failed", message);
-    } catch (markError) {
-      logRoute("error", "woo-audit-mark-failed-failed", { orderId, error: errorText(markError) });
-    }
+    await markAudit(deliveryKey, orderId, "failed", message);
     return NextResponse.json({ error: "enqueue_failed" }, { status: 500 });
+  }
+
+  try {
+    await markBaselineEnqueued({ orderId, deliveryKey, fingerprint });
+  } catch (error) {
+    // The event is queued (Inngest dedupes a re-send). A 500 makes Woo redeliver, which re-pins
+    // the baseline; answering 2xx here would leave an edit undetectable.
+    logRoute("error", "woo-baseline-pin-failed", { orderId, error: errorText(error) });
+    return NextResponse.json({ error: "persistence_failed" }, { status: 500 });
+  }
+
+  try {
+    await resolvePendingReviewForOrder(orderId);
+  } catch (error) {
+    // The order is accepted and queued; a stale review row is cosmetic and visible in the log.
+    logRoute("error", "woo-quarantine-autoresolve-failed", { orderId, error: errorText(error) });
   }
 
   return NextResponse.json(

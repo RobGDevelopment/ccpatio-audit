@@ -139,7 +139,41 @@ describe("resolveDlqContext never throws", () => {
     { data: { line_items: [null] } },
     { data: { line_items: [{ sku: 5 }] } },
   ];
-  const fns = ["publish-approved-product", "process-cad-upload", "process-woocommerce-order", "other", "", undefined, null];
+  const fns = [
+    "publish-approved-product",
+    "process-cad-upload",
+    "process-woocommerce-order",
+    "path-a-release-to-production",
+    "path-a-ghl-sync",
+    "other",
+    "",
+    undefined,
+    null,
+  ];
+
+  it("resolves path-a-release-to-production DLQ context", () => {
+    const got = resolveDlqContext("path-a-release-to-production", {
+      data: { ghlOpportunityId: "opp-123" },
+    });
+    expect(got.externalId).toBe("opp-123");
+    expect(got.resolutionPath).toBe("/admin/path-a?opp=opp-123");
+    expect(got.source).toBe("katana");
+
+    const appPrefixed = resolveDlqContext(`${APP}path-a-release-to-production`, {
+      data: { ghlOpportunityId: "opp-456" },
+    });
+    expect(appPrefixed.externalId).toBe("opp-456");
+    expect(appPrefixed.resolutionPath).toBe("/admin/path-a?opp=opp-456");
+  });
+
+  it("resolves path-a-ghl-sync DLQ context", () => {
+    const got = resolveDlqContext("path-a-ghl-sync", {
+      data: { ghlOpportunityId: "opp-789" },
+    });
+    expect(got.externalId).toBe("opp-789");
+    expect(got.resolutionPath).toBe("/admin/path-a?opp=opp-789");
+    expect(got.source).toBe("ghl");
+  });
 
   it.each(garbage.map((g, i) => [i, g] as const))("garbage payload #%i", (_i, payload) => {
     for (const fn of fns) {

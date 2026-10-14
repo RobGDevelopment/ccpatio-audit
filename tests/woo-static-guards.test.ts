@@ -25,6 +25,13 @@ const WOO_MODULES = [
   "src/server/woocommerce/order-state.ts",
   "src/server/woocommerce/ledger-leg.ts",
   "src/server/woocommerce/katana-deps.ts",
+  "src/server/woocommerce/finish-keys.ts",
+  "src/server/woocommerce/line-specs.ts",
+  "src/server/woocommerce/sku-resolver.ts",
+  "src/server/woocommerce/order-fingerprint.ts",
+  "src/server/woocommerce/paid-baseline.ts",
+  "src/server/woocommerce/quarantine-store.ts",
+  "src/app/admin/quarantine/woo-actions.ts",
   "src/server/sre/saga-store.ts",
   "src/inngest/woo-order.ts",
   "src/app/api/webhooks/woocommerce/route.ts",
@@ -87,6 +94,42 @@ describe("Woo modules cannot reach QBO", () => {
     }
     expect(offenders).toEqual([]);
     expect(seen.size).toBeGreaterThan(WOO_MODULES.length); // the walk actually walked
+  });
+});
+
+describe("Phase B1: no static SKU dictionary", () => {
+  function walk(dir: string, out: string[] = []): string[] {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full, out);
+      else if (/\.(ts|tsx|mjs)$/.test(entry.name)) out.push(full);
+    }
+    return out;
+  }
+
+  it("global-e2e-skus.ts is deleted", () => {
+    expect(fs.existsSync(path.join(SRC, "generated", "global-e2e-skus.ts"))).toBe(false);
+  });
+
+  it("no source file or script references global-e2e", () => {
+    const offenders = [...walk(SRC), ...walk(path.join(ROOT, "scripts"))].filter((file) =>
+      /global-e2e|GLOBAL_E2E_SKU|GlobalE2ESku|isGlobalE2eSku/.test(fs.readFileSync(file, "utf8")),
+    );
+    expect(offenders.map((f) => path.relative(ROOT, f))).toEqual([]);
+  });
+
+  it("the Capital Stack handoff document and its renderer are deleted", () => {
+    expect(fs.existsSync(path.join(ROOT, "docs", "CAPITAL_STACK_VENDOR_HANDOFF.md"))).toBe(false);
+    expect(fs.existsSync(path.join(ROOT, "docs", "CAPITAL_STACK_VENDOR_HANDOFF.pdf"))).toBe(false);
+    expect(fs.existsSync(path.join(ROOT, "scripts", "render-capital-stack-handoff-pdf.mjs"))).toBe(false);
+  });
+
+  it("the Woo ingress validates SKUs through the hub resolver, not a static list", () => {
+    const route = stripComments(read("src/app/api/webhooks/woocommerce/route.ts"));
+    expect(route).toMatch(/resolveWooOrder\(/);
+    expect(route).toMatch(/hubResolveDeps\(\)/);
+    const saga = stripComments(read("src/inngest/woo-order.ts"));
+    expect(saga).toMatch(/resolveWooOrder\(/);
   });
 });
 

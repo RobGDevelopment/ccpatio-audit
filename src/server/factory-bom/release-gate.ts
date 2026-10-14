@@ -34,10 +34,8 @@ export async function resetReleaseGate(
       set: setPayload,
     });
 
-  try {
-    const { invalidateFinalization } = await import("@/server/factory-bom/finalize-design");
-    await invalidateFinalization(rootSku);
-  } catch {
-    /* best-effort */
-  }
+  // Not best-effort: if invalidation fails, a finalized design could survive a gate reset.
+  // The gate row is already reset above; the failure must surface to the caller.
+  const { invalidateFinalization } = await import("@/server/factory-bom/finalize-design");
+  await invalidateFinalization(rootSku);
 }

@@ -1168,7 +1168,7 @@ export const quarantined_orders = pgTable("quarantined_orders", {
   raw_payload: jsonb("raw_payload").notNull(),
   issues: jsonb("issues").notNull(),
   status: text("status", {
-    enum: ["pending_review", "resolved", "discarded"],
+    enum: ["pending_review", "post_payment_edit", "resolved", "discarded"],
   })
     .default("pending_review")
     .notNull(),

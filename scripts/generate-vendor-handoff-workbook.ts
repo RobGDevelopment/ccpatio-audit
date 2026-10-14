@@ -363,7 +363,7 @@ function buildExecutiveSummary(wb: ExcelJS.Workbook, productCount: number, mater
     ["Prepared By:", "Enterprise Architecture Team"],
     ["Date:", new Date().toISOString().slice(0, 10)],
     ["Status:", "APPROVED FOR DEVELOPMENT"],
-    ["Document Pair:", "docs/CAPITAL_STACK_VENDOR_HANDOFF.md (+ .pdf)"],
+    ["Document Pair:", "(retired in Phase B1; see .cursor/phase-b1.md)"],
     ["Phase 1 + 2 Products:", String(productCount)],
     ["Web Materials Rows:", String(materialCount)],
   ];
@@ -391,7 +391,7 @@ function buildExecutiveSummary(wb: ExcelJS.Workbook, productCount: number, mater
     "This workbook represents the immutable, finalized dataset for the CC Patio web configuration. " +
     "It contains the exact Master SKUs, approved materials, pricing matrices, and logistics data required " +
     "to program the VividWorks 3D engine and the WooCommerce cart. " +
-    "Refer to CAPITAL_STACK_VENDOR_HANDOFF.md for Katana API webhook schemas.\n\n" +
+    "Primeview has no direct Katana access; orders reach Katana only through the hub WooCommerce webhook.\n\n" +
     "HARD RULE: Woo / Clover line sku MUST equal the Master SKU (FIN-…). " +
     "Fabric grade, cushion fabric, and powder coat are sales-order row attributes — never SKU suffixes. " +
     "Cartesian explosion of FIN × grade × PWD × FAB is forbidden.";

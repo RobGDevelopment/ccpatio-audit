@@ -11,12 +11,6 @@
  * still enables catalog mutations so existing deploys keep working.
  * KATANA_E2E_MIRROR=true always allows mutations (Playwright / qa mirror).
  */
-import {
-  getOrderPipelineMode,
-  pipelineModeLabel,
-  type OrderPipelineMode,
-} from "@/server/pipeline/mode";
-
 export type CatalogPublishMode = "log" | "live";
 
 export function getCatalogPublishMode(): CatalogPublishMode {
@@ -24,7 +18,7 @@ export function getCatalogPublishMode(): CatalogPublishMode {
   if (raw === "live" || raw === "log") return raw;
 
   // Legacy fallback — do not treat "approve" as live catalog.
-  const orderMode = getOrderPipelineMode();
+  const orderMode = process.env.ORDER_PIPELINE_MODE?.trim().toLowerCase();
   return orderMode === "live" ? "live" : "log";
 }
 
@@ -48,9 +42,4 @@ export function catalogPublishModeLabel(
   return mode === "live"
     ? "live (catalog recipes + ops)"
     : "log (catalog dry-run)";
-}
-
-/** Order-pipeline label helper re-export for sync messages that mention both. */
-export function orderModeNote(mode: OrderPipelineMode = getOrderPipelineMode()): string {
-  return pipelineModeLabel(mode);
 }

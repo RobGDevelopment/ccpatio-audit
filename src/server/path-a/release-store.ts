@@ -3,7 +3,7 @@
  * Strictly adheres to first-writer-wins, zero wait compute, and fail-closed idempotency.
  * No session-level advisory locks (transaction pooler compatible).
  */
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import {
   custom_build_job_items,
@@ -18,6 +18,18 @@ import {
   PATH_A_SAGA_TYPE,
 } from "./saga-state";
 import type { PathAReleaseSource } from "./events";
+
+export class SagaDesignLockedError extends Error {
+  constructor(
+    readonly oppId: string,
+    readonly status: string,
+  ) {
+    super(
+      `advanceSaga aborted: saga ${oppId} is in status "${status}" (design locked / past pause)`,
+    );
+    this.name = "SagaDesignLockedError";
+  }
+}
 
 export type ReleaseRequestResult =
   | { outcome: "recorded" }
@@ -60,7 +72,8 @@ export type ReleaseStore = {
   markSagaManual(oppId: string, leg: string, error: unknown): Promise<void>;
 };
 
-type ReleaseDb = any;
+export type PathATx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+export type ReleaseDb = ReturnType<typeof getDb> | PathATx;
 
 export function createReleaseStore(resolveDb: () => ReleaseDb = getDb): ReleaseStore {
   async function getSaga(oppId: string): Promise<SagaRunRow | null> {
@@ -85,7 +98,7 @@ export function createReleaseStore(resolveDb: () => ReleaseDb = getDb): ReleaseS
       const db = resolveDb();
 
       // Run inside a transaction with row lock
-      return db.transaction(async (tx: any) => {
+      return db.transaction(async (tx: PathATx) => {
         // Lock the saga row
         const [lockedSaga] = await tx
           .select()
@@ -100,6 +113,15 @@ export function createReleaseStore(resolveDb: () => ReleaseDb = getDb): ReleaseS
 
         if (!lockedSaga) {
           throw new Error(`advanceSaga: no saga row found for opportunity ${oppId}`);
+        }
+
+        // Abort if the saga is locked or already past the pause (AWAITING_DEPOSIT)
+        if (
+          lockedSaga.status === "IN_PROGRESS" ||
+          lockedSaga.status === "COMPLETED" ||
+          lockedSaga.status === "SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION"
+        ) {
+          throw new SagaDesignLockedError(oppId, lockedSaga.status);
         }
 
         // Find the custom build job
@@ -121,13 +143,15 @@ export function createReleaseStore(resolveDb: () => ReleaseDb = getDb): ReleaseS
         if (target.status !== lockedSaga.status || target.step !== lockedSaga.current_step) {
           assertLegalSagaTransition(lockedSaga.status as SagaStatusValue, target.status);
 
+          const updatePayload: Partial<typeof saga_runs.$inferInsert> = {
+            status: target.status,
+            current_step: target.step,
+            updated_at: new Date(),
+          };
+
           const [updated] = await tx
             .update(saga_runs)
-            .set({
-              status: target.status,
-              current_step: target.step,
-              updated_at: new Date(),
-            })
+            .set(updatePayload)
             .where(
               and(
                 eq(saga_runs.id, lockedSaga.id),
@@ -157,13 +181,14 @@ export function createReleaseStore(resolveDb: () => ReleaseDb = getDb): ReleaseS
 
     async revertToDesigning(oppId, step = "design_changed") {
       const db = resolveDb();
+      const updatePayload: Partial<typeof saga_runs.$inferInsert> = {
+        status: "PENDING",
+        current_step: step,
+        updated_at: new Date(),
+      };
       const [updated] = await db
         .update(saga_runs)
-        .set({
-          status: "PENDING",
-          current_step: step,
-          updated_at: new Date(),
-        })
+        .set(updatePayload)
         .where(
           and(
             eq(saga_runs.saga_type, PATH_A_SAGA_TYPE),
@@ -206,7 +231,7 @@ export function createReleaseStore(resolveDb: () => ReleaseDb = getDb): ReleaseS
       }
 
       // First-writer-wins attempt on release_requested_*
-      const updatePayload: Record<string, unknown> = {
+      const updatePayload: Partial<typeof saga_runs.$inferInsert> = {
         release_requested_at: now,
         release_source: input.source,
         release_requested_by: input.requestedBy,
@@ -276,13 +301,14 @@ export function createReleaseStore(resolveDb: () => ReleaseDb = getDb): ReleaseS
       if (current.status === "IN_PROGRESS") return { outcome: "resumed" };
 
       if (current.status === "SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION") {
+        const updatePayload: Partial<typeof saga_runs.$inferInsert> = {
+          status: "IN_PROGRESS",
+          current_step: "releasing",
+          updated_at: new Date(),
+        };
         const [resumed] = await db
           .update(saga_runs)
-          .set({
-            status: "IN_PROGRESS",
-            current_step: "releasing",
-            updated_at: new Date(),
-          })
+          .set(updatePayload)
           .where(
             and(
               eq(saga_runs.id, current.id),
@@ -294,13 +320,14 @@ export function createReleaseStore(resolveDb: () => ReleaseDb = getDb): ReleaseS
       }
 
       if (current.status === "AWAITING_DEPOSIT") {
+        const updatePayload: Partial<typeof saga_runs.$inferInsert> = {
+          status: "IN_PROGRESS",
+          current_step: "releasing",
+          updated_at: new Date(),
+        };
         const [claimed] = await db
           .update(saga_runs)
-          .set({
-            status: "IN_PROGRESS",
-            current_step: "releasing",
-            updated_at: new Date(),
-          })
+          .set(updatePayload)
           .where(
             and(
               eq(saga_runs.id, current.id),
@@ -310,7 +337,9 @@ export function createReleaseStore(resolveDb: () => ReleaseDb = getDb): ReleaseS
           )
           .returning();
 
-        return claimed ? { outcome: "claimed" } : { outcome: "resumed" };
+        // A lost CAS means another run already moved the saga out of AWAITING_DEPOSIT:
+        // that run owns the release, so this one must not proceed (single winner).
+        return claimed ? { outcome: "claimed" } : { outcome: "not_ready" };
       }
 
       return { outcome: "not_ready" };
@@ -319,14 +348,15 @@ export function createReleaseStore(resolveDb: () => ReleaseDb = getDb): ReleaseS
     async markSagaCompleted(oppId) {
       const db = resolveDb();
       const now = new Date();
+      const updatePayload: Partial<typeof saga_runs.$inferInsert> = {
+        status: "COMPLETED",
+        current_step: "released_to_production",
+        released_at: now,
+        updated_at: now,
+      };
       const [updated] = await db
         .update(saga_runs)
-        .set({
-          status: "COMPLETED",
-          current_step: "released_to_production",
-          released_at: now,
-          updated_at: now,
-        })
+        .set(updatePayload)
         .where(
           and(
             eq(saga_runs.saga_type, PATH_A_SAGA_TYPE),
@@ -342,18 +372,20 @@ export function createReleaseStore(resolveDb: () => ReleaseDb = getDb): ReleaseS
     async markSagaManual(oppId, leg, error) {
       const db = resolveDb();
       const scrubbed = scrubSagaError(error);
+      const updatePayload: Partial<typeof saga_runs.$inferInsert> = {
+        status: "SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION",
+        current_step: `release_failed:${leg}`,
+        last_error: scrubbed,
+        updated_at: new Date(),
+      };
       await db
         .update(saga_runs)
-        .set({
-          status: "SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION",
-          current_step: `release_failed:${leg}`,
-          last_error: scrubbed,
-          updated_at: new Date(),
-        })
+        .set(updatePayload)
         .where(
           and(
             eq(saga_runs.saga_type, PATH_A_SAGA_TYPE),
             eq(saga_runs.correlation_key, oppId),
+            ne(saga_runs.status, "COMPLETED"),
           ),
         );
     },

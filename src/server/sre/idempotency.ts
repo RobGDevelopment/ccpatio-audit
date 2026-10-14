@@ -61,26 +61,17 @@ const KATANA_ORDER_NO_PREFIX: Record<string, string> = {
  * Katana sales-order number. MUST match the existing conventions:
  *  - GHL: `GHL-<opportunityId>` (src/server/ghl/hold-order.ts `ghlFactoryOrderNo`)
  *  - Path A: `PA-<opportunityId>` (Phase 11 Path A Sales Order)
- *  - Woo: the Woo order `number` when it is a non-empty string, otherwise
- *    `WOO-<orderId>`. `mapWooOrderToKatanaSalesOrder` (src/lib/katana.ts) CALLS this
- *    helper so the idempotency lookup and the created SO can never drift apart.
- *
- * `opts.number` only affects Woo. An empty / whitespace-only number falls back to
- * `WOO-<id>` (a bare `??` would let `""` through and Katana rejects an empty order_no).
+ *  - Woo: strictly `WOO-<orderId>` (Phase B1, operator decision D8). The Woo display
+ *    `number` is deliberately NOT accepted: there is no override, so the Katana order
+ *    number can never drift from the Woo order id. `mapWooOrderToKatanaSalesOrder`
+ *    (src/lib/katana.ts) and the Woo saga CALL this helper so the idempotency lookup and
+ *    the created SO can never drift apart.
  */
-export function katanaOrderNo(
-  source: string,
-  externalId: string | number,
-  opts?: { number?: string | number | null },
-): string {
+export function katanaOrderNo(source: string, externalId: string | number): string {
   const key = requireId("source", source).toLowerCase();
   const prefix = KATANA_ORDER_NO_PREFIX[key];
   if (!prefix) {
     throw new Error(`katanaOrderNo: unsupported source "${source}" (expected ghl, woo, or path_a).`);
-  }
-  if (prefix === "WOO" && opts?.number !== null && opts?.number !== undefined) {
-    const custom = String(opts.number).trim();
-    if (custom) return custom;
   }
   return `${prefix}-${requireId("externalId", String(externalId))}`;
 }

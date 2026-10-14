@@ -248,7 +248,7 @@ Label: **Future / Paused**. Do not execute during Priority 3 Crawl unless Archit
 
 ### 3.8 Unwired / mock stacks (do not treat as production)
 
-- `middleware/src/server/katana/katana.service.ts` — Create MO dry-run; not on Inngest path.  
+- (Removed in Phase B1) The legacy Katana "create MO" dry-run stub is deleted. Live MTO creation is `createMakeToOrderManufacturingOrders` in `src/lib/katana.ts`, called from the Inngest sagas.  
 - `topology/.../api/webhooks/ghl` — no HMAC; mock MO.  
 - `executive-presentation` GHL/Katana mocks.
 

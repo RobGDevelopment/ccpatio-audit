@@ -7,6 +7,7 @@
 import crypto from "node:crypto";
 import { eq } from "drizzle-orm";
 import { NonRetriableError } from "inngest";
+import { inngest } from "@/inngest/client";
 import { getDb } from "@/server/db/client";
 import { cad_uploads, incoming_webhooks, saga_runs } from "@/server/db/schema";
 import {
@@ -18,10 +19,22 @@ import {
   type SkuCustomClassification,
 } from "@/server/path-a/katana-fence";
 import { createItemStore, type ItemStore } from "@/server/path-a/item-store";
-import { createReleaseStore, type ReleaseStore } from "@/server/path-a/release-store";
+import {
+  createReleaseStore,
+  SagaDesignLockedError,
+  type ReleaseDb,
+  type ReleaseStore,
+} from "@/server/path-a/release-store";
 import { createSagaStore, type SagaStore } from "@/server/sre/saga-store";
 import { PATH_A_SAGA_TYPE } from "@/server/path-a/saga-state";
 import { CAD_CONVERT_COMPLETED_EVENT } from "@/server/path-a/events";
+
+type InngestStepTools = Parameters<
+  Parameters<typeof inngest.createFunction>[1]
+>[0]["step"];
+
+export type CadIntakeStep = Pick<InngestStepTools, "run">;
+export type CadConvertStep = Pick<InngestStepTools, "run" | "waitForEvent">;
 
 export type CadHandoffData = {
   uploadId: string;
@@ -47,11 +60,92 @@ export type CadHandoffDeps = {
   itemStore?: ItemStore;
   releaseStore?: ReleaseStore;
   sagaStore?: SagaStore;
-  db?: any;
+  db?: ReleaseDb;
 };
 
+/**
+ * Job-bound CAD upload intake (Path A state bookkeeping), run for EVERY CAD extension (QCA M4).
+ *
+ * Previously this lived inside `runCadConvertHandoff`, which only runs for `.blend`; a `.glb` /
+ * `.dae` / `.skp` re-upload on a job-bound SKU therefore skipped the change-order rejection and
+ * never created the saga/item rows that `post-extract-advance` later assumes exist.
+ *
+ * Returns the bound GHL opportunity id, or null for catalog / non-job-bound SKUs.
+ */
+export async function runCadIntake(params: {
+  step: CadIntakeStep;
+  data: Pick<CadHandoffData, "uploadId" | "globalSku">;
+  deps?: Pick<CadHandoffDeps, "db" | "itemStore" | "releaseStore" | "sagaStore">;
+}): Promise<{ opportunityId: string | null }> {
+  const { step, data, deps = {} } = params;
+  const db = deps.db ?? getDb();
+  const itemStore = deps.itemStore ?? createItemStore(() => db);
+  const releaseStore = deps.releaseStore ?? createReleaseStore(() => db);
+  const sagaStore = deps.sagaStore ?? createSagaStore(() => db);
+
+  return step.run("cad-intake", async () => {
+    const classification: SkuCustomClassification = await classifyCustomSku(
+      data.globalSku,
+      () => db,
+    );
+
+    if (classification.type !== "custom_job_bound") {
+      return { opportunityId: null };
+    }
+
+    const oppId = classification.opportunityId;
+    const currentSaga = await releaseStore.getSaga(oppId);
+
+    // Re-upload past the pause is rejected as a change order
+    if (
+      currentSaga &&
+      (currentSaga.status === "IN_PROGRESS" ||
+        currentSaga.status === "COMPLETED" ||
+        (currentSaga.status === "SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION" &&
+          currentSaga.release_requested_at))
+    ) {
+      throw new NonRetriableError(
+        "order already released, a design change is a change order",
+      );
+    }
+
+    const existingItem = await itemStore.findItemBySku(data.globalSku);
+
+    if (existingItem?.design_status === "finalized" && currentSaga?.status === "AWAITING_DEPOSIT") {
+      await releaseStore.revertToDesigning(oppId, "cad_dispatched");
+      await itemStore.setItemStatus({
+        globalSku: data.globalSku,
+        from: "finalized",
+        to: "awaiting_cad",
+        cadUploadId: data.uploadId,
+      });
+    } else {
+      await sagaStore.insertOnce({
+        sagaType: PATH_A_SAGA_TYPE,
+        correlationKey: oppId,
+        status: "PENDING",
+        currentStep: "designing",
+      });
+      await itemStore.ensureItem({
+        jobId: classification.jobId,
+        globalSku: data.globalSku,
+        cadUploadId: data.uploadId,
+      });
+      await itemStore.setItemStatus({
+        globalSku: data.globalSku,
+        from: ["awaiting_cad", "needs_review", "cad_failed"],
+        to: "awaiting_cad",
+        cadUploadId: data.uploadId,
+      });
+      await sagaStore.setStep(PATH_A_SAGA_TYPE, oppId, "cad_dispatched");
+    }
+
+    return { opportunityId: oppId };
+  });
+}
+
 export async function runCadConvertHandoff(params: {
-  step: any;
+  step: CadConvertStep;
   data: CadHandoffData;
   deps?: CadHandoffDeps;
 }): Promise<{ ok: true; glbStoragePath: string } | { ok: false; error: string }> {
@@ -60,11 +154,10 @@ export async function runCadConvertHandoff(params: {
   const downloadFn = deps.downloadCadObject ?? downloadCadObject;
   const signedUploadFn = deps.createCadSignedUpload ?? createCadSignedUpload;
   const fetchFn = deps.fetch ?? fetch;
-  const appUrl = (deps.getAppUrl?.() ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://app.ccpatio.com").replace(/\/$/, "");
+  const configuredAppUrl = (deps.getAppUrl?.() ?? process.env.NEXT_PUBLIC_APP_URL ?? "").trim();
   const convertBaseUrl = (deps.getConvertUrl?.() ?? process.env.CAD_CONVERT_URL ?? "http://localhost:8000").replace(/\/$/, "");
   const convertToken = deps.getConvertToken?.() ?? process.env.CAD_CONVERT_TOKEN;
   const itemStore = deps.itemStore ?? createItemStore(() => db);
-  const releaseStore = deps.releaseStore ?? createReleaseStore(() => db);
   const sagaStore = deps.sagaStore ?? createSagaStore(() => db);
 
   const timeoutMinutes = Math.min(
@@ -72,62 +165,16 @@ export async function runCadConvertHandoff(params: {
     120,
   );
 
-  // Step 1: dispatch conversion
+  // Step 1: dispatch conversion (item/saga bookkeeping is done earlier by runCadIntake)
   const dispatchResult = await step.run("dispatch-convert", async () => {
-    // 4E: Job-bound uploads state bookkeeping
-    const classification: SkuCustomClassification = await classifyCustomSku(
-      data.globalSku,
-      () => db,
-    );
-
-    if (classification.type === "custom_job_bound") {
-      const oppId = classification.opportunityId;
-      const currentSaga = await releaseStore.getSaga(oppId);
-
-      // Re-upload past the pause is rejected as a change order
-      if (
-        currentSaga &&
-        (currentSaga.status === "IN_PROGRESS" ||
-          currentSaga.status === "COMPLETED" ||
-          (currentSaga.status === "SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION" &&
-            currentSaga.release_requested_at))
-      ) {
-        throw new NonRetriableError(
-          "order already released, a design change is a change order",
-        );
-      }
-
-      const existingItem = await itemStore.findItemBySku(data.globalSku);
-
-      if (existingItem?.design_status === "finalized" && currentSaga?.status === "AWAITING_DEPOSIT") {
-        await releaseStore.revertToDesigning(oppId, "cad_dispatched");
-        await itemStore.setItemStatus({
-          globalSku: data.globalSku,
-          from: "finalized",
-          to: "awaiting_cad",
-          cadUploadId: data.uploadId,
-        });
-      } else {
-        await sagaStore.insertOnce({
-          sagaType: PATH_A_SAGA_TYPE,
-          correlationKey: oppId,
-          status: "PENDING",
-          currentStep: "designing",
-        });
-        await itemStore.ensureItem({
-          jobId: classification.jobId,
-          globalSku: data.globalSku,
-          cadUploadId: data.uploadId,
-        });
-        await itemStore.setItemStatus({
-          globalSku: data.globalSku,
-          from: ["awaiting_cad", "needs_review", "cad_failed"],
-          to: "awaiting_cad",
-          cadUploadId: data.uploadId,
-        });
-        await sagaStore.setStep(PATH_A_SAGA_TYPE, oppId, "cad_dispatched");
-      }
+    // The converter calls back to this host. A guessed production host would silently send
+    // callbacks to the wrong environment, so an unconfigured host is a hard, non-retriable error.
+    if (!configuredAppUrl) {
+      throw new NonRetriableError(
+        "NEXT_PUBLIC_APP_URL is not configured: cannot build the CAD callback URL",
+      );
     }
+    const appUrl = configuredAppUrl.replace(/\/$/, "");
 
     // Prepare signed GLB upload target
     const signed = await signedUploadFn({
@@ -191,7 +238,7 @@ export async function runCadConvertHandoff(params: {
         .limit(1);
 
       if (auditRow) {
-        return { recovered: true, payload: auditRow.payload as any };
+        return { recovered: true, payload: auditRow.payload as Record<string, unknown> | null };
       }
 
       // Mark upload failed and notify DLQ
@@ -272,4 +319,25 @@ export async function runCadConvertHandoff(params: {
   });
 
   return { ok: true, glbStoragePath: dispatchResult.targetStoragePath };
+}
+
+export async function advanceSagaAfterExtract(input: {
+  globalSku: string;
+  opportunityId: string;
+  itemStore: ItemStore;
+  releaseStore: ReleaseStore;
+}): Promise<void> {
+  await input.itemStore.setItemStatus({
+    globalSku: input.globalSku,
+    from: ["awaiting_cad", "needs_review"],
+    to: "needs_review",
+  });
+  try {
+    await input.releaseStore.advanceSaga(input.opportunityId);
+  } catch (err) {
+    if (err instanceof SagaDesignLockedError) {
+      throw new NonRetriableError(err.message, { cause: err });
+    }
+    throw err;
+  }
 }

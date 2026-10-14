@@ -74,6 +74,15 @@ export const LAUNCHPAD_MODULES: LaunchpadModule[] = [
     requiresAuth: true,
   },
   {
+    id: "path-a",
+    title: "Path A Custom Builds",
+    description:
+      "Stateless tracking of custom build opportunities from CAD conversion, pre-Katana deposit pause, to production release.",
+    href: "/admin/path-a",
+    status: "Live",
+    requiresAuth: true,
+  },
+  {
     id: "health",
     title: "System Health",
     description:

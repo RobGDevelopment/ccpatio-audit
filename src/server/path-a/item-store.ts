@@ -13,6 +13,8 @@ import {
   type PathAItemStatus,
 } from "./saga-state";
 
+import type { ReleaseDb } from "./release-store";
+
 export type CustomBuildJobItemRow = typeof custom_build_job_items.$inferSelect;
 
 export type ItemStore = {
@@ -45,9 +47,7 @@ export type ItemStore = {
   invalidateItemDesign(globalSku: string): Promise<{ invalidated: boolean }>;
 };
 
-type ItemDb = Pick<ReturnType<typeof getDb>, "insert" | "select" | "update" | "delete" | "query">;
-
-export function createItemStore(resolveDb: () => any = getDb): ItemStore {
+export function createItemStore(resolveDb: () => ReleaseDb = getDb): ItemStore {
   return {
     async ensureItem(input) {
       const db = resolveDb();
@@ -86,7 +86,7 @@ export function createItemStore(resolveDb: () => any = getDb): ItemStore {
         assertLegalItemTransition(f, input.to);
       }
 
-      const updatePayload: Record<string, unknown> = {
+      const updatePayload: Partial<typeof custom_build_job_items.$inferInsert> = {
         design_status: input.to,
         updated_at: new Date(),
       };
@@ -170,16 +170,17 @@ export function createItemStore(resolveDb: () => any = getDb): ItemStore {
       const db = resolveDb();
       const sku = input.globalSku.trim().toUpperCase();
       const now = new Date();
+      const updatePayload: Partial<typeof custom_build_job_items.$inferInsert> = {
+        design_status: "released",
+        katana_sales_order_row_id: input.soRowId,
+        katana_mo_id: input.moId,
+        released_at: now,
+        updated_at: now,
+      };
 
       const [updated] = await db
         .update(custom_build_job_items)
-        .set({
-          design_status: "released",
-          katana_sales_order_row_id: input.soRowId,
-          katana_mo_id: input.moId,
-          released_at: now,
-          updated_at: now,
-        })
+        .set(updatePayload)
         .where(eq(custom_build_job_items.global_sku, sku))
         .returning();
 
@@ -189,15 +190,16 @@ export function createItemStore(resolveDb: () => any = getDb): ItemStore {
     async invalidateItemDesign(globalSku) {
       const db = resolveDb();
       const sku = globalSku.trim().toUpperCase();
+      const updatePayload: Partial<typeof custom_build_job_items.$inferInsert> = {
+        design_status: "needs_review",
+        finalized_dossier_hash: null,
+        finalized_at: null,
+        finalized_by: null,
+        updated_at: new Date(),
+      };
       const [updated] = await db
         .update(custom_build_job_items)
-        .set({
-          design_status: "needs_review",
-          finalized_dossier_hash: null,
-          finalized_at: null,
-          finalized_by: null,
-          updated_at: new Date(),
-        })
+        .set(updatePayload)
         .where(
           and(
             eq(custom_build_job_items.global_sku, sku),
