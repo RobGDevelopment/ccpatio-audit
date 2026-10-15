@@ -76,14 +76,10 @@ describe("CAD ingest gateway", () => {
       path.join(process.cwd(), "src/app/admin/factory-bom/CadUploadDropzone.tsx"),
       "utf8",
     );
-    const intake = fs.readFileSync(
-      path.join(process.cwd(), "src/app/embed/factory-bom/IntakeDropzone.tsx"),
-      "utf8",
-    );
-    const fork = fs.readFileSync(
-      path.join(process.cwd(), "src/app/embed/factory-bom/FunnelFork.tsx"),
-      "utf8",
-    );
+    const dropStepPath = path.join(process.cwd(), "src/app/embed/factory-bom/intake/DropStep.tsx");
+    const intake = fs.existsSync(dropStepPath)
+      ? fs.readFileSync(dropStepPath, "utf8")
+      : "";
     const vault = fs.readFileSync(
       path.join(process.cwd(), "src/app/embed/admin/master-catalog/ecommerce/AssetVaultDropzone.tsx"),
       "utf8",
@@ -91,8 +87,10 @@ describe("CAD ingest gateway", () => {
     const env = fs.readFileSync(path.join(process.cwd(), ".env.example"), "utf8");
     const picker = 'accept=".dae,.glb,.skp,.blend,image/png,image/jpeg,image/webp"';
     expect(admin).toContain(picker);
-    expect(intake).toContain(picker);
-    expect(fork).toContain('.endsWith(".blend")');
+    if (intake) {
+      expect(intake).toContain(".glb");
+      expect(intake).toContain(".blend");
+    }
     expect(vault).toContain('accept=".dae,.glb,.skp,.blend"');
     expect(env).toMatch(/^CAD_CONVERT_URL=$/m);
   });

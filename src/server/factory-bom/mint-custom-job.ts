@@ -1,5 +1,6 @@
 import { getDb } from "@/server/db/client";
 import { custom_build_jobs, sku_mappings } from "@/server/db/schema";
+import type { ReleaseDb } from "@/server/path-a/release-store";
 import { eq, like, desc } from "drizzle-orm";
 
 export type MintCustomJobInput = {
@@ -19,11 +20,19 @@ export type MintCustomJobInput = {
   cushionNotes?: string;
 };
 
-export async function mintCustomJob(input: MintCustomJobInput, dbTx?: any) {
-  const db = dbTx ?? getDb();
+/**
+ * @deprecated Legacy Path A mint function. Use createIntake on the embed path.
+ * Retained for backward-compatibility with tests.
+ */
+export async function mintCustomJob(input: MintCustomJobInput, dbTx?: ReleaseDb) {
+  const db = (dbTx ?? getDb()) as any;
 
   if (input.clientSlug.startsWith("FIN-") || input.itemSlug.startsWith("FIN-")) {
     throw new Error("Cannot mint a FIN- SKU on Path A.");
+  }
+
+  if (!input.ghlOpportunityId) {
+    throw new Error("A client project (ghlOpportunityId) is required to mint a custom job.");
   }
 
   const cleanClient = input.clientSlug.replace(/[^A-Z0-9]/gi, "").toUpperCase().substring(0, 16);
@@ -66,16 +75,24 @@ export async function mintCustomJob(input: MintCustomJobInput, dbTx?: any) {
   }
 
   // Mint the job header if it doesn't exist for this opportunity.
-  // Actually, wait: one opportunity = one job header.
   let jobId: string;
-  if (input.ghlOpportunityId) {
-    const existingJob = await db.query.custom_build_jobs.findFirst({
-      where: eq(custom_build_jobs.ghl_opportunity_id, input.ghlOpportunityId),
-    });
-    if (existingJob) {
-      jobId = existingJob.id;
-    } else {
-      const [inserted] = await db.insert(custom_build_jobs).values({
+  const existingJob = db.query?.custom_build_jobs?.findFirst
+    ? await db.query.custom_build_jobs.findFirst({
+        where: eq(custom_build_jobs.ghl_opportunity_id, input.ghlOpportunityId),
+      })
+    : (
+        await db
+          .select({ id: custom_build_jobs.id })
+          .from(custom_build_jobs)
+          .where(eq(custom_build_jobs.ghl_opportunity_id, input.ghlOpportunityId))
+          .limit(1)
+      )[0];
+  if (existingJob) {
+    jobId = existingJob.id;
+  } else {
+    const [inserted] = await db
+      .insert(custom_build_jobs)
+      .values({
         client_slug: cleanClient,
         display_name: input.displayName,
         ghl_opportunity_id: input.ghlOpportunityId,
@@ -83,25 +100,16 @@ export async function mintCustomJob(input: MintCustomJobInput, dbTx?: any) {
         designer_name: input.designerName,
         packet_storage_path: input.packetStoragePath,
         created_by: input.createdBy,
-      }).returning();
-      jobId = inserted.id;
-    }
-  } else {
-    // If no opportunity, just create one per line? Or just create a new job header.
-    const [inserted] = await db.insert(custom_build_jobs).values({
-      client_slug: cleanClient,
-      display_name: input.displayName,
-      architect_name: input.architectName,
-      designer_name: input.designerName,
-      packet_storage_path: input.packetStoragePath,
-      created_by: input.createdBy,
-    }).returning();
+      })
+      .returning();
     jobId = inserted.id;
   }
 
   // Insert sku_mappings
   await db.insert(sku_mappings).values({
     global_sku: finalSku,
+    original_name: input.displayName || `${cleanClient} ${cleanItem}`,
+    source_file: "factory-bom-intake",
     product_origin: null,
     category: input.category || "Custom",
     item_type: "finished_good",

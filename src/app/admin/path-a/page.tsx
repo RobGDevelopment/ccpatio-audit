@@ -13,7 +13,12 @@ import { PathAStatusTable, type PathADashboardRow } from "./PathAStatusTable";
 
 export const dynamic = "force-dynamic";
 
-export default async function PathADashboardPage() {
+export default async function PathADashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ opp?: string }>;
+} = {}) {
+  const queryParams = searchParams ? await searchParams : undefined;
   const session = await getPimSession();
 
   if (!session) {

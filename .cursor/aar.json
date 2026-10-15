@@ -1,314 +1,404 @@
 {
-  "phase_id": "phase-b1",
-  "base_ref": "HEAD",
-  "blast_radius": 104,
+  "phase_id": "phase-12",
+  "base_ref": "e71b9e7",
+  "blast_radius": 89,
   "counts": {
-    "files": 104,
-    "tracked": 64,
-    "untracked": 40,
-    "insertions": 4702,
-    "deletions": 4946
+    "files": 89,
+    "tracked": 29,
+    "untracked": 60,
+    "insertions": 4643,
+    "deletions": 3441
   },
   "files": [
     {
       "status": "??",
-      "path": ".cursor/phase-b1.md",
+      "path": ".cursor/phase-12.md",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
+      "path": "phase_12_handback_report.md",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "scripts/qa/check-embed-bundle.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/DesignWizard.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/actions.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/api/finishes/route.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/api/opportunities/route.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/api/sku-check/route.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/intake/CatalogDetailsStep.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/intake/ClientDetailsStep.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/intake/CollisionPrompt.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/intake/DropStep.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/intake/FinishSelect.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/intake/IntakeWizard.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/intake/IntentStep.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/intake/ModelCard.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/intake/OpportunityCombobox.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/intake/PacketSlot.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/intake/UploadProgress.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/factory-bom/intake/viewer/ModelViewer.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/components/ui/GoldBeam.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/lib/intake/copy.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/lib/intake/files.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/lib/intake/glb-summary.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/lib/intake/naming.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/lib/intake/types.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/factory-bom/intake/actor.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/factory-bom/intake/cad-wrapper.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/factory-bom/intake/child-meta.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/factory-bom/intake/create-intake.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/factory-bom/intake/errors.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/factory-bom/intake/finishes.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/factory-bom/intake/load-subject.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/factory-bom/intake/packet.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/factory-bom/intake/project-status.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/factory-bom/intake/taxonomy.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/ghl/fetch-intake-opportunity.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/ghl/parse.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/ghl/search-opportunities.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/master-catalog/create-product-core.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/e2e/embed-intake.spec.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/embed-copy-guard.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/fixtures/embed-copy-allowlist.json",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/fixtures/ghl-opportunity-search.mock.json",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-actions-scope.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-actor.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-cad-wrapper.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-create-catalog.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-create-client.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-errors.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-files.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-finishes.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-ghl.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-glb-summary.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-naming.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-p0-regressions.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-packet.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-routes.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-static-guards.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-taxonomy.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "D",
+      "path": "src/app/embed/factory-bom/AirlockWizard.tsx",
+      "insertions": 0,
+      "deletions": 130
+    },
+    {
+      "status": "D",
+      "path": "src/app/embed/factory-bom/FunnelFork.tsx",
+      "insertions": 0,
+      "deletions": 201
+    },
+    {
+      "status": "D",
+      "path": "src/app/embed/factory-bom/IntakeDropzone.tsx",
+      "insertions": 0,
+      "deletions": 99
+    },
+    {
+      "status": "D",
+      "path": "src/app/embed/factory-bom/PacketLines.tsx",
+      "insertions": 0,
+      "deletions": 39
+    },
+    {
+      "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "PHASE_09_EXECUTION_BLUEPRINT.md",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "PHASE_10_EXECUTION_BLUEPRINT.md",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "PHASE_12_EXECUTION_BLUEPRINT.md",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "phase_10_handback_report.md",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "phase_11_handback_report.md",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "phase_11_remediation_handback.md",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/app/admin/path-a/PathAStatusTable.tsx",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/app/admin/path-a/page.tsx",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/app/admin/quarantine/WooQuarantinePanel.tsx",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/app/admin/quarantine/woo-actions.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/inngest/cad-failure.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/factory-bom/approve-draft-recipe.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/factory-bom/publish-recipe-katana.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/woocommerce/finish-keys.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/woocommerce/line-specs.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/woocommerce/order-fingerprint.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/woocommerce/paid-baseline.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/woocommerce/quarantine-store.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/woocommerce/sku-resolver.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/helpers/path-a-fake-db.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/helpers/woo-fakes.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/path-a-actions.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/path-a-cad-failure.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/path-a-claim-release.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/path-a-dictionary-sync-action.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/path-a-events.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/path-a-katana-write-fences.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/path-a-release-gate.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/path-a-release-saga.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/path-a-static-guards.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/path-a-status-ui.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/woo-finish-keys.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/woo-katana-bind.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/woo-line-specs.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/woo-post-payment-edit.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/woo-quarantine-actions.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/woo-sku-resolver-pglite.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/woo-sku-resolver.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "D",
-      "path": "docs/CAPITAL_STACK_VENDOR_HANDOFF.md",
-      "insertions": 0,
-      "deletions": 344
-    },
-    {
-      "status": "D",
-      "path": "docs/CAPITAL_STACK_VENDOR_HANDOFF.pdf",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "D",
-      "path": "playwright-report/index.html",
-      "insertions": 0,
-      "deletions": 49
-    },
-    {
-      "status": "D",
-      "path": "scripts/render-capital-stack-handoff-pdf.mjs",
-      "insertions": 0,
-      "deletions": 249
-    },
-    {
-      "status": "D",
-      "path": "src/generated/global-e2e-skus.ts",
-      "insertions": 0,
-      "deletions": 923
-    },
-    {
-      "status": "D",
-      "path": "src/server/katana/db-adapters.ts",
-      "insertions": 0,
-      "deletions": 65
-    },
-    {
-      "status": "D",
-      "path": "src/server/katana/katana.service.ts",
-      "insertions": 0,
-      "deletions": 393
-    },
-    {
-      "status": "D",
-      "path": "tests/sku-set.test.ts",
-      "insertions": 0,
-      "deletions": 17
-    },
-    {
-      "status": "M",
-      "path": ".cursor/plans/katana_bom_blueprint_review_840e5342.plan.md",
-      "insertions": 3,
-      "deletions": 3
-    },
-    {
-      "status": "M",
-      "path": ".cursor/plans/mdm_hub_pivot_54714b2e.plan.md",
-      "insertions": 1,
-      "deletions": 1
+      "insertions": 25,
+      "deletions": 108
     },
     {
       "status": "M",
@@ -319,364 +409,204 @@
     {
       "status": "M",
       "path": ".env.example",
-      "insertions": 14,
+      "insertions": 4,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": ".gitignore",
-      "insertions": 1,
-      "deletions": 0
+      "path": "package-lock.json",
+      "insertions": 1153,
+      "deletions": 5
     },
     {
       "status": "M",
-      "path": "BUILD_PLAN.md",
-      "insertions": 1,
+      "path": "package.json",
+      "insertions": 7,
       "deletions": 1
     },
     {
       "status": "M",
-      "path": "KATANA_PIPELINE_BUILD_PLAN.md",
-      "insertions": 812,
-      "deletions": 812
+      "path": "src/app/admin/factory-bom/actions.ts",
+      "insertions": 83,
+      "deletions": 47
     },
     {
       "status": "M",
-      "path": "docs/MASTER_ARCHITECTURE_BLUEPRINT.md",
-      "insertions": 1,
+      "path": "src/app/admin/path-a/actions.ts",
+      "insertions": 19,
       "deletions": 1
     },
     {
       "status": "M",
-      "path": "docs/MDM_MASTER_BLUEPRINT.md",
-      "insertions": 5,
-      "deletions": 6
-    },
-    {
-      "status": "M",
-      "path": "docs/Vividworks/Handoff/VENDOR_HANDOFF_AUDIT_PROPOSAL.md",
-      "insertions": 3,
-      "deletions": 3
-    },
-    {
-      "status": "M",
-      "path": "scripts/enrich-handoff-fabrics-finishes.ts",
-      "insertions": 1,
+      "path": "src/app/admin/path-a/page.tsx",
+      "insertions": 6,
       "deletions": 1
     },
     {
       "status": "M",
-      "path": "scripts/generate-vendor-handoff-workbook.ts",
+      "path": "src/app/embed/admin/master-catalog/actions.ts",
+      "insertions": 2056,
+      "deletions": 2096
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/factory-bom/page.tsx",
+      "insertions": 81,
+      "deletions": 44
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/factory-bom/steps/Step1Cad.tsx",
+      "insertions": 403,
+      "deletions": 42
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/factory-bom/steps/Step2Materials.tsx",
+      "insertions": 162,
+      "deletions": 134
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/factory-bom/steps/Step3Operations.tsx",
       "insertions": 2,
       "deletions": 2
     },
     {
       "status": "M",
-      "path": "scripts/ops/execute-inventory-migration.ts",
-      "insertions": 0,
-      "deletions": 27
+      "path": "src/app/embed/factory-bom/steps/Step4Release.tsx",
+      "insertions": 258,
+      "deletions": 143
     },
     {
       "status": "M",
-      "path": "src/app/admin/dictionary/actions.ts",
-      "insertions": 40,
-      "deletions": 13
-    },
-    {
-      "status": "M",
-      "path": "src/app/admin/factory-bom/actions.ts",
-      "insertions": 15,
-      "deletions": 500
-    },
-    {
-      "status": "M",
-      "path": "src/app/admin/path-a/actions.ts",
-      "insertions": 103,
-      "deletions": 53
-    },
-    {
-      "status": "M",
-      "path": "src/app/admin/quarantine/page.tsx",
-      "insertions": 47,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/app/api/webhooks/cad-callback/route.ts",
-      "insertions": 1,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/app/api/webhooks/woocommerce/route.ts",
-      "insertions": 178,
-      "deletions": 76
-    },
-    {
-      "status": "M",
-      "path": "src/env.ts",
-      "insertions": 5,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/inngest/cad-handoff.ts",
-      "insertions": 128,
-      "deletions": 60
-    },
-    {
-      "status": "M",
-      "path": "src/inngest/dlq-context.ts",
-      "insertions": 26,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/inngest/functions.ts",
-      "insertions": 26,
-      "deletions": 55
-    },
-    {
-      "status": "M",
-      "path": "src/inngest/path-a-release.ts",
-      "insertions": 575,
-      "deletions": 343
-    },
-    {
-      "status": "M",
-      "path": "src/inngest/woo-order.ts",
-      "insertions": 106,
-      "deletions": 20
-    },
-    {
-      "status": "M",
-      "path": "src/lib/katana.ts",
-      "insertions": 329,
-      "deletions": 46
-    },
-    {
-      "status": "M",
-      "path": "src/lib/launchpad-modules.ts",
-      "insertions": 9,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/schema.ts",
-      "insertions": 1,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/server/factory-bom/finalize-design.ts",
-      "insertions": 4,
-      "deletions": 4
-    },
-    {
-      "status": "M",
-      "path": "src/server/factory-bom/release-gate.ts",
-      "insertions": 4,
-      "deletions": 6
-    },
-    {
-      "status": "M",
-      "path": "src/server/ghl/opportunity-writeback.ts",
-      "insertions": 20,
-      "deletions": 10
-    },
-    {
-      "status": "M",
-      "path": "src/server/path-a/authz.ts",
-      "insertions": 1,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/server/path-a/events.ts",
-      "insertions": 54,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/server/path-a/ghl-summary.ts",
-      "insertions": 16,
-      "deletions": 5
-    },
-    {
-      "status": "M",
-      "path": "src/server/path-a/item-store.ts",
-      "insertions": 20,
-      "deletions": 18
-    },
-    {
-      "status": "M",
-      "path": "src/server/path-a/katana-fence.ts",
-      "insertions": 76,
-      "deletions": 13
-    },
-    {
-      "status": "M",
-      "path": "src/server/path-a/release-request.ts",
-      "insertions": 49,
-      "deletions": 26
-    },
-    {
-      "status": "M",
-      "path": "src/server/path-a/release-store.ts",
-      "insertions": 69,
-      "deletions": 37
-    },
-    {
-      "status": "M",
-      "path": "src/server/path-a/saga-state.ts",
-      "insertions": 1,
-      "deletions": 4
-    },
-    {
-      "status": "M",
-      "path": "src/server/pipeline/catalog-mode.ts",
-      "insertions": 1,
-      "deletions": 12
-    },
-    {
-      "status": "M",
-      "path": "src/server/sre/idempotency.ts",
-      "insertions": 6,
-      "deletions": 15
-    },
-    {
-      "status": "M",
-      "path": "src/server/webhooks/incoming-log.ts",
-      "insertions": 30,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/ingress.schema.ts",
-      "insertions": 150,
-      "deletions": 329
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/katana-deps.ts",
-      "insertions": 115,
-      "deletions": 26
-    },
-    {
-      "status": "M",
-      "path": "tests/dlq-context.test.ts",
-      "insertions": 35,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "tests/path-a-cad-handoff.test.ts",
-      "insertions": 208,
+      "path": "src/app/factory/cut-cards/[token]/page.tsx",
+      "insertions": 7,
       "deletions": 2
     },
     {
       "status": "M",
-      "path": "tests/path-a-finalize.test.ts",
-      "insertions": 180,
-      "deletions": 18
+      "path": "src/app/globals.css",
+      "insertions": 309,
+      "deletions": 302
     },
     {
       "status": "M",
-      "path": "tests/path-a-ghl-summary.test.ts",
-      "insertions": 41,
-      "deletions": 0
+      "path": "src/server/factory-bom/airlock.schema.ts",
+      "insertions": 5,
+      "deletions": 2
     },
     {
       "status": "M",
-      "path": "tests/path-a-ghl-sync.test.ts",
-      "insertions": 218,
-      "deletions": 132
-    },
-    {
-      "status": "M",
-      "path": "tests/path-a-katana-fence.test.ts",
-      "insertions": 102,
+      "path": "src/server/factory-bom/evaluate-airlock.ts",
+      "insertions": 1,
       "deletions": 1
     },
     {
       "status": "M",
-      "path": "tests/path-a-release-request.test.ts",
-      "insertions": 126,
-      "deletions": 7
+      "path": "src/server/factory-bom/load-airlock-snapshot.ts",
+      "insertions": 5,
+      "deletions": 1
     },
     {
       "status": "M",
-      "path": "tests/pglite-path-a-store.test.ts",
-      "insertions": 90,
-      "deletions": 4
+      "path": "src/server/factory-bom/mint-custom-job.ts",
+      "insertions": 32,
+      "deletions": 24
     },
     {
       "status": "M",
-      "path": "tests/sre-idempotency.test.ts",
-      "insertions": 30,
-      "deletions": 17
+      "path": "src/server/factory-bom/promote-to-catalog.ts",
+      "insertions": 8,
+      "deletions": 2
     },
     {
       "status": "M",
-      "path": "tests/woo-order-saga.test.ts",
-      "insertions": 246,
-      "deletions": 36
+      "path": "src/server/path-a/item-store.ts",
+      "insertions": 2,
+      "deletions": 1
     },
     {
       "status": "M",
-      "path": "tests/woo-static-guards.test.ts",
-      "insertions": 43,
+      "path": "tests/cad-upload-pipeline.test.ts",
+      "insertions": 8,
+      "deletions": 10
+    },
+    {
+      "status": "M",
+      "path": "tests/custom-build-job.test.ts",
+      "insertions": 4,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": "tests/woo-webhook-route.test.ts",
-      "insertions": 332,
-      "deletions": 154
+      "path": "tests/e2e/factory-bom-lifecycle.spec.ts",
+      "insertions": 1,
+      "deletions": 1
     }
   ],
   "untracked": [
-    ".cursor/phase-b1.md",
-    ".cursor/phase.lock",
-    "PHASE_09_EXECUTION_BLUEPRINT.md",
-    "PHASE_10_EXECUTION_BLUEPRINT.md",
-    "PHASE_12_EXECUTION_BLUEPRINT.md",
-    "phase_10_handback_report.md",
-    "phase_11_handback_report.md",
-    "phase_11_remediation_handback.md",
-    "src/app/admin/path-a/PathAStatusTable.tsx",
-    "src/app/admin/path-a/page.tsx",
-    "src/app/admin/quarantine/WooQuarantinePanel.tsx",
-    "src/app/admin/quarantine/woo-actions.ts",
-    "src/inngest/cad-failure.ts",
-    "src/server/factory-bom/approve-draft-recipe.ts",
-    "src/server/factory-bom/publish-recipe-katana.ts",
-    "src/server/woocommerce/finish-keys.ts",
-    "src/server/woocommerce/line-specs.ts",
-    "src/server/woocommerce/order-fingerprint.ts",
-    "src/server/woocommerce/paid-baseline.ts",
-    "src/server/woocommerce/quarantine-store.ts",
-    "src/server/woocommerce/sku-resolver.ts",
-    "tests/helpers/path-a-fake-db.ts",
-    "tests/helpers/woo-fakes.ts",
-    "tests/path-a-actions.test.ts",
-    "tests/path-a-cad-failure.test.ts",
-    "tests/path-a-claim-release.test.ts",
-    "tests/path-a-dictionary-sync-action.test.ts",
-    "tests/path-a-events.test.ts",
-    "tests/path-a-katana-write-fences.test.ts",
-    "tests/path-a-release-gate.test.ts",
-    "tests/path-a-release-saga.test.ts",
-    "tests/path-a-static-guards.test.ts",
-    "tests/path-a-status-ui.test.ts",
-    "tests/woo-finish-keys.test.ts",
-    "tests/woo-katana-bind.test.ts",
-    "tests/woo-line-specs.test.ts",
-    "tests/woo-post-payment-edit.test.ts",
-    "tests/woo-quarantine-actions.test.ts",
-    "tests/woo-sku-resolver-pglite.test.ts",
-    "tests/woo-sku-resolver.test.ts"
+    ".cursor/phase-12.md",
+    "phase_12_handback_report.md",
+    "scripts/qa/check-embed-bundle.ts",
+    "src/app/embed/factory-bom/DesignWizard.tsx",
+    "src/app/embed/factory-bom/actions.ts",
+    "src/app/embed/factory-bom/api/finishes/route.ts",
+    "src/app/embed/factory-bom/api/opportunities/route.ts",
+    "src/app/embed/factory-bom/api/sku-check/route.ts",
+    "src/app/embed/factory-bom/intake/CatalogDetailsStep.tsx",
+    "src/app/embed/factory-bom/intake/ClientDetailsStep.tsx",
+    "src/app/embed/factory-bom/intake/CollisionPrompt.tsx",
+    "src/app/embed/factory-bom/intake/DropStep.tsx",
+    "src/app/embed/factory-bom/intake/FinishSelect.tsx",
+    "src/app/embed/factory-bom/intake/IntakeWizard.tsx",
+    "src/app/embed/factory-bom/intake/IntentStep.tsx",
+    "src/app/embed/factory-bom/intake/ModelCard.tsx",
+    "src/app/embed/factory-bom/intake/OpportunityCombobox.tsx",
+    "src/app/embed/factory-bom/intake/PacketSlot.tsx",
+    "src/app/embed/factory-bom/intake/UploadProgress.tsx",
+    "src/app/embed/factory-bom/intake/viewer/ModelViewer.tsx",
+    "src/components/ui/GoldBeam.tsx",
+    "src/lib/intake/copy.ts",
+    "src/lib/intake/files.ts",
+    "src/lib/intake/glb-summary.ts",
+    "src/lib/intake/naming.ts",
+    "src/lib/intake/types.ts",
+    "src/server/factory-bom/intake/actor.ts",
+    "src/server/factory-bom/intake/cad-wrapper.ts",
+    "src/server/factory-bom/intake/child-meta.ts",
+    "src/server/factory-bom/intake/create-intake.ts",
+    "src/server/factory-bom/intake/errors.ts",
+    "src/server/factory-bom/intake/finishes.ts",
+    "src/server/factory-bom/intake/load-subject.ts",
+    "src/server/factory-bom/intake/packet.ts",
+    "src/server/factory-bom/intake/project-status.ts",
+    "src/server/factory-bom/intake/taxonomy.ts",
+    "src/server/ghl/fetch-intake-opportunity.ts",
+    "src/server/ghl/parse.ts",
+    "src/server/ghl/search-opportunities.ts",
+    "src/server/master-catalog/create-product-core.ts",
+    "tests/e2e/embed-intake.spec.ts",
+    "tests/embed-copy-guard.test.ts",
+    "tests/fixtures/embed-copy-allowlist.json",
+    "tests/fixtures/ghl-opportunity-search.mock.json",
+    "tests/intake-actions-scope.test.ts",
+    "tests/intake-actor.test.ts",
+    "tests/intake-cad-wrapper.test.ts",
+    "tests/intake-create-catalog.test.ts",
+    "tests/intake-create-client.test.ts",
+    "tests/intake-errors.test.ts",
+    "tests/intake-files.test.ts",
+    "tests/intake-finishes.test.ts",
+    "tests/intake-ghl.test.ts",
+    "tests/intake-glb-summary.test.ts",
+    "tests/intake-naming.test.ts",
+    "tests/intake-p0-regressions.test.ts",
+    "tests/intake-packet.test.ts",
+    "tests/intake-routes.test.ts",
+    "tests/intake-static-guards.test.ts",
+    "tests/intake-taxonomy.test.ts"
   ],
-  "file_list_sha256": "88f6500d0e7c8be2e6aa619a37dac754d2ece9078404948c446fce25e0a24485",
+  "file_list_sha256": "8059c5d197f8237b97c73c5375734ecaf883984e14f6def79c5e0e277b7d8891",
   "notes": ""
 }

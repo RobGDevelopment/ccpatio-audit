@@ -1,0 +1,16 @@
+{
+  "opportunities": [
+    {
+      "id": "opp_test_12345",
+      "name": "Smith Residence - Patio Overhaul",
+      "monetaryValue": 48200,
+      "contactName": "John Smith"
+    },
+    {
+      "id": "opp_test_67890",
+      "name": "Malibu Estate - Pool Deck",
+      "monetaryValue": 125000,
+      "contactName": "Sarah Connor"
+    }
+  ]
+}

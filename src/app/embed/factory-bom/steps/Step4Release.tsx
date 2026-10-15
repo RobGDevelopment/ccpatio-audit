@@ -1,42 +1,90 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import type { AirlockSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
+import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import type { IntakeSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
 import type { FactoryProductRow } from "@/server/factory-bom/list-factory-products";
 import { evaluateAirlock } from "@/server/factory-bom/evaluate-airlock";
 import { releaseButton, ticket } from "@/app/admin/factory-bom/factory-bom-ui";
-import type { AirlockDossier } from "@/server/factory-bom/airlock.schema";
+import { UNIT_OPTIONS, type AirlockDossier } from "@/server/factory-bom/airlock.schema";
 import { publishApprovedRecipeToKatana } from "@/app/admin/factory-bom/actions";
-import { releaseCustomJobAction } from "@/server/factory-bom/release-custom-build";
-import { useRouter } from "next/navigation";
+import { translateBlockingCode, BLOCKING_CODE_MESSAGES } from "@/lib/intake/copy";
 
-export function Step4Release({
-  snapshot,
-  products,
-}: {
-  snapshot: AirlockSnapshot;
-  products: FactoryProductRow[];
-}) {
+type ProductMeta = FactoryProductRow & {
+  itemType?: string;
+  category?: string;
+  katanaVariantId?: number | null;
+};
+
+type CutItem = {
+  role?: string;
+  profile?: string;
+  lengthIn?: number;
+  endA?: unknown;
+  endB?: unknown;
+  qtyEa?: unknown;
+  lengthConvention?: unknown;
+  sourceName?: string;
+  confidence?: unknown;
+  drawingPartNumber?: unknown;
+};
+
+interface Step4ReleaseProps {
+  snapshot: IntakeSnapshot;
+  products: ProductMeta[];
+}
+
+function formatFriendlyError(
+  error?: string,
+  fallback = "The design could not be marked complete. Please try again."
+): string {
+  if (!error) return fallback;
+  if (error === "design_locked_release_started") {
+    return "This project was already sent to production. Ask an Ops Manager about a change order.";
+  }
+  if (error === "not_authenticated") {
+    return "Please reopen this page from GoHighLevel.";
+  }
+  if (BLOCKING_CODE_MESSAGES[error]) {
+    return BLOCKING_CODE_MESSAGES[error];
+  }
+  if (error.includes("_") || error.match(/[A-Z]{2,}/)) {
+    return fallback;
+  }
+  return error;
+}
+
+export function Step4Release({ snapshot, products }: Step4ReleaseProps) {
   const [identityConfirmed, setIdentityConfirmed] = useState(false);
   const [cutListConfirmed, setCutListConfirmed] = useState(false);
   const [operationsConfirmed, setOperationsConfirmed] = useState(false);
-  const [quarantineConfirmed, setQuarantineConfirmed] = useState(false);
+  const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [actionBlockingCodes, setActionBlockingCodes] = useState<string[]>([]);
   const router = useRouter();
 
-  const allChecked = identityConfirmed && cutListConfirmed && operationsConfirmed && quarantineConfirmed;
+  const isClientPiece = snapshot.rootSku.startsWith("JOB-");
+  const allChecked =
+    identityConfirmed && cutListConfirmed && operationsConfirmed && reviewConfirmed;
 
-  const blockingCodes = useMemo(() => {
-    const rootMeta = products.find(p => p.sku === snapshot.rootSku);
+  const evaluatedBlockingCodes = useMemo(() => {
+    const rootMeta = products.find((p) => p.sku === snapshot.rootSku);
     if (!rootMeta) return ["MISSING_ROOT_META"];
 
     let cadNode = null;
-    if (snapshot.cadUpload && (snapshot.cadUpload.ext === "dae" || snapshot.cadUpload.ext === "glb")) {
-      const snap = snapshot.cadUpload.geometry_snapshot as any;
+    if (
+      snapshot.cadUpload &&
+      (snapshot.cadUpload.ext === "dae" || snapshot.cadUpload.ext === "glb")
+    ) {
+      const snap = snapshot.cadUpload.geometry_snapshot as { hygiene?: string } | null;
       cadNode = {
         uploadId: snapshot.cadUpload.id,
         ext: snapshot.cadUpload.ext as "dae" | "glb",
-        status: (snapshot.cadUpload.status === "failed" ? "failed" : "draft_ready") as "draft_ready" | "failed",
+        status: (snapshot.cadUpload.status === "failed" ? "failed" : "draft_ready") as
+          | "draft_ready"
+          | "failed",
         sha256: snapshot.cadUpload.sha256 || "",
         hygiene: (snap?.hygiene === "pass" ? "pass" : "fail") as "pass" | "fail",
       };
@@ -44,61 +92,90 @@ export function Step4Release({
 
     const allSkus = new Set<string>();
     allSkus.add(snapshot.rootSku);
-    snapshot.lines.forEach(l => {
+    snapshot.lines.forEach((l) => {
       allSkus.add(l.parent_sku);
       allSkus.add(l.child_sku);
     });
 
-    const parents = Array.from(allSkus).filter(s => 
-      s === snapshot.rootSku || snapshot.lines.some(l => l.parent_sku === s)
+    const parents = Array.from(allSkus).filter(
+      (s) => s === snapshot.rootSku || snapshot.lines.some((l) => l.parent_sku === s)
     );
 
-    const nodes = parents.map(parentSku => {
-      const pMeta = products.find(p => p.sku === parentSku);
-      const parentLines = snapshot.lines.filter(l => l.parent_sku === parentSku).map(l => {
-         const cMeta = products.find(p => p.sku === l.child_sku);
-         const cat = (cMeta as any)?.category || "";
-         const isMetal = Boolean(
-           cat.match(/metal|aluminum|tube|flat bar/i) ||
-           (Array.isArray(l.cut_list) && l.cut_list.length > 0 && (l.cut_list[0] as any).profile !== "UNKNOWN") ||
-           ((l.unit_of_measure === "in" || l.unit_of_measure === "ft") && Array.isArray(l.cut_list) && l.cut_list.length > 0)
-         );
-         
-         return {
-           parentSku: l.parent_sku,
-           childSku: l.child_sku,
-           itemType: (cMeta as any)?.itemType || "raw_material",
-           quantity: Number(l.quantity),
-           scrapFactor: Number(l.scrap_factor),
-           unitOfMeasure: l.unit_of_measure as any,
-           status: l.status as any,
-           source: l.source,
-           notes: l.notes,
-           cutList: Array.isArray(l.cut_list) ? l.cut_list.map((c: any) => ({
-             role: c.role || "",
-             profile: c.profile || "UNKNOWN",
-             lengthIn: Number(c.lengthIn) || 0,
-             endA: c.endA,
-             endB: c.endB,
-             qtyEa: c.qtyEa,
-             lengthConvention: c.lengthConvention,
-             sourceName: c.sourceName || "",
-             confidence: c.confidence,
-             drawingPartNumber: c.drawingPartNumber
-           })) : [],
-           isMetal
-         };
-      });
-      const parentOps = snapshot.operations.filter(o => o.item_sku === parentSku).map(o => ({
-         itemSku: o.item_sku,
-         workCenter: o.work_center,
-         sequence: o.sequence,
-         setupTimeMins: o.setup_time_mins ? Number(o.setup_time_mins) : 0,
-         runTimeMins: o.run_time_mins ? Number(o.run_time_mins) : 0,
-      }));
+    const nodes = parents.map((parentSku) => {
+      const pMeta = products.find((p) => p.sku === parentSku);
+      const parentLines = snapshot.lines
+        .filter((l) => l.parent_sku === parentSku)
+        .map((l) => {
+          const cMeta = products.find((p) => p.sku === l.child_sku);
+          const cat = cMeta?.category || "";
+          const cutListArray = Array.isArray(l.cut_list) ? (l.cut_list as CutItem[]) : [];
+          const firstCut = cutListArray[0];
+          const isMetal = Boolean(
+            cat.match(/metal|aluminum|tube|flat bar/i) ||
+              (cutListArray.length > 0 && firstCut?.profile !== "UNKNOWN") ||
+              ((l.unit_of_measure === "in" || l.unit_of_measure === "ft") &&
+                cutListArray.length > 0)
+          );
+
+          const isUom = (val: string): val is (typeof UNIT_OPTIONS)[number] =>
+            (UNIT_OPTIONS as readonly string[]).includes(val);
+          const validUom = isUom(l.unit_of_measure) ? l.unit_of_measure : "ea";
+
+          return {
+            parentSku: l.parent_sku,
+            childSku: l.child_sku,
+            itemType: (cMeta?.itemType === "sub_assembly"
+              ? "sub_assembly"
+              : "raw_material") as "raw_material" | "sub_assembly",
+            quantity: Number(l.quantity),
+            scrapFactor: Number(l.scrap_factor),
+            unitOfMeasure: validUom,
+            status: l.status || "draft",
+            source: l.source,
+            notes: l.notes,
+            cutList: cutListArray.map((c) => ({
+              role: c.role || "",
+              profile: (c.profile || "SQ2-16") as
+                | "SQ2-16"
+                | "RT1.5x0.75-16"
+                | "FB0.125x1.5"
+                | "SQ2x1-16",
+              lengthIn: Number(c.lengthIn) || 0,
+              endA: (c.endA === 45 ? 45 : 90) as 45 | 90,
+              endB: (c.endB === 45 ? 45 : 90) as 45 | 90,
+              qtyEa: Number(c.qtyEa) || 1,
+              lengthConvention: (c.lengthConvention || "square") as
+                | "long_point"
+                | "short_point"
+                | "square",
+              sourceName: c.sourceName || "",
+              confidence: (c.confidence || "stated") as
+                | "stated"
+                | "inferred"
+                | "inferred_override",
+              drawingPartNumber: typeof c.drawingPartNumber === "string" ? c.drawingPartNumber : null,
+            })),
+            isMetal,
+          };
+        });
+
+      const parentOps = snapshot.operations
+        .filter((o) => o.item_sku === parentSku)
+        .map((o) => ({
+          itemSku: o.item_sku,
+          workCenter: o.work_center,
+          sequence: o.sequence,
+          setupTimeMins: o.setup_time_mins ? Number(o.setup_time_mins) : 0,
+          runTimeMins: o.run_time_mins ? Number(o.run_time_mins) : 0,
+        }));
+
       return {
         sku: parentSku,
-        itemType: (pMeta as any)?.itemType || "sub_assembly",
+        itemType: (parentSku === snapshot.rootSku
+          ? "finished_good"
+          : pMeta?.itemType === "finished_good"
+          ? "finished_good"
+          : "sub_assembly") as "finished_good" | "sub_assembly",
         lines: parentLines,
         operations: parentOps,
       };
@@ -107,9 +184,11 @@ export function Step4Release({
     const dossier: AirlockDossier = {
       rootSku: snapshot.rootSku,
       identity: {
-        itemType: (rootMeta as any).itemType || "finished_good",
+        itemType: (rootMeta.itemType === "sub_assembly"
+          ? "sub_assembly"
+          : "finished_good") as "finished_good" | "sub_assembly",
         originalName: rootMeta.name || "",
-        katanaVariantId: (rootMeta as any).katanaVariantId || null,
+        katanaVariantId: rootMeta.katanaVariantId || null,
         cad: cadNode,
         cadWaived: false,
       },
@@ -118,134 +197,190 @@ export function Step4Release({
         identityConfirmed: identityConfirmed as true,
         cutListConfirmed: cutListConfirmed as true,
         operationsConfirmed: operationsConfirmed as true,
-        quarantineConfirmed: quarantineConfirmed as true,
+        reviewConfirmed: reviewConfirmed as true,
+        quarantineConfirmed: reviewConfirmed as true,
       },
     };
 
     try {
       return evaluateAirlock(dossier);
-    } catch (err: any) {
-      return ["ENGINE_ERROR: " + err.message];
+    } catch {
+      return ["Something went wrong during evaluation."];
     }
-  }, [snapshot, products, identityConfirmed, cutListConfirmed, operationsConfirmed, quarantineConfirmed]);
+  }, [
+    snapshot,
+    products,
+    identityConfirmed,
+    cutListConfirmed,
+    operationsConfirmed,
+    reviewConfirmed,
+  ]);
 
-  const canRelease = allChecked && blockingCodes.length === 0;
+  const allBlockingCodes = Array.from(
+    new Set([...evaluatedBlockingCodes, ...actionBlockingCodes])
+  );
+  const canRelease = allChecked && allBlockingCodes.length === 0;
+
+  const handleSubmit = async () => {
+    setIsPublishing(true);
+    setSubmitError(null);
+    setActionBlockingCodes([]);
+
+    try {
+      if (isClientPiece) {
+        const { finalizeDesignAction } = await import("@/app/admin/path-a/actions");
+        const res = await finalizeDesignAction({ globalSku: snapshot.rootSku });
+        if (res.blockingCodes && res.blockingCodes.length > 0) {
+          setActionBlockingCodes(res.blockingCodes);
+          return;
+        }
+        if (!res.ok) {
+          setSubmitError(formatFriendlyError(res.error, "The design could not be marked complete."));
+          return;
+        }
+        router.refresh();
+        return;
+      }
+
+      const res = await publishApprovedRecipeToKatana(snapshot.rootSku);
+      if (res.blockingCodes && res.blockingCodes.length > 0) {
+        setActionBlockingCodes(res.blockingCodes);
+        return;
+      }
+      if (!res.ok) {
+        setSubmitError(formatFriendlyError(res.message, "Could not send piece to production."));
+        return;
+      }
+      router.refresh();
+    } catch {
+      setSubmitError("Could not send piece to production. Please retry or contact support.");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2 rounded-xl border border-blue-200 bg-blue-50 p-6 mb-4">
-        <h3 className="font-semibold text-sm text-blue-900">Commerce Readiness Checklist</h3>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>Katana Recipe: <strong>{snapshot.commerceReadiness.katanaRecipe}</strong> (Mode: {snapshot.catalogPublishMode || "unknown"})</li>
-          <li>WooCommerce Sync: <strong>{snapshot.commerceReadiness.woo}</strong></li>
-          <li>Primary Image: <strong>{snapshot.commerceReadiness.image}</strong></li>
+      {/* Commerce Readiness Card */}
+      <div className="flex flex-col gap-2 rounded-2xl border border-sky-200/80 bg-sky-50/50 dark:bg-sky-950/20 dark:border-sky-800/50 p-5">
+        <h3 className="font-semibold text-xs uppercase tracking-wide text-sky-900 dark:text-sky-300">
+          Commerce readiness
+        </h3>
+        <ul className="text-xs text-sky-800 dark:text-sky-200 space-y-1 mt-1">
+          <li>
+            Production recipe: <strong>{snapshot.commerceReadiness.katanaRecipe}</strong>
+          </li>
+          <li>
+            Website listing: <strong>{snapshot.commerceReadiness.woo}</strong>
+          </li>
+          <li>
+            Product photo: <strong>{snapshot.commerceReadiness.image}</strong>
+          </li>
         </ul>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h2 className="text-lg font-bold text-zinc-800">Quarantine Gate Attestation</h2>
-        <p className="text-sm text-zinc-500">Please confirm all structural parameters before releasing to the live factory floor.</p>
+      {/* Ready-to-build Checklist Header */}
+      <div className="flex flex-col gap-1">
+        <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
+          Ready-to-build checklist
+        </h2>
+        <p className="text-xs text-stone-500">
+          Please confirm all structural parameters before sending to the factory floor.
+        </p>
       </div>
 
-      <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-6">
+      {/* Checklist items */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-stone-200/80 dark:border-stone-800/80 bg-white/60 dark:bg-stone-900/60 p-5">
         <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
-            className="h-5 w-5 rounded border-slate-300 accent-emerald-600"
+            className="h-5 w-5 rounded border-stone-300 accent-amber-500"
             checked={identityConfirmed}
             onChange={(e) => setIdentityConfirmed(e.target.checked)}
           />
-          <span className="text-sm font-medium text-zinc-700">Identity: Product and CAD match precisely.</span>
+          <span className="text-xs sm:text-sm font-medium text-stone-800 dark:text-stone-200">
+            This is the right piece and the right 3D model
+          </span>
         </label>
         <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
-            className="h-5 w-5 rounded border-slate-300 accent-emerald-600"
+            className="h-5 w-5 rounded border-stone-300 accent-amber-500"
             checked={cutListConfirmed}
             onChange={(e) => setCutListConfirmed(e.target.checked)}
           />
-          <span className="text-sm font-medium text-zinc-700">Cut List: Material yield has been verified.</span>
+          <span className="text-xs sm:text-sm font-medium text-stone-800 dark:text-stone-200">
+            The material list looks right
+          </span>
         </label>
         <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
-            className="h-5 w-5 rounded border-slate-300 accent-emerald-600"
+            className="h-5 w-5 rounded border-stone-300 accent-amber-500"
             checked={operationsConfirmed}
             onChange={(e) => setOperationsConfirmed(e.target.checked)}
           />
-          <span className="text-sm font-medium text-zinc-700">Operations: Routing and times are scheduled.</span>
+          <span className="text-xs sm:text-sm font-medium text-stone-800 dark:text-stone-200">
+            The build steps and times look right
+          </span>
         </label>
         <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
-            className="h-5 w-5 rounded border-slate-300 accent-emerald-600"
-            checked={quarantineConfirmed}
-            onChange={(e) => setQuarantineConfirmed(e.target.checked)}
+            className="h-5 w-5 rounded border-stone-300 accent-amber-500"
+            checked={reviewConfirmed}
+            onChange={(e) => setReviewConfirmed(e.target.checked)}
           />
-          <span className="text-sm font-medium text-zinc-700">
-            {snapshot.rootSku.startsWith("JOB-")
-              ? "Acknowledgement: I am finalizing this design for factory readiness (no Katana write)."
-              : "Acknowledgement: I am releasing this to live Katana production."}
+          <span className="text-xs sm:text-sm font-medium text-stone-800 dark:text-stone-200">
+            {isClientPiece
+              ? "I understand this marks the design complete. Production starts after the deposit."
+              : "I understand this sends the piece to the factory floor."}
           </span>
         </label>
       </div>
 
-      {blockingCodes.length > 0 && (
-        <div className="p-4 bg-red-50 text-red-800 rounded-lg border border-red-200">
-          <p className="font-semibold text-sm mb-2">Blocking Codes Prevent Release:</p>
-          <ul className="list-disc pl-5 text-sm space-y-1">
-            {blockingCodes.map(code => (
-              <li key={code} className={ticket}>{code}</li>
+      {/* Blocking Issues Banner */}
+      {allBlockingCodes.length > 0 && (
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200 rounded-2xl border border-rose-200 dark:border-rose-800/50 space-y-2">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+            <p className="font-semibold text-xs sm:text-sm">
+              Fix these before sending to the factory:
+            </p>
+          </div>
+          <ul className="list-disc pl-6 text-xs space-y-1">
+            {allBlockingCodes.map((code) => (
+              <li key={code}>{translateBlockingCode(code)}</li>
             ))}
           </ul>
         </div>
       )}
 
-      <button
-        disabled={!canRelease || isPublishing}
-        onClick={async () => {
-          setIsPublishing(true);
-          try {
-            if (snapshot.rootSku.startsWith("JOB-")) {
-              const { finalizeDesignAction } = await import("@/app/admin/path-a/actions");
-              const res = await finalizeDesignAction({ globalSku: snapshot.rootSku });
-              if ((res as any).blockingCodes && (res as any).blockingCodes.length > 0) {
-                alert("Finalize blocked: " + (res as any).blockingCodes.join(", "));
-                return;
-              }
-              if (!res.ok) {
-                alert("Finalize error: " + ((res as any).error || (res as any).message || "Unknown error"));
-                return;
-              }
-              router.refresh();
-              return;
-            }
+      {/* Submit Error Banner */}
+      {submitError && (
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200 rounded-2xl border border-rose-200 dark:border-rose-800/50 text-xs flex items-start space-x-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>{submitError}</span>
+        </div>
+      )}
 
-            const res = await publishApprovedRecipeToKatana(snapshot.rootSku);
-            if (res.blockingCodes && res.blockingCodes.length > 0) {
-              alert("Publish blocked: " + res.blockingCodes.join(", "));
-              return;
-            }
-            if (!res.ok) {
-              alert("Publish error: " + (res.message || "Unknown error"));
-              return;
-            }
-            router.refresh();
-          } catch (err: any) {
-            alert("Error: " + err.message);
-          } finally {
-            setIsPublishing(false);
-          }
-        }}
+      {/* Primary Action Button */}
+      <button
+        type="button"
+        disabled={!canRelease || isPublishing}
+        onClick={handleSubmit}
         className={releaseButton}
       >
-        {isPublishing
-          ? snapshot.rootSku.startsWith("JOB-")
-            ? "Finalizing..."
-            : "Releasing..."
-          : snapshot.rootSku.startsWith("JOB-")
-            ? "Finalize design (no Katana write)"
-            : "Release to Katana"}
+        {isPublishing ? (
+          <span className="flex items-center justify-center space-x-2">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>{isClientPiece ? "Marking complete…" : "Sending to production…"}</span>
+          </span>
+        ) : isClientPiece ? (
+          "Mark design complete"
+        ) : (
+          "Send to production"
+        )}
       </button>
     </div>
   );

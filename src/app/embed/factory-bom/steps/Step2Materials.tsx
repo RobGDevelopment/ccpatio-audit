@@ -1,17 +1,24 @@
+"use client";
+
+import React from "react";
 import { BomMaterialRow } from "@/app/admin/factory-bom/BomMaterialRow";
-import type { AirlockSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
+import type { IntakeSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
 import type { FactoryProductRow } from "@/server/factory-bom/list-factory-products";
 import type { DraftBomLine } from "@/app/admin/factory-bom/actions";
 import { calculateFreight } from "@/lib/sketchup-cutlist/derived-heuristics";
 import { emeraldBanner, ticket } from "@/app/admin/factory-bom/factory-bom-ui";
 
-export function Step2Materials({
-  snapshot,
-  products,
-}: {
-  snapshot: AirlockSnapshot;
-  products: FactoryProductRow[];
-}) {
+type ProductMeta = FactoryProductRow & {
+  itemType?: string;
+  category?: string;
+};
+
+interface Step2MaterialsProps {
+  snapshot: IntakeSnapshot;
+  products: ProductMeta[];
+}
+
+export function Step2Materials({ snapshot, products }: Step2MaterialsProps) {
   const geomSnap = snapshot.cadUpload?.geometry_snapshot as {
     hygiene?: string;
     globalAabb?: { min: [number, number, number]; max: [number, number, number] } | null;
@@ -28,28 +35,35 @@ export function Step2Materials({
       };
     } | null;
   } | null;
+
   const isGeomHygiene = Boolean(snapshot.cadUpload?.error_message?.startsWith("GEOM_HYGIENE"));
   const isDraftReady = snapshot.cadUpload?.status === "draft_ready";
   const hasGeometryProposal = snapshot.lines.some((line) => line.source === "sketchup_geometry");
 
-  const rootLines = snapshot.lines.filter(l => l.parent_sku === snapshot.rootSku);
+  const rootLines = snapshot.lines.filter((l) => l.parent_sku === snapshot.rootSku);
 
   // We map them to DraftBomLine to feed BomMaterialRow for presentation
-  const draftLines: DraftBomLine[] = rootLines.map(l => {
-    const p = products.find(prod => prod.sku === l.child_sku);
+  const draftLines: DraftBomLine[] = rootLines.map((l) => {
+    const p = products.find((prod) => prod.sku === l.child_sku);
     return {
       id: l.id,
       parentSku: l.parent_sku,
       childSku: l.child_sku,
       childName: p?.name || "Unknown Component",
-      childItemType: (p as any)?.itemType || "raw_material", // Approximation for presentation
+      childItemType:
+        (p?.itemType as "raw_material" | "sub_assembly" | "finished_good" | "service") ||
+        "raw_material",
       quantity: String(Number(l.quantity)),
       scrapFactor: String(Number(l.scrap_factor)),
       unitOfMeasure: l.unit_of_measure,
-      status: l.status as any,
+      status: (l.status === "factory_approved"
+        ? "factory_approved"
+        : l.status === "edited"
+        ? "edited"
+        : "draft_pending_review") as DraftBomLine["status"],
       source: l.source,
       notes: l.notes,
-      cutList: Array.isArray(l.cut_list) ? (l.cut_list as any) : [],
+      cutList: Array.isArray(l.cut_list) ? (l.cut_list as DraftBomLine["cutList"]) : [],
     };
   });
 
@@ -76,18 +90,20 @@ export function Step2Materials({
         </div>
       )}
       {isGeomHygiene && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <p className="font-semibold">Component names do not match the lengthless standard FRM-ALUM-2X2. Enter the cut list manually.</p>
+        <div className="rounded-2xl border border-amber-200/80 bg-amber-50/70 dark:bg-amber-950/30 px-4 py-3 text-xs text-amber-900 dark:text-amber-200">
+          <p className="font-semibold">
+            Component names do not match the lengthless standard FRM-ALUM-2X2. Enter the cut list manually.
+          </p>
         </div>
       )}
 
       {/* Cut Cards */}
-      <div className="flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-zinc-800">Cut Cards</h3>
+      <div className="flex flex-col gap-3">
+        <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">Cut Cards</h3>
         {visibleLines.length === 0 ? (
-          <p className={`text-sm text-zinc-500 ${ticket}`}>No materials drafted.</p>
+          <p className={`text-xs text-stone-500 ${ticket}`}>No materials drafted.</p>
         ) : (
-          visibleLines.map(line => (
+          visibleLines.map((line) => (
             <BomMaterialRow
               key={line.id}
               line={line}
@@ -100,16 +116,20 @@ export function Step2Materials({
       </div>
 
       {/* Consumables and Freight */}
-      <div className="grid grid-cols-2 gap-4 border-t border-slate-200 pt-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-stone-200/80 dark:border-stone-800/80 pt-6">
         <div>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Consumables</h4>
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
+            Consumables
+          </h4>
           <ul className={`${ticket} space-y-1`}>
             <li>Argon: {argonCf} cf</li>
             <li>Sand: {sandLb} lb</li>
           </ul>
         </div>
         <div>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Freight Packaging</h4>
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
+            Freight Packaging
+          </h4>
           <ul className={`${ticket} space-y-1`}>
             <li>Skid Lumber: {freight.skidBoardFt} board ft</li>
             <li>PET Strap: {freight.strapFt} ft</li>
@@ -117,16 +137,24 @@ export function Step2Materials({
           </ul>
         </div>
       </div>
-      
+
       {/* Weights */}
-      <div className="grid grid-cols-2 gap-4 border-t border-slate-200 pt-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-stone-200/80 dark:border-stone-800/80 pt-6">
         <div>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Estimated Volume Weight</h4>
-          <p className={ticket}>est_weight_lbs: {estWeightLbs.toFixed(2)} lbs (Aluminum volume method)</p>
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
+            Estimated Volume Weight
+          </h4>
+          <p className={ticket}>
+            Estimated weight: {estWeightLbs.toFixed(2)} lbs (Aluminum volume method)
+          </p>
         </div>
         <div>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Gross Freight Weight</h4>
-          <p className={ticket}>gross_freight_weight_lbs: {freight.grossFreightLbs.toFixed(2)} lbs (Net aluminum + skid lumber)</p>
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
+            Gross Freight Weight
+          </h4>
+          <p className={ticket}>
+            Gross freight weight: {freight.grossFreightLbs.toFixed(2)} lbs (Net aluminum + skid lumber)
+          </p>
         </div>
       </div>
     </div>

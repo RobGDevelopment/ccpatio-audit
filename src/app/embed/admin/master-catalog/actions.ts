@@ -32,6 +32,7 @@ import {
   type FactoryReadiness,
 } from "@/server/factory-bom/derive-readiness";
 import { mintHubSkuInTx } from "@/server/master-catalog/mint-hub-sku";
+import { createNewProductCore } from "@/server/master-catalog/create-product-core";
 import {
   normalizeLegacySku,
   normalizeProductUrl,
@@ -1307,60 +1308,19 @@ export async function createNewProduct(payload: {
   const sku = preview.sku;
 
   const result = await db.transaction(async (tx) => {
-    // 2. Insert sku_mappings
-    await tx
-      .insert(sku_mappings)
-      .values({
-        global_sku: sku,
-        product_origin: payload.origin,
-        category: preview.categoryLabel || "Uncategorized",
-        item_type: "finished_good",
-        original_name: payload.productName,
-        source_file: "master-catalog-new-product",
-        is_active: true,
-      });
-
-    // 2.5 Insert third_party_sources if needed
-    if (payload.origin === "third_party" && payload.thirdPartyFields) {
-      await tx.insert(third_party_sources).values({
-        global_sku: sku,
-        vendor_name: payload.thirdPartyFields.vendorName,
-        vendor_sku: payload.thirdPartyFields.vendorSku,
-        wholesale_cost: payload.thirdPartyFields.wholesaleCost,
-      });
-    }
-
-    // 3. Insert finished_goods_catalog
-    await tx
-      .insert(finished_goods_catalog)
-      .values({
-        global_sku: sku,
+    return createNewProductCore(
+      tx,
+      {
+        sku,
+        productName: payload.productName,
+        origin: payload.origin,
+        categoryLabel: preview.categoryLabel,
+        collectionLabel: preview.collectionLabel,
         length: payload.length,
         depth: payload.depth,
-      });
-
-    const [{ top }] = await tx
-      .select({ top: max(ecommerce_listings.sheet_order) })
-      .from(ecommerce_listings);
-    const base = top ?? 0;
-
-    // 4. Insert ecommerce_listings
-    const [row] = await tx
-      .insert(ecommerce_listings)
-      .values({
-        global_sku: sku,
-        product_name: payload.productName,
-        steel_msrp: null,
-        drawing_section: preview.categoryLabel || "Uncategorized",
-        collection_label: preview.collectionLabel || "Uncategorized",
-        sheet_order: base + 1,
-        url_source: "missing",
-        url_operator_set: false,
-        legacy_operator_set: false,
-      })
-      .returning();
-      
-    return row;
+        thirdPartyFields: payload.thirdPartyFields,
+      }
+    );
   });
 
   revalidatePath("/embed/admin/master-catalog");

@@ -6,8 +6,13 @@ import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-export default async function CutCardPage({ params }: { params: { token: string } }) {
-  const payload = verifyCutCardToken(params.token);
+export default async function CutCardPage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = await params;
+  const payload = verifyCutCardToken(token);
   if (!payload) return notFound();
 
   const db = getDb();

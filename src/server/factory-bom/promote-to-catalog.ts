@@ -1,5 +1,6 @@
 import { getDb } from "@/server/db/client";
 import { sku_mappings } from "@/server/db/schema";
+import type { ReleaseDb } from "@/server/path-a/release-store";
 import { generateFinishedGoodSku } from "@/lib/sku-engine";
 import { eq, like, desc } from "drizzle-orm";
 
@@ -13,8 +14,12 @@ export type PromoteToCatalogInput = {
   attributes?: Record<string, unknown>;
 };
 
-export async function promoteToCatalog(input: PromoteToCatalogInput, dbTx?: any) {
-  const db = dbTx ?? getDb();
+/**
+ * @deprecated Legacy Path A promote function. Use createIntake on the embed path.
+ * Retained for backward-compatibility with tests.
+ */
+export async function promoteToCatalog(input: PromoteToCatalogInput, dbTx?: ReleaseDb) {
+  const db = (dbTx ?? getDb()) as any;
 
   const memo = input.originalName;
   const collection = input.collection || "";
@@ -52,6 +57,7 @@ export async function promoteToCatalog(input: PromoteToCatalogInput, dbTx?: any)
   await db.insert(sku_mappings).values({
     global_sku: finalSku,
     original_name: input.originalName,
+    source_file: "factory-bom-intake",
     product_origin: "manufactured",
     category: input.category || "Custom",
     item_type: "finished_good",

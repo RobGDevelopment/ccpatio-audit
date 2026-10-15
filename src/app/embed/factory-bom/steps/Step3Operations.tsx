@@ -3,12 +3,12 @@ import { useRouter } from "next/navigation";
 import { BomOperationsPanel } from "@/app/admin/factory-bom/BomOperationsPanel";
 import { applyStandardTrack, type DraftOperationRow } from "@/app/admin/factory-bom/actions";
 import type { StandardTrackId } from "@/lib/factory-routing/resources";
-import type { AirlockSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
+import type { IntakeSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
 
 export function Step3Operations({
   snapshot,
 }: {
-  snapshot: AirlockSnapshot;
+  snapshot: IntakeSnapshot;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();

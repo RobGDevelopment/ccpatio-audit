@@ -154,7 +154,7 @@ export function evaluateAirlock(dossier: unknown): string[] {
     checklist.identityConfirmed !== true ||
     checklist.cutListConfirmed !== true ||
     checklist.operationsConfirmed !== true ||
-    checklist.quarantineConfirmed !== true
+    (checklist.reviewConfirmed !== true && checklist.quarantineConfirmed !== true)
   ) {
     codes.add("CHECKLIST");
   }

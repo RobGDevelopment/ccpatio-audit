@@ -22,6 +22,7 @@ export type ItemStore = {
     jobId: string;
     globalSku: string;
     cadUploadId?: string | null;
+    quantity?: number;
   }): Promise<CustomBuildJobItemRow>;
   setItemStatus(input: {
     globalSku: string;
@@ -60,7 +61,7 @@ export function createItemStore(resolveDb: () => ReleaseDb = getDb): ItemStore {
           global_sku: sku,
           cad_upload_id: input.cadUploadId ?? null,
           design_status: "awaiting_cad",
-          quantity: 1,
+          quantity: input.quantity ?? 1,
         })
         .onConflictDoNothing({ target: [custom_build_job_items.global_sku] });
 

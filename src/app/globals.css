@@ -222,6 +222,13 @@ body {
   animation: beam-glide-lux 4s ease-in-out infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-beam-glide-lux {
+    animation: none;
+    display: none;
+  }
+}
+
 @keyframes pim-spin {
   to {
     transform: rotate(360deg);

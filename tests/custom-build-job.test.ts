@@ -19,6 +19,7 @@ describe("mintCustomJob", () => {
       clientSlug: "TEST",
       itemSlug: "MINT",
       displayName: "Test Client",
+      ghlOpportunityId: "opp-test-mint",
       createdBy: "test@example.com",
     }, db);
 
@@ -41,6 +42,7 @@ describe("mintCustomJob", () => {
       clientSlug: "TEST",
       itemSlug: "MINT",
       displayName: "Test Client",
+      ghlOpportunityId: "opp-test-mint",
       createdBy: "test@example.com",
     }, db);
 
@@ -52,6 +54,7 @@ describe("mintCustomJob", () => {
       clientSlug: "FIN-TEST",
       itemSlug: "MINT",
       displayName: "Test",
+      ghlOpportunityId: "opp-test-mint",
       createdBy: "test@example.com",
     }, db)).rejects.toThrow(/FIN- SKU/);
   });
@@ -65,6 +68,7 @@ describe("mintCustomJob", () => {
       clientSlug: "VERYLONGCLIENTNAMEEXCEEDS16CHARS",
       itemSlug: "REALLY-LONG-ITEM-NAME-THAT-EXCEEDS-24-CHARS",
       displayName: "Test Client",
+      ghlOpportunityId: "opp-test-mint-long",
       createdBy: "test@example.com",
     }, db);
 

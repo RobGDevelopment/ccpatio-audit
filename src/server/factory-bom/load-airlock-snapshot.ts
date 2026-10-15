@@ -12,7 +12,7 @@ import { deriveCommerceReadiness } from "./derive-readiness";
 
 import { getCatalogPublishMode, canMutateKatanaCatalog } from "../pipeline/catalog-mode";
 
-export type AirlockSnapshot = {
+export type IntakeSnapshot = {
   rootSku: string;
   lines: (typeof product_bom_draft.$inferSelect)[];
   operations: (typeof item_operations_draft.$inferSelect)[];
@@ -21,6 +21,8 @@ export type AirlockSnapshot = {
   commerceReadiness: import("./derive-readiness").CommerceReadiness;
   catalogPublishMode: string | undefined;
 };
+
+export type AirlockSnapshot = IntakeSnapshot;
 
 // Adapted from actions.ts collectDraftParents to get the full tree
 async function collectDraftParents(rootSku: string, db: ReturnType<typeof getDb>): Promise<string[]> {
@@ -110,3 +112,5 @@ export async function loadAirlockSnapshot(globalSku: string): Promise<AirlockSna
     catalogPublishMode: getCatalogPublishMode(),
   };
 }
+
+export const loadIntakeSnapshot = loadAirlockSnapshot;

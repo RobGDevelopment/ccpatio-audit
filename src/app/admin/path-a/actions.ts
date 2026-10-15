@@ -60,6 +60,25 @@ export async function finalizeDesignAction(input: {
     return { ok: false, error: "design_locked_release_started" };
   }
 
+  const { getDb } = await import("@/server/db/client");
+  const { sku_mappings } = await import("@/server/db/schema");
+  const { eq } = await import("drizzle-orm");
+  const db = getDb();
+  if (db.query?.sku_mappings) {
+    const mapping = await db.query.sku_mappings.findFirst({
+      where: eq(sku_mappings.global_sku, sku),
+    });
+    const attrs = (mapping?.attributes || {}) as Record<string, unknown>;
+    const intakeAttrs = (attrs.intake || {}) as Record<string, unknown>;
+    if (intakeAttrs.finishesPending === true) {
+      return {
+        ok: false,
+        error: "Finishes pending",
+        blockingCodes: ["FINISHES_PENDING"],
+      };
+    }
+  }
+
   const { finalizeDesignCore } = await import("@/server/factory-bom/finalize-design");
   const finalizeRes = await finalizeDesignCore(sku, { email: session.email });
   if (!finalizeRes.ok) {
@@ -74,7 +93,6 @@ export async function finalizeDesignAction(input: {
 
   // M8: item finalization + saga advance are ONE transaction. A crash between them can no longer
   // leave a finalized item behind a PENDING saga.
-  const { getDb } = await import("@/server/db/client");
   let txOutcome;
   try {
     txOutcome = await getDb().transaction(async (tx) => {

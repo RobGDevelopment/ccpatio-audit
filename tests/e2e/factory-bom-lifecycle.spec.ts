@@ -167,7 +167,7 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
     await page.getByRole("button", { name: "Continue" }).click(); // Go to step 3
     await page.getByRole("button", { name: "Continue" }).click(); // Go to step 4
 
-    const releaseBtn = page.getByRole("button", { name: "Release to Katana" });
+    const releaseBtn = page.getByRole("button", { name: /Release to Katana|Send to production/i });
     await expect(releaseBtn).toBeDisabled();
 
     // Clean up

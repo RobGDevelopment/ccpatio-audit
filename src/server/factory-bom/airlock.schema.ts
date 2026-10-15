@@ -69,8 +69,11 @@ export const AirlockDossierSchema = z.object({
     identityConfirmed: z.literal(true),
     cutListConfirmed: z.literal(true),
     operationsConfirmed: z.literal(true),
-    quarantineConfirmed: z.literal(true),
-  }).strict(),
+    quarantineConfirmed: z.literal(true).optional(),
+    reviewConfirmed: z.literal(true).optional(),
+  }).strict().refine((c) => c.reviewConfirmed === true || c.quarantineConfirmed === true, {
+    message: "reviewConfirmed is required",
+  }),
 }).strict();
 
 // Katana payloads

@@ -1,5 +1,6 @@
 "use server";
 
+import { z } from "zod";
 import { mintCustomJob } from "@/server/factory-bom/mint-custom-job";
 import { promoteToCatalog } from "@/server/factory-bom/promote-to-catalog";
 import { approveDraftRecipeCore } from "@/server/factory-bom/approve-draft-recipe";
@@ -25,7 +26,7 @@ import {
   normalizeKatanaResource,
   type StandardTrackId,
 } from "@/lib/factory-routing/resources";
-import { getPimSession, logPimAudit } from "@/lib/pim-audit";
+import { getPimSession, logPimAudit, GHL_EMBED_PRINCIPAL_EMAIL } from "@/lib/pim-audit";
 import { matchFactoryOrderLine } from "@/server/factory-bom/match-factory-order-line";
 import { runSecondaryExtract } from "@/lib/secondary-extraction";
 import {
@@ -168,10 +169,10 @@ function parseTimeMins(raw: string): string | null {
   return n.toFixed(4);
 }
 
-async function requireSession(): Promise<{ email: string } | { error: string }> {
+async function requireSession(): Promise<{ email: string; isEmbed: boolean } | { error: string }> {
   const session = await getPimSession();
   if (!session) return { error: "Sign in required" };
-  return { email: session.email };
+  return { email: session.email, isEmbed: session.email === GHL_EMBED_PRINCIPAL_EMAIL };
 }
 
 export async function getDraftBomTree(
@@ -982,6 +983,13 @@ export async function cadIngestExtension(filename: string): Promise<CadIngestExt
   return null;
 }
 
+const ActorEmailSchema = z.string().trim().email().max(254);
+function sanitizeActorEmail(email?: string): string | undefined {
+  if (!email) return undefined;
+  const parsed = ActorEmailSchema.safeParse(email);
+  return parsed.success ? parsed.data : undefined;
+}
+
 export async function requestCadUpload(input: {
   globalSku: string;
   filename: string;
@@ -990,6 +998,7 @@ export async function requestCadUpload(input: {
   sha256?: string;
   forceRename?: boolean;
   replaceImage?: boolean;
+  actorEmail?: string;
 }): Promise<
   | {
       ok: true;
@@ -1037,6 +1046,10 @@ export async function requestCadUpload(input: {
     };
   }
 
+  const effectiveUploadedBy = session.isEmbed
+    ? GHL_EMBED_PRINCIPAL_EMAIL
+    : session.email;
+
   try {
     const db = getDb();
     const [hub] = await db
@@ -1063,15 +1076,20 @@ export async function requestCadUpload(input: {
         status: "uploaded",
         force_rename: Boolean(input.forceRename),
         replace_image: Boolean(input.replaceImage),
-        uploaded_by: session.email,
+        uploaded_by: effectiveUploadedBy,
       })
       .returning();
 
     await logPimAudit({
-      operatorEmail: session.email,
+      operatorEmail: effectiveUploadedBy,
+      operatorName: session.isEmbed ? "Unverified Embed User" : null,
       globalSku: sku,
       action: "factory_bom_cad_upload_request",
-      newValue: signed.path,
+      newValue: JSON.stringify({
+        path: signed.path,
+        reportedEmail: session.isEmbed ? sanitizeActorEmail(input.actorEmail) : undefined,
+        verified: !session.isEmbed,
+      }),
     });
 
     return {
@@ -1091,6 +1109,7 @@ export async function requestCadUpload(input: {
 
 export async function confirmCadUpload(
   uploadId: string,
+  actorEmail?: string,
 ): Promise<BomMutationResult & { status?: CadUploadStatus }> {
   const session = await requireSession();
   if ("error" in session) return { ok: false, error: session.error };
@@ -1106,6 +1125,10 @@ export async function confirmCadUpload(
       .where(eq(cad_uploads.id, id))
       .limit(1);
     if (!row) return { ok: false, error: "Upload not found" };
+
+    const effectiveEmail = session.isEmbed
+      ? GHL_EMBED_PRINCIPAL_EMAIL
+      : session.email;
 
     const eventId = `cad-uploaded-${row.id}`;
     await db
@@ -1123,7 +1146,7 @@ export async function confirmCadUpload(
       storagePath: row.storage_path,
       ext: row.ext as "dae" | "skp" | "glb",
       sha256: row.sha256 ?? undefined,
-      operatorEmail: session.email,
+      operatorEmail: effectiveEmail,
       replaceImage: row.replace_image,
     };
 
@@ -1139,7 +1162,13 @@ export async function confirmCadUpload(
           id: eventId,
         });
         queuedRemote = true;
-      } catch {
+      } catch (err: unknown) {
+        console.error(JSON.stringify({
+          tag: "inngest-send-failure-fallback-inline",
+          eventId,
+          globalSku: row.global_sku,
+          error: err instanceof Error ? err.message : String(err),
+        }));
         queuedRemote = false;
       }
     }
@@ -1153,10 +1182,15 @@ export async function confirmCadUpload(
     }
 
     await logPimAudit({
-      operatorEmail: session.email,
+      operatorEmail: effectiveEmail,
+      operatorName: session.isEmbed ? "Unverified Embed User" : null,
       globalSku: row.global_sku,
       action: "factory_bom_cad_upload_queued",
-      newValue: eventId,
+      newValue: JSON.stringify({
+        eventId,
+        reportedEmail: session.isEmbed ? sanitizeActorEmail(actorEmail) : undefined,
+        verified: !session.isEmbed,
+      }),
     });
     revalidateFactory();
     return { ok: true, status: "queued" };
@@ -1242,7 +1276,9 @@ export async function uploadCadStillImage(input: {
 }
 
 export { searchBomMaterials };
-
+/**
+ * @deprecated Legacy intake entry point, retained for regression test compatibility.
+ */
 export async function beginAirlockIntake(input: {
   mode: "custom_build" | "catalog";
   clientSlug?: string;
@@ -1261,20 +1297,25 @@ export async function beginAirlockIntake(input: {
 
   try {
     if (input.mode === "custom_build") {
+      if (!input.ghlOpportunityId) {
+        return {
+          ok: false,
+          code: "PROJECT_REQUIRED",
+          error: "Choose the client project first.",
+          ref: crypto.randomUUID().slice(0, 8),
+        };
+      }
       if (!input.clientSlug || !input.itemSlug) {
         return { ok: false, error: "Missing required fields for custom build" };
       }
-      const job = await mintCustomJob(
-        {
-          clientSlug: input.clientSlug,
-          itemSlug: input.itemSlug,
-          ghlOpportunityId: input.ghlOpportunityId,
-          displayName: input.displayName || `${input.clientSlug} ${input.itemSlug}`,
-          createdBy: session.email,
-          packetStoragePath: input.packetStoragePath,
-        },
-        { forceRecreate: true }
-      );
+      const job = await mintCustomJob({
+        clientSlug: input.clientSlug,
+        itemSlug: input.itemSlug,
+        ghlOpportunityId: input.ghlOpportunityId,
+        displayName: input.displayName || `${input.clientSlug} ${input.itemSlug}`,
+        createdBy: session.email,
+        packetStoragePath: input.packetStoragePath,
+      });
       return { ok: true, sku: job.globalSku };
     } else {
       if (!input.originalName || !input.category) {
@@ -1290,30 +1331,25 @@ export async function beginAirlockIntake(input: {
       });
       return { ok: true, sku: res.globalSku };
     }
-  } catch (error: any) {
-    return { ok: false, error: error.message };
-  }
-}
-
-export async function uploadFactoryPacketAction(formData: FormData) {
-  const file = formData.get("file") as File | null;
-  const opportunityId = formData.get("opportunityId") as string | null;
-  if (!file) return { ok: false, error: "No file provided" };
-  
-  try {
-    const text = await file.text();
-    const rawLines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-    const lines = [];
-    for (const raw of rawLines) {
-      lines.push(await matchFactoryOrderLine(raw));
-    }
-    
-    const packetStoragePath = "s3://ccpatio-packets/" + encodeURIComponent(file.name);
-    
-    
-    
-    return { ok: true, lines, packetStoragePath };
-  } catch (err: any) {
-    return { ok: false, error: err.message };
+  } catch (error: unknown) {
+    const ref = crypto.randomUUID().slice(0, 8);
+    const errorName = error instanceof Error ? error.name : "UnknownError";
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(
+      JSON.stringify({
+        tag: "embed-intake-error",
+        ref,
+        code: "INTERNAL",
+        where: "beginAirlockIntake",
+        errorName,
+        message: errorMessage,
+      })
+    );
+    return {
+      ok: false,
+      code: "INTERNAL",
+      error: "Something went wrong on our side.",
+      ref,
+    };
   }
 }
