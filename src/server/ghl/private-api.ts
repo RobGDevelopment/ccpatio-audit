@@ -1,5 +1,16 @@
+import { logError, logStructured } from "@/lib/log/structured";
+
 const GHL_API = "https://services.leadconnectorhq.com";
 const GHL_VERSION = "2021-07-28";
+
+/**
+ * First path segment only (`/contacts/abc?query=jane@x.com` becomes `contacts`), so a log line
+ * never carries an id, a search term or a customer email.
+ */
+function routeOf(path: string): string {
+  const segment = path.split("?")[0]?.split("/").find((part) => part.length > 0) ?? "";
+  return /^[A-Za-z0-9_-]{1,32}$/.test(segment) ? segment : "unknown";
+}
 
 export type GhlConfig = {
   token: string;
@@ -33,6 +44,7 @@ async function ghlFetch(
   const config = readGhlConfig();
   if ("error" in config) return { ok: false, error: config.error };
 
+  const route = routeOf(path);
   let response: Response;
   try {
     response = await fetch(`${GHL_API}${path}`, {
@@ -46,9 +58,10 @@ async function ghlFetch(
       body: payload !== undefined ? JSON.stringify(payload) : undefined,
       signal: AbortSignal.timeout(15_000),
     });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "GoHighLevel request failed.";
-    return { ok: false, error: message };
+  } catch (error) {
+    // The transport error text can echo the request URL. Log the fingerprint, return the ref.
+    const ref = logError("ghl-request-failed", error, { method, route });
+    return { ok: false, error: `GoHighLevel request failed. Reference ${ref}.` };
   }
 
   const text = await response.text();
@@ -56,17 +69,23 @@ async function ghlFetch(
   if (text) {
     try {
       body = JSON.parse(text) as unknown;
-    } catch {
-      body = { message: text.slice(0, 300) };
+    } catch (error) {
+      // A non-JSON body (an HTML gateway page, say) is not a success: say so instead of
+      // inventing a `{ message }` body from the provider's text.
+      const ref = logError("ghl-response-not-json", error, {
+        method,
+        route,
+        status: response.status,
+      });
+      if (response.ok) {
+        return { ok: false, error: `GoHighLevel returned an unreadable response. Reference ${ref}.` };
+      }
     }
   }
   if (!response.ok) {
-    const record = asGhlRecord(body);
-    const message =
-      typeof record?.message === "string" && record.message.trim()
-        ? record.message.trim()
-        : `GoHighLevel returned ${response.status}.`;
-    return { ok: false, error: message };
+    // Provider text is never copied into the error. Status and route are enough to triage.
+    logStructured("warn", "ghl-request-refused", { method, route, status: response.status });
+    return { ok: false, error: `GoHighLevel returned ${response.status}.` };
   }
   return { ok: true, body, locationId: config.locationId };
 }

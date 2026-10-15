@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { logError } from "@/lib/log/structured";
 import { fetchFailedPublishJobs, replayInngestRun } from "@/services/inngest-api";
 import { invalidateVendorKey } from "@/utils/vault";
 import { getDb } from "@/server/db/client";
@@ -40,8 +41,9 @@ export async function getFailedJobsAction() {
   try {
     const jobs = await fetchFailedPublishJobs();
     return { ok: true, data: jobs };
-  } catch (error: any) {
-    return { ok: false, error: error.message || "Failed to fetch jobs" };
+  } catch (error: unknown) {
+    const ref = logError("mission-control-failed-jobs", error);
+    return { ok: false, error: `Failed to fetch jobs. Reference ${ref}.` };
   }
 }
 
@@ -51,8 +53,9 @@ export async function retryJobAction(runId: string) {
   try {
     const result = await replayInngestRun(runId);
     return { ok: true, data: result };
-  } catch (error: any) {
-    return { ok: false, error: error.message || "Failed to replay job" };
+  } catch (error: unknown) {
+    const ref = logError("mission-control-replay", error, { runId });
+    return { ok: false, error: `Failed to replay job. Reference ${ref}.` };
   }
 }
 
@@ -86,7 +89,9 @@ export async function testVendorKeyAction(serviceName: VendorService, testKey: s
     }
 
     return { ok: true as const };
-  } catch {
+  } catch (error: unknown) {
+    // The vendor was unreachable (DNS, TLS, timeout). Log the shape, never the key.
+    logError("mission-control-vendor-key-test", error, { service: serviceName });
     return { ok: false as const, status: 0 };
   }
 }
@@ -117,7 +122,8 @@ export async function saveVendorKeyAction(serviceName: VendorService, newKey: st
     invalidateVendorKey(serviceName);
 
     return { ok: true as const };
-  } catch {
-    return { ok: false as const, status: 500 };
+  } catch (error: unknown) {
+    const ref = logError("mission-control-vendor-key-save", error, { service: serviceName });
+    return { ok: false as const, status: 500, ref };
   }
 }

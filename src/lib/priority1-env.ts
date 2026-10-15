@@ -1,7 +1,7 @@
 /**
  * Server-only Priority1 credential. Never log the value.
  * A NEXT_PUBLIC_ name would ship the key to the browser, so that name is rejected.
- * A missing or blank PRIORITY1_API_KEY means mock mode, not a thrown error.
+ * A missing or blank PRIORITY1_API_KEY reads as null; the rater then fails closed (no mock rate).
  */
 export function readPriority1ApiKey(): string | null {
   const leaked = process.env.NEXT_PUBLIC_PRIORITY1_API_KEY?.trim();

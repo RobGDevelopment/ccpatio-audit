@@ -12,6 +12,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import { logError, logStructured } from "@/lib/log/structured";
 import { getDb } from "@/server/db/client";
 import { order_intake } from "@/server/db/schema";
 import {
@@ -38,19 +39,21 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
-export async function POST(req: Request) {
+async function handle(req: Request): Promise<Response> {
   const secret = process.env.GHL_WEBHOOK_SECRET;
   const rawBody = await req.text();
   if (!verifyGhlWebhookRequest(rawBody, req.headers, secret)) {
+    logStructured("warn", "ghl-webhook-invalid-signature", { status: 401 });
     return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
   }
 
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(rawBody);
-  } catch {
+  } catch (error) {
+    const ref = logError("ghl-webhook-invalid-json", error, { status: 400 });
     return NextResponse.json(
-      { errors: [{ path: "(root)", message: "Body must be valid JSON" }] },
+      { errors: [{ path: "(root)", message: "Body must be valid JSON" }], ref },
       { status: 400 },
     );
   }
@@ -93,6 +96,10 @@ export async function POST(req: Request) {
 
   const parsed = parseGhlFactoryOpportunity(parsedJson);
   if (!parsed.ok) {
+    logStructured("warn", "ghl-webhook-invalid-payload", {
+      status: 400,
+      issueCount: parsed.errors.length,
+    });
     return NextResponse.json({ errors: parsed.errors }, { status: 400 });
   }
 
@@ -171,5 +178,19 @@ export async function POST(req: Request) {
       );
     }
     throw error;
+  }
+}
+
+/**
+ * Status contract with GoHighLevel: 400 for a body that can never succeed, 401 for a bad
+ * signature, 500 for every other fault so GHL retries. A retry is safe because the intake
+ * insert is unique on the opportunity id and holds release idempotently.
+ */
+export async function POST(req: Request) {
+  try {
+    return await handle(req);
+  } catch (error) {
+    const ref = logError("ghl-webhook-failed", error, { status: 500 });
+    return NextResponse.json({ error: "internal_error", ref }, { status: 500 });
   }
 }

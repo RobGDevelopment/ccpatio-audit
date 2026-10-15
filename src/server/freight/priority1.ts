@@ -1,4 +1,5 @@
 import { LTL_FREIGHT_CLASSES } from "@/lib/logistics-profile";
+import { logError } from "@/lib/log/structured";
 import { readPriority1ApiKey } from "@/lib/priority1-env";
 import type {
   FreightSkid,
@@ -233,13 +234,10 @@ export async function getPriority1Quote(
   );
   const apiKey = readPriority1ApiKey();
   if (!apiKey) {
-    console.warn(
-      "[MOCK MODE] Priority1 API key missing. Returning mocked LTL quote.",
+    // Fail closed. There is no mock rate table: a missing key means no Priority1 price.
+    throw new FreightRatingError(
+      "Priority1 is not configured (PRIORITY1_API_KEY is not set).",
     );
-    const { shadowPriority1RateQuote } = await import(
-      "@/server/actions/freight"
-    );
-    return { request, response: await shadowPriority1RateQuote(request) };
   }
 
   let response: Response;
@@ -267,7 +265,8 @@ export async function getPriority1Quote(
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw) as unknown;
-  } catch {
+  } catch (error) {
+    logError("priority1-response-not-json", error, { status: response.status });
     throw new Priority1ApiError(response.status, "Response was not JSON");
   }
 

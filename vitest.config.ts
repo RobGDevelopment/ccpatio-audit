@@ -12,6 +12,8 @@ const dbIntegrationTests = [
   "tests/katana-variant-webhook.test.ts",
   "tests/order-desk-hold-swap.test.ts",
   "tests/order-desk-quote.test.ts",
+  // Run by `npm run qa:phase0-hygiene-live` (RUN_DB_TESTS=1, this one file only), part of qa:lifecycle.
+  "tests/phase13-hygiene-patch-live.test.ts",
   "tests/promise-date.test.ts",
   "tests/qbo-lock-keys.test.ts",
   "tests/send-quote.test.ts",

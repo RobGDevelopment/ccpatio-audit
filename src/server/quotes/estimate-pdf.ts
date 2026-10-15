@@ -12,8 +12,16 @@ function money(amount: number): string {
   }).format(amount);
 }
 
-export function buildEstimatePdf(quote: OrderDeskQuote): Uint8Array {
-  const doc = new jsPDF({ unit: "pt", format: "letter" });
+/**
+ * Draws the itemised estimate onto `doc` starting at its CURRENT page (first page of a new
+ * document, or the page the caller just added). Shared by the standalone estimate and the
+ * Institutional Quote Package so both always show the same numbers.
+ */
+export function renderEstimate(
+  doc: jsPDF,
+  quote: OrderDeskQuote,
+  options: { title?: string } = {},
+): void {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 48;
@@ -31,9 +39,14 @@ export function buildEstimatePdf(quote: OrderDeskQuote): Uint8Array {
   doc.text("CC Patio", margin, y);
   doc.setFont("times", "normal");
   doc.setFontSize(12);
-  doc.text("Showroom Estimate", margin, y + 18);
+  doc.text(options.title ?? "Showroom Estimate", margin, y + 18);
   doc.setFontSize(10);
   doc.text(new Date().toLocaleDateString("en-US"), pageWidth - margin, y, { align: "right" });
+  doc.setFontSize(8);
+  doc.text(`Quote ${quote.quoteId.slice(0, 8).toUpperCase()} · v${quote.version}`, pageWidth - margin, y + 14, {
+    align: "right",
+  });
+  doc.setFontSize(10);
   y += 42;
 
   doc.setFont("times", "bold");
@@ -133,6 +146,10 @@ export function buildEstimatePdf(quote: OrderDeskQuote): Uint8Array {
   }
   doc.setFontSize(8);
   doc.text(footerLines, margin, footerY);
+}
 
+export function buildEstimatePdf(quote: OrderDeskQuote): Uint8Array {
+  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  renderEstimate(doc, quote);
   return new Uint8Array(doc.output("arraybuffer"));
 }

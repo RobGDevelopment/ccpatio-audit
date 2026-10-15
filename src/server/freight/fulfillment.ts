@@ -17,7 +17,8 @@ import type {
   Priority1QuoteResult,
 } from "@/types/freight";
 import type { RateQuote } from "@/types/priority1-ltl.generated";
-import { getFedExFreightQuote } from "@/lib/freight/fedex-freight";
+import { logError } from "@/lib/log/structured";
+import { rateFedExCarrier } from "@/server/freight/fedex-carrier";
 
 const RESIDENTIAL_DELIVERY: Priority1AccessorialCode[] = [
   "RESDEL",
@@ -64,12 +65,9 @@ async function priority1Option(
   accessorials: readonly Priority1AccessorialCode[],
   markupPct: number,
 ): Promise<FulfillmentOption> {
-  const weightLb = shipmentWeightLb(skid);
-  const freightClass = skid.items[0]?.freightClass || "150";
-
   const [p1Result, fedexResult] = await Promise.allSettled([
     getPriority1Quote(skid, CC_PATIO_PICKUP_ZIP, destZip, accessorials),
-    getFedExFreightQuote(CC_PATIO_PICKUP_ZIP, destZip, weightLb, freightClass),
+    rateFedExCarrier(skid, destZip, markupPct),
   ]);
 
   const carriers: FulfillmentCarrierQuote[] = [];
@@ -79,19 +77,15 @@ async function priority1Option(
     const p1Carriers = (quoted.response.rateQuotes ?? [])
       .map((quote) => carrierQuote(quote, markupPct));
     carriers.push(...p1Carriers);
+  } else {
+    logError("freight-carrier-failed", p1Result.reason, { carrier: "priority1" });
   }
 
   if (fedexResult.status === "fulfilled") {
-    const quote = fedexResult.value;
-    carriers.push({
-      id: Date.now(),
-      carrierName: quote.carrier,
-      carrierCode: quote.carrier.toUpperCase().replace(/\s+/g, "_"),
-      transitDays: quote.days,
-      serviceLevel: "STANDARD",
-      brokerTotalUsd: money(quote.rate),
-      customerTotalUsd: markedUp(quote.rate, markupPct),
-    });
+    // null means FedEx is not configured (already logged); it is omitted, never faked.
+    if (fedexResult.value) carriers.push(fedexResult.value);
+  } else {
+    logError("freight-carrier-failed", fedexResult.reason, { carrier: "fedex_freight" });
   }
 
   carriers.sort((left, right) => left.customerTotalUsd - right.customerTotalUsd);
@@ -194,12 +188,9 @@ export async function getMultiCarrierQuotes(
   skid: FreightSkid,
   accessorials: readonly Priority1AccessorialCode[] = RESIDENTIAL_DELIVERY,
 ) {
-  const weightLb = shipmentWeightLb(skid);
-  const freightClass = skid.items[0]?.freightClass || "150";
-
   const [p1Result, fedexResult] = await Promise.allSettled([
     getPriority1Quote(skid, CC_PATIO_PICKUP_ZIP, destZip, accessorials),
-    getFedExFreightQuote(CC_PATIO_PICKUP_ZIP, destZip, weightLb, freightClass),
+    rateFedExCarrier(skid, destZip, 0),
   ]);
 
   const quotes = [];
@@ -213,14 +204,20 @@ export async function getMultiCarrierQuotes(
         days: q.transitDays || null,
       });
     }
+  } else {
+    logError("freight-carrier-failed", p1Result.reason, { carrier: "priority1" });
   }
 
   if (fedexResult.status === "fulfilled") {
-    quotes.push({
-      carrier: fedexResult.value.carrier,
-      rate: fedexResult.value.rate,
-      days: fedexResult.value.days,
-    });
+    if (fedexResult.value) {
+      quotes.push({
+        carrier: fedexResult.value.carrierName,
+        rate: fedexResult.value.brokerTotalUsd,
+        days: fedexResult.value.transitDays,
+      });
+    }
+  } else {
+    logError("freight-carrier-failed", fedexResult.reason, { carrier: "fedex_freight" });
   }
 
   return quotes;

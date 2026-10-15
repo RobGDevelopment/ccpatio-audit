@@ -13,7 +13,12 @@ import {
   quoteGrandTotal,
   type DiscountType,
 } from "@/lib/quote-financials";
-import { generateQuotePdf } from "@/server/actions/generatePdf";
+import {
+  generateQuotePackage,
+  generateQuotePdf,
+  getQuotePackageReadiness,
+} from "@/server/actions/generatePdf";
+import type { ReadinessEntry } from "@/server/quotes/package-specs";
 import {
   addCustomLine,
   openOrderDesk,
@@ -187,7 +192,7 @@ export function OrderDeskPortal({
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [pendingAction, setPendingAction] = useState<
-    "save" | "remove" | "swap" | "release" | "send" | "edit" | "custom" | "pdf" | null
+    "save" | "remove" | "swap" | "release" | "send" | "edit" | "custom" | "pdf" | "package" | null
   >(null);
   const initialCommercial = initial.state === "quote" ? commercialOf(initial) : null;
   const [customerName, setCustomerName] = useState(initialCommercial?.customerName ?? "");
@@ -221,6 +226,8 @@ export function OrderDeskPortal({
   );
   const [overrideDate, setOverrideDate] = useState("");
   const [overrideReason, setOverrideReason] = useState("");
+  const [readiness, setReadiness] = useState<ReadinessEntry[] | null>(null);
+  const [readinessError, setReadinessError] = useState<string | null>(null);
   const zipQuoteId = useRef(initial.state === "quote" ? initial.quoteId : null);
   const executedQuoteId = useRef(initial.state === "quote" ? initial.quoteId : null);
   const commercialQuoteId = useRef(initial.state === "quote" ? initial.quoteId : null);
@@ -300,6 +307,26 @@ export function OrderDeskPortal({
     model.state === "quote"
       ? model.lines.map((line) => `${line.id}:${line.sku}:${line.qty}`).join("|")
       : "";
+  // Package pre-flight: which products would print with a gap. Rows only, no image download.
+  useEffect(() => {
+    if (!quoteId) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await getQuotePackageReadiness(quoteId);
+      if (cancelled) return;
+      if (!result.ok) {
+        setReadiness(null);
+        setReadinessError(result.error);
+        return;
+      }
+      setReadinessError(null);
+      setReadiness(result.entries);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [quoteId, lineKey]);
+
   const preservedFreight = useRef(
     initial.state === "quote" && initial.freightTotal != null && initial.freightMethod != null
       ? {
@@ -443,10 +470,11 @@ export function OrderDeskPortal({
     });
   }
 
-  function downloadEstimate() {
+  /** Saves the draft first (so the PDF matches the screen), then builds the requested document. */
+  function downloadDocument(kind: "estimate" | "package") {
     if (model.state !== "quote") return;
     setNotice(null);
-    setPendingAction("pdf");
+    setPendingAction(kind === "package" ? "package" : "pdf");
     const actor = actorFromWindow();
     const quoteId = model.quoteId;
     const version = model.version;
@@ -468,12 +496,29 @@ export function OrderDeskPortal({
           }
           applyVersion(saved.version);
         }
-        const pdf = await generateQuotePdf(quoteId);
-        if (!pdf.ok) {
-          setNotice(pdf.error);
+        if (kind === "estimate") {
+          const pdf = await generateQuotePdf(quoteId);
+          if (!pdf.ok) {
+            setNotice(pdf.error);
+            return;
+          }
+          savePdfFile(pdf.pdfBase64, pdf.filename);
           return;
         }
-        savePdfFile(pdf.pdfBase64, pdf.filename);
+        const pkg = await generateQuotePackage(quoteId);
+        if (!pkg.ok) {
+          setNotice(pkg.error);
+          return;
+        }
+        savePdfFile(pkg.pdfBase64, pkg.filename);
+        const gaps = pkg.report.degraded.length;
+        setNotice(
+          gaps === 0
+            ? `Quote package downloaded: ${pkg.report.pageCount} pages, ${pkg.report.specPages} product ${pkg.report.specPages === 1 ? "page" : "pages"}.`
+            : `Quote package downloaded with ${gaps} product ${gaps === 1 ? "page" : "pages"} missing data: ${pkg.report.degraded
+                .map((entry) => `${entry.sku} (${entry.issueLabels.join(", ")})`)
+                .join("; ")}.`,
+        );
       } finally {
         setPendingAction(null);
       }
@@ -1357,12 +1402,53 @@ export function OrderDeskPortal({
             <button
               type="button"
               data-testid="order-desk-download-pdf"
-              onClick={downloadEstimate}
+              onClick={() => downloadDocument("package")}
               disabled={pending}
-              className="mt-4 w-full rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
+              className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition hover:bg-slate-800 disabled:opacity-60"
             >
-              {pendingAction === "pdf" ? "Preparing PDF…" : "Download PDF Estimate"}
+              {pendingAction === "package" ? "Building quote package…" : "Download Quote Package"}
             </button>
+            <p className="mt-2 text-xs text-slate-500">
+              Estimate plus a specification page for every product, as one PDF.
+            </p>
+            <button
+              type="button"
+              data-testid="order-desk-download-estimate"
+              onClick={() => downloadDocument("estimate")}
+              disabled={pending}
+              className="mt-2 w-full rounded-xl px-4 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 disabled:opacity-60"
+            >
+              {pendingAction === "pdf" ? "Preparing PDF…" : "Estimate only"}
+            </button>
+            {readinessError ? (
+              <p role="status" data-testid="order-desk-package-readiness-error" className="mt-3 text-xs text-rose-700">
+                {readinessError}
+              </p>
+            ) : null}
+            {readiness && readiness.length > 0 ? (
+              <ul data-testid="order-desk-package-readiness" className="mt-3 space-y-1.5 text-xs">
+                {readiness.map((entry) => (
+                  <li
+                    key={entry.sku}
+                    data-testid={`order-desk-package-readiness-${entry.sku}`}
+                    className="flex items-start gap-2"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`mt-1 inline-block h-2 w-2 shrink-0 rounded-full ${
+                        entry.issues.length === 0 ? "bg-emerald-500" : "bg-amber-400"
+                      }`}
+                    />
+                    <span className="text-slate-700">
+                      <span className="font-medium text-slate-900">{entry.productName}</span>
+                      {entry.issues.length === 0
+                        ? " · page ready"
+                        : ` · prints with a gap: ${entry.issueLabels.join(", ")}`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
           {canSwitchFreight ? (
             <div className="mt-4 flex flex-col gap-2">

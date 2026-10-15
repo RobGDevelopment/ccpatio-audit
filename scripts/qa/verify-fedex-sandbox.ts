@@ -1,44 +1,109 @@
-const clientId = process.env.FEDEX_SANDBOX_CLIENT_ID;
-const clientSecret = process.env.FEDEX_SANDBOX_CLIENT_SECRET;
-const apiBase = process.env.FEDEX_API_BASE;
+/**
+ * FedEx Freight sandbox check.
+ *
+ *   npm run ops:verify-fedex-sandbox
+ *
+ * Step 1 signs in at the Freight OAuth host (auth-qa.fedexfreight.com by default) and
+ * reports the token metadata with the token masked. Step 2 runs one real Rate Freight call
+ * when FEDEX_FREIGHT_API_BASE and FEDEX_FREIGHT_ACCOUNT_NUMBER are set; otherwise it says
+ * exactly which settings are missing. Secrets and provider error text are never printed.
+ *
+ * The standard FedEx parcel host (apis-sandbox.fedex.com /oauth/token) does NOT accept
+ * Freight credentials; the previous version of this script posted there and got a 401.
+ */
+import {
+  FedExFreightError,
+  fedexFreightConfigGaps,
+  getFedExFreightRates,
+  readFedExFreightConfig,
+} from "../../src/lib/freight/fedex-freight";
 
-if (!clientId || !clientSecret || !apiBase) {
-  console.error("Missing required environment variables:");
-  if (!clientId) console.error("- FEDEX_SANDBOX_CLIENT_ID");
-  if (!clientSecret) console.error("- FEDEX_SANDBOX_CLIENT_SECRET");
-  if (!apiBase) console.error("- FEDEX_API_BASE");
-  process.exit(1);
+type Env = Record<string, string | undefined>;
+
+function pick(env: Env, ...names: string[]): string {
+  for (const name of names) {
+    const value = env[name]?.trim();
+    if (value) return value;
+  }
+  return "";
 }
 
-async function verify() {
+function describe(error: unknown): string {
+  if (error instanceof FedExFreightError) {
+    const codes = error.providerCodes.length > 0 ? ` providerCodes=${error.providerCodes.join(",")}` : "";
+    return `${error.code} status=${error.status ?? "n/a"}${codes}`;
+  }
+  return error instanceof Error ? error.name : typeof error;
+}
+
+async function main(): Promise<number> {
+  const env = process.env;
+  const clientId = pick(env, "FEDEX_FREIGHT_CLIENT_ID", "FEDEX_SANDBOX_CLIENT_ID");
+  const clientSecret = pick(env, "FEDEX_FREIGHT_CLIENT_SECRET", "FEDEX_SANDBOX_CLIENT_SECRET");
+  if (!clientId || !clientSecret) {
+    console.error("Missing FEDEX_FREIGHT_CLIENT_ID / FEDEX_FREIGHT_CLIENT_SECRET (or the FEDEX_SANDBOX_* pair).");
+    return 1;
+  }
+
+  const authUrl =
+    pick(env, "FEDEX_FREIGHT_AUTH_URL") ||
+    (pick(env, "FEDEX_FREIGHT_ENV").toLowerCase() === "production"
+      ? "https://auth.fedexfreight.com/am/oauth2/access_token"
+      : "https://auth-qa.fedexfreight.com/am/oauth2/access_token");
+
+  const response = await fetch(authUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: "fxf-api",
+    }).toString(),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) {
+    console.error(`[FAIL] OAuth refused: HTTP ${response.status} at ${new URL(authUrl).host}`);
+    return 1;
+  }
+  const body = (await response.json()) as Record<string, unknown>;
+  console.log(
+    `[OK] OAuth: HTTP ${response.status} at ${new URL(authUrl).host} ` +
+      `token_type=${String(body.token_type)} scope=${String(body.scope)} ` +
+      `expires_in=${String(body.expires_in)} access_token=***MASKED***`,
+  );
+
+  const gaps = fedexFreightConfigGaps(env);
+  if (gaps.length > 0) {
+    console.log(`[SKIP] Rate call not attempted. Missing: ${gaps.join(", ")}`);
+    return 0;
+  }
+
   try {
-    const params = new URLSearchParams();
-    params.append('grant_type', 'client_credentials');
-    params.append('client_id', clientId!);
-    params.append('client_secret', clientSecret!);
-
-    const response = await fetch(`${apiBase}/oauth/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: params.toString()
+    readFedExFreightConfig(env);
+    const rates = await getFedExFreightRates({
+      originZip: "85260",
+      destZip: "90005",
+      items: [{ weightLb: 500, lengthIn: 48, widthIn: 40, heightIn: 40, freightClass: "150" }],
     });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      if (data.access_token) {
-        data.access_token = "***MASKED***";
-      }
-      console.log("Sandbox Auth Successful. FedEx portal requirement met.");
-      console.log("Response data:", data);
-    } else {
-      console.error("Failed to authenticate with FedEx sandbox:", data);
+    for (const rate of rates) {
+      console.log(
+        `[OK] Rate: ${rate.serviceType} $${rate.totalUsd.toFixed(2)} transitDays=${rate.transitDays ?? "n/a"}`,
+      );
     }
+    return 0;
   } catch (error) {
-    console.error("Error verifying FedEx sandbox:", error);
+    console.error(`[FAIL] Rate call: ${describe(error)}`);
+    return 1;
   }
 }
 
-verify();
+// exitCode (not process.exit) lets undici close its sockets; process.exit trips a libuv assert on Windows.
+main()
+  .then((code) => {
+    process.exitCode = code;
+  })
+  .catch((error) => {
+    console.error(`[FAIL] verify-fedex-sandbox crashed: ${describe(error)}`);
+    process.exitCode = 1;
+  });

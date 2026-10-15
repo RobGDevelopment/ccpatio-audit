@@ -13,6 +13,7 @@ import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { inngest } from "@/inngest/client";
 import { resolveDlqContext } from "@/inngest/dlq-context";
+import { logError, logStructured } from "@/lib/log/structured";
 import { getDb } from "@/server/db/client";
 import { dlq_events } from "@/server/db/schema";
 import { sendOhCrapAlert, type OhCrapAlertResult } from "@/server/alerts/oh-crap";
@@ -48,7 +49,9 @@ export function prepareOriginalEvent(value: unknown): unknown {
   let serialized: string;
   try {
     serialized = JSON.stringify(redacted) ?? "null";
-  } catch {
+  } catch (error) {
+    // Persist a marker instead of dropping the failure, and leave a trail for the operator.
+    logError("dlq-original-event-unserializable", error);
     return { truncated: true, bytes: 0, keys: [], reason: "unserializable" };
   }
   const bytes = Buffer.byteLength(serialized, "utf8");
@@ -165,6 +168,18 @@ export const DLQ_MALFORMED_PREFIX = "[malformed failure event: no run_id] ";
 export const DLQ_ALERT_UNDELIVERED_TAG = "dlq-alert-undelivered";
 
 /**
+ * Turns the alert transport's free-text failure into a stable code plus a digest, so the
+ * loud log line says WHY nobody was told without ever carrying provider text.
+ */
+export function classifyAlertFailure(text: string): { alertFailure: string; ref: string } {
+  const ref = createHash("sha256").update(text).digest("hex").slice(0, 12);
+  if (/OH_CRAP_ADMIN_EMAIL/.test(text)) return { alertFailure: "ADMIN_EMAIL_NOT_CONFIGURED", ref };
+  const resend = /Resend failed \((\d{3})\)/.exec(text);
+  if (resend) return { alertFailure: `RESEND_HTTP_${resend[1]}`, ref };
+  return { alertFailure: "ALERT_TRANSPORT_FAILED", ref };
+}
+
+/**
  * Deterministic stand-in for a missing `run_id`:
  * `norunid:<function_id|unknown>:<event.id | first 16 hex of sha256(redacted event JSON)>`.
  * Same input => same key, so redelivery stays idempotent on the unique `run_id` column.
@@ -176,7 +191,8 @@ export function syntheticRunId(data: FunctionFailedData): string {
   let serialized: string;
   try {
     serialized = JSON.stringify(redactSecrets(data.event ?? null)) ?? "null";
-  } catch {
+  } catch (error) {
+    logError("dlq-synthetic-id-unserializable", error, { functionId: fn });
     serialized = "unserializable";
   }
   const digest = createHash("sha256").update(serialized).digest("hex").slice(0, 16);
@@ -218,14 +234,11 @@ export async function handleFunctionFailed(
   const errorMessage = synthetic ? `${DLQ_MALFORMED_PREFIX}${baseMessage}` : baseMessage;
 
   if (synthetic) {
-    console.error(
-      JSON.stringify({
-        tag: "dlq-malformed-failure-event",
-        functionId: functionId || "unknown",
-        eventId: data.event?.id ?? null,
-        syntheticRunId: runId,
-      }),
-    );
+    logStructured("error", "dlq-malformed-failure-event", {
+      functionId: functionId || "unknown",
+      eventId: data.event?.id ?? null,
+      syntheticRunId: runId,
+    });
   }
 
   // 1. DB row first (idempotent on run_id). If this throws, Inngest retries the handler.
@@ -267,14 +280,11 @@ export async function handleFunctionFailed(
       // Final attempt, alert still undeliverable (e.g. no OH_CRAP_ADMIN_EMAIL). This handler
       // cannot alert about itself (loop guard), so the row stays alert_sent=false and this
       // line is the loud signal. No UI / redrive endpoint (out of scope).
-      console.error(
-        JSON.stringify({
-          tag: DLQ_ALERT_UNDELIVERED_TAG,
-          runId,
-          functionId: functionId || "unknown",
-          error: scrubSecretText(result.error).slice(0, 300),
-        }),
-      );
+      logStructured("error", DLQ_ALERT_UNDELIVERED_TAG, {
+        runId,
+        functionId: functionId || "unknown",
+        ...classifyAlertFailure(result.error),
+      });
     }
     // ok:false => throw so Inngest retries (safe: row exists, run_id is unique).
     throw new Error(`DLQ alert failed for run ${runId}: ${result.error}`);

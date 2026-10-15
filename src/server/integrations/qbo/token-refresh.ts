@@ -22,6 +22,7 @@ import { eq, sql } from "drizzle-orm";
 import { getDb, getMutexDb, type MiddlewareDb } from "@/server/db/client";
 import { qbo_auth_tokens } from "@/server/db/schema";
 import { sendOhCrapAlert, type OhCrapAlertInput } from "@/server/alerts/oh-crap";
+import { logError, logStructured } from "@/lib/log/structured";
 
 export type QboLockEnvironment = "sandbox" | "production";
 
@@ -275,14 +276,21 @@ async function callIntuitRefresh(
 
   if (!res.ok) {
     // Truncated; Intuit error bodies describe the failure, they do not echo our tokens.
-    const body = (await res.text().catch(() => "")).slice(0, 300);
+    let body = "";
+    try {
+      body = (await res.text()).slice(0, 300);
+    } catch (readError) {
+      // The refresh already failed; an unreadable body only loses detail. Say so, and go on.
+      logError("qbo-refresh-error-body-unreadable", readError, { status: res.status });
+    }
     throw new QboRefreshError(`Failed to refresh QBO token (HTTP ${res.status}): ${body}`, res.status);
   }
 
   let data: unknown;
   try {
     data = await res.json();
-  } catch {
+  } catch (parseError) {
+    logError("qbo-refresh-response-not-json", parseError, { status: res.status });
     throw new QboRefreshError("QBO token refresh returned a non-JSON body.", res.status);
   }
   const record = (data ?? {}) as Record<string, unknown>;
@@ -312,10 +320,7 @@ async function safeAlert(deps: QboFetchDeps, input: OhCrapAlertInput): Promise<v
     await deps.alert(input);
   } catch (alertError) {
     // The alert path must never mask the real failure.
-    console.error("[QBO] failed to send ops alert", {
-      reason: input.reason,
-      error: alertError instanceof Error ? alertError.message : "unknown",
-    });
+    logError("qbo-ops-alert-failed", alertError, { reason: input.reason });
   }
 }
 
@@ -342,7 +347,7 @@ async function refreshUnderLock(
         throw new QboRefreshError("No QBO refresh token stored. Reconnect QuickBooks (OAuth).");
       }
 
-      console.log(`[QBO] Refreshing token for ${deps.env} (lock env ${lockEnv}).`);
+      logStructured("info", "qbo-token-refresh-start", { env: deps.env, lockEnv });
       const patch = await callIntuitRefresh(deps, current.refresh_token);
       intuitIssuedNewTokens = true;
       return locked.update(rowId, patch);

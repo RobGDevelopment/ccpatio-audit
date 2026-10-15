@@ -1,29 +1,23 @@
 "use server";
 
 import { requireMissionControlAuth } from "@/app/mission-control/actions";
-import { runSpokeTokenHealthCheck } from "@/server/mdm/token-health";
-import {
-  deriveTrafficMatrix,
-  readChannelSyncCounts,
-} from "@/server/mission-control/sync-matrix";
+import { logError } from "@/lib/log/structured";
+import { readSystemLamps } from "@/server/mission-control/health-probes";
 
 /**
- * Read-only system health. `silent` is fixed so the token ping cannot raise an alert.
- * The matrix is a select plus a pure lamp derivation.
+ * Read-only system health for the traffic-light matrix: QuickBooks, GoHighLevel, Katana and the
+ * Inngest dead-letter queue, plus the WordPress, WooCommerce and Clover channel lamps.
+ *
+ * Every probe is a select or a single GET. Nothing here can raise an alert or write a row, and a
+ * probe that fails shows as an amber lamp instead of failing the dashboard.
  */
 export async function getSystemHealthAction() {
   await requireMissionControlAuth();
 
   try {
-    const health = await runSpokeTokenHealthCheck(true);
-    const counts = await readChannelSyncCounts();
-    return { ok: true as const, data: deriveTrafficMatrix(health.results, counts) };
+    return { ok: true as const, data: await readSystemLamps() };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "";
-    const safe =
-      message && !/bearer|authorization\s*:/i.test(message)
-        ? message
-        : "Failed to load system health.";
-    return { ok: false as const, error: safe };
+    const ref = logError("mission-control-health", error);
+    return { ok: false as const, error: `Failed to load system health. Reference ${ref}.` };
   }
 }
