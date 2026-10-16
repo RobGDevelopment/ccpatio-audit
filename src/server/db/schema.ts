@@ -1751,3 +1751,133 @@ export const rate_limit_buckets = pgTable("rate_limit_buckets", {
   tokens: doublePrecision("tokens").notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }).enableRLS();
+
+/* ---------------------------------------------------------------------------
+ * Phase 14 — QBO ledger (migrations 0056_pos_receipts, 0056_ledger_triage). ADDITIVE ONLY.
+ * RLS is enabled with NO policies: deny-all for the Supabase Data API; the app connects as
+ * the table owner via POSTGRES_URL, which bypasses RLS. Mirrors hand-written SQL: keep the
+ * CHECK text in sync with src/server/db/migrations/0056_*.sql (tests/phase14 asserts it).
+ *
+ * GAAP rule: the showroom never touches QBO. QBO is written only when a capital event occurs
+ * (a payment successfully attached to an approved quote), as a JournalEntry: debit the
+ * clearing account, credit Customer Deposits. Cash received only: no tax, no revenue.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * One row per Clover payment seen. `status`: pending (stored, not yet decided) | posted
+ * (JournalEntry exists in QBO) | triaged (a person must act, see ledger_triage) | ignored
+ * (showroom sale or non-sale; never reaches QBO).
+ */
+export const pos_receipts = pgTable(
+  "pos_receipts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    merchant_id: text("merchant_id").notNull(),
+    /** Clover payment id WITHOUT the webhook `P:` prefix. */
+    clover_payment_id: text("clover_payment_id").notNull(),
+    /** Clover order id (the order link key stored for the register side). */
+    clover_order_id: text("clover_order_id"),
+    /** `GHL-<opportunityId>`: the approved-quote key, injected into the JournalEntry notes. */
+    quote_ref: text("quote_ref"),
+    ghl_contact_id: text("ghl_contact_id"),
+    /** Lower-cased GHL contact email: the find-or-create key for the QBO customer. */
+    customer_email: text("customer_email"),
+    qbo_customer_id: text("qbo_customer_id"),
+    status: text("status").notNull().default("pending"),
+    /** Integer cents as Clover reports them. Null until the payment has been fetched. */
+    amount_cents: integer("amount_cents"),
+    currency: text("currency").notNull().default("USD"),
+    paid_at: timestamp("paid_at", { withTimezone: true }),
+    /** Accounting date (America/Phoenix) of the JournalEntry. */
+    txn_date: date("txn_date", { mode: "string" }),
+    qbo_doc_type: text("qbo_doc_type").notNull().default("JournalEntry"),
+    /** Deterministic Intuit `requestid` (<= 50 chars), stable across every retry. */
+    qbo_request_id: text("qbo_request_id").notNull(),
+    qbo_journal_entry_id: text("qbo_journal_entry_id"),
+    posted_at: timestamp("posted_at", { withTimezone: true }),
+    last_error: text("last_error"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("pos_receipts_merchant_payment_uidx").on(table.merchant_id, table.clover_payment_id),
+    uniqueIndex("pos_receipts_journal_entry_uidx")
+      .on(table.qbo_journal_entry_id)
+      .where(sql`${table.qbo_journal_entry_id} is not null`),
+    index("pos_receipts_status_created_idx").on(table.status, table.created_at),
+    index("pos_receipts_quote_ref_idx").on(table.quote_ref),
+    index("pos_receipts_clover_order_idx").on(table.clover_order_id),
+    check(
+      "pos_receipts_status_check",
+      sql`${table.status} in ('pending', 'posted', 'triaged', 'ignored')`,
+    ),
+    check(
+      "pos_receipts_amount_positive",
+      sql`${table.amount_cents} is null or ${table.amount_cents} > 0`,
+    ),
+    check("pos_receipts_currency_usd", sql`${table.currency} = 'USD'`),
+    check("pos_receipts_doc_type_check", sql`${table.qbo_doc_type} = 'JournalEntry'`),
+    check(
+      "pos_receipts_payment_id_bare",
+      sql`${table.clover_payment_id} <> '' and ${table.clover_payment_id} not like 'P:%'`,
+    ),
+    check(
+      "pos_receipts_quote_ref_format",
+      sql`${table.quote_ref} is null or ${table.quote_ref} ~ '^GHL-[A-Za-z0-9_-]+$'`,
+    ),
+    check(
+      "pos_receipts_email_lowercase",
+      sql`${table.customer_email} is null or ${table.customer_email} = lower(${table.customer_email})`,
+    ),
+    check(
+      "pos_receipts_posted_complete",
+      sql`${table.status} <> 'posted' or (${table.amount_cents} is not null and ${table.quote_ref} is not null and ${table.qbo_customer_id} is not null and ${table.qbo_journal_entry_id} is not null and ${table.posted_at} is not null)`,
+    ),
+  ],
+).enableRLS();
+
+/**
+ * Human-action queue for a capital event that could not be posted. One OPEN row per
+ * (receipt, reason). Never deleted: a paid order is never discarded, only resolved.
+ */
+export const ledger_triage = pgTable(
+  "ledger_triage",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    pos_receipt_id: uuid("pos_receipt_id")
+      .notNull()
+      .references(() => pos_receipts.id, { onDelete: "restrict" }),
+    merchant_id: text("merchant_id").notNull(),
+    clover_payment_id: text("clover_payment_id").notNull(),
+    clover_order_id: text("clover_order_id"),
+    quote_ref: text("quote_ref"),
+    reason: text("reason").notNull(),
+    /** Static, secret-free text (for example the NAMES of unset account settings). */
+    detail: text("detail"),
+    snapshot: jsonb("snapshot").notNull().default(sql`'{}'::jsonb`),
+    status: text("status").notNull().default("open"),
+    resolution_note: text("resolution_note"),
+    resolved_at: timestamp("resolved_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("ledger_triage_open_reason_uidx")
+      .on(table.pos_receipt_id, table.reason)
+      .where(sql`${table.status} = 'open'`),
+    index("ledger_triage_status_created_idx").on(table.status, table.created_at),
+    index("ledger_triage_receipt_idx").on(table.pos_receipt_id),
+    check(
+      "ledger_triage_reason_check",
+      sql`${table.reason} in ('quote_ref_invalid', 'quote_not_approved', 'invalid_amount', 'unsupported_currency', 'customer_email_missing', 'customer_unresolved', 'accounts_unconfigured', 'qbo_rejected')`,
+    ),
+    check(
+      "ledger_triage_status_check",
+      sql`${table.status} in ('open', 'resolved', 'discarded')`,
+    ),
+    check(
+      "ledger_triage_resolved_stamped",
+      sql`${table.status} = 'open' or ${table.resolved_at} is not null`,
+    ),
+  ],
+).enableRLS();

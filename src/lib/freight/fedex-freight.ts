@@ -7,6 +7,10 @@
  *
  * Spec: Shipping/FedEx_Auth_Rate_Blueprint.md and Shipping/FedEx_Developer.md.
  *   POST {auth}/am/oauth2/access_token       form: grant_type, client_id, client_secret, scope=fxf-api
+ *        sandbox    https://auth-qa.fedexfreight.com/am/oauth2/access_token
+ *        production https://auth.fedexfreight.com/am/oauth2/access_token
+ *   Keys come from the FedEx FREIGHT developer portal. They are NOT Unified Platform keys:
+ *   apis.fedex.com/oauth/token refuses them with HTTP 401.
  *   POST {apiBase}/fxf-external-rate-auth0/fxfgw/rate/getRateQuote
  *
  * Error text from FedEx is never copied into an Error message or a log line. The only
@@ -18,8 +22,11 @@ import { logError } from "@/lib/log/structured";
 
 export const FEDEX_FREIGHT_SANDBOX_AUTH_URL =
   "https://auth-qa.fedexfreight.com/am/oauth2/access_token";
+/** FedEx Freight production OAuth. Freight-portal keys only; never the Unified apis.fedex.com/oauth/token. */
 export const FEDEX_FREIGHT_PRODUCTION_AUTH_URL =
   "https://auth.fedexfreight.com/am/oauth2/access_token";
+/** The `scope` the Freight gateway requires on every token request, sandbox and production. */
+export const FEDEX_FREIGHT_OAUTH_SCOPE = "fxf-api";
 export const FEDEX_FREIGHT_RATE_PATH = "/fxf-external-rate-auth0/fxfgw/rate/getRateQuote";
 export const FEDEX_FREIGHT_DEFAULT_SERVICE = "FEDEX_FREIGHT_ECONOMY";
 export const FEDEX_FREIGHT_CARRIER_NAME = "FedEx Freight";
@@ -71,6 +78,7 @@ export class FedExFreightNotConfiguredError extends FedExFreightError {
 export type FedExFreightConfig = {
   clientId: string;
   clientSecret: string;
+  environment: FedExFreightEnvironment;
   authUrl: string;
   apiBase: string;
   accountNumber: string;
@@ -87,15 +95,93 @@ function pick(env: Env, ...names: string[]): string {
   return "";
 }
 
+export type FedExFreightEnvironment = "sandbox" | "production";
+
+/** The production rate gateway host. A production API base selects the Freight PRODUCTION OAuth host. */
+const PRODUCTION_API_HOSTS: ReadonlySet<string> = new Set(["apis.fedex.com"]);
+/** `apis-sandbox.fedex.com`, `*-qa.*`, `*.qa.*`, `*sandbox*`. */
+const SANDBOX_HOST_PATTERN = /sandbox|(^|[.-])qa([.-]|$)/;
+
+/** What the API host says about the environment, or null when the host is not a known FedEx host. */
+function environmentOfApiHost(apiBase: string): FedExFreightEnvironment | null {
+  let host: string;
+  try {
+    host = new URL(apiBase).hostname.toLowerCase();
+  } catch (error) {
+    // assertHttps reports an unparseable base with a proper error; here it just means "unknown".
+    void error;
+    return null;
+  }
+  if (PRODUCTION_API_HOSTS.has(host)) return "production";
+  if (SANDBOX_HOST_PATTERN.test(host)) return "sandbox";
+  return null;
+}
+
+/**
+ * Decides sandbox vs production so credentials can never reach the wrong OAuth host.
+ *   1. FEDEX_FREIGHT_ENV ("production" | "sandbox") when set.
+ *   2. Otherwise the FEDEX_FREIGHT_API_BASE host: apis.fedex.com is production.
+ *   3. Otherwise sandbox.
+ * `conflict` is true when FEDEX_FREIGHT_ENV contradicts the API host (for example
+ * `sandbox` with apis.fedex.com); {@link readFedExFreightConfig} refuses to run in that state.
+ */
+function detectEnvironment(env: Env): { environment: FedExFreightEnvironment; conflict: boolean } {
+  const raw = pick(env, "FEDEX_FREIGHT_ENV").toLowerCase();
+  const explicit: FedExFreightEnvironment | null =
+    raw === "production" || raw === "sandbox" ? raw : null;
+  const fromHost = environmentOfApiHost(pick(env, "FEDEX_FREIGHT_API_BASE"));
+  return {
+    environment: explicit ?? fromHost ?? "sandbox",
+    conflict: explicit !== null && fromHost !== null && explicit !== fromHost,
+  };
+}
+
+export function resolveFedExFreightEnvironment(env: Env = process.env): FedExFreightEnvironment {
+  return detectEnvironment(env).environment;
+}
+
+/** Explicit FEDEX_FREIGHT_AUTH_URL, else the auth host for the resolved environment. */
+export function resolveFedExFreightAuthUrl(env: Env = process.env): string {
+  const explicit = pick(env, "FEDEX_FREIGHT_AUTH_URL");
+  if (explicit) return assertHttps(explicit, "FEDEX_FREIGHT_AUTH_URL");
+  return resolveFedExFreightEnvironment(env) === "production"
+    ? FEDEX_FREIGHT_PRODUCTION_AUTH_URL
+    : FEDEX_FREIGHT_SANDBOX_AUTH_URL;
+}
+
+/**
+ * OAuth client pair. `FEDEX_CLIENT_ID` / `FEDEX_CLIENT_SECRET` are the names to use for every
+ * environment. `FEDEX_FREIGHT_CLIENT_*` is accepted as an alias. The old `FEDEX_SANDBOX_CLIENT_*`
+ * pair is read ONLY while the environment is sandbox, so a sandbox-named key can never be
+ * sent to the production OAuth host by accident.
+ */
+export function fedexFreightClientCredentials(env: Env = process.env): {
+  clientId: string;
+  clientSecret: string;
+} {
+  const legacy = resolveFedExFreightEnvironment(env) === "sandbox";
+  return {
+    clientId: pick(
+      env,
+      "FEDEX_CLIENT_ID",
+      "FEDEX_FREIGHT_CLIENT_ID",
+      ...(legacy ? ["FEDEX_SANDBOX_CLIENT_ID"] : []),
+    ),
+    clientSecret: pick(
+      env,
+      "FEDEX_CLIENT_SECRET",
+      "FEDEX_FREIGHT_CLIENT_SECRET",
+      ...(legacy ? ["FEDEX_SANDBOX_CLIENT_SECRET"] : []),
+    ),
+  };
+}
+
 /** Names of required settings that are absent. Empty array means ready. */
 export function fedexFreightConfigGaps(env: Env = process.env): string[] {
   const gaps: string[] = [];
-  if (!pick(env, "FEDEX_FREIGHT_CLIENT_ID", "FEDEX_SANDBOX_CLIENT_ID")) {
-    gaps.push("FEDEX_FREIGHT_CLIENT_ID");
-  }
-  if (!pick(env, "FEDEX_FREIGHT_CLIENT_SECRET", "FEDEX_SANDBOX_CLIENT_SECRET")) {
-    gaps.push("FEDEX_FREIGHT_CLIENT_SECRET");
-  }
+  const { clientId, clientSecret } = fedexFreightClientCredentials(env);
+  if (!clientId) gaps.push("FEDEX_CLIENT_ID");
+  if (!clientSecret) gaps.push("FEDEX_CLIENT_SECRET");
   if (!pick(env, "FEDEX_FREIGHT_API_BASE")) gaps.push("FEDEX_FREIGHT_API_BASE");
   if (!pick(env, "FEDEX_FREIGHT_ACCOUNT_NUMBER")) gaps.push("FEDEX_FREIGHT_ACCOUNT_NUMBER");
   return gaps;
@@ -124,12 +210,14 @@ export function readFedExFreightConfig(env: Env = process.env): FedExFreightConf
   const gaps = fedexFreightConfigGaps(env);
   if (gaps.length > 0) throw new FedExFreightNotConfiguredError(gaps);
 
-  const production = pick(env, "FEDEX_FREIGHT_ENV").toLowerCase() === "production";
-  const authUrl = assertHttps(
-    pick(env, "FEDEX_FREIGHT_AUTH_URL") ||
-      (production ? FEDEX_FREIGHT_PRODUCTION_AUTH_URL : FEDEX_FREIGHT_SANDBOX_AUTH_URL),
-    "FEDEX_FREIGHT_AUTH_URL",
-  );
+  const detected = detectEnvironment(env);
+  if (detected.conflict) {
+    throw new FedExFreightError(
+      "NOT_CONFIGURED",
+      "FEDEX_FREIGHT_ENV contradicts the FEDEX_FREIGHT_API_BASE host. Fix one so credentials go to the right OAuth host.",
+    );
+  }
+  const authUrl = resolveFedExFreightAuthUrl(env);
   const accountNumber = pick(env, "FEDEX_FREIGHT_ACCOUNT_NUMBER");
   if (!/^[A-Za-z0-9]{1,9}$/.test(accountNumber)) {
     throw new FedExFreightError(
@@ -138,8 +226,8 @@ export function readFedExFreightConfig(env: Env = process.env): FedExFreightConf
     );
   }
   return {
-    clientId: pick(env, "FEDEX_FREIGHT_CLIENT_ID", "FEDEX_SANDBOX_CLIENT_ID"),
-    clientSecret: pick(env, "FEDEX_FREIGHT_CLIENT_SECRET", "FEDEX_SANDBOX_CLIENT_SECRET"),
+    ...fedexFreightClientCredentials(env),
+    environment: detected.environment,
     authUrl,
     apiBase: assertHttps(pick(env, "FEDEX_FREIGHT_API_BASE"), "FEDEX_FREIGHT_API_BASE"),
     accountNumber,
@@ -173,6 +261,18 @@ function isAbortLike(error: unknown): boolean {
   );
 }
 
+/** The Freight token request body. `scope=fxf-api` is always sent: the Freight gateway requires it. */
+export function tokenRequestBody(
+  config: Pick<FedExFreightConfig, "clientId" | "clientSecret">,
+): string {
+  return new URLSearchParams({
+    grant_type: "client_credentials",
+    client_id: config.clientId,
+    client_secret: config.clientSecret,
+    scope: FEDEX_FREIGHT_OAUTH_SCOPE,
+  }).toString();
+}
+
 async function requestToken(
   config: FedExFreightConfig,
   doFetch: typeof fetch,
@@ -187,12 +287,7 @@ async function requestToken(
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json",
       },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: config.clientId,
-        client_secret: config.clientSecret,
-        scope: "fxf-api",
-      }).toString(),
+      body: tokenRequestBody(config),
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
@@ -205,7 +300,7 @@ async function requestToken(
     throw new FedExFreightError(
       "AUTH_FAILED",
       `FedEx Freight sign-in was refused (HTTP ${response.status}).`,
-      { status: response.status },
+      { status: response.status, providerCodes: await providerCodesFrom(response) },
     );
   }
 
@@ -477,6 +572,12 @@ async function providerCodesFrom(response: Response): Promise<string[]> {
   for (const entry of errors) {
     const code = isRecord(entry) ? entry.code : null;
     if (typeof code === "string" && PROVIDER_CODE.test(code) && codes.length < 5) codes.push(code);
+  }
+  // The Freight OAuth server answers with an RFC 6749 token (`invalid_client`, `invalid_scope`, ...).
+  // Only that short token is kept; `error_description` is free text and is never read.
+  const oauthError = isRecord(body) ? body.error : null;
+  if (typeof oauthError === "string" && PROVIDER_CODE.test(oauthError) && codes.length < 5) {
+    codes.push(oauthError);
   }
   return codes;
 }

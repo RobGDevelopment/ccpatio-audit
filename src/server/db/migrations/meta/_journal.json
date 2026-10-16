@@ -400,6 +400,20 @@
       "when": 1791934480711,
       "tag": "0055_path_a_stateless_release",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1792104240403,
+      "tag": "0056_pos_receipts",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1792104241403,
+      "tag": "0056_ledger_triage",
+      "breakpoints": true
     }
   ]
 }

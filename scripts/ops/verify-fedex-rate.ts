@@ -17,8 +17,11 @@
  *   FEDEX_FREIGHT_ACCOUNT_NUMBER   required, 1 to 9 letters or digits
  *   FEDEX_FREIGHT_API_BASE         required, https. This is the FREIGHT gateway, not the parcel host
  *                                  (apis-sandbox.fedex.com is the parcel API and does not serve Freight)
- *   FEDEX_FREIGHT_CLIENT_ID / FEDEX_FREIGHT_CLIENT_SECRET   (falls back to FEDEX_SANDBOX_CLIENT_ID / _SECRET)
- *   FEDEX_FREIGHT_ENV              optional, "production" switches the auth host to auth.fedexfreight.com
+ *   FEDEX_CLIENT_ID / FEDEX_CLIENT_SECRET   required (alias: FEDEX_FREIGHT_CLIENT_*). The old FEDEX_SANDBOX_CLIENT_*
+ *                                  pair is honored only when the environment resolves to sandbox.
+ *   FEDEX_FREIGHT_ENV              optional, "production" | "sandbox". When unset it follows FEDEX_FREIGHT_API_BASE:
+ *                                  https://apis.fedex.com is production (auth.fedexfreight.com/am/oauth2/access_token), anything else sandbox
+ *                                  (auth-qa.fedexfreight.com). A value that contradicts the API host is refused.
  *   FEDEX_FREIGHT_AUTH_URL         optional explicit auth URL
  *   FEDEX_FREIGHT_SERVICE_TYPE     optional, default FEDEX_FREIGHT_ECONOMY
  *
@@ -40,6 +43,7 @@ import {
   getFedExFreightRates,
   readFedExFreightConfig,
   resetFedExTokenCache,
+  resolveFedExFreightEnvironment,
   type FedExFreightConfig,
   type FedExRateInput,
 } from "../../src/lib/freight/fedex-freight";
@@ -147,8 +151,14 @@ async function main(): Promise<number> {
       gaps.includes("FEDEX_FREIGHT_API_BASE") && process.env.FEDEX_API_BASE?.trim()
         ? " FEDEX_API_BASE is set, but it is the parcel host and is not read by the Freight client."
         : "";
+    const renameHint =
+      gaps.includes("FEDEX_CLIENT_ID") &&
+      process.env.FEDEX_SANDBOX_CLIENT_ID?.trim() &&
+      resolveFedExFreightEnvironment(process.env) === "production"
+        ? " FEDEX_SANDBOX_CLIENT_ID/_SECRET are only read in sandbox mode: rename them to FEDEX_CLIENT_ID/FEDEX_CLIENT_SECRET."
+        : "";
     console.log(JSON.stringify({ ok: false, stage: "config", missing: gaps }, null, 2));
-    progress(`Not run. Add these to .env.local: ${gaps.join(", ")}.${hint}`);
+    progress(`Not run. Add these to .env.local: ${gaps.join(", ")}.${hint}${renameHint}`);
     return 1;
   }
 
@@ -161,7 +171,8 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  const production = process.env.FEDEX_FREIGHT_ENV?.trim().toLowerCase() === "production";
+  // The environment comes from the same resolver the Order Desk uses (FEDEX_FREIGHT_ENV, else the API host).
+  const production = config.environment === "production";
   progress(
     `${production ? "PRODUCTION" : "sandbox"} | auth ${host(config.authUrl)} | api ${host(config.apiBase)} | ` +
       `account ${mask(config.accountNumber, 2)} | client ${mask(config.clientId, 4)} | service ${config.serviceType}`,

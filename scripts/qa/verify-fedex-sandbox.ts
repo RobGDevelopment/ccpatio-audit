@@ -13,20 +13,13 @@
  */
 import {
   FedExFreightError,
+  fedexFreightClientCredentials,
   fedexFreightConfigGaps,
   getFedExFreightRates,
   readFedExFreightConfig,
+  resolveFedExFreightAuthUrl,
+  tokenRequestBody,
 } from "../../src/lib/freight/fedex-freight";
-
-type Env = Record<string, string | undefined>;
-
-function pick(env: Env, ...names: string[]): string {
-  for (const name of names) {
-    const value = env[name]?.trim();
-    if (value) return value;
-  }
-  return "";
-}
 
 function describe(error: unknown): string {
   if (error instanceof FedExFreightError) {
@@ -38,28 +31,19 @@ function describe(error: unknown): string {
 
 async function main(): Promise<number> {
   const env = process.env;
-  const clientId = pick(env, "FEDEX_FREIGHT_CLIENT_ID", "FEDEX_SANDBOX_CLIENT_ID");
-  const clientSecret = pick(env, "FEDEX_FREIGHT_CLIENT_SECRET", "FEDEX_SANDBOX_CLIENT_SECRET");
+  const { clientId, clientSecret } = fedexFreightClientCredentials(env);
   if (!clientId || !clientSecret) {
-    console.error("Missing FEDEX_FREIGHT_CLIENT_ID / FEDEX_FREIGHT_CLIENT_SECRET (or the FEDEX_SANDBOX_* pair).");
+    console.error("Missing FEDEX_CLIENT_ID / FEDEX_CLIENT_SECRET.");
     return 1;
   }
 
-  const authUrl =
-    pick(env, "FEDEX_FREIGHT_AUTH_URL") ||
-    (pick(env, "FEDEX_FREIGHT_ENV").toLowerCase() === "production"
-      ? "https://auth.fedexfreight.com/am/oauth2/access_token"
-      : "https://auth-qa.fedexfreight.com/am/oauth2/access_token");
+  // Same resolver as the app: FEDEX_FREIGHT_ENV, else the API host (apis.fedex.com is production).
+  const authUrl = resolveFedExFreightAuthUrl(env);
 
   const response = await fetch(authUrl, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: clientId,
-      client_secret: clientSecret,
-      scope: "fxf-api",
-    }).toString(),
+    body: tokenRequestBody({ clientId, clientSecret }),
     signal: AbortSignal.timeout(15_000),
   });
   if (!response.ok) {

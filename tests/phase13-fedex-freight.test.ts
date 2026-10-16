@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  FEDEX_FREIGHT_PRODUCTION_AUTH_URL,
   FEDEX_FREIGHT_RATE_PATH,
   FEDEX_FREIGHT_SANDBOX_AUTH_URL,
   FedExFreightError,
@@ -13,7 +14,9 @@ import {
   parseFedExRateResponse,
   readFedExFreightConfig,
   resetFedExTokenCache,
+  resolveFedExFreightEnvironment,
   toFedExFreightClass,
+  tokenRequestBody,
 } from "@/lib/freight/fedex-freight";
 import { fedexCarrierQuoteId, rateFedExCarrier } from "@/server/freight/fedex-carrier";
 import { FreightRatingError, getPriority1Quote } from "@/server/freight/priority1";
@@ -91,29 +94,147 @@ afterEach(() => {
 describe("FedEx Freight configuration", () => {
   it("lists the NAMES of missing settings and never values", () => {
     expect(fedexFreightConfigGaps({})).toEqual([
-      "FEDEX_FREIGHT_CLIENT_ID",
-      "FEDEX_FREIGHT_CLIENT_SECRET",
+      "FEDEX_CLIENT_ID",
+      "FEDEX_CLIENT_SECRET",
       "FEDEX_FREIGHT_API_BASE",
       "FEDEX_FREIGHT_ACCOUNT_NUMBER",
     ]);
     expect(fedexFreightConfigGaps(ENV)).toEqual([]);
   });
 
-  it("falls back to the sandbox credential pair already in .env.local", () => {
-    const env = {
-      FEDEX_SANDBOX_CLIENT_ID: "sb-id",
-      FEDEX_SANDBOX_CLIENT_SECRET: "sb-secret",
+  it("reads FEDEX_CLIENT_ID / FEDEX_CLIENT_SECRET, with FEDEX_FREIGHT_CLIENT_* as an alias", () => {
+    const base = {
       FEDEX_FREIGHT_API_BASE: ENV.FEDEX_FREIGHT_API_BASE,
       FEDEX_FREIGHT_ACCOUNT_NUMBER: ENV.FEDEX_FREIGHT_ACCOUNT_NUMBER,
     };
-    expect(readFedExFreightConfig(env)).toMatchObject({ clientId: "sb-id", clientSecret: "sb-secret" });
+    expect(
+      readFedExFreightConfig({ ...base, FEDEX_CLIENT_ID: "new-id", FEDEX_CLIENT_SECRET: "new-secret" }),
+    ).toMatchObject({ clientId: "new-id", clientSecret: "new-secret" });
+    expect(
+      readFedExFreightConfig({
+        ...base,
+        FEDEX_CLIENT_ID: "new-id",
+        FEDEX_CLIENT_SECRET: "new-secret",
+        FEDEX_FREIGHT_CLIENT_ID: "alias-id",
+        FEDEX_FREIGHT_CLIENT_SECRET: "alias-secret",
+      }),
+    ).toMatchObject({ clientId: "new-id", clientSecret: "new-secret" });
+    expect(readFedExFreightConfig({ ...base, ...ENV })).toMatchObject({
+      clientId: "client-id-123",
+      clientSecret: "client-secret-xyz",
+    });
+  });
+
+  it("reads the legacy FEDEX_SANDBOX_CLIENT_* pair in sandbox mode only", () => {
+    const legacy = {
+      FEDEX_SANDBOX_CLIENT_ID: "sb-id",
+      FEDEX_SANDBOX_CLIENT_SECRET: "sb-secret",
+      FEDEX_FREIGHT_ACCOUNT_NUMBER: ENV.FEDEX_FREIGHT_ACCOUNT_NUMBER,
+    };
+    const sandbox = { ...legacy, FEDEX_FREIGHT_API_BASE: "https://rates.example.test" };
+    expect(readFedExFreightConfig(sandbox)).toMatchObject({ clientId: "sb-id", clientSecret: "sb-secret" });
+
+    // Sandbox-named keys must never be sent to the production OAuth host.
+    const production = { ...legacy, FEDEX_FREIGHT_API_BASE: "https://apis.fedex.com" };
+    expect(fedexFreightConfigGaps(production)).toEqual(["FEDEX_CLIENT_ID", "FEDEX_CLIENT_SECRET"]);
+    expect(() => readFedExFreightConfig(production)).toThrow(FedExFreightNotConfiguredError);
   });
 
   it("defaults to the QA OAuth host and switches to production on request", () => {
     expect(readFedExFreightConfig(ENV).authUrl).toBe(FEDEX_FREIGHT_SANDBOX_AUTH_URL);
     expect(readFedExFreightConfig({ ...ENV, FEDEX_FREIGHT_ENV: "production" }).authUrl).toBe(
-      "https://auth.fedexfreight.com/am/oauth2/access_token",
+      FEDEX_FREIGHT_PRODUCTION_AUTH_URL,
     );
+  });
+
+  it("routes FEDEX_FREIGHT_API_BASE=https://apis.fedex.com to the production OAuth host", () => {
+    const prod = { ...ENV, FEDEX_FREIGHT_API_BASE: "https://apis.fedex.com" };
+    expect(readFedExFreightConfig(prod)).toMatchObject({
+      environment: "production",
+      authUrl: FEDEX_FREIGHT_PRODUCTION_AUTH_URL,
+      apiBase: "https://apis.fedex.com",
+    });
+    expect(resolveFedExFreightEnvironment({ ...prod, FEDEX_FREIGHT_API_BASE: "https://apis.fedex.com/" })).toBe(
+      "production",
+    );
+    // The parcel sandbox host stays on the QA auth server.
+    expect(
+      readFedExFreightConfig({ ...ENV, FEDEX_FREIGHT_API_BASE: "https://apis-sandbox.fedex.com" }),
+    ).toMatchObject({ environment: "sandbox", authUrl: FEDEX_FREIGHT_SANDBOX_AUTH_URL });
+    // An explicit override still wins for the auth URL.
+    expect(
+      readFedExFreightConfig({ ...prod, FEDEX_FREIGHT_AUTH_URL: "https://auth.override.test/token" }).authUrl,
+    ).toBe("https://auth.override.test/token");
+  });
+
+  it("refuses a FEDEX_FREIGHT_ENV that contradicts the API host", () => {
+    expect(() =>
+      readFedExFreightConfig({
+        ...ENV,
+        FEDEX_FREIGHT_API_BASE: "https://apis.fedex.com",
+        FEDEX_FREIGHT_ENV: "sandbox",
+      }),
+    ).toThrow(/contradicts/);
+    expect(() =>
+      readFedExFreightConfig({
+        ...ENV,
+        FEDEX_FREIGHT_API_BASE: "https://apis-sandbox.fedex.com",
+        FEDEX_FREIGHT_ENV: "production",
+      }),
+    ).toThrow(/contradicts/);
+  });
+
+  it("signs in at the production auth host and never touches QA when the API base is apis.fedex.com", async () => {
+    const calls: string[] = [];
+    let authBody = "";
+    const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      calls.push(url);
+      if (url === FEDEX_FREIGHT_PRODUCTION_AUTH_URL) authBody = String(init?.body);
+      if (url === FEDEX_FREIGHT_PRODUCTION_AUTH_URL) {
+        return json({ access_token: "prod-token", token_type: "Bearer", expires_in: 3600 });
+      }
+      return json(RATE_OK);
+    }) as unknown as typeof fetch;
+
+    const rates = await getFedExFreightRates(INPUT, {
+      env: { ...ENV, FEDEX_FREIGHT_API_BASE: "https://apis.fedex.com" },
+      fetch: fetchSpy,
+    });
+
+    expect(rates.length).toBeGreaterThan(0);
+    // Freight-portal keys: Freight production OAuth host, never the Unified apis.fedex.com/oauth/token.
+    expect(FEDEX_FREIGHT_PRODUCTION_AUTH_URL).toBe("https://auth.fedexfreight.com/am/oauth2/access_token");
+    expect(calls[0]).toBe("https://auth.fedexfreight.com/am/oauth2/access_token");
+    expect(calls[1]).toBe(`https://apis.fedex.com${FEDEX_FREIGHT_RATE_PATH}`);
+    expect(calls.some((url) => url.includes("/oauth/token"))).toBe(false);
+    // The Freight gateway requires scope=fxf-api on the PRODUCTION token request too.
+    expect(Object.fromEntries(new URLSearchParams(authBody))).toEqual({
+      grant_type: "client_credentials",
+      client_id: "client-id-123",
+      client_secret: "client-secret-xyz",
+      scope: "fxf-api",
+    });
+  });
+
+  it("sends scope=fxf-api on every Freight token request", () => {
+    const creds = { clientId: "id", clientSecret: "secret" };
+    expect(Object.fromEntries(new URLSearchParams(tokenRequestBody(creds)))).toEqual({
+      grant_type: "client_credentials",
+      client_id: "id",
+      client_secret: "secret",
+      scope: "fxf-api",
+    });
+  });
+
+  it("reports the OAuth error token (never the description) when sign-in is refused", async () => {
+    const fetchSpy = vi.fn(async () =>
+      json({ error: "invalid_client", error_description: "secret detail that must not leak" }, 401),
+    ) as unknown as typeof fetch;
+    const error = await getFedExFreightRates(INPUT, { env: ENV, fetch: fetchSpy }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(FedExFreightError);
+    expect(error).toMatchObject({ code: "AUTH_FAILED", status: 401, providerCodes: ["invalid_client"] });
+    expect(String((error as Error).message)).not.toContain("secret detail");
   });
 
   it("refuses non-https hosts and an over-long account number", () => {
