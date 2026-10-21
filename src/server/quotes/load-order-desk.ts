@@ -29,20 +29,56 @@ type LoadedOpportunity = {
   contactId: string;
   status: "open" | "won" | "lost" | "abandoned";
   destZip: string | null;
+  customerName: string | null;
+  customerEmail: string | null;
+  billToAddress: string | null;
+  shipToAddress: string | null;
 };
 
-async function destinationZip(
+function formatContactAddress(record: Record<string, unknown> | null): string | null {
+  if (!record) return null;
+  const line1 = text(record.address1) || text(record.address);
+  const city = text(record.city);
+  const state = text(record.state);
+  const zip = text(record.postalCode) || text(record.zip);
+  const cityStateZip = [city, state].filter(Boolean).join(", ") + (zip ? ` ${zip}` : "");
+  const parts = [line1, cityStateZip.trim()].filter(Boolean);
+  return parts.length > 0 ? parts.join("\n") : null;
+}
+
+async function resolveContactDetails(
   opportunity: Record<string, unknown>,
   contactId: string,
-): Promise<string | null> {
-  const onOpportunity = postalZip(opportunity);
-  if (onOpportunity) return onOpportunity;
-  const contact = asGhlRecord(opportunity.contact);
-  const onNested = postalZip(contact);
-  if (onNested) return onNested;
+): Promise<{
+  destZip: string | null;
+  customerName: string | null;
+  customerEmail: string | null;
+  billToAddress: string | null;
+  shipToAddress: string | null;
+}> {
+  const nested = asGhlRecord(opportunity.contact);
   const loaded = await ghlGet(`/contacts/${encodeURIComponent(contactId)}`);
-  if (!loaded.ok) return null;
-  return postalZip(unwrap(loaded.body, "contact"));
+  const fetched = loaded.ok ? unwrap(loaded.body, "contact") : null;
+  const source = fetched ?? nested;
+
+  const destZip =
+    postalZip(opportunity) ?? postalZip(nested) ?? postalZip(fetched) ?? null;
+
+  const fullName =
+    text(source?.name) ||
+    [text(source?.firstName), text(source?.lastName)].filter(Boolean).join(" ") ||
+    text(opportunity.contactName) ||
+    text(opportunity.name);
+  const email = text(source?.email) || text(nested?.email);
+  const address = formatContactAddress(fetched) ?? formatContactAddress(nested);
+
+  return {
+    destZip,
+    customerName: fullName || null,
+    customerEmail: email || null,
+    billToAddress: address,
+    shipToAddress: address,
+  };
 }
 
 /**
@@ -83,19 +119,23 @@ async function loadOpportunity(
   if (!contactId) return { ok: false, error: "That opportunity has no contact." };
   if (!name) return { ok: false, error: "That opportunity has no name." };
 
+  const contactDetails = await resolveContactDetails(opportunity, contactId);
+
   return {
     ok: true,
     id: returnedId || opportunityId,
     name,
     contactId,
     status,
-    destZip: await destinationZip(opportunity, contactId),
+    ...contactDetails,
   };
 }
 
 export async function loadOrderDesk(input: {
   opportunityId?: string | null;
   quoteId?: string | null;
+  contactId?: string | null;
+  locationId?: string | null;
   ghlUserId?: string | null;
   ghlUserEmail?: string | null;
 }): Promise<OrderDeskModel> {

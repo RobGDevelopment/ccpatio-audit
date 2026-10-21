@@ -1,18 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Trash2 } from "lucide-react";
+import { Lock, Plus, Search, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { card, eyebrow } from "@/app/showroom/showroom-ui";
 import {
   readActorFromHref,
   readOpportunityIdFromHref,
 } from "@/lib/embed-actor-params";
-import {
-  lineExtended,
-  quoteGrandTotal,
-  type DiscountType,
-} from "@/lib/quote-financials";
+import { lineExtended } from "@/lib/quote-financials";
 import {
   generateQuotePackage,
   generateQuotePdf,
@@ -27,20 +23,24 @@ import {
   releasePreviousHold,
   removeQuoteLine,
   revertToDraft,
-  saveOrderDeskDraft,
   searchOrderDeskProducts,
   selectQuoteFreightMethod,
-  sendQuote,
   swapQuoteLine,
   type OrderDeskCatalogProduct,
 } from "@/server/actions/order-desk";
+import {
+  addCatalogFurnitureLine,
+  finalizeAndSyncQuoteToGhl,
+  upsertQuoteDraft,
+} from "@/server/actions/quote";
 import type { OrderDeskLine, OrderDeskModel, OrderDeskQuote } from "@/server/quotes/view";
+import { selectQuoteFinancials, useQuoteStore } from "@/store/useQuoteStore";
 import type { FulfillmentMethod } from "@/types/freight";
 
 const FREIGHT_DEBOUNCE_MS = 1500;
 
 function money(amount: string | null): string {
-  if (amount == null) return "—";
+  if (amount == null || amount.trim() === "") return "—";
   const value = Number(amount);
   if (!Number.isFinite(value)) return "—";
   return moneyNumber(value);
@@ -51,24 +51,6 @@ function moneyNumber(amount: number): string {
     style: "currency",
     currency: "USD",
   }).format(amount);
-}
-
-function amountField(value: string): string {
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return "";
-  return String(amount);
-}
-
-function commercialOf(quote: OrderDeskQuote) {
-  return {
-    customerName: quote.customerName ?? "",
-    customerEmail: quote.customerEmail ?? "",
-    billToAddress: quote.billToAddress ?? "",
-    shipToAddress: quote.shipToAddress ?? "",
-    discountAmount: amountField(quote.discountAmount),
-    discountType: quote.discountType,
-    taxAmount: amountField(quote.taxAmount),
-  };
 }
 
 function savePdfFile(pdfBase64: string, filename: string) {
@@ -120,21 +102,24 @@ function freightMethodLabel(method: string | null, carrier: string | null): stri
   }
 }
 
-function applyFreight(current: OrderDeskQuote, result: {
-  version: number;
-  destZip: string | null;
-  distanceMiles: string | null;
-  merchandiseTotal: string | null;
-  freightMethod: OrderDeskQuote["freightMethod"];
-  freightTotal: string | null;
-  freightError: string | null;
-  freightOptions: OrderDeskQuote["freightOptions"];
-  executedBy?: string;
-  promiseDate?: string | null;
-  calculatedPromiseDate?: string | null;
-  promiseTruckCode?: string | null;
-  promiseError?: string | null;
-}): OrderDeskQuote {
+function applyFreight(
+  current: OrderDeskQuote,
+  result: {
+    version: number;
+    destZip: string | null;
+    distanceMiles: string | null;
+    merchandiseTotal: string | null;
+    freightMethod: OrderDeskQuote["freightMethod"];
+    freightTotal: string | null;
+    freightError: string | null;
+    freightOptions: OrderDeskQuote["freightOptions"];
+    executedBy?: string;
+    promiseDate?: string | null;
+    calculatedPromiseDate?: string | null;
+    promiseTruckCode?: string | null;
+    promiseError?: string | null;
+  },
+): OrderDeskQuote {
   return {
     ...current,
     version: result.version,
@@ -188,27 +173,103 @@ export function OrderDeskPortal({
   ghlUserEmail?: string;
 }) {
   const router = useRouter();
-  const [model, setModel] = useState(initial);
+  const store = useQuoteStore();
+  const hydratedRef = useRef<OrderDeskModel | null>(null);
+  if (hydratedRef.current !== initial) {
+    hydratedRef.current = initial;
+  }
+
+  useEffect(() => {
+    store.hydrateModel(initial);
+  }, [initial]);
+
+  const model = store.quoteId || store.model.state !== "needs-opportunity" ? store.model : initial;
+  const lineItems =
+    store.quoteId === (initial.state === "quote" ? initial.quoteId : null) && store.lineItems.length > 0
+      ? store.lineItems
+      : initial.state === "quote"
+        ? initial.lines.map((line) => ({
+            ...line,
+            defaultUnitPrice: line.unitPrice,
+            priceOverridden: false,
+          }))
+        : [];
+
+  const customerName =
+    store.quoteId === (initial.state === "quote" ? initial.quoteId : null)
+      ? store.customerName
+      : initial.state === "quote"
+        ? initial.customerName ?? ""
+        : "";
+  const customerEmail =
+    store.quoteId === (initial.state === "quote" ? initial.quoteId : null)
+      ? store.customerEmail
+      : initial.state === "quote"
+        ? initial.customerEmail ?? ""
+        : "";
+  const billToAddress =
+    store.quoteId === (initial.state === "quote" ? initial.quoteId : null)
+      ? store.billToAddress
+      : initial.state === "quote"
+        ? initial.billToAddress ?? ""
+        : "";
+  const shipToAddress =
+    store.quoteId === (initial.state === "quote" ? initial.quoteId : null)
+      ? store.shipToAddress
+      : initial.state === "quote"
+        ? initial.shipToAddress ?? ""
+        : "";
+  const zipDraft =
+    store.quoteId === (initial.state === "quote" ? initial.quoteId : null)
+      ? store.destZip
+      : initial.state === "quote"
+        ? initial.destZip ?? ""
+        : "";
+  const executedDraft =
+    store.quoteId === (initial.state === "quote" ? initial.quoteId : null)
+      ? store.executedBy
+      : initial.state === "quote"
+        ? initial.executedBy
+        : "";
+  const discountDraft =
+    store.quoteId === (initial.state === "quote" ? initial.quoteId : null)
+      ? store.discountAmount
+      : initial.state === "quote"
+        ? String(Number(initial.discountAmount) || 0)
+        : "0";
+  const discountType =
+    store.quoteId === (initial.state === "quote" ? initial.quoteId : null)
+      ? store.discountType
+      : initial.state === "quote"
+        ? initial.discountType
+        : "FLAT";
+  const taxDraft =
+    store.quoteId === (initial.state === "quote" ? initial.quoteId : null)
+      ? store.taxAmount
+      : initial.state === "quote"
+        ? String(Number(initial.taxAmount) || 0)
+        : "0";
+
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [pendingAction, setPendingAction] = useState<
-    "save" | "remove" | "swap" | "release" | "send" | "edit" | "custom" | "pdf" | "package" | null
+    "save" | "remove" | "swap" | "release" | "send" | "edit" | "custom" | "add" | "pdf" | "package" | null
   >(null);
-  const initialCommercial = initial.state === "quote" ? commercialOf(initial) : null;
-  const [customerName, setCustomerName] = useState(initialCommercial?.customerName ?? "");
-  const [customerEmail, setCustomerEmail] = useState(initialCommercial?.customerEmail ?? "");
-  const [billToAddress, setBillToAddress] = useState(initialCommercial?.billToAddress ?? "");
-  const [shipToAddress, setShipToAddress] = useState(initialCommercial?.shipToAddress ?? "");
-  const [discountDraft, setDiscountDraft] = useState(initialCommercial?.discountAmount ?? "0");
-  const [discountType, setDiscountType] = useState<DiscountType>(
-    initialCommercial?.discountType ?? "FLAT",
-  );
-  const [taxDraft, setTaxDraft] = useState(initialCommercial?.taxAmount ?? "0");
+
+  // Add Furniture Full-Screen Takeover Modal
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [furnitureQuery, setFurnitureQuery] = useState("");
+  const [furnitureResults, setFurnitureResults] = useState<OrderDeskCatalogProduct[]>([]);
+  const [searchingFurniture, startFurnitureSearch] = useTransition();
+
+  // Custom Item Inline Drawer
   const [customOpen, setCustomOpen] = useState(false);
   const [customDescription, setCustomDescription] = useState("");
   const [customPrice, setCustomPrice] = useState("");
+
+  // Swap / Remove Hold Modals
   const [searching, startSearch] = useTransition();
-  const [removeLine, setRemoveLine] = useState<OrderDeskLine | null>(null);
+  const [removeLineState, setRemoveLineState] = useState<OrderDeskLine | null>(null);
   const [swapLineId, setSwapLineId] = useState<string | null>(null);
   const [swapQuery, setSwapQuery] = useState("");
   const [products, setProducts] = useState<OrderDeskCatalogProduct[]>([]);
@@ -217,52 +278,12 @@ export function OrderDeskPortal({
   const [releaseAccepted, setReleaseAccepted] = useState(false);
   const [holdAccepted, setHoldAccepted] = useState(false);
   const [orphanHoldId, setOrphanHoldId] = useState<string | null>(null);
-  const [zipDraft, setZipDraft] = useState(
-    initial.state === "quote" ? initial.destZip ?? "" : "",
-  );
+
   const [rating, setRating] = useState(false);
-  const [executedDraft, setExecutedDraft] = useState(
-    initial.state === "quote" ? initial.executedBy : "",
-  );
   const [overrideDate, setOverrideDate] = useState("");
   const [overrideReason, setOverrideReason] = useState("");
   const [readiness, setReadiness] = useState<ReadinessEntry[] | null>(null);
   const [readinessError, setReadinessError] = useState<string | null>(null);
-  const zipQuoteId = useRef(initial.state === "quote" ? initial.quoteId : null);
-  const executedQuoteId = useRef(initial.state === "quote" ? initial.quoteId : null);
-  const commercialQuoteId = useRef(initial.state === "quote" ? initial.quoteId : null);
-
-  useEffect(() => {
-    setModel(initial);
-  }, [initial]);
-
-  useEffect(() => {
-    if (model.state !== "quote") return;
-    if (zipQuoteId.current === model.quoteId) return;
-    zipQuoteId.current = model.quoteId;
-    setZipDraft(model.destZip ?? "");
-  }, [model]);
-
-  useEffect(() => {
-    if (model.state !== "quote") return;
-    if (executedQuoteId.current === model.quoteId) return;
-    executedQuoteId.current = model.quoteId;
-    setExecutedDraft(model.executedBy);
-  }, [model]);
-
-  useEffect(() => {
-    if (model.state !== "quote") return;
-    if (commercialQuoteId.current === model.quoteId) return;
-    commercialQuoteId.current = model.quoteId;
-    const next = commercialOf(model);
-    setCustomerName(next.customerName);
-    setCustomerEmail(next.customerEmail);
-    setBillToAddress(next.billToAddress);
-    setShipToAddress(next.shipToAddress);
-    setDiscountDraft(next.discountAmount);
-    setDiscountType(next.discountType);
-    setTaxDraft(next.taxAmount);
-  }, [model]);
 
   useEffect(() => {
     if (initial.state !== "needs-opportunity") return;
@@ -275,10 +296,33 @@ export function OrderDeskPortal({
         ghlUserId: actor.ghlUserId ?? ghlUserId,
         ghlUserEmail: actor.ghlUserEmail ?? ghlUserEmail,
       });
-      setModel(next);
+      store.hydrateModel(next);
     });
   }, [ghlUserEmail, ghlUserId, initial]);
 
+  // Search inside Add Furniture Takeover Modal
+  useEffect(() => {
+    if (!addModalOpen) return;
+    const query = furnitureQuery.trim();
+    if (query.length < 2) {
+      setFurnitureResults([]);
+      return;
+    }
+    const handle = setTimeout(() => {
+      startFurnitureSearch(async () => {
+        const result = await searchOrderDeskProducts(query);
+        if (!result.ok) {
+          setNotice(result.error);
+          setFurnitureResults([]);
+          return;
+        }
+        setFurnitureResults(result.products);
+      });
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [addModalOpen, furnitureQuery]);
+
+  // Search inside Replace Hold Inline Box
   useEffect(() => {
     if (!swapLineId) return;
     const query = swapQuery.trim();
@@ -303,11 +347,9 @@ export function OrderDeskPortal({
   const quoteId = model.state === "quote" ? model.quoteId : null;
   const quoteReadOnly = model.state === "quote" ? model.readOnly : true;
   const quoteStatus = model.state === "quote" ? model.status : null;
-  const lineKey =
-    model.state === "quote"
-      ? model.lines.map((line) => `${line.id}:${line.sku}:${line.qty}`).join("|")
-      : "";
-  // Package pre-flight: which products would print with a gap. Rows only, no image download.
+  const lineKey = lineItems.map((line) => `${line.id}:${line.sku}:${line.qty}`).join("|");
+
+  // Package readiness pre-flight
   useEffect(() => {
     if (!quoteId) return;
     let cancelled = false;
@@ -356,10 +398,8 @@ export function OrderDeskPortal({
             setNotice(result.error);
             return;
           }
-          setModel((current) =>
-            current.state === "quote" && current.quoteId === quoteId
-              ? applyFreight(current, result)
-              : current,
+          store.patchQuoteState((current) =>
+            current.quoteId === quoteId ? applyFreight(current, result) : current,
           );
         })
         .finally(() => setRating(false));
@@ -375,12 +415,6 @@ export function OrderDeskPortal({
     };
   }
 
-  function applyVersion(version: number) {
-    setModel((current) =>
-      current.state === "quote" ? { ...current, version } : current,
-    );
-  }
-
   function commercialInput() {
     return {
       customerName,
@@ -390,6 +424,12 @@ export function OrderDeskPortal({
       discountAmount: discountDraft,
       discountType,
       taxAmount: taxDraft,
+      lines: lineItems.map((item) => ({
+        id: item.id,
+        qty: item.qty,
+        unitPrice: item.unitPrice,
+        description: item.description,
+      })),
     };
   }
 
@@ -400,7 +440,7 @@ export function OrderDeskPortal({
     const actor = actorFromWindow();
     startTransition(async () => {
       try {
-        const result = await saveOrderDeskDraft({
+        const result = await upsertQuoteDraft({
           quoteId: model.quoteId,
           version: model.version,
           opportunityId: model.opportunityId,
@@ -412,8 +452,44 @@ export function OrderDeskPortal({
           setNotice(result.error);
           return;
         }
-        applyVersion(result.version);
+        store.patchQuoteState((current) => ({
+          ...current,
+          version: result.version,
+          merchandiseTotal: result.merchandiseTotal ?? current.merchandiseTotal,
+        }));
         setNotice("Draft saved.");
+        router.refresh();
+      } finally {
+        setPendingAction(null);
+      }
+    });
+  }
+
+  function addFurnitureItem(product: OrderDeskCatalogProduct) {
+    if (model.state !== "quote" || model.readOnly) return;
+    setNotice(null);
+    setPendingAction("add");
+    const actor = actorFromWindow();
+    startTransition(async () => {
+      try {
+        const result = await addCatalogFurnitureLine({
+          quoteId: model.quoteId,
+          expectedVersion: model.version,
+          sku: product.sku,
+          variantId: product.variantId,
+          qty: 1,
+          ghlUserId: actor.ghlUserId,
+          ghlUserEmail: actor.ghlUserEmail,
+        });
+        if (!result.ok) {
+          setNotice(result.error);
+          return;
+        }
+        store.appendLine(result.line, result.version, result.merchandiseTotal);
+        setAddModalOpen(false);
+        setFurnitureQuery("");
+        setFurnitureResults([]);
+        setNotice(`${product.name} added to quote.`);
         router.refresh();
       } finally {
         setPendingAction(null);
@@ -450,15 +526,7 @@ export function OrderDeskPortal({
           setNotice(result.error);
           return;
         }
-        setModel((current) => {
-          if (current.state !== "quote") return current;
-          return {
-            ...current,
-            version: result.version,
-            merchandiseTotal: result.merchandiseTotal,
-            lines: [...current.lines, result.line],
-          };
-        });
+        store.appendLine(result.line, result.version, result.merchandiseTotal);
         setCustomDescription("");
         setCustomPrice("");
         setCustomOpen(false);
@@ -476,15 +544,15 @@ export function OrderDeskPortal({
     setNotice(null);
     setPendingAction(kind === "package" ? "package" : "pdf");
     const actor = actorFromWindow();
-    const quoteId = model.quoteId;
-    const version = model.version;
+    const currentQuoteId = model.quoteId;
+    const currentVersion = model.version;
     const readOnly = model.readOnly;
     startTransition(async () => {
       try {
         if (!readOnly) {
-          const saved = await saveOrderDeskDraft({
-            quoteId,
-            version,
+          const saved = await upsertQuoteDraft({
+            quoteId: currentQuoteId,
+            version: currentVersion,
             opportunityId: model.opportunityId,
             ghlUserId: actor.ghlUserId,
             ghlUserEmail: actor.ghlUserEmail,
@@ -494,10 +562,10 @@ export function OrderDeskPortal({
             setNotice(saved.error);
             return;
           }
-          applyVersion(saved.version);
+          store.setVersion(saved.version);
         }
         if (kind === "estimate") {
-          const pdf = await generateQuotePdf(quoteId);
+          const pdf = await generateQuotePdf(currentQuoteId);
           if (!pdf.ok) {
             setNotice(pdf.error);
             return;
@@ -505,7 +573,7 @@ export function OrderDeskPortal({
           savePdfFile(pdf.pdfBase64, pdf.filename);
           return;
         }
-        const pkg = await generateQuotePackage(quoteId);
+        const pkg = await generateQuotePackage(currentQuoteId);
         if (!pkg.ok) {
           setNotice(pkg.error);
           return;
@@ -526,8 +594,8 @@ export function OrderDeskPortal({
   }
 
   function confirmRemove() {
-    if (model.state !== "quote" || !removeLine) return;
-    const line = removeLine;
+    if (model.state !== "quote" || !removeLineState) return;
+    const line = removeLineState;
     setNotice(null);
     setPendingAction("remove");
     const actor = actorFromWindow();
@@ -541,18 +609,12 @@ export function OrderDeskPortal({
         );
         if (!result.ok) {
           setNotice(result.error);
-          if (result.version) applyVersion(result.version);
+          if (result.version) store.setVersion(result.version);
           return;
         }
-        setRemoveLine(null);
-        setModel((current) => {
-          if (current.state !== "quote") return current;
-          return {
-            ...current,
-            version: result.version,
-            lines: current.lines.filter((item) => item.id !== line.id),
-          };
-        });
+        setRemoveLineState(null);
+        store.removeLine(line.id);
+        store.setVersion(result.version);
         setNotice("Line removed.");
         router.refresh();
       } finally {
@@ -563,7 +625,7 @@ export function OrderDeskPortal({
 
   function chooseProduct(product: OrderDeskCatalogProduct) {
     if (model.state !== "quote") return;
-    const line = model.lines.find((item) => item.id === swapLineId);
+    const line = lineItems.find((item) => item.id === swapLineId);
     setSwapQty(line ? qtyInputValue(line.qty) : "1");
     setReleaseAccepted(false);
     setHoldAccepted(false);
@@ -585,36 +647,36 @@ export function OrderDeskPortal({
     const actor = actorFromWindow();
     startTransition(async () => {
       try {
-      const result = await swapQuoteLine(
-        model.quoteId,
-        lineId,
-        product.sku,
-        product.variantId,
-        qty,
-        model.version,
-        actor,
-      );
-      if (!result.ok && result.error === "previous_hold_still_active") {
-        setOrphanHoldId(result.previousHoldId ?? null);
-        setNotice(
-          "The new item is held on this line. The previous hold is still active.",
+        const result = await swapQuoteLine(
+          model.quoteId,
+          lineId,
+          product.sku,
+          product.variantId,
+          qty,
+          model.version,
+          actor,
         );
-        if (result.version) applyVersion(result.version);
+        if (!result.ok && result.error === "previous_hold_still_active") {
+          setOrphanHoldId(result.previousHoldId ?? null);
+          setNotice(
+            "The new item is held on this line. The previous hold is still active.",
+          );
+          if (result.version) store.setVersion(result.version);
+          setPendingProduct(null);
+          setSwapLineId(null);
+          router.refresh();
+          return;
+        }
+        if (!result.ok) {
+          setNotice(result.error);
+          if (result.version) store.setVersion(result.version);
+          return;
+        }
+        store.setVersion(result.version);
         setPendingProduct(null);
         setSwapLineId(null);
+        setNotice("Line updated.");
         router.refresh();
-        return;
-      }
-      if (!result.ok) {
-        setNotice(result.error);
-        if (result.version) applyVersion(result.version);
-        return;
-      }
-      applyVersion(result.version);
-      setPendingProduct(null);
-      setSwapLineId(null);
-      setNotice("Line updated.");
-      router.refresh();
       } finally {
         setPendingAction(null);
       }
@@ -635,11 +697,11 @@ export function OrderDeskPortal({
         setNotice(result.error);
         return;
       }
-      setModel((current) =>
-        current.state === "quote"
-          ? { ...current, version: result.version, promiseDate: result.promiseDate }
-          : current,
-      );
+      store.patchQuoteState((current) => ({
+        ...current,
+        version: result.version,
+        promiseDate: result.promiseDate,
+      }));
       setOverrideReason("");
       setNotice("Delivery date updated.");
     });
@@ -654,9 +716,7 @@ export function OrderDeskPortal({
         setNotice(result.error);
         return;
       }
-      setModel((current) =>
-        current.state === "quote" ? applyFreight(current, result) : current,
-      );
+      store.patchQuoteState((current) => applyFreight(current, result));
     });
   }
 
@@ -667,25 +727,39 @@ export function OrderDeskPortal({
     const actor = actorFromWindow();
     startTransition(async () => {
       try {
-        const result = await sendQuote(model.quoteId, model.version, actor);
+        const saved = await upsertQuoteDraft({
+          quoteId: model.quoteId,
+          version: model.version,
+          opportunityId: model.opportunityId,
+          ghlUserId: actor.ghlUserId,
+          ghlUserEmail: actor.ghlUserEmail,
+          ...commercialInput(),
+        });
+        if (!saved.ok) {
+          setNotice(saved.error);
+          return;
+        }
+
+        const result = await finalizeAndSyncQuoteToGhl({
+          quoteId: model.quoteId,
+          expectedVersion: saved.version,
+          ghlUserId: actor.ghlUserId,
+          ghlUserEmail: actor.ghlUserEmail,
+        });
         if (!result.ok) {
           setNotice(result.error);
           return;
         }
         setSwapLineId(null);
-        setRemoveLine(null);
+        setRemoveLineState(null);
         setPendingProduct(null);
-        setModel((current) =>
-          current.state === "quote"
-            ? {
-                ...current,
-                status: "sent",
-                readOnly: true,
-                version: result.version,
-                ghlSyncError: result.ghlSyncError,
-              }
-            : current,
-        );
+        store.patchQuoteState((current) => ({
+          ...current,
+          status: "sent",
+          readOnly: true,
+          version: result.version,
+          ghlSyncError: result.ghlSyncError,
+        }));
         setNotice(
           result.ghlSyncError
             ? `Quote frozen. GoHighLevel was not updated. ${result.ghlSyncError}`
@@ -709,17 +783,13 @@ export function OrderDeskPortal({
           setNotice(result.error);
           return;
         }
-        setModel((current) =>
-          current.state === "quote"
-            ? {
-                ...current,
-                status: "draft",
-                readOnly: current.closedOpportunity,
-                version: result.version,
-                ghlSyncError: null,
-              }
-            : current,
-        );
+        store.patchQuoteState((current) => ({
+          ...current,
+          status: "draft",
+          readOnly: current.closedOpportunity,
+          version: result.version,
+          ghlSyncError: null,
+        }));
         setNotice("Quote returned to draft.");
         router.refresh();
       } finally {
@@ -750,9 +820,7 @@ export function OrderDeskPortal({
     });
   }
 
-  const swapLine =
-    model.state === "quote" ? model.lines.find((line) => line.id === swapLineId) : undefined;
-
+  const swapLine = lineItems.find((line) => line.id === swapLineId);
   const quote = model.state === "quote" ? model : null;
   const canSwitchFreight = Boolean(
     quote &&
@@ -760,723 +828,1042 @@ export function OrderDeskPortal({
       quote.freightOptions.some((option) => option.method === "INTERNAL_FLEET") &&
       quote.freightOptions.some((option) => option.method === "PRIORITY1_LTL"),
   );
-  const subtotal = quote
-    ? quote.lines.reduce((sum, line) => sum + (lineExtended(line.unitPrice, line.qty) ?? 0), 0)
-    : 0;
-  const shippingAmount = quote?.freightTotal != null ? Number(quote.freightTotal) : 0;
-  const discountValue = Number(discountDraft);
-  const taxValue = Number(taxDraft);
-  const summary = quoteGrandTotal({
-    subtotal,
-    discountAmount: Number.isFinite(discountValue) ? discountValue : 0,
+
+  const financials = selectQuoteFinancials({
+    lineItems,
+    discountAmount: discountDraft,
     discountType,
-    tax: Number.isFinite(taxValue) ? taxValue : 0,
-    shipping: Number.isFinite(shippingAmount) ? shippingAmount : 0,
+    taxAmount: taxDraft,
+    freightTotal: quote?.freightTotal ?? null,
+    depositPct: store.depositPct,
   });
+
+  const allLinesPriced =
+    lineItems.length > 0 &&
+    lineItems.every((item) => {
+      const price = item.unitPrice != null ? Number(item.unitPrice) : NaN;
+      return Number.isFinite(price) && price >= 0;
+    });
+
   const canSend = Boolean(
     quote &&
       quote.opportunityId &&
       quote.status === "draft" &&
       !quote.readOnly &&
-      quote.lines.length > 0 &&
-      quote.merchandiseTotal != null &&
+      allLinesPriced &&
       quote.freightTotal != null &&
       quote.promiseDate &&
-      /^\d{5}$/.test(quote.destZip ?? ""),
+      /^\d{5}$/.test(zipDraft || quote.destZip || ""),
   );
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
-      <header className="flex items-end justify-between gap-4">
+    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6">
+      {/* Plain English Header */}
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className={eyebrow}>Order Desk</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-            {model.state === "quote" ? model.opportunityName ?? "Walk-in estimate" : "Draft"}
+            {model.state === "quote"
+              ? customerName || model.opportunityName || "Showroom Quote"
+              : "Showroom Quote"}
           </h1>
+          {model.state === "quote" && (customerEmail || model.opportunityName) ? (
+            <p className="mt-0.5 text-sm text-slate-500">
+              {[customerEmail, model.opportunityName].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
         </div>
         {model.state === "quote" ? (
           <p
             data-testid="order-desk-status"
-            className="rounded-full bg-white px-3 py-1 text-xs font-medium uppercase tracking-widest text-slate-600 ring-1 ring-slate-200"
+            className="rounded-full bg-white px-3.5 py-1 text-xs font-medium uppercase tracking-widest text-slate-600 ring-1 ring-slate-200"
           >
             {statusLabel(model.status)}
           </p>
         ) : null}
       </header>
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-      <div className="flex flex-col gap-4">
-      {model.state === "needs-opportunity" ? (
-        <section data-testid="order-desk-empty" className={`${card} px-5 py-8`}>
-          <p className="text-sm text-slate-700">
-            No opportunity is selected. Open Order Desk from a GoHighLevel
-            opportunity to start a draft. Active showroom holds on that
-            opportunity are added as lines.
-          </p>
-        </section>
-      ) : null}
-
-      {model.state === "error" ? (
-        <section role="alert" data-testid="order-desk-error" className={`${card} px-5 py-6`}>
-          <p className="text-sm font-medium text-rose-700">{model.message}</p>
-        </section>
-      ) : null}
-
-      {model.state === "quote" ? (
-        <section data-testid="order-desk-draft" className={`${card} px-5 py-5`}>
-          {model.closedOpportunity ? (
-            <p className="mb-4 text-sm text-amber-800" role="status">
-              This opportunity is closed. The draft is read only.
-            </p>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="flex min-w-0 flex-col gap-5">
+          {model.state === "needs-opportunity" ? (
+            <section data-testid="order-desk-empty" className={`${card} px-6 py-8`}>
+              <p className="text-sm text-slate-700">
+                No opportunity is selected. Open Order Desk from a GoHighLevel
+                opportunity to start a draft. Active showroom holds on that
+                opportunity are added as lines.
+              </p>
+            </section>
           ) : null}
-          {model.voidReason ? (
-            <p className="mb-4 text-sm text-slate-600">
-              Closed because the opportunity was {model.voidReason}.
-            </p>
-          ) : null}
-          <dl className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <dt className="text-slate-500">
-                <label htmlFor="order-desk-dest-zip">Destination ZIP</label>
-              </dt>
-              <dd className="font-medium text-slate-900">
-                {model.readOnly ? (
-                  model.destZip ?? "—"
-                ) : (
-                  <input
-                    id="order-desk-dest-zip"
-                    data-testid="order-desk-dest-zip"
-                    value={zipDraft}
-                    onChange={(event) =>
-                      setZipDraft(event.target.value.replace(/\D/g, "").slice(0, 5))
-                    }
-                    inputMode="numeric"
-                    autoComplete="postal-code"
-                    maxLength={5}
-                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
-                  />
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Merchandise</dt>
-              <dd className="font-medium text-slate-900" data-testid="order-desk-total">
-                {money(model.merchandiseTotal)}
-              </dd>
-            </div>
-          </dl>
 
-          {model.lines.length === 0 ? (
-            <p data-testid="order-desk-no-lines" className="mt-6 text-sm text-slate-600">
-              This draft has no lines. An active showroom hold on this
-              opportunity is added when the draft is first created.
-            </p>
-          ) : (
-            <ul data-testid="order-desk-lines" className="mt-6 divide-y divide-slate-100">
-              {model.lines.map((line) => (
-                <li key={line.id} className="py-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900">{line.description}</p>
-                      <p className="text-xs text-slate-500">
-                        {line.lineKind === "custom" ? "Custom line" : line.sku} · Qty{" "}
-                        {qtyLabel(line.qty)}
-                      </p>
-                      {line.priceError ? (
-                        <p className="mt-1 text-xs text-amber-800">{line.priceError}</p>
-                      ) : null}
+          {model.state === "error" ? (
+            <section role="alert" data-testid="order-desk-error" className={`${card} px-6 py-6`}>
+              <p className="text-sm font-medium text-rose-700">{model.message}</p>
+            </section>
+          ) : null}
+
+          {model.state === "quote" ? (
+            <section data-testid="order-desk-draft" className={`${card} px-5 py-6 sm:px-6`}>
+              {model.closedOpportunity ? (
+                <p className="mb-4 text-sm text-amber-800" role="status">
+                  This opportunity is closed. The draft is read only.
+                </p>
+              ) : null}
+              {model.voidReason ? (
+                <p className="mb-4 text-sm text-slate-600">
+                  Closed because the opportunity was {model.voidReason}.
+                </p>
+              ) : null}
+
+              {/* Customer Details & Delivery Information */}
+              <div className="grid gap-6 border-b border-slate-100 pb-6 md:grid-cols-2">
+                <div data-testid="order-desk-customer" className="space-y-3">
+                  <p className={eyebrow}>Customer Details</p>
+                  <label className="block text-xs text-slate-500" htmlFor="order-desk-customer-name">
+                    Customer Name
+                    {model.readOnly ? (
+                      <span className="mt-1 block text-sm font-medium text-slate-900">
+                        {customerName || "—"}
+                      </span>
+                    ) : (
+                      <input
+                        id="order-desk-customer-name"
+                        data-testid="order-desk-customer-name"
+                        value={customerName}
+                        onChange={(event) => store.setCustomerName(event.target.value)}
+                        placeholder="Full name"
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      />
+                    )}
+                  </label>
+                  <label className="block text-xs text-slate-500" htmlFor="order-desk-customer-email">
+                    Email Address
+                    {model.readOnly ? (
+                      <span className="mt-1 block text-sm font-medium text-slate-900">
+                        {customerEmail || "—"}
+                      </span>
+                    ) : (
+                      <input
+                        id="order-desk-customer-email"
+                        data-testid="order-desk-customer-email"
+                        type="email"
+                        value={customerEmail}
+                        onChange={(event) => store.setCustomerEmail(event.target.value)}
+                        placeholder="customer@example.com"
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      />
+                    )}
+                  </label>
+                  <label className="block text-xs text-slate-500" htmlFor="order-desk-bill-to">
+                    Billing Address
+                    {model.readOnly ? (
+                      <span className="mt-1 block whitespace-pre-wrap text-sm font-medium text-slate-900">
+                        {billToAddress || "—"}
+                      </span>
+                    ) : (
+                      <textarea
+                        id="order-desk-bill-to"
+                        data-testid="order-desk-bill-to"
+                        value={billToAddress}
+                        onChange={(event) => store.setBillToAddress(event.target.value)}
+                        rows={2}
+                        placeholder="Street, City, State ZIP"
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      />
+                    )}
+                  </label>
+                </div>
+
+                <div className="space-y-3">
+                  <p className={eyebrow}>Delivery Information</p>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <label htmlFor="order-desk-dest-zip" className="block text-xs text-slate-500">
+                        Destination ZIP
+                      </label>
+                      <div className="font-medium text-slate-900">
+                        {model.readOnly ? (
+                          <span className="mt-1 block">{model.destZip ?? "—"}</span>
+                        ) : (
+                          <input
+                            id="order-desk-dest-zip"
+                            data-testid="order-desk-dest-zip"
+                            value={zipDraft}
+                            onChange={(event) =>
+                              store.setDestZip(event.target.value.replace(/\D/g, "").slice(0, 5))
+                            }
+                            inputMode="numeric"
+                            autoComplete="postal-code"
+                            maxLength={5}
+                            placeholder="85260"
+                            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
+                          />
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-slate-900">{money(line.unitPrice)}</p>
-                      {model.readOnly ? null : (
-                        <>
-                          {line.holdId ? (
-                            <button
-                              type="button"
-                              data-testid={`order-desk-replace-${line.id}`}
-                              onClick={() => {
-                                setNotice(null);
-                                setPendingProduct(null);
-                                setSwapQuery("");
-                                setProducts([]);
-                                setSwapLineId((current) => (current === line.id ? null : line.id));
-                              }}
-                              disabled={pending}
-                              className="rounded-full px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 disabled:opacity-60"
-                            >
-                              Replace
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            aria-label={`Remove ${line.sku}`}
-                            data-testid={`order-desk-remove-${line.id}`}
-                            onClick={() => {
-                              setNotice(null);
-                              setRemoveLine(line);
-                            }}
-                            disabled={pending}
-                            className="rounded-full p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-60"
-                          >
-                            <Trash2 className="h-4 w-4" aria-hidden="true" />
-                          </button>
-                        </>
-                      )}
+                    <div>
+                      <span className="block text-xs text-slate-500">Merchandise</span>
+                      <span
+                        className="mt-2.5 block font-semibold text-slate-900"
+                        data-testid="order-desk-total"
+                      >
+                        {allLinesPriced ? moneyNumber(financials.subtotal) : money(model.merchandiseTotal)}
+                      </span>
                     </div>
                   </div>
-                  {swapLineId === line.id ? (
-                    <div className="mt-3 rounded-xl bg-slate-50 p-3" data-testid="order-desk-swap-search">
-                      <label className="block text-xs text-slate-500" htmlFor={`swap-${line.id}`}>
-                        Replacement product
-                      </label>
-                      <input
-                        id={`swap-${line.id}`}
-                        value={swapQuery}
-                        onChange={(event) => setSwapQuery(event.target.value)}
-                        placeholder="Search SKU or name"
-                        autoComplete="off"
-                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
+                  <label className="block text-xs text-slate-500" htmlFor="order-desk-ship-to">
+                    Delivery Address
+                    {model.readOnly ? (
+                      <span className="mt-1 block whitespace-pre-wrap text-sm font-medium text-slate-900">
+                        {shipToAddress || "—"}
+                      </span>
+                    ) : (
+                      <textarea
+                        id="order-desk-ship-to"
+                        data-testid="order-desk-ship-to"
+                        value={shipToAddress}
+                        onChange={(event) => store.setShipToAddress(event.target.value)}
+                        rows={2}
+                        placeholder="Delivery street, City, State ZIP"
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
                       />
-                      {searching ? (
-                        <p className="mt-2 text-xs text-slate-500">Searching catalog…</p>
-                      ) : null}
-                      {products.length > 0 ? (
-                        <ul className="mt-2 divide-y divide-slate-200">
-                          {products.map((product) => (
-                            <li key={product.sku}>
-                              <button
-                                type="button"
-                                data-testid={`order-desk-product-${product.sku}`}
-                                onClick={() => chooseProduct(product)}
-                                className="flex w-full items-center justify-between gap-3 py-2 text-left text-sm hover:text-slate-950"
-                              >
-                                <span>
-                                  <span className="font-medium text-slate-900">{product.name}</span>
-                                  <span className="mt-0.5 block text-xs text-slate-500">{product.sku}</span>
-                                </span>
-                                <span className="text-slate-700">{money(product.unitPrice)}</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
+                    )}
+                  </label>
+                </div>
+              </div>
 
-          {model.readOnly ? null : (
-            <div className="mt-4">
-              <button
-                type="button"
-                data-testid="order-desk-add-custom"
-                onClick={() => setCustomOpen((open) => !open)}
-                disabled={pending}
-                className="rounded-full px-3 py-2 text-sm font-medium text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
-              >
-                + Add Custom Line Item
-              </button>
-              {customOpen ? (
-                <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
-                  <label className="block text-xs text-slate-500" htmlFor="order-desk-custom-description">
-                    Description
-                    <input
-                      id="order-desk-custom-description"
-                      data-testid="order-desk-custom-description"
-                      value={customDescription}
-                      onChange={(event) => setCustomDescription(event.target.value)}
-                      placeholder="Custom Dekton Insert"
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    />
-                  </label>
-                  <label className="block text-xs text-slate-500" htmlFor="order-desk-custom-price">
-                    Price
-                    <input
-                      id="order-desk-custom-price"
-                      data-testid="order-desk-custom-price"
-                      value={customPrice}
-                      onChange={(event) => setCustomPrice(event.target.value)}
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    />
-                  </label>
+              {/* Quote Items Section */}
+              <div className="mt-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900">Quote Items</h2>
+                    <p className="text-xs text-slate-500">
+                      Adjust quantities or override unit prices inline using Tab.
+                    </p>
+                  </div>
+                  {model.readOnly ? null : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        data-testid="order-desk-add-furniture"
+                        onClick={() => {
+                          setNotice(null);
+                          setFurnitureQuery("");
+                          setFurnitureResults([]);
+                          setAddModalOpen(true);
+                        }}
+                        disabled={pending}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60"
+                      >
+                        <Plus className="h-4 w-4" aria-hidden="true" />
+                        Add Furniture
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="order-desk-add-custom"
+                        onClick={() => setCustomOpen((open) => !open)}
+                        disabled={pending}
+                        className="rounded-full px-3.5 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        + Add Custom Item
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {customOpen && !model.readOnly ? (
+                  <div className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-3.5 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
+                    <label
+                      className="block text-xs text-slate-500"
+                      htmlFor="order-desk-custom-description"
+                    >
+                      Item Name
+                      <input
+                        id="order-desk-custom-description"
+                        data-testid="order-desk-custom-description"
+                        value={customDescription}
+                        onChange={(event) => setCustomDescription(event.target.value)}
+                        placeholder="Custom Dekton Insert"
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      />
+                    </label>
+                    <label className="block text-xs text-slate-500" htmlFor="order-desk-custom-price">
+                      Unit Price
+                      <input
+                        id="order-desk-custom-price"
+                        data-testid="order-desk-custom-price"
+                        value={customPrice}
+                        onChange={(event) => setCustomPrice(event.target.value)}
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      data-testid="order-desk-custom-save"
+                      onClick={addCustom}
+                      disabled={pending}
+                      className="self-end rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                    >
+                      {pendingAction === "custom" ? "Adding…" : "Add item"}
+                    </button>
+                  </div>
+                ) : null}
+
+                {lineItems.length === 0 ? (
+                  <p data-testid="order-desk-no-lines" className="mt-6 text-sm text-slate-600">
+                    This quote has no furniture items yet. Click &ldquo;Add Furniture&rdquo; above to
+                    get started.
+                  </p>
+                ) : (
+                  <div
+                    data-testid="order-desk-lines"
+                    className="mt-4 overflow-x-auto rounded-2xl border border-slate-100"
+                  >
+                    <table className="w-full min-w-[34rem] border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 bg-slate-50/70 text-xs font-medium uppercase tracking-wider text-slate-500">
+                          <th className="px-4 py-3">Item Name</th>
+                          <th className="w-28 px-3 py-3">Qty</th>
+                          <th className="w-36 px-3 py-3">Unit Price</th>
+                          <th className="w-32 px-4 py-3 text-right">Total</th>
+                          {model.readOnly ? null : <th className="w-28 px-3 py-3 text-right" />}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {lineItems.map((line) => {
+                          const extended = lineExtended(line.unitPrice, line.qty);
+                          return (
+                            <tr key={line.id} className="align-top">
+                              <td className="px-4 py-3.5">
+                                {model.readOnly ? (
+                                  <p className="font-medium text-slate-900">{line.description}</p>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={line.description}
+                                    onChange={(event) =>
+                                      store.updateLineDescription(line.id, event.target.value)
+                                    }
+                                    aria-label="Item Name"
+                                    className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 font-medium text-slate-900 outline-none transition hover:border-slate-200 focus:border-slate-400 focus:bg-white"
+                                  />
+                                )}
+                                <p className="mt-0.5 px-2 text-xs text-slate-400">
+                                  {line.lineKind === "custom" ? "Custom item" : line.sku} · Qty{" "}
+                                  {qtyLabel(line.qty)}
+                                </p>
+                                {line.priceError ? (
+                                  <p className="mt-1 px-2 text-xs text-amber-800">{line.priceError}</p>
+                                ) : null}
+                                {swapLineId === line.id ? (
+                                  <div
+                                    className="mt-3 rounded-xl bg-slate-50 p-3"
+                                    data-testid="order-desk-swap-search"
+                                  >
+                                    <label
+                                      className="block text-xs text-slate-500"
+                                      htmlFor={`swap-${line.id}`}
+                                    >
+                                      Replacement item
+                                    </label>
+                                    <input
+                                      id={`swap-${line.id}`}
+                                      value={swapQuery}
+                                      onChange={(event) => setSwapQuery(event.target.value)}
+                                      placeholder="Search by item name"
+                                      autoComplete="off"
+                                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
+                                    />
+                                    {searching ? (
+                                      <p className="mt-2 text-xs text-slate-500">Searching…</p>
+                                    ) : null}
+                                    {products.length > 0 ? (
+                                      <ul className="mt-2 divide-y divide-slate-200">
+                                        {products.map((product) => (
+                                          <li key={product.sku}>
+                                            <button
+                                              type="button"
+                                              data-testid={`order-desk-product-${product.sku}`}
+                                              onClick={() => chooseProduct(product)}
+                                              className="flex w-full items-center justify-between gap-3 py-2 text-left text-sm hover:text-slate-950"
+                                            >
+                                              <span>
+                                                <span className="font-medium text-slate-900">
+                                                  {product.name}
+                                                </span>
+                                                <span className="mt-0.5 block text-xs text-slate-500">
+                                                  {product.sku}
+                                                </span>
+                                              </span>
+                                              <span className="text-slate-700">
+                                                {money(product.unitPrice)}
+                                              </span>
+                                            </button>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                              </td>
+                              <td className="px-3 py-3.5">
+                                {model.readOnly ? (
+                                  <span className="text-slate-900">{qtyLabel(line.qty)}</span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    data-testid={`order-desk-qty-${line.id}`}
+                                    value={qtyInputValue(line.qty)}
+                                    onChange={(event) =>
+                                      store.updateLineQty(line.id, event.target.value)
+                                    }
+                                    aria-label={`Quantity for ${line.description}`}
+                                    className="w-20 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-900 outline-none focus:border-slate-900"
+                                  />
+                                )}
+                              </td>
+                              <td className="px-3 py-3.5">
+                                {model.readOnly ? (
+                                  <span className="font-medium text-slate-900">
+                                    {money(line.unitPrice)}
+                                  </span>
+                                ) : (
+                                  <div>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      data-testid={`order-desk-price-${line.id}`}
+                                      value={line.unitPrice ?? ""}
+                                      onChange={(event) =>
+                                        store.updateLinePrice(line.id, event.target.value)
+                                      }
+                                      placeholder="0.00"
+                                      aria-label={`Unit price for ${line.description}`}
+                                      className="w-28 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-900 outline-none focus:border-slate-900"
+                                    />
+                                    {line.priceOverridden ? (
+                                      <span
+                                        data-testid={`order-desk-custom-price-badge-${line.id}`}
+                                        className="mt-1 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-amber-200"
+                                      >
+                                        Custom Price
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3.5 text-right font-semibold text-slate-900">
+                                {extended != null ? moneyNumber(extended) : "—"}
+                              </td>
+                              {model.readOnly ? null : (
+                                <td className="px-3 py-3.5 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {line.holdId ? (
+                                      <button
+                                        type="button"
+                                        data-testid={`order-desk-replace-${line.id}`}
+                                        onClick={() => {
+                                          setNotice(null);
+                                          setPendingProduct(null);
+                                          setSwapQuery("");
+                                          setProducts([]);
+                                          setSwapLineId((current) =>
+                                            current === line.id ? null : line.id,
+                                          );
+                                        }}
+                                        disabled={pending}
+                                        className="rounded-full px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-60"
+                                      >
+                                        Replace
+                                      </button>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      aria-label={`Remove ${line.description}`}
+                                      data-testid={`order-desk-remove-${line.id}`}
+                                      onClick={() => {
+                                        setNotice(null);
+                                        setRemoveLineState(line);
+                                      }}
+                                      disabled={pending}
+                                      className="rounded-full p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-60"
+                                    >
+                                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                    </button>
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {orphanHoldId ? (
+                <div
+                  data-testid="order-desk-orphan-hold"
+                  className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
+                  role="status"
+                >
+                  <p className="text-sm text-amber-950">
+                    The new item is on this line. The previous hold is still active.
+                  </p>
                   <button
                     type="button"
-                    data-testid="order-desk-custom-save"
-                    onClick={addCustom}
+                    data-testid="order-desk-retry-release"
+                    onClick={retryPreviousHold}
                     disabled={pending}
-                    className="self-end rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                    className="mt-3 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
                   >
-                    {pendingAction === "custom" ? "Adding…" : "Add line"}
+                    {pendingAction === "release" ? "Releasing…" : "Release previous hold"}
                   </button>
                 </div>
               ) : null}
-            </div>
-          )}
 
-          {orphanHoldId ? (
-            <div
-              data-testid="order-desk-orphan-hold"
-              className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
-              role="status"
-            >
-              <p className="text-sm text-amber-950">
-                The new item is on this line. The previous hold is still active.
-              </p>
-              <button
-                type="button"
-                data-testid="order-desk-retry-release"
-                onClick={retryPreviousHold}
-                disabled={pending}
-                className="mt-3 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-              >
-                {pendingAction === "release" ? "Releasing…" : "Release previous hold"}
-              </button>
-            </div>
-          ) : null}
+              {model.suggestions.length > 0 ? (
+                <div data-testid="order-desk-suggestions" className="mt-6 border-t border-slate-100 pt-4">
+                  <p className={eyebrow}>Holds not on this draft</p>
+                  <ul className="mt-3 space-y-2">
+                    {model.suggestions.map((hold) => (
+                      <li key={hold.holdId} className="text-sm text-slate-700">
+                        {hold.sku} · Qty {qtyLabel(hold.qty)}
+                        <span className="block text-xs text-slate-500">{hold.note}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
 
-          {model.suggestions.length > 0 ? (
-            <div data-testid="order-desk-suggestions" className="mt-6 border-t border-slate-100 pt-4">
-              <p className={eyebrow}>Holds not on this draft</p>
-              <ul className="mt-3 space-y-2">
-                {model.suggestions.map((hold) => (
-                  <li key={hold.holdId} className="text-sm text-slate-700">
-                    {hold.sku} · Qty {qtyLabel(hold.qty)}
-                    <span className="block text-xs text-slate-500">{hold.note}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {notice ? (
-            <p role="status" data-testid="order-desk-notice" className="mt-4 text-sm text-slate-700">
-              {notice}
-            </p>
-          ) : null}
-
-          {model.readOnly ? null : (
-            <button
-              type="button"
-              data-testid="order-desk-save"
-              onClick={save}
-              disabled={pending}
-              className="mt-5 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-            >
-              {pendingAction === "save" ? "Saving…" : "Save draft"}
-            </button>
-          )}
-        </section>
-      ) : null}
-      </div>
-
-      {quote ? (
-        <aside
-          data-testid="order-desk-invoice"
-          className={`${card} h-fit px-5 py-5 lg:sticky lg:top-4`}
-        >
-          <div data-testid="order-desk-customer" className="grid gap-3">
-            <label className="block text-xs text-slate-500" htmlFor="order-desk-customer-name">
-              Name
-              {quote.readOnly ? (
-                <span className="mt-1 block text-sm font-medium text-slate-900">
-                  {customerName || "—"}
-                </span>
-              ) : (
-                <input
-                  id="order-desk-customer-name"
-                  data-testid="order-desk-customer-name"
-                  value={customerName}
-                  onChange={(event) => setCustomerName(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                />
-              )}
-            </label>
-            <label className="block text-xs text-slate-500" htmlFor="order-desk-customer-email">
-              Email
-              {quote.readOnly ? (
-                <span className="mt-1 block text-sm font-medium text-slate-900">
-                  {customerEmail || "—"}
-                </span>
-              ) : (
-                <input
-                  id="order-desk-customer-email"
-                  data-testid="order-desk-customer-email"
-                  type="email"
-                  value={customerEmail}
-                  onChange={(event) => setCustomerEmail(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                />
-              )}
-            </label>
-            <label className="block text-xs text-slate-500" htmlFor="order-desk-bill-to">
-              Bill To
-              {quote.readOnly ? (
-                <span className="mt-1 block whitespace-pre-wrap text-sm font-medium text-slate-900">
-                  {billToAddress || "—"}
-                </span>
-              ) : (
-                <textarea
-                  id="order-desk-bill-to"
-                  data-testid="order-desk-bill-to"
-                  value={billToAddress}
-                  onChange={(event) => setBillToAddress(event.target.value)}
-                  rows={3}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                />
-              )}
-            </label>
-            <label className="block text-xs text-slate-500" htmlFor="order-desk-ship-to">
-              Ship To
-              {quote.readOnly ? (
-                <span className="mt-1 block whitespace-pre-wrap text-sm font-medium text-slate-900">
-                  {shipToAddress || "—"}
-                </span>
-              ) : (
-                <textarea
-                  id="order-desk-ship-to"
-                  data-testid="order-desk-ship-to"
-                  value={shipToAddress}
-                  onChange={(event) => setShipToAddress(event.target.value)}
-                  rows={3}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                />
-              )}
-            </label>
-          </div>
-          <p className={`${eyebrow} mt-5`}>Invoice Summary</p>
-          <dl className="mt-4 space-y-3 text-sm">
-            <div>
-              <dt className="text-slate-500">Freight method</dt>
-              <dd className="font-medium text-slate-900" data-testid="order-desk-freight-method">
-                {freightMethodLabel(quote.freightMethod, quote.selectedCarrierCode)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Freight</dt>
-              <dd className="font-medium text-slate-900" data-testid="order-desk-freight-total">
-                {money(quote.freightTotal)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Merchandise</dt>
-              <dd className="font-medium text-slate-900">{money(quote.merchandiseTotal)}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Estimated delivery</dt>
-              <dd className="font-medium text-slate-900" data-testid="order-desk-promise-date">
-                {dateLabel(quote.promiseDate)}
-              </dd>
-            </div>
-          </dl>
-          <p className="mt-3 text-xs text-slate-500" data-testid="order-desk-promise-copy">
-            Estimated delivery date if executed by {dateLabel(executedDraft || quote.executedBy)}.
-          </p>
-          {quote.readOnly ? null : (
-            <label className="mt-3 block text-xs text-slate-500" htmlFor="order-desk-executed-by">
-              If executed by
-              <input
-                id="order-desk-executed-by"
-                data-testid="order-desk-executed-by"
-                type="date"
-                value={executedDraft}
-                onChange={(event) => setExecutedDraft(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-              />
-            </label>
-          )}
-          {quote.promiseTruckCode ? (
-            <p className="mt-2 text-xs text-slate-500">Truck {quote.promiseTruckCode}</p>
-          ) : null}
-          {promiseErrorLabel(quote.promiseError) ? (
-            <p className="mt-3 text-sm text-rose-700" role="status" data-testid="order-desk-promise-error">
-              {promiseErrorLabel(quote.promiseError)}
-            </p>
-          ) : null}
-          {quote.readOnly ? null : (
-            <div className="mt-4 border-t border-slate-100 pt-3">
-              <p className="text-xs text-slate-500">Manager date override</p>
-              <label className="mt-2 block text-xs text-slate-500" htmlFor="order-desk-promise-override">
-                Delivery date
-                <input
-                  id="order-desk-promise-override"
-                  data-testid="order-desk-promise-override"
-                  type="date"
-                  value={overrideDate}
-                  onChange={(event) => setOverrideDate(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                />
-              </label>
-              <label className="mt-2 block text-xs text-slate-500" htmlFor="order-desk-promise-reason">
-                Reason
-                <input
-                  id="order-desk-promise-reason"
-                  data-testid="order-desk-promise-reason"
-                  value={overrideReason}
-                  onChange={(event) => setOverrideReason(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                />
-              </label>
-              <button
-                type="button"
-                data-testid="order-desk-promise-save"
-                onClick={savePromiseOverride}
-                disabled={pending}
-                className="mt-3 rounded-full px-3 py-2 text-xs font-medium text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
-              >
-                Save override
-              </button>
-            </div>
-          )}
-          {quote.distanceMiles ? (
-            <p className="mt-3 text-xs text-slate-500">
-              {Number(quote.distanceMiles).toLocaleString("en-US")} miles from the dock
-            </p>
-          ) : null}
-          {rating ? (
-            <p className="mt-3 text-xs text-slate-500" role="status">
-              Rating freight…
-            </p>
-          ) : null}
-          {quote.freightError ? (
-            <p
-              className="mt-3 text-sm text-rose-700"
-              role="status"
-              data-testid="order-desk-freight-error"
-            >
-              {quote.freightError}
-            </p>
-          ) : null}
-          {quote.status === "sent" && !quote.ghlSyncError ? (
-            <p
-              className="mt-4 text-sm font-medium text-blue-800"
-              role="status"
-              data-testid="order-desk-frozen"
-            >
-              Quote Frozen. GHL Opportunity Updated.
-            </p>
-          ) : null}
-          {quote.ghlSyncError ? (
-            <p className="mt-4 text-sm text-rose-700" role="status" data-testid="order-desk-ghl-sync-error">
-              Quote frozen. GoHighLevel was not updated. {quote.ghlSyncError}
-            </p>
-          ) : null}
-          {quote.status === "draft" ? (
-            <div className="mt-5">
-              <button
-                type="button"
-                data-testid="order-desk-send"
-                onClick={freezeProposal}
-                disabled={!canSend || pending}
-                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-base font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {pendingAction === "send" ? "Sending…" : "Freeze & Send Proposal"}
-              </button>
-              {quote.opportunityId ? null : (
-                <p className="mt-2 text-xs text-slate-500">
-                  A GoHighLevel opportunity is required before Freeze & Send.
-                </p>
-              )}
-              {quote.opportunityId && !canSend ? (
-                <p className="mt-2 text-xs text-slate-500">
-                  A priced line, freight, a delivery date, and a five-digit ZIP are required.
+              {notice ? (
+                <p role="status" data-testid="order-desk-notice" className="mt-4 text-sm text-slate-700">
+                  {notice}
                 </p>
               ) : null}
-            </div>
+
+              {model.readOnly ? null : (
+                <div className="mt-5 flex items-center justify-end">
+                  <button
+                    type="button"
+                    data-testid="order-desk-save"
+                    onClick={save}
+                    disabled={pending}
+                    className="rounded-full bg-slate-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+                  >
+                    {pendingAction === "save" ? "Saving…" : "Save draft"}
+                  </button>
+                </div>
+              )}
+            </section>
           ) : null}
-          {quote.status === "sent" && !quote.closedOpportunity ? (
-            <button
-              type="button"
-              data-testid="order-desk-edit"
-              onClick={editSentQuote}
-              disabled={pending}
-              className="mt-3 w-full rounded-xl px-4 py-3 text-base font-semibold text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
-            >
-              {pendingAction === "edit" ? "Returning to draft…" : "Edit Quote"}
-            </button>
-          ) : null}
-          <div
-            data-testid="order-desk-financials"
-            className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"
+        </div>
+
+        {/* Financial Summary Sidebar */}
+        {quote ? (
+          <aside
+            data-testid="order-desk-invoice"
+            className={`${card} h-fit px-5 py-5 lg:sticky lg:top-4`}
           >
-            <p className={eyebrow}>Financial Summary</p>
-            <dl className="mt-3 space-y-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-slate-500">Subtotal</dt>
-                <dd className="font-medium text-slate-900" data-testid="order-desk-subtotal">
-                  {moneyNumber(subtotal)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Discount</dt>
-                <dd className="mt-1">
-                  {quote.readOnly ? (
-                    <span className="font-medium text-slate-900" data-testid="order-desk-discount-dollars">
-                      {discountType === "PERCENTAGE"
-                        ? `${discountDraft || "0"}% (${moneyNumber(summary.discount)})`
-                        : moneyNumber(summary.discount)}
-                    </span>
-                  ) : (
-                    <div className="flex items-center gap-2">
+            <div
+              data-testid="order-desk-financials"
+              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4"
+            >
+              <p className={eyebrow}>Financial Summary</p>
+              <dl className="mt-3 space-y-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500">Subtotal</dt>
+                  <dd className="font-medium text-slate-900" data-testid="order-desk-subtotal">
+                    {moneyNumber(financials.subtotal)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Discount</dt>
+                  <dd className="mt-1">
+                    {quote.readOnly ? (
+                      <span
+                        className="font-medium text-slate-900"
+                        data-testid="order-desk-discount-dollars"
+                      >
+                        {discountType === "PERCENTAGE"
+                          ? `${discountDraft || "0"}% (${moneyNumber(financials.discountDollars)})`
+                          : moneyNumber(financials.discountDollars)}
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="order-desk-discount"
+                          data-testid="order-desk-discount"
+                          value={discountDraft}
+                          onChange={(event) => store.setDiscountAmount(event.target.value)}
+                          inputMode="decimal"
+                          aria-label="Discount"
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                        />
+                        <button
+                          type="button"
+                          data-testid="order-desk-discount-percent"
+                          aria-pressed={discountType === "PERCENTAGE"}
+                          onClick={() => store.setDiscountType("PERCENTAGE")}
+                          className={`rounded-full px-3 py-2 text-xs font-medium ring-1 ${
+                            discountType === "PERCENTAGE"
+                              ? "bg-slate-900 text-white ring-slate-900"
+                              : "text-slate-700 ring-slate-200"
+                          }`}
+                        >
+                          %
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="order-desk-discount-flat"
+                          aria-pressed={discountType === "FLAT"}
+                          onClick={() => store.setDiscountType("FLAT")}
+                          className={`rounded-full px-3 py-2 text-xs font-medium ring-1 ${
+                            discountType === "FLAT"
+                              ? "bg-slate-900 text-white ring-slate-900"
+                              : "text-slate-700 ring-slate-200"
+                          }`}
+                        >
+                          $
+                        </button>
+                      </div>
+                    )}
+                    {quote.readOnly ? null : (
+                      <p
+                        className="mt-1 text-xs text-slate-500"
+                        data-testid="order-desk-discount-dollars"
+                      >
+                        {moneyNumber(financials.discountDollars)} off subtotal
+                      </p>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">
+                    <label htmlFor="order-desk-tax">Tax</label>
+                  </dt>
+                  <dd className="mt-1">
+                    {quote.readOnly ? (
+                      <span className="font-medium text-slate-900" data-testid="order-desk-tax">
+                        {moneyNumber(financials.tax)}
+                      </span>
+                    ) : (
                       <input
-                        id="order-desk-discount"
-                        data-testid="order-desk-discount"
-                        value={discountDraft}
-                        onChange={(event) => setDiscountDraft(event.target.value)}
+                        id="order-desk-tax"
+                        data-testid="order-desk-tax"
+                        value={taxDraft}
+                        onChange={(event) => store.setTaxAmount(event.target.value)}
                         inputMode="decimal"
-                        aria-label="Discount"
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
                       />
-                      <button
-                        type="button"
-                        data-testid="order-desk-discount-percent"
-                        aria-pressed={discountType === "PERCENTAGE"}
-                        onClick={() => setDiscountType("PERCENTAGE")}
-                        className={`rounded-full px-3 py-2 text-xs font-medium ring-1 ${
-                          discountType === "PERCENTAGE"
-                            ? "bg-slate-900 text-white ring-slate-900"
-                            : "text-slate-700 ring-slate-200"
-                        }`}
-                      >
-                        %
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="order-desk-discount-flat"
-                        aria-pressed={discountType === "FLAT"}
-                        onClick={() => setDiscountType("FLAT")}
-                        className={`rounded-full px-3 py-2 text-xs font-medium ring-1 ${
-                          discountType === "FLAT"
-                            ? "bg-slate-900 text-white ring-slate-900"
-                            : "text-slate-700 ring-slate-200"
-                        }`}
-                      >
-                        $
-                      </button>
-                    </div>
-                  )}
-                  {quote.readOnly ? null : (
-                    <p className="mt-1 text-xs text-slate-500" data-testid="order-desk-discount-dollars">
-                      {moneyNumber(summary.discount)} off subtotal
-                    </p>
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">
-                  <label htmlFor="order-desk-tax">Tax</label>
-                </dt>
-                <dd className="mt-1">
-                  {quote.readOnly ? (
-                    <span className="font-medium text-slate-900" data-testid="order-desk-tax">
-                      {moneyNumber(summary.tax)}
+                    )}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500">Delivery / Freight</dt>
+                  <dd className="font-medium text-slate-900" data-testid="order-desk-shipping">
+                    {moneyNumber(financials.shipping)}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
+                  <dt className="font-semibold text-slate-900">Grand Total</dt>
+                  <dd
+                    className="text-lg font-bold text-slate-900"
+                    data-testid="order-desk-grand-total"
+                  >
+                    {moneyNumber(financials.grandTotal)}
+                  </dd>
+                </div>
+
+                {/* Locked 50% Required Deposit */}
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                      <Lock className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+                      Required 50% Deposit
                     </span>
-                  ) : (
                     <input
-                      id="order-desk-tax"
-                      data-testid="order-desk-tax"
-                      value={taxDraft}
-                      onChange={(event) => setTaxDraft(event.target.value)}
-                      inputMode="decimal"
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      type="text"
+                      readOnly
+                      aria-label="Deposit percentage"
+                      data-testid="order-desk-deposit-pct"
+                      value={`${financials.depositPct}%`}
+                      className="w-16 cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-right text-xs font-semibold text-slate-600"
                     />
-                  )}
+                  </div>
+                  <div className="mt-2 flex items-baseline justify-between border-t border-slate-100 pt-2">
+                    <span className="text-xs text-slate-500">Due to Start Order</span>
+                    <span
+                      data-testid="order-desk-deposit-required"
+                      className="text-base font-semibold text-slate-900"
+                    >
+                      {moneyNumber(financials.depositRequired)}
+                    </span>
+                  </div>
+                </div>
+              </dl>
+
+              {/* Primary CTA Buttons */}
+              <div className="mt-4 space-y-2.5">
+                {quote.status === "draft" ? (
+                  <div>
+                    <button
+                      type="button"
+                      data-testid="order-desk-send"
+                      onClick={freezeProposal}
+                      disabled={!canSend || pending}
+                      className="w-full rounded-xl bg-blue-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {pendingAction === "send" ? "Sending…" : "Send Proposal to Customer"}
+                    </button>
+                    {quote.opportunityId ? null : (
+                      <p className="mt-2 text-xs text-slate-500">
+                        A GoHighLevel opportunity is required before sending.
+                      </p>
+                    )}
+                    {quote.opportunityId && !canSend ? (
+                      <p className="mt-2 text-xs text-slate-500">
+                        A priced item, delivery rate, estimated delivery date, and 5-digit ZIP are
+                        required.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {quote.status === "sent" && !quote.closedOpportunity ? (
+                  <button
+                    type="button"
+                    data-testid="order-desk-edit"
+                    onClick={editSentQuote}
+                    disabled={pending}
+                    className="w-full rounded-xl px-4 py-3 text-base font-semibold text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
+                  >
+                    {pendingAction === "edit" ? "Returning to draft…" : "Edit Quote"}
+                  </button>
+                ) : null}
+
+                <button
+                  type="button"
+                  data-testid="order-desk-download-estimate"
+                  onClick={() => downloadDocument("estimate")}
+                  disabled={pending}
+                  className="w-full rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 ring-1 ring-slate-200 transition hover:bg-slate-100 disabled:opacity-60"
+                >
+                  {pendingAction === "pdf" ? "Preparing PDF…" : "Preview Estimate"}
+                </button>
+
+                <button
+                  type="button"
+                  data-testid="order-desk-download-pdf"
+                  onClick={() => downloadDocument("package")}
+                  disabled={pending}
+                  className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {pendingAction === "package"
+                    ? "Building quote package…"
+                    : "Download Quote Package"}
+                </button>
+                <p className="text-xs text-slate-500">
+                  Estimate plus a specification page for every product, as one PDF.
+                </p>
+              </div>
+
+              {readinessError ? (
+                <p
+                  role="status"
+                  data-testid="order-desk-package-readiness-error"
+                  className="mt-3 text-xs text-rose-700"
+                >
+                  {readinessError}
+                </p>
+              ) : null}
+              {readiness && readiness.length > 0 ? (
+                <ul data-testid="order-desk-package-readiness" className="mt-3 space-y-1.5 text-xs">
+                  {readiness.map((entry) => (
+                    <li
+                      key={entry.sku}
+                      data-testid={`order-desk-package-readiness-${entry.sku}`}
+                      className="flex items-start gap-2"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`mt-1 inline-block h-2 w-2 shrink-0 rounded-full ${
+                          entry.issues.length === 0 ? "bg-emerald-500" : "bg-amber-400"
+                        }`}
+                      />
+                      <span className="text-slate-700">
+                        <span className="font-medium text-slate-900">{entry.productName}</span>
+                        {entry.issues.length === 0
+                          ? " · page ready"
+                          : ` · prints with a gap: ${entry.issueLabels.join(", ")}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+
+            {/* Delivery & Schedule Details */}
+            <p className={`${eyebrow} mt-5`}>Delivery Schedule</p>
+            <dl className="mt-3 space-y-2.5 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-slate-500">Delivery method</dt>
+                <dd
+                  className="font-medium text-slate-900"
+                  data-testid="order-desk-freight-method"
+                >
+                  {freightMethodLabel(quote.freightMethod, quote.selectedCarrierCode)}
                 </dd>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-slate-500">Shipping</dt>
-                <dd className="font-medium text-slate-900" data-testid="order-desk-shipping">
-                  {moneyNumber(summary.shipping)}
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-slate-500">Delivery rate</dt>
+                <dd className="font-medium text-slate-900" data-testid="order-desk-freight-total">
+                  {money(quote.freightTotal)}
                 </dd>
               </div>
-              <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
-                <dt className="font-medium text-slate-900">Total</dt>
-                <dd className="text-base font-semibold text-slate-900" data-testid="order-desk-grand-total">
-                  {moneyNumber(summary.total)}
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-slate-500">Estimated delivery</dt>
+                <dd className="font-medium text-slate-900" data-testid="order-desk-promise-date">
+                  {dateLabel(quote.promiseDate)}
                 </dd>
               </div>
             </dl>
-            <button
-              type="button"
-              data-testid="order-desk-download-pdf"
-              onClick={() => downloadDocument("package")}
-              disabled={pending}
-              className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition hover:bg-slate-800 disabled:opacity-60"
-            >
-              {pendingAction === "package" ? "Building quote package…" : "Download Quote Package"}
-            </button>
-            <p className="mt-2 text-xs text-slate-500">
-              Estimate plus a specification page for every product, as one PDF.
+            <p className="mt-2 text-xs text-slate-500" data-testid="order-desk-promise-copy">
+              Estimated delivery date if executed by {dateLabel(executedDraft || quote.executedBy)}.
             </p>
-            <button
-              type="button"
-              data-testid="order-desk-download-estimate"
-              onClick={() => downloadDocument("estimate")}
-              disabled={pending}
-              className="mt-2 w-full rounded-xl px-4 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 disabled:opacity-60"
-            >
-              {pendingAction === "pdf" ? "Preparing PDF…" : "Estimate only"}
-            </button>
-            {readinessError ? (
-              <p role="status" data-testid="order-desk-package-readiness-error" className="mt-3 text-xs text-rose-700">
-                {readinessError}
+            {quote.readOnly ? null : (
+              <label className="mt-3 block text-xs text-slate-500" htmlFor="order-desk-executed-by">
+                If executed by
+                <input
+                  id="order-desk-executed-by"
+                  data-testid="order-desk-executed-by"
+                  type="date"
+                  value={executedDraft}
+                  onChange={(event) => store.setExecutedBy(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                />
+              </label>
+            )}
+            {quote.promiseTruckCode ? (
+              <p className="mt-2 text-xs text-slate-500">Truck {quote.promiseTruckCode}</p>
+            ) : null}
+            {promiseErrorLabel(quote.promiseError) ? (
+              <p
+                className="mt-3 text-sm text-rose-700"
+                role="status"
+                data-testid="order-desk-promise-error"
+              >
+                {promiseErrorLabel(quote.promiseError)}
               </p>
             ) : null}
-            {readiness && readiness.length > 0 ? (
-              <ul data-testid="order-desk-package-readiness" className="mt-3 space-y-1.5 text-xs">
-                {readiness.map((entry) => (
-                  <li
-                    key={entry.sku}
-                    data-testid={`order-desk-package-readiness-${entry.sku}`}
-                    className="flex items-start gap-2"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`mt-1 inline-block h-2 w-2 shrink-0 rounded-full ${
-                        entry.issues.length === 0 ? "bg-emerald-500" : "bg-amber-400"
-                      }`}
-                    />
-                    <span className="text-slate-700">
-                      <span className="font-medium text-slate-900">{entry.productName}</span>
-                      {entry.issues.length === 0
-                        ? " · page ready"
-                        : ` · prints with a gap: ${entry.issueLabels.join(", ")}`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+            {quote.readOnly ? null : (
+              <div className="mt-4 border-t border-slate-100 pt-3">
+                <p className="text-xs text-slate-500">Manager date override</p>
+                <label
+                  className="mt-2 block text-xs text-slate-500"
+                  htmlFor="order-desk-promise-override"
+                >
+                  Delivery date
+                  <input
+                    id="order-desk-promise-override"
+                    data-testid="order-desk-promise-override"
+                    type="date"
+                    value={overrideDate}
+                    onChange={(event) => setOverrideDate(event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                  />
+                </label>
+                <label
+                  className="mt-2 block text-xs text-slate-500"
+                  htmlFor="order-desk-promise-reason"
+                >
+                  Reason
+                  <input
+                    id="order-desk-promise-reason"
+                    data-testid="order-desk-promise-reason"
+                    value={overrideReason}
+                    onChange={(event) => setOverrideReason(event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                  />
+                </label>
+                <button
+                  type="button"
+                  data-testid="order-desk-promise-save"
+                  onClick={savePromiseOverride}
+                  disabled={pending}
+                  className="mt-3 rounded-full px-3 py-2 text-xs font-medium text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
+                >
+                  Save override
+                </button>
+              </div>
+            )}
+            {quote.distanceMiles ? (
+              <p className="mt-3 text-xs text-slate-500">
+                {Number(quote.distanceMiles).toLocaleString("en-US")} miles from the dock
+              </p>
             ) : null}
-          </div>
-          {canSwitchFreight ? (
-            <div className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                data-testid="order-desk-freight-fleet"
-                onClick={() => chooseFreight("INTERNAL_FLEET")}
-                disabled={pending}
-                className="rounded-full px-3 py-2 text-xs font-medium text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
+            {rating ? (
+              <p className="mt-3 text-xs text-slate-500" role="status">
+                Calculating delivery…
+              </p>
+            ) : null}
+            {quote.freightError ? (
+              <p
+                className="mt-3 text-sm text-rose-700"
+                role="status"
+                data-testid="order-desk-freight-error"
               >
-                Use company truck
-              </button>
-              <button
-                type="button"
-                data-testid="order-desk-freight-ltl"
-                onClick={() => chooseFreight("PRIORITY1_LTL")}
-                disabled={pending}
-                className="rounded-full px-3 py-2 text-xs font-medium text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
+                {quote.freightError}
+              </p>
+            ) : null}
+            {quote.status === "sent" && !quote.ghlSyncError ? (
+              <p
+                className="mt-4 text-sm font-medium text-blue-800"
+                role="status"
+                data-testid="order-desk-frozen"
               >
-                Use LTL
-              </button>
-            </div>
-          ) : null}
-        </aside>
-      ) : null}
+                Quote Frozen. GHL Opportunity Updated.
+              </p>
+            ) : null}
+            {quote.ghlSyncError ? (
+              <p
+                className="mt-4 text-sm text-rose-700"
+                role="status"
+                data-testid="order-desk-ghl-sync-error"
+              >
+                Quote frozen. GoHighLevel was not updated. {quote.ghlSyncError}
+              </p>
+            ) : null}
+            {canSwitchFreight ? (
+              <div className="mt-4 flex flex-col gap-2">
+                <button
+                  type="button"
+                  data-testid="order-desk-freight-fleet"
+                  onClick={() => chooseFreight("INTERNAL_FLEET")}
+                  disabled={pending}
+                  className="rounded-full px-3 py-2 text-xs font-medium text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
+                >
+                  Use company truck
+                </button>
+                <button
+                  type="button"
+                  data-testid="order-desk-freight-ltl"
+                  onClick={() => chooseFreight("PRIORITY1_LTL")}
+                  disabled={pending}
+                  className="rounded-full px-3 py-2 text-xs font-medium text-slate-800 ring-1 ring-slate-200 disabled:opacity-60"
+                >
+                  Use LTL
+                </button>
+              </div>
+            ) : null}
+          </aside>
+        ) : null}
       </div>
 
-      {removeLine ? (
+      {/* Add Furniture Full-Screen Takeover Modal */}
+      {addModalOpen && quote ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="order-desk-add-furniture-title"
+          data-testid="order-desk-add-furniture-modal"
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-xs"
+        >
+          <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+            <div className={`${card} w-full max-w-2xl px-6 py-6`}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className={eyebrow}>Showroom Collection</p>
+                  <h2
+                    id="order-desk-add-furniture-title"
+                    className="mt-1 text-xl font-semibold text-slate-900"
+                  >
+                    Add Furniture
+                  </h2>
+                  <p className="mt-0.5 text-sm text-slate-500">
+                    Search by collection or piece name and click any item to add it to this quote.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close Add Furniture"
+                  onClick={() => setAddModalOpen(false)}
+                  className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+
+              <div className="relative mt-5">
+                <Search
+                  className="pointer-events-none absolute top-3.5 left-3.5 h-4 w-4 text-slate-400"
+                  aria-hidden="true"
+                />
+                <input
+                  type="search"
+                  data-testid="order-desk-furniture-search"
+                  value={furnitureQuery}
+                  onChange={(event) => setFurnitureQuery(event.target.value)}
+                  placeholder="Type a collection or piece name (e.g. Marlow Sofa, Club Chair)…"
+                  autoFocus
+                  autoComplete="off"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pr-4 pl-10 text-sm text-slate-900 outline-none focus:border-slate-900 focus:bg-white"
+                />
+              </div>
+
+              <div className="mt-4 max-h-96 overflow-y-auto">
+                {searchingFurniture ? (
+                  <p className="py-8 text-center text-sm text-slate-500">
+                    Finding matching pieces…
+                  </p>
+                ) : furnitureQuery.trim().length < 2 ? (
+                  <p className="py-8 text-center text-sm text-slate-500">
+                    Type at least 2 characters to search furniture pieces.
+                  </p>
+                ) : furnitureResults.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-slate-500">
+                    No matching furniture pieces found.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-slate-100">
+                    {furnitureResults.map((product) => (
+                      <li key={product.sku}>
+                        <button
+                          type="button"
+                          data-testid={`order-desk-add-item-${product.sku}`}
+                          onClick={() => addFurnitureItem(product)}
+                          disabled={pending}
+                          className="flex w-full items-center justify-between gap-4 rounded-xl px-3 py-3.5 text-left transition hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900">{product.name}</p>
+                            <p className="mt-0.5 text-xs text-slate-400">{product.sku}</p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-3">
+                            <span className="text-sm font-semibold text-slate-900">
+                              {money(product.unitPrice)}
+                            </span>
+                            <span className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">
+                              + Add
+                            </span>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {removeLineState ? (
         <div
           role="dialog"
           aria-modal="true"
@@ -1486,15 +1873,15 @@ export function OrderDeskPortal({
         >
           <div className={`${card} w-full max-w-md px-5 py-5`}>
             <h2 id="order-desk-remove-title" className="text-base font-semibold text-slate-900">
-              {removeLine.holdId ? "Release the previous hold?" : "Remove this line?"}
+              {removeLineState.holdId ? "Release the previous hold?" : "Remove this item?"}
             </h2>
             <p className="mt-2 text-sm text-slate-600">
-              {removeLine.sku} · Qty {qtyLabel(removeLine.qty)}
+              {removeLineState.description} · Qty {qtyLabel(removeLineState.qty)}
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setRemoveLine(null)}
+                onClick={() => setRemoveLineState(null)}
                 disabled={pending}
                 className="rounded-full px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 disabled:opacity-60"
               >
@@ -1509,7 +1896,7 @@ export function OrderDeskPortal({
               >
                 {pendingAction === "remove"
                   ? "Removing…"
-                  : removeLine.holdId
+                  : removeLineState.holdId
                     ? "Release hold and remove line"
                     : "Remove line"}
               </button>
@@ -1531,7 +1918,7 @@ export function OrderDeskPortal({
               Release previous hold and hold new item from inventory?
             </h2>
             <p className="mt-2 text-sm text-slate-600">
-              {swapLine.sku} becomes {pendingProduct.sku}. Both answers are required.
+              {swapLine.description} becomes {pendingProduct.name}. Both answers are required.
             </p>
             <label className="mt-4 block text-xs text-slate-500" htmlFor="order-desk-swap-qty">
               Quantity

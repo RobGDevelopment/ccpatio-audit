@@ -23,6 +23,10 @@ type ResolvedOpportunity = {
   id: string;
   name: string;
   contactId: string;
+  customerName?: string | null;
+  customerEmail?: string | null;
+  billToAddress?: string | null;
+  shipToAddress?: string | null;
 };
 
 export type DraftVersionResult =
@@ -91,6 +95,7 @@ function toOrderDeskQuote(
     promiseError: quote.promise_error,
     ghlSyncError: quote.ghl_sync_error,
     voidReason: quote.void_reason,
+    depositPct: quote.deposit_pct ?? "50.00",
     lines: lines.map((line) => ({
       id: line.id,
       lineNo: line.line_no,
@@ -227,6 +232,10 @@ async function insertDraft(
         ghl_user_id: actor.ghlUserId,
         ghl_user_name: actor.ghlUserName,
         ghl_user_email: actor.ghlUserEmail,
+        customer_name: opportunity.customerName ?? null,
+        customer_email: opportunity.customerEmail ?? null,
+        bill_to_address: opportunity.billToAddress ?? null,
+        ship_to_address: opportunity.shipToAddress ?? null,
         status: "draft",
         dest_zip: destZip,
         executed_by: phoenixToday(),

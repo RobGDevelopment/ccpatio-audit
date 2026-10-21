@@ -21,6 +21,16 @@
     "src/lib/freight/fedex-freight.ts",
     "scripts/ops/verify-fedex-rate.ts",
     "scripts/qa/verify-fedex-sandbox.ts",
-    "tests/phase13-fedex-freight.test.ts"
+    "tests/phase13-fedex-freight.test.ts",
+    "src/store/useQuoteStore.ts",
+    "src/server/actions/quote.ts",
+    "src/server/actions/order-desk.ts",
+    "src/server/quotes/view.ts",
+    "src/server/quotes/draft.ts",
+    "src/server/quotes/load-order-desk.ts",
+    "src/server/quotes/send-quote.ts",
+    "src/lib/embed-actor-params.ts",
+    "src/app/embed/order-desk/page.tsx",
+    "src/app/embed/order-desk/OrderDeskPortal.tsx"
   ]
 }

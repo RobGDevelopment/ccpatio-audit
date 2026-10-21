@@ -86,6 +86,7 @@ export type OrderDeskQuote = {
   promiseError: string | null;
   ghlSyncError: string | null;
   voidReason: string | null;
+  depositPct?: string | null;
   lines: OrderDeskLine[];
   suggestions: OrderDeskSuggestion[];
 };
