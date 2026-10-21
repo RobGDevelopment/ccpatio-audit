@@ -36,7 +36,7 @@ export default async function MissionControlPage() {
           </div>
           <div className="flex items-center gap-4">
             <a
-              href="/mission-control/training"
+              href="/embed/training"
               className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-200 hover:text-slate-900"
             >
               Digital Training Hub

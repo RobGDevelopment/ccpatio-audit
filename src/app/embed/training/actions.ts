@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireMissionControlAuth } from "../actions";
 
 export interface TrainingSignOffInput {
   employeeName: string;
@@ -26,8 +25,6 @@ export type TrainingSignOffResult =
 export async function submitTrainingSignOffAction(
   input: TrainingSignOffInput,
 ): Promise<TrainingSignOffResult> {
-  await requireMissionControlAuth();
-
   const trimmedName = (input.employeeName ?? "").trim();
   if (trimmedName.length < 2) {
     return {
@@ -47,7 +44,7 @@ export async function submitTrainingSignOffAction(
   const shortHash = Math.random().toString(36).substring(2, 8).toUpperCase();
   const confirmationId = `SOP-ACK-${now.toISOString().slice(0, 10).replace(/-/g, "")}-${shortHash}`;
 
-  revalidatePath("/mission-control/training");
+  revalidatePath("/embed/training");
 
   return {
     ok: true,

@@ -12,7 +12,7 @@ import {
   noticeError,
   noticeSuccess,
 } from "@/components/mission-control/soft-ui";
-import { submitTrainingSignOffAction } from "@/app/mission-control/training/actions";
+import { submitTrainingSignOffAction } from "@/app/embed/training/actions";
 import {
   Activity,
   AlertTriangle,

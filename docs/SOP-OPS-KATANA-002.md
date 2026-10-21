@@ -7,7 +7,7 @@
 | **Version** | `v2.1 (Interactive Video Training Edition — Phases 1, 2 & 3)` |
 | **Supersedes** | `CC_Patio_Katana_Factory_Manual_v1.docx (Phase 1 Crawl)` |
 | **Middleware Stack** | CC Patio MDM Hub (Next.js 16.3 / Supabase / Inngest / Katana MRP / QuickBooks Online / GoHighLevel) |
-| **Digital Portal** | `/mission-control/training` (Interactive Tablet Training Hub) |
+| **Digital Portal** | `/embed/training` (Interactive Tablet Training Hub) |
 | **Effective Date** | October 2026 |
 | **Target Audience** | Receiving Dock, Warehouse Managers, Floor Foremen, Line Operators (Welders, Seamstresses, Finishers), Shipping & Fulfillment Managers |
 
