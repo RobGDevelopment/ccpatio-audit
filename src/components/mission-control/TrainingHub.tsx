@@ -22,10 +22,11 @@ import {
   ClipboardList,
   Clock,
   DollarSign,
+  ExternalLink,
   FileCheck2,
   ListChecks,
   PackageCheck,
-  PlayCircle,
+  Play,
   ShieldAlert,
   ShoppingCart,
   Smartphone,
@@ -34,8 +35,8 @@ import {
 } from "lucide-react";
 
 export type TrainingRoleId =
-  | "receiving_dock"
   | "procurement_manager"
+  | "receiving_dock"
   | "warehouse_manager"
   | "floor_foreman"
   | "line_operator"
@@ -57,7 +58,6 @@ interface RoleConfig {
   subtitle: string;
   videoTitle: string;
   videoWatchNote: string;
-  embedUrl: string;
   watchUrl: string;
   steps: StepItem[];
   wipOverview?: {
@@ -84,67 +84,12 @@ interface RoleConfig {
   checklist: string[];
 }
 
+/**
+ * Ordered strictly to match the physical factory lifecycle:
+ * 1. Procurement Manager -> 2. Receiving Dock -> 3. Warehouse Manager ->
+ * 4. Floor Foreman -> 5. Line Operator -> 6. Shipping & Fulfillment
+ */
 const ROLES: RoleConfig[] = [
-  {
-    id: "receiving_dock",
-    label: "Receiving Dock",
-    katanaTab: "Katana BUY Screen",
-    subtitle: "Inbound Raw Materials, Freight Inspection & PO Receiving",
-    videoTitle: "Katana Purchasing & Receiving Full Demo",
-    videoWatchNote: "Watch from 2:00 – 4:30",
-    embedUrl: "https://www.youtube.com/embed/fxxbW0robyA?start=120&end=270",
-    watchUrl: "https://www.youtube.com/watch?v=fxxbW0robyA",
-    steps: [
-      {
-        title: "1. Collect Documentation",
-        detail:
-          "Obtain the physical Packing Slip and Bill of Lading (BOL) from the freight driver before signing for the delivery.",
-        cheatSheetAction: "Grab physical Packing Slip & BOL from the freight driver before signing.",
-      },
-      {
-        title: "2. Open the Buy Screen",
-        detail:
-          'Log into Katana on the Receiving Station desktop/tablet and tap the "Buy" tab in the top navigation bar.',
-        cheatSheetAction: 'Open Katana -> Tap the "Buy" tab.',
-      },
-      {
-        title: "3. Locate the Purchase Order (PO)",
-        detail:
-          "Search by PO Number (e.g., PO-PA-...) or filter by Supplier Name (e.g., Sunbrella / Glen Raven, Tiger Drylac, Dekton) and tap the row to open line items.",
-        cheatSheetAction: "Search matching PO # or Supplier Name and open the PO.",
-      },
-      {
-        title: "4. Physical Count & Quality Inspection",
-        detail:
-          "Inspect all pallets, extrusion tubes, and fabric rolls for freight damage prior to releasing the driver. Verify that the Unit of Measure (UoM) on the packing slip matches Katana (Linear Feet vs. Sticks, Yards vs. Rolls, Pounds vs. Boxes).",
-        cheatSheetAction: "Count physical units unloaded & verify Unit of Measure (UoM) matches Katana.",
-      },
-      {
-        title: '5. Update Status to "Received" (or "Partially received")',
-        detail:
-          'If 100% of the items arrived undamaged and match expected quantities, tap the Delivery Status dropdown and select "Received".',
-        cheatSheetAction:
-          'Select "Received" (if 100% complete) OR "Partially received" (enter exact quantity unloaded today).',
-        subBullets: [
-          'Partial Delivery / Freight Damage: Do NOT tap full "Received". Select "Partially received" and enter the exact physical quantity unloaded in good condition today.',
-          "Record the carrier PRO number and any damage notes in the PO Additional Info field.",
-        ],
-      },
-    ],
-    accountingNotice: {
-      title: "ACCOUNTING AUTOMATION NOTICE (PO RECEIVING)",
-      body: 'The exact moment you tap "Received" on a Purchase Order, our middleware automatically creates an Accounts Payable (A/P) Vendor Bill in QuickBooks Online and debits Raw Materials Inventory so ownership can pay the vendor.',
-      bullets: [
-        'NEVER mark a PO as "Received" based on an emailed invoice or carrier tracking notice alone.',
-        'ONLY mark "Received" when the physical material is sitting on the CC Patio receiving dock and has been counted.',
-      ],
-    },
-    checklist: [
-      "Inspect all inbound freight for damage before signing carrier BOL.",
-      'Match every delivery to an open PO on the "Buy" screen.',
-      'Mark full deliveries "Received" or short deliveries "Partially received" within 15 minutes of unloading.',
-    ],
-  },
   {
     id: "procurement_manager",
     label: "Procurement Manager",
@@ -152,8 +97,7 @@ const ROLES: RoleConfig[] = [
     subtitle: "Shortage Detection, Vendor Minimums & Purchase Order Generation",
     videoTitle: "Katana Purchasing & Receiving Full Demo (Creating POs)",
     videoWatchNote: "Watch from 0:00 – 2:00",
-    embedUrl: "https://www.youtube.com/embed/fxxbW0robyA?start=0&end=120",
-    watchUrl: "https://www.youtube.com/watch?v=fxxbW0robyA",
+    watchUrl: "https://www.youtube.com/watch?v=fxxbW0robyA&t=0s",
     steps: [
       {
         title: "1. Open the Stock Screen",
@@ -187,17 +131,76 @@ const ROLES: RoleConfig[] = [
       },
     ],
     accountingNotice: {
-      title: "ACCOUNTING AUTOMATION NOTICE (PURCHASE ORDERS & A/P VALUATION)",
-      body: "Purchase Order unit costs in Katana establish the capitalized inventory valuation used when the Receiving Dock marks the PO Received and pushes the A/P Vendor Bill into QuickBooks Online.",
+      title: "ACCOUNTING AUTOMATION NOTICE (PURCHASE ORDERS & VENDOR BILLING)",
+      body: "Purchase Order unit costs in Katana set the exact material prices used when the Receiving Dock marks the PO Received and automatically creates the Vendor Bill in QuickBooks Online.",
       bullets: [
-        "Always verify the unit cost and UoM conversion on the PO before issuing it to the vendor.",
-        "Never create duplicate POs for a Path A shortage that has already auto-generated a PO-PA-* document.",
+        "Always verify the unit cost and unit of measure on the PO before sending it to the vendor.",
+        "Never create duplicate POs for a custom showroom shortage that has already auto-generated a PO-PA-* document.",
       ],
     },
     checklist: [
       "Review the Stock -> Materials screen every morning at 7:30 AM for negative Available balances.",
-      "Verify vendor MOQs and standard roll/bundle pack sizes before issuing POs.",
-      "Update Expected Arrival Dates on open POs so the Floor Foreman has accurate material ETAs.",
+      "Verify vendor minimums and standard roll/bundle pack sizes before issuing POs.",
+      "Update Expected Arrival Dates on open POs so the Floor Foreman has accurate material arrival dates.",
+    ],
+  },
+  {
+    id: "receiving_dock",
+    label: "Receiving Dock",
+    katanaTab: "Katana BUY Screen",
+    subtitle: "Inbound Raw Materials, Freight Inspection & PO Receiving",
+    videoTitle: "Katana Purchasing & Receiving Full Demo (Receiving Freight)",
+    videoWatchNote: "Watch from 2:00 – 4:30",
+    watchUrl: "https://www.youtube.com/watch?v=fxxbW0robyA&t=120s",
+    steps: [
+      {
+        title: "1. Collect Documentation",
+        detail:
+          "Obtain the physical Packing Slip and Bill of Lading (BOL) from the freight driver before signing for the delivery.",
+        cheatSheetAction: "Grab physical Packing Slip & BOL from the freight driver before signing.",
+      },
+      {
+        title: "2. Open the Buy Screen",
+        detail:
+          'Log into Katana on the Receiving Station desktop/tablet and tap the "Buy" tab in the top navigation bar.',
+        cheatSheetAction: 'Open Katana -> Tap the "Buy" tab.',
+      },
+      {
+        title: "3. Locate the Purchase Order (PO)",
+        detail:
+          "Search by PO Number (e.g., PO-PA-...) or filter by Supplier Name (e.g., Sunbrella / Glen Raven, Tiger Drylac, Dekton) and tap the row to open line items.",
+        cheatSheetAction: "Search matching PO # or Supplier Name and open the PO.",
+      },
+      {
+        title: "4. Physical Count & Quality Inspection",
+        detail:
+          "Inspect all pallets, extrusion tubes, and fabric rolls for freight damage prior to releasing the driver. Verify that the Unit of Measure on the packing slip matches Katana (Linear Feet vs. Sticks, Yards vs. Rolls, Pounds vs. Boxes).",
+        cheatSheetAction: "Count physical units unloaded & verify Unit of Measure matches Katana.",
+      },
+      {
+        title: '5. Update Status to "Received" (or "Partially received")',
+        detail:
+          'If 100% of the items arrived undamaged and match expected quantities, tap the Delivery Status dropdown and select "Received".',
+        cheatSheetAction:
+          'Select "Received" (if 100% complete) OR "Partially received" (enter exact quantity unloaded today).',
+        subBullets: [
+          'Partial Delivery / Freight Damage: Do NOT tap full "Received". Select "Partially received" and enter the exact physical quantity unloaded in good condition today.',
+          "Record the carrier tracking number and any damage notes in the PO Additional Info field.",
+        ],
+      },
+    ],
+    accountingNotice: {
+      title: "ACCOUNTING AUTOMATION NOTICE (PO RECEIVING)",
+      body: 'The exact moment you tap "Received" on a Purchase Order, Our Custom Software automatically creates a Vendor Bill in QuickBooks Online and updates Raw Materials Inventory so ownership can pay the vendor.',
+      bullets: [
+        'NEVER mark a PO as "Received" based on an emailed invoice or carrier tracking notice alone.',
+        'ONLY mark "Received" when the physical material is sitting on the CC Patio receiving dock and has been counted.',
+      ],
+    },
+    checklist: [
+      "Inspect all inbound freight for damage before signing carrier BOL.",
+      'Match every delivery to an open PO on the "Buy" screen.',
+      'Mark full deliveries "Received" or short deliveries "Partially received" within 15 minutes of unloading.',
     ],
   },
   {
@@ -207,8 +210,7 @@ const ROLES: RoleConfig[] = [
     subtitle: "Weekly Cycle Counting, Stock Adjustments & Showroom Hold Integrity",
     videoTitle: "Katana Inventory Management Tutorial",
     videoWatchNote: "Watch Full Video",
-    embedUrl: "https://www.youtube.com/embed/c-JWBGA1mcY",
-    watchUrl: "https://www.youtube.com/watch?v=c-JWBGA1mcY",
+    watchUrl: "https://www.youtube.com/watch?v=c-JWBGA1mcY&t=0s",
     steps: [
       {
         title: "1. Open the Stock Screen",
@@ -218,7 +220,7 @@ const ROLES: RoleConfig[] = [
       {
         title: "2. Verify Current System Stock",
         detail:
-          'Filter between Products (FIN-*, ASM-*) and Materials (FAB-*, FRM-*, PWD-*, RM-*). Review "In stock" (physical shelf qty) vs. "Committed" (allocated to open MOs/SOs) and "Available".',
+          'Filter between Products (FIN-*, ASM-*) and Materials (FAB-*, FRM-*, PWD-*, RM-*). Review "In stock" (physical shelf qty) vs. "Committed" (allocated to open orders) and "Available".',
         cheatSheetAction: 'Filter Materials (FAB-*, FRM-*, PWD-*) and review the "In stock" column.',
       },
       {
@@ -247,8 +249,8 @@ const ROLES: RoleConfig[] = [
       },
     ],
     accountingNotice: {
-      title: "ACCOUNTING AUTOMATION NOTICE (INVENTORY SHRINKAGE & VALUATION)",
-      body: "Stock Adjustments directly modify our perpetual inventory sub-ledger quantities and valuation in QuickBooks Online. Any single stock adjustment exceeding $250.00 in material value requires dual sign-off from the Factory Plant Manager in the Reason field.",
+      title: "ACCOUNTING AUTOMATION NOTICE (QUICKBOOKS INVENTORY UPDATE)",
+      body: "Stock Adjustments directly update our live inventory counts and dollar values in QuickBooks Online. Any single stock adjustment exceeding $250.00 in material value requires dual sign-off from the Factory Plant Manager in the Reason field.",
     },
     checklist: [
       "Execute Friday afternoon physical cycle counts on the Stock screen via Stock Adjustments.",
@@ -260,26 +262,25 @@ const ROLES: RoleConfig[] = [
     id: "floor_foreman",
     label: "Floor Foreman",
     katanaTab: "Katana MAKE & TASKS Screen",
-    subtitle: "Master Build Queue, WIP Overview, Work Center Filtering & MO Completion",
+    subtitle: "Master Build Queue, Live Floor Progress, Work Center Filtering & Order Completion",
     videoTitle: "How Katana Smart Manufacturing Works (Production & Scheduling)",
     videoWatchNote: "Watch from 0:45 – 2:20",
-    embedUrl: "https://www.youtube.com/embed/OwoSsyzTtZg?start=45&end=140",
-    watchUrl: "https://www.youtube.com/watch?v=OwoSsyzTtZg",
+    watchUrl: "https://www.youtube.com/watch?v=OwoSsyzTtZg&t=45s",
     steps: [
       {
         title: "1. Priority Ranking on the Master Build Queue (Make -> Schedule)",
         detail:
-          'Tap the "Make" tab. Manufacturing Orders (MOs) at the top of the list (Rank 1, 2, 3...) are the highest priority. Verify that custom Path A orders (PA-*) have their signed 3D Digital Cut Card link attached.',
+          'Tap the "Make" tab. Manufacturing Orders (MOs) at the top of the list (Rank 1, 2, 3...) are the highest priority. Verify that custom showroom orders (PA-*) have their 3D Digital Cut Card link attached.',
         cheatSheetAction:
           'Open "Make" -> "Schedule". Top rows = highest priority. Verify 3D Cut Cards are attached.',
       },
       {
         title: "2. Never Release Red Material Orders to the Floor",
-        detail: 'Check the "Ingredients" column before releasing any MO to operators:',
+        detail: 'Check the "Ingredients" column before releasing any order to operators:',
         cheatSheetAction:
           'Check "Ingredients" column: ONLY release Green (In stock) orders. Hold Yellow/Red orders.',
         subBullets: [
-          "🟢 In stock (Green): All extrusions, fabrics, powder, and sub-assemblies are on hand. Safe to start.",
+          "🟢 In stock (Green): All extrusions, fabrics, powder, and Pre-Built Parts are on hand. Safe to start.",
           "🟡 Expected (Yellow): Waiting on an open Purchase Order delivery. Hold until Receiving marks the PO Received.",
           "🔴 Not available (Red): Material shortage detected. Do NOT start.",
           "3D Extraction Variance Rule: If the 3D Engine extracted a material quantity incorrectly, adjust the 'Ingredients' on the specific Manufacturing Order (NEVER edit the Master BOM).",
@@ -292,8 +293,8 @@ const ROLES: RoleConfig[] = [
         cheatSheetAction:
           'Open "Make" -> "Tasks", filter by physical Work Center (Resource), and bulk-assign tasks to operators.',
         subBullets: [
-          "Load-Level Welding Pods: Standard tracks default to FAB POD A. Re-route overflow MOs to FAB POD B or FAB POD C to balance shift capacity.",
-          "Make-to-Stock (MTS) Sub-Assemblies: During off-peak hours, create MTS Manufacturing Orders on the Make screen for approved ASM-*-FRAME and ASM-*-CUSH SKUs so pre-built frames/cushions sit in stock.",
+          "Load-Level Welding Pods: Standard tracks default to FAB POD A. Re-route overflow orders to FAB POD B or FAB POD C to balance shift capacity.",
+          "Make-to-Stock Pre-Built Parts: During off-peak hours, create Make-to-Stock Manufacturing Orders on the Make screen for approved ASM-*-FRAME and ASM-*-CUSH Pre-Built Parts so frames and cushions sit ready in stock.",
         ],
       },
       {
@@ -301,14 +302,14 @@ const ROLES: RoleConfig[] = [
         detail:
           'Monitor the "Production Status" column on the Make -> Schedule screen as it transitions across Not Started -> Work in Progress -> Done. As line operators tap Start, Pause, and Finish on their workstation tablets, this column updates live—allowing you to view real-time factory operations and bottleneck stations from your desk without walking the floor.',
         cheatSheetAction:
-          'Read the "Production Status" column (Not Started -> Work in Progress -> Done) to monitor live floor WIP without walking the floor.',
+          'Read the "Production Status" column (Not Started -> Work in Progress -> Done) to monitor live floor progress without walking the floor.',
       },
       {
         title: '5. Final Quality Control & Closing Manufacturing Orders ("Done")',
         detail:
           'When all operations on a Manufacturing Order are finished and the piece passes Final Quality Control and Assembly & Packaging, change the MO Status dropdown to "Done".',
         cheatSheetAction:
-          'After Final QC passes, change the MO Status dropdown to "Done" to capitalize Finished Goods in QBO.',
+          'After Final QC passes, change the MO Status dropdown to "Done" to trigger the QuickBooks Inventory Update.',
       },
     ],
     wipOverview: {
@@ -333,7 +334,7 @@ const ROLES: RoleConfig[] = [
           status: "Done",
           badgeColor: "bg-emerald-100 text-emerald-900 ring-emerald-300",
           meaning:
-            "All operations and Final QC are complete. Raw materials and labor are automatically capitalized into QBO Finished Goods Inventory.",
+            "All operations and Final QC are complete. Raw materials and labor automatically trigger a QuickBooks Inventory Update into Finished Goods.",
         },
       ],
     },
@@ -406,10 +407,10 @@ const ROLES: RoleConfig[] = [
       },
     ],
     accountingNotice: {
-      title: "ACCOUNTING AUTOMATION NOTICE (MO COMPLETION & WIP CAPITALIZATION)",
-      body: 'The exact moment a Manufacturing Order is marked "Done", our middleware fires the katana/manufacturing_order.done webhook and automatically posts a balanced Journal Entry in QuickBooks Online moving Raw Materials, Packaging, and Absorbed Direct Labor into the Finished Goods Asset account.',
+      title: "ACCOUNTING AUTOMATION NOTICE (MO COMPLETION & QUICKBOOKS INVENTORY UPDATE)",
+      body: 'The exact moment a Manufacturing Order is marked "Done", Our Custom Software automatically posts a QuickBooks Inventory Update moving Raw Materials, Packaging, and Tracked Labor into Finished Goods Inventory.',
       bullets: [
-        "If the 3D Engine extracted a material quantity with a variance, adjust the Ingredients on the specific MO—NEVER edit the Master Product Recipe.",
+        "If the 3D Engine extracted a material quantity with a variance, adjust the Ingredients on the specific Manufacturing Order—NEVER edit the Master Product Recipe.",
       ],
     },
     checklist: [
@@ -427,7 +428,6 @@ const ROLES: RoleConfig[] = [
     subtitle: "PIN/QR Login, Digital 3D Cut Cards, Start/Pause/Finish Timers & Scrap Reporting",
     videoTitle: "How Katana Smart Manufacturing Works (Shop Floor App UI)",
     videoWatchNote: "Watch from 2:20 – End for Shop Floor UI",
-    embedUrl: "https://www.youtube.com/embed/OwoSsyzTtZg?start=140",
     watchUrl: "https://www.youtube.com/watch?v=OwoSsyzTtZg&t=140s",
     steps: [
       {
@@ -451,7 +451,7 @@ const ROLES: RoleConfig[] = [
       {
         title: "4. Mandatory Time Tracking (START / PAUSE / FINISH)",
         detail:
-          "Every operation is engineered with a Standard Minute Value (SMV), and our accounting engine requires your exact start and stop timestamps:",
+          "Every operation has a target build time, and our accounting system requires your exact start and stop timestamps:",
         cheatSheetAction:
           "Tap 🟢 START when beginning work, 🟡 PAUSE for any stop > 3 mins, and 🔵 FINISH when 100% complete.",
         subBullets: [
@@ -463,14 +463,14 @@ const ROLES: RoleConfig[] = [
       {
         title: "5. Reporting Actual Material Usage & Scrap",
         detail:
-          'When tapping Finish, confirm the "Actual Consumed" materials. If you had to re-cut an aluminum tube, pull extra Sunbrella yardage due to a flaw, or if the 3D Engine extracted a slightly off quantity, you MUST update the Actual Consumed quantity on the tablet so inventory and QBO costing stay 100% accurate.',
+          'When tapping Finish, confirm the "Actual Consumed" materials. If you had to re-cut an aluminum tube, pull extra Sunbrella yardage due to a flaw, or if the 3D Engine extracted a slightly off quantity, you MUST update the Actual Consumed quantity on the tablet so inventory and QuickBooks stay 100% accurate.',
         cheatSheetAction:
           'Update "Actual Consumed" on your tablet before finishing if you recut a tube, wasted fabric, or spotted a 3D extraction variance.',
       },
     ],
     accountingNotice: {
-      title: "ACCOUNTING AUTOMATION NOTICE (SHOP FLOOR TIME TRACKING & LABOR ABSORPTION)",
-      body: "Accurate Start, Pause, and Finish times on the Katana Shop Floor App are MANDATORY. Our middleware uses your exact tracked minutes to auto-create Direct Labor Absorption and Factory Overhead Journal Entries in QuickBooks Online.",
+      title: "ACCOUNTING AUTOMATION NOTICE (SHOP FLOOR TIME TRACKING & LABOR)",
+      body: "Accurate Start, Pause, and Finish times on the Katana Shop Floor App are MANDATORY. Our Custom Software uses your exact tracked minutes to automatically record Direct Labor costs in QuickBooks Online.",
       bullets: [
         'NEVER "batch-click" Start and Finish back-to-back at the end of your shift (0m 02s corrupts labor costing).',
         "NEVER leave a task timer running overnight.",
@@ -488,11 +488,10 @@ const ROLES: RoleConfig[] = [
     id: "shipping_fulfillment",
     label: "Shipping & Fulfillment",
     katanaTab: "Katana SELL Screen",
-    subtitle: "Outbound Staging, Marking Orders Packed/Delivered & Revenue/COGS Recognition",
+    subtitle: "Outbound Staging, Marking Orders Packed/Delivered & QuickBooks Accounting",
     videoTitle: "How Katana Smart Manufacturing Works (Fulfillment & Delivery)",
     videoWatchNote: "Watch Full Overview",
-    embedUrl: "https://www.youtube.com/embed/OwoSsyzTtZg",
-    watchUrl: "https://www.youtube.com/watch?v=OwoSsyzTtZg",
+    watchUrl: "https://www.youtube.com/watch?v=OwoSsyzTtZg&t=0s",
     steps: [
       {
         title: "1. Open the Sell Screen & Filter Ready Orders",
@@ -522,18 +521,18 @@ const ROLES: RoleConfig[] = [
         cheatSheetAction:
           'Step 4: Record BOL/PRO tracking and change status to "Delivered" the moment the truck departs.',
         subBullets: [
-          "Strict Warning: Marking a Sales Order Delivered instantly recognizes Revenue and COGS in QuickBooks Online.",
+          "Strict Warning: Marking a Sales Order Delivered instantly records final Sales Revenue and product costs in QuickBooks Online.",
           "Never mark an order Delivered before the truck physically leaves the dock or while a customer balance hold is unresolved.",
         ],
       },
     ],
     accountingNotice: {
-      title: "ACCOUNTING AUTOMATION NOTICE (SO DELIVERY, REVENUE & COGS)",
-      body: "Marking a Sales Order Delivered instantly recognizes Revenue and COGS in QuickBooks Online.",
+      title: "ACCOUNTING AUTOMATION NOTICE (ORDER DELIVERY & QUICKBOOKS UPDATE)",
+      body: "Marking a Sales Order Delivered instantly records final Sales Revenue and product costs in QuickBooks Online, deducts the finished piece from inventory, and marks the customer order complete in GoHighLevel.",
       bullets: [
-        "1. QBO Revenue Recognition: Converts unearned Customer Deposit Liability into earned Product & Freight Revenue (85 Sales of Product Income).",
-        "2. QBO COGS Recognition: Moves the exact manufactured cost out of Finished Goods Asset and into Cost of Goods Sold (5000 COGS).",
-        "3. GoHighLevel Sync: Automatically updates the customer's GHL Opportunity stage.",
+        "1. QuickBooks Sales Update: Finalizes the customer invoice and applies their deposit.",
+        "2. QuickBooks Inventory Update: Moves the finished furniture piece out of warehouse inventory.",
+        "3. GoHighLevel Update: Automatically notifies the showroom team that the order has shipped.",
       ],
     },
     checklist: [
@@ -546,7 +545,7 @@ const ROLES: RoleConfig[] = [
 ];
 
 export function TrainingHub() {
-  const [selectedRole, setSelectedRole] = useState<TrainingRoleId>("receiving_dock");
+  const [selectedRole, setSelectedRole] = useState<TrainingRoleId>("procurement_manager");
   const [viewMode, setViewMode] = useState<TrainingViewMode>("full");
 
   // Accountability Sign-off Form State
@@ -598,12 +597,12 @@ export function TrainingHub() {
   return (
     <div className="space-y-8" data-testid="training-hub">
       {/* Top Mode Bar: Full Training vs. Cheat Sheet Toggle */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-slate-200/80">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
         <div>
-          <div className={eyebrow}>Shop Floor Tablet Portal • SOP-OPS-KATANA-002 v2.1</div>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          <div className={eyebrow}>Shop Floor Tablet Portal • SOP-OPS-KATANA-002 v2.2</div>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             Katana MRP Digital Training Hub
-          </h2>
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
             Select your workstation role below or switch between Full Video Training and Quick
             Action Cheat Sheet mode.
@@ -611,7 +610,7 @@ export function TrainingHub() {
         </div>
 
         <div
-          className="inline-flex items-center rounded-2xl bg-slate-100 p-1.5 ring-1 ring-slate-200"
+          className="inline-flex items-center rounded-2xl bg-slate-100 p-1.5"
           role="group"
           aria-label="Training view mode toggle"
           data-testid="training-mode-toggle"
@@ -627,7 +626,7 @@ export function TrainingHub() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <BookOpen className="h-4 w-4 text-[#C5A059]" />
+            <BookOpen className="h-4 w-4 text-[#D4AF37]" />
             Full Training
           </button>
           <button
@@ -641,7 +640,7 @@ export function TrainingHub() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <ListChecks className="h-4 w-4 text-[#C5A059]" />
+            <ListChecks className="h-4 w-4 text-[#D4AF37]" />
             Cheat Sheet
           </button>
         </div>
@@ -651,11 +650,11 @@ export function TrainingHub() {
       <section
         aria-label="Critical System Rules"
         data-testid="golden-rules-banner"
-        className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-2 ring-amber-300/80"
+        className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
       >
         <GoldBeam />
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 pb-4">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700 ring-1 ring-amber-200">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
             <ShieldAlert className="h-6 w-6" />
           </span>
           <div>
@@ -667,26 +666,23 @@ export function TrainingHub() {
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-3">
-          <div className="rounded-xl bg-rose-50/70 p-4 ring-1 ring-rose-200">
+          <div className="rounded-xl bg-rose-50/70 p-4" data-testid="golden-rule-1">
             <div className="text-xs font-bold uppercase tracking-wider text-rose-800">
               RULE #1: NO MANUAL ORDERS
             </div>
             <p className="mt-1.5 text-sm font-semibold text-slate-900">
               NEVER MANUALLY CREATE SALES ORDERS IN KATANA.
             </p>
-            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+            <p className="mt-1 text-sm leading-relaxed text-slate-700">
               Sales Orders (<code className="font-mono text-xs font-semibold text-slate-800">PA-*</code>,{" "}
               <code className="font-mono text-xs font-semibold text-slate-800">GHL-*</code>,{" "}
               <code className="font-mono text-xs font-semibold text-slate-800">WOO-*</code>) are
-              automatically pushed by our MDM Hub the exact second a customer pays their{" "}
+              automatically pushed by Our Custom Software the exact second a customer pays their{" "}
               <span className="font-semibold text-slate-900">50% deposit</span>.
             </p>
           </div>
 
-          <div
-            className="rounded-xl bg-amber-50/70 p-4 ring-1 ring-amber-200"
-            data-testid="golden-rule-2"
-          >
+          <div className="rounded-xl bg-amber-50/70 p-4" data-testid="golden-rule-2">
             <div className="text-xs font-bold uppercase tracking-wider text-amber-800">
               RULE #2: NO MANUAL RECIPES (BOMs)
             </div>
@@ -697,56 +693,59 @@ export function TrainingHub() {
               If the 3D Engine extracts data incorrectly, DO NOT edit the Master BOM. The Foreman
               must adjust the &apos;Ingredients&apos; on the specific Manufacturing Order, OR the
               Line Operator must report &apos;Actual Consumed&apos; amounts on their tablet. Report
-              all 3D errors to the MDM Admin.
+              all 3D errors to the System Admin.
             </p>
           </div>
 
-          <div className="rounded-xl bg-emerald-50/70 p-4 ring-1 ring-emerald-200">
+          <div className="rounded-xl bg-emerald-50/70 p-4" data-testid="golden-rule-3">
             <div className="text-xs font-bold uppercase tracking-wider text-emerald-800">
-              RULE #3: REAL-TIME QBO LEDGER
+              RULE #3: LIVE QUICKBOOKS ACCOUNTING
             </div>
             <p className="mt-1.5 text-sm font-semibold text-slate-900">
-              EVERY BUTTON CLICK FIRES REAL MONEY INTO QUICKBOOKS ONLINE.
+              EVERY CLICK UPDATES QUICKBOOKS LIVE.
             </p>
-            <p className="mt-1 text-sm leading-relaxed text-slate-600">
-              Changing a status to{" "}
-              <span className="font-semibold text-slate-900">Received</span>,{" "}
-              <span className="font-semibold text-slate-900">Finish</span>,{" "}
-              <span className="font-semibold text-slate-900">Done</span>, or{" "}
-              <span className="font-semibold text-slate-900">Delivered</span> immediately posts
-              live Bills, Journal Entries, and COGS in QBO.
+            <p className="mt-1 text-sm leading-relaxed text-slate-700">
+              Every button you click in Katana automatically updates our live accounting in
+              QuickBooks. Never click Done or Received until the physical work is actually finished.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Tablet-First 6-Role Selector Grid */}
+      {/* Tablet-First 6-Role Selector Grid with Elegant Beam & Soft UI */}
       <section aria-label="Select Factory Role" className={card}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className={eyebrow}>Step 1 — Touch Your Workstation Role (6 Factory Roles)</div>
-            <h3 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+          <div className="w-full sm:w-auto">
+            <div className={eyebrow}>Step 1 — Touch Your Workstation Role (Factory Lifecycle Order)</div>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
               Select Your Factory Role
-            </h3>
+            </h2>
+            {/* Task 3: The Elegant Animated Champagne Gold Beam */}
+            <div
+              data-testid="role-heading-beam"
+              className="mt-2 h-[2px] w-full bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent bg-[length:200%_auto] animate-pulse"
+            />
           </div>
           <span className={`${badge} bg-slate-100 text-slate-700 ring-slate-200`}>
-            {viewMode === "cheat_sheet" ? "⚡ Cheat Sheet Mode Active" : "📺 Full Training Mode Active"}
+            {viewMode === "cheat_sheet"
+              ? "⚡ Cheat Sheet Mode Active"
+              : "📺 Full Training Mode Active"}
           </span>
         </div>
 
         <div
-          className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
           role="tablist"
           aria-label="Factory roles"
           data-testid="role-selector-grid"
         >
-          {ROLES.map((role) => {
+          {ROLES.map((role, index) => {
             const isSelected = role.id === selectedRole;
             const Icon =
-              role.id === "receiving_dock"
-                ? Truck
-                : role.id === "procurement_manager"
-                  ? ShoppingCart
+              role.id === "procurement_manager"
+                ? ShoppingCart
+                : role.id === "receiving_dock"
+                  ? Truck
                   : role.id === "warehouse_manager"
                     ? Boxes
                     : role.id === "floor_foreman"
@@ -763,18 +762,18 @@ export function TrainingHub() {
                 aria-selected={isSelected}
                 data-testid={`role-btn-${role.id}`}
                 onClick={() => handleRoleChange(role.id)}
-                className={`group flex min-h-[104px] flex-col justify-between rounded-2xl p-5 text-left transition-all ${
+                className={`group flex min-h-[112px] flex-col justify-between rounded-2xl p-5 text-left backdrop-blur-md transition-all duration-200 hover:scale-[1.02] ${
                   isSelected
-                    ? "bg-slate-900 text-white shadow-lg ring-2 ring-[#C5A059]"
-                    : "bg-slate-50/90 text-slate-900 ring-1 ring-slate-200 hover:bg-white hover:shadow-md"
+                    ? "bg-slate-900 text-white shadow-[0_12px_36px_-6px_rgba(212,175,55,0.45)]"
+                    : "bg-slate-900/5 text-slate-900 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:bg-slate-900/10 hover:shadow-[0_10px_28px_rgb(212,175,55,0.18)]"
                 }`}
               >
                 <div className="flex w-full items-center justify-between">
                   <span
-                    className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${
+                    className={`inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
                       isSelected
-                        ? "bg-white/15 text-[#C5A059]"
-                        : "bg-white text-slate-700 ring-1 ring-slate-200"
+                        ? "bg-white/15 text-[#D4AF37]"
+                        : "bg-white/90 text-slate-700 shadow-xs"
                     }`}
                   >
                     <Icon className="h-6 w-6" />
@@ -782,11 +781,11 @@ export function TrainingHub() {
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${
                       isSelected
-                        ? "bg-[#C5A059]/20 text-[#E5C687]"
-                        : "bg-slate-200/70 text-slate-600"
+                        ? "bg-[#D4AF37]/20 text-[#F3E5AB]"
+                        : "bg-white/80 text-slate-600"
                     }`}
                   >
-                    {role.katanaTab}
+                    {index + 1}. {role.katanaTab}
                   </span>
                 </div>
                 <div className="mt-4">
@@ -813,51 +812,44 @@ export function TrainingHub() {
       >
         {viewMode === "full" ? (
           <>
-            {/* Embedded Video Training Card (Only in Full Training Mode) */}
-            <div className={card} data-testid="video-training-card">
+            {/* Task 1: Video Lesson Card (Replaces YouTube iframe to prevent Error 150) */}
+            <a
+              href={activeRole.watchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="video-lesson-card"
+              className="group relative block overflow-hidden rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-200 hover:scale-[1.01] hover:shadow-[0_14px_40px_-8px_rgba(212,175,55,0.35)]"
+            >
               <GoldBeam />
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-[#C5A059] ring-1 ring-amber-200">
-                    <PlayCircle className="h-6 w-6" />
+              <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+                <div className="flex items-start gap-4 sm:items-center">
+                  <span className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[#D4AF37] shadow-[0_8px_24px_rgba(212,175,55,0.3)] transition-transform duration-200 group-hover:scale-105">
+                    <Play className="h-8 w-8 fill-current ml-0.5" />
                   </span>
                   <div>
-                    <div className={eyebrow}>📺 Required Video Training — {activeRole.label}</div>
-                    <h3 className="text-xl font-bold tracking-tight text-slate-900">
-                      {activeRole.videoTitle}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={eyebrow}>📺 Video Lesson • {activeRole.label}</span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-0.5 text-xs font-semibold text-amber-900">
+                        <Clock className="h-3.5 w-3.5 text-[#D4AF37]" />
+                        {activeRole.videoWatchNote}
+                      </span>
+                    </div>
+                    <h3 className="mt-1 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+                      Watch the Katana Video Tutorial
                     </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {activeRole.videoTitle} — Opens directly in YouTube at the exact timestamp for
+                      your station.
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-1.5 text-xs font-semibold text-amber-900 ring-1 ring-amber-200">
-                    <Clock className="h-4 w-4 text-amber-700" />
-                    {activeRole.videoWatchNote}
-                  </span>
-                  <a
-                    href={activeRole.watchUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 hover:text-slate-900"
-                  >
-                    Open on YouTube ↗
-                  </a>
+                <div className="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-xs transition group-hover:bg-slate-800 sm:self-center">
+                  <span>Watch on YouTube</span>
+                  <ExternalLink className="h-4 w-4 text-[#D4AF37]" />
                 </div>
               </div>
-
-              <div className="mt-5 overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200">
-                <div className="aspect-video w-full">
-                  <iframe
-                    key={activeRole.embedUrl}
-                    src={activeRole.embedUrl}
-                    title={`${activeRole.label} — ${activeRole.videoTitle}`}
-                    className="h-full w-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                </div>
-              </div>
-            </div>
+            </a>
 
             {/* Full Step-by-Step Instructions Card */}
             <div className={card} data-testid="full-training-card">
@@ -873,7 +865,7 @@ export function TrainingHub() {
                 {activeRole.steps.map((step) => (
                   <div
                     key={step.title}
-                    className="rounded-2xl bg-slate-50/90 p-5 ring-1 ring-slate-200/80"
+                    className="rounded-2xl bg-slate-50/90 p-5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]"
                   >
                     <h4 className="text-lg font-bold text-slate-900">{step.title}</h4>
                     <p className="mt-2 text-base leading-relaxed text-slate-700">{step.detail}</p>
@@ -884,7 +876,7 @@ export function TrainingHub() {
                             key={bullet}
                             className="flex items-start gap-2.5 text-base text-slate-700"
                           >
-                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#C5A059]" />
+                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#D4AF37]" />
                             <span>{bullet}</span>
                           </li>
                         ))}
@@ -898,11 +890,11 @@ export function TrainingHub() {
               {activeRole.wipOverview && (
                 <div
                   data-testid="foreman-wip-overview"
-                  className="mt-6 rounded-2xl bg-slate-50 p-6 ring-2 ring-slate-300"
+                  className="mt-6 rounded-2xl bg-slate-50 p-6 shadow-xs"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-900 shadow-sm ring-1 ring-slate-200">
-                      <Activity className="h-5 w-5 text-[#C5A059]" />
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-900 shadow-xs">
+                      <Activity className="h-5 w-5 text-[#D4AF37]" />
                     </span>
                     <div>
                       <div className={eyebrow}>{activeRole.wipOverview.subtitle}</div>
@@ -918,7 +910,7 @@ export function TrainingHub() {
                     {activeRole.wipOverview.stages.map((stage, idx) => (
                       <div
                         key={stage.status}
-                        className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200"
+                        className="rounded-xl bg-white p-4 shadow-xs"
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -941,7 +933,7 @@ export function TrainingHub() {
 
               {/* Foreman Work Center Reference Table */}
               {activeRole.workCenters && (
-                <div className="mt-6 overflow-hidden rounded-2xl ring-1 ring-slate-200">
+                <div className="mt-6 overflow-hidden rounded-2xl bg-slate-50/70 shadow-xs">
                   <div className="bg-slate-100 px-5 py-3.5">
                     <h4 className="text-sm font-bold uppercase tracking-wider text-slate-800">
                       Locked CC Patio Physical Work Centers (Katana Resources Filter)
@@ -962,7 +954,7 @@ export function TrainingHub() {
                           <tr key={wc.resource} className="hover:bg-slate-50/80">
                             <td className="px-4 py-3 font-medium text-slate-700">{wc.zone}</td>
                             <td className="px-4 py-3">
-                              <code className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-900 ring-1 ring-slate-200">
+                              <code className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-900">
                                 {wc.resource}
                               </code>
                             </td>
@@ -979,10 +971,10 @@ export function TrainingHub() {
               {/* Accounting Automation Notice Callout */}
               <div
                 data-testid="accounting-automation-notice"
-                className="mt-6 rounded-2xl bg-amber-50/90 p-6 ring-2 ring-[#C5A059]"
+                className="mt-6 rounded-2xl bg-amber-50/90 p-6 shadow-[0_8px_24px_rgba(212,175,55,0.15)]"
               >
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-amber-800 shadow-sm ring-1 ring-amber-200">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-amber-800 shadow-xs">
                     <DollarSign className="h-6 w-6" />
                   </span>
                   <h4 className="text-base font-extrabold uppercase tracking-wide text-amber-950">
@@ -1011,13 +1003,13 @@ export function TrainingHub() {
         ) : (
           /* Condensed High-Contrast Cheat Sheet View (Videos Hidden) */
           <div
-            className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-2 ring-slate-900"
+            className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]"
             data-testid="cheat-sheet-card"
           >
             <GoldBeam />
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-slate-900 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
               <div>
-                <div className="text-xs font-extrabold uppercase tracking-widest text-[#C5A059]">
+                <div className="text-xs font-extrabold uppercase tracking-widest text-[#D4AF37]">
                   ⚡ CONDENSED SHOP FLOOR CHEAT SHEET • {activeRole.katanaTab}
                 </div>
                 <h3 className="mt-1 text-2xl font-black tracking-tight text-slate-900">
@@ -1033,7 +1025,7 @@ export function TrainingHub() {
               {activeRole.steps.map((step, index) => (
                 <li
                   key={step.title}
-                  className="flex items-start gap-4 rounded-xl bg-slate-50 p-4 ring-2 ring-slate-900/15"
+                  className="flex items-start gap-4 rounded-xl bg-slate-50 p-4 shadow-xs"
                 >
                   <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm font-extrabold text-white">
                     {index + 1}
@@ -1045,7 +1037,7 @@ export function TrainingHub() {
               ))}
             </ul>
 
-            <div className="mt-6 rounded-xl bg-amber-50 p-4 ring-2 ring-[#C5A059]">
+            <div className="mt-6 rounded-xl bg-amber-50 p-4">
               <p className="text-base font-extrabold text-amber-950">
                 💰 {activeRole.accountingNotice.title}:{" "}
                 <span className="font-semibold">{activeRole.accountingNotice.body}</span>
@@ -1057,7 +1049,7 @@ export function TrainingHub() {
         {/* Daily Shift Checklist + Operator Accountability Sign-Off Card */}
         <div className={card}>
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
               <ClipboardList className="h-5 w-5" />
             </span>
             <div>
@@ -1080,14 +1072,14 @@ export function TrainingHub() {
             ))}
           </ul>
 
-          {/* Task 4: Operator / Manager Accountability Sign-Off Form */}
+          {/* Operator / Manager Accountability Sign-Off Form */}
           <div
             className="mt-8 border-t border-slate-200 pt-6"
             data-testid="accountability-signoff-section"
           >
             <div className="flex items-center gap-3">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-800 ring-1 ring-slate-200">
-                <FileCheck2 className="h-5 w-5 text-[#C5A059]" />
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-800">
+                <FileCheck2 className="h-5 w-5 text-[#D4AF37]" />
               </span>
               <div>
                 <div className={eyebrow}>Mandatory SOP Acknowledgment</div>
@@ -1121,7 +1113,7 @@ export function TrainingHub() {
 
               <label
                 htmlFor="training-qbo-ack"
-                className="flex cursor-pointer items-center gap-3 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200 transition hover:bg-slate-100/80"
+                className="flex cursor-pointer items-center gap-3 rounded-xl bg-slate-50 p-4 transition hover:bg-slate-100/80"
               >
                 <input
                   id="training-qbo-ack"
@@ -1129,7 +1121,7 @@ export function TrainingHub() {
                   type="checkbox"
                   checked={acknowledgedQbo}
                   onChange={(e) => setAcknowledgedQbo(e.target.checked)}
-                  className="h-5 w-5 rounded border-slate-300 text-slate-900 focus:ring-[#C5A059]"
+                  className="h-5 w-5 rounded border-slate-300 text-slate-900 focus:ring-[#D4AF37]"
                   data-testid="signoff-qbo-checkbox"
                 />
                 <span className="text-base font-semibold text-slate-900">
