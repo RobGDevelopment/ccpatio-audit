@@ -17,10 +17,12 @@ export type QuoteFinancialBreakdown = {
   subtotal: number;
   discountDollars: number;
   tax: number;
+  taxAmount: number;
   shipping: number;
   grandTotal: number;
   depositPct: number;
   depositRequired: number;
+  requiredDeposit: number;
   balanceDue: number;
 };
 
@@ -40,28 +42,50 @@ function toLineDrafts(lines: OrderDeskLine[]): QuoteLineDraft[] {
 }
 
 export function selectQuoteFinancials(state: {
-  lineItems: QuoteLineDraft[];
+  lineItems?: QuoteLineDraft[];
+  quoteItems?: QuoteLineDraft[];
   discountAmount: string;
   discountType: DiscountType;
-  taxAmount: string;
-  freightTotal: string | null;
+  taxAmount?: string;
+  taxRate?: number | string;
+  freightTotal?: string | null;
+  shippingCost?: string | number | null;
   depositPct: number;
 }): QuoteFinancialBreakdown {
+  const items = state.lineItems ?? state.quoteItems ?? [];
   const subtotal = roundMoney(
-    state.lineItems.reduce(
+    items.reduce(
       (sum, item) => sum + (lineExtended(item.unitPrice, item.qty) ?? 0),
       0,
     ),
   );
   const rawDiscount = Number(state.discountAmount.replace(/[$,\s]/g, ""));
-  const rawTax = Number(state.taxAmount.replace(/[$,\s]/g, ""));
-  const rawShipping = state.freightTotal != null ? Number(state.freightTotal) : 0;
+  const rawTax = Number((state.taxAmount ?? "0").replace(/[$,\s]/g, ""));
+  const rawTaxRate = state.taxRate != null ? Number(String(state.taxRate).replace(/[%,\s]/g, "")) : 0;
+  const shippingSource =
+    state.shippingCost !== undefined && state.shippingCost !== null && String(state.shippingCost).trim() !== ""
+      ? state.shippingCost
+      : state.freightTotal;
+  const rawShipping =
+    shippingSource != null ? Number(String(shippingSource).replace(/[$,\s]/g, "")) : 0;
+
+  const validDiscount = Number.isFinite(rawDiscount) && rawDiscount >= 0 ? rawDiscount : 0;
+  const computedDiscount = discountDollars(subtotal, validDiscount, state.discountType);
+  const netBeforeTax = Math.max(0, roundMoney(subtotal - computedDiscount));
+  const rateTax =
+    Number.isFinite(rawTaxRate) && rawTaxRate > 0
+      ? roundMoney((netBeforeTax * rawTaxRate) / 100)
+      : 0;
+  const effectiveTax =
+    Number.isFinite(rawTax) && rawTax > 0
+      ? rawTax
+      : rateTax;
 
   const summary = quoteGrandTotal({
     subtotal,
-    discountAmount: Number.isFinite(rawDiscount) && rawDiscount >= 0 ? rawDiscount : 0,
+    discountAmount: validDiscount,
     discountType: state.discountType,
-    tax: Number.isFinite(rawTax) && rawTax >= 0 ? rawTax : 0,
+    tax: effectiveTax,
     shipping: Number.isFinite(rawShipping) && rawShipping >= 0 ? rawShipping : 0,
   });
 
@@ -74,16 +98,14 @@ export function selectQuoteFinancials(state: {
 
   return {
     subtotal,
-    discountDollars: discountDollars(
-      subtotal,
-      Number.isFinite(rawDiscount) && rawDiscount >= 0 ? rawDiscount : 0,
-      state.discountType,
-    ),
+    discountDollars: computedDiscount,
     tax: summary.tax,
+    taxAmount: summary.tax,
     shipping: summary.shipping,
     grandTotal: summary.total,
     depositPct: pct,
     depositRequired,
+    requiredDeposit: depositRequired,
     balanceDue,
   };
 }
@@ -99,11 +121,15 @@ export interface QuoteStoreState {
   destZip: string;
   executedBy: string;
   depositPct: number;
+  depositUnlocked: boolean;
   discountAmount: string;
   discountType: DiscountType;
+  taxRate: number;
   taxAmount: string;
+  shippingCost: string;
   freightTotal: string | null;
   lineItems: QuoteLineDraft[];
+  quoteItems: QuoteLineDraft[];
   hydrateModel: (model: OrderDeskModel) => void;
   patchQuoteState: (updater: (current: OrderDeskQuote) => OrderDeskQuote) => void;
   setVersion: (version: number) => void;
@@ -113,9 +139,13 @@ export interface QuoteStoreState {
   setShipToAddress: (shipToAddress: string) => void;
   setDestZip: (destZip: string) => void;
   setExecutedBy: (executedBy: string) => void;
+  setDepositPct: (depositPct: number) => void;
+  setDepositUnlocked: (depositUnlocked: boolean) => void;
   setDiscountAmount: (discountAmount: string) => void;
   setDiscountType: (discountType: DiscountType) => void;
+  setTaxRate: (taxRate: number) => void;
   setTaxAmount: (taxAmount: string) => void;
+  setShippingCost: (shippingCost: string) => void;
   updateLineQty: (lineId: string, qty: string) => void;
   updateLinePrice: (lineId: string, unitPrice: string) => void;
   updateLineDescription: (lineId: string, description: string) => void;
@@ -136,11 +166,15 @@ function buildStateFromModel(model: OrderDeskModel, prev?: QuoteStoreState) {
       destZip: "",
       executedBy: "",
       depositPct: 50,
+      depositUnlocked: false,
       discountAmount: "0",
       discountType: "FLAT" as DiscountType,
+      taxRate: 0,
       taxAmount: "0",
+      shippingCost: "",
       freightTotal: null,
       lineItems: [],
+      quoteItems: [],
     };
   }
 
@@ -160,6 +194,22 @@ function buildStateFromModel(model: OrderDeskModel, prev?: QuoteStoreState) {
       ? parsedDeposit
       : 50;
 
+  const lineItems = toLineDrafts(model.lines).map((draft) => {
+    const prior = prevDefaults.get(draft.id);
+    if (!prior) return draft;
+    const defaultPrice = prior.defaultUnitPrice ?? draft.unitPrice;
+    const overridden =
+      prior.priceOverridden ||
+      (defaultPrice != null &&
+        draft.unitPrice != null &&
+        Number(defaultPrice) !== Number(draft.unitPrice));
+    return {
+      ...draft,
+      defaultUnitPrice: defaultPrice,
+      priceOverridden: overridden,
+    };
+  });
+
   return {
     model,
     quoteId: model.quoteId,
@@ -171,25 +221,15 @@ function buildStateFromModel(model: OrderDeskModel, prev?: QuoteStoreState) {
     destZip: model.destZip ?? "",
     executedBy: model.executedBy ?? "",
     depositPct,
+    depositUnlocked: prev?.quoteId === model.quoteId ? prev.depositUnlocked : false,
     discountAmount: amountInputText(model.discountAmount),
     discountType: model.discountType,
+    taxRate: prev?.quoteId === model.quoteId ? prev.taxRate : 0,
     taxAmount: amountInputText(model.taxAmount),
+    shippingCost: model.freightTotal ?? "",
     freightTotal: model.freightTotal,
-    lineItems: toLineDrafts(model.lines).map((draft) => {
-      const prior = prevDefaults.get(draft.id);
-      if (!prior) return draft;
-      const defaultPrice = prior.defaultUnitPrice ?? draft.unitPrice;
-      const overridden =
-        prior.priceOverridden ||
-        (defaultPrice != null &&
-          draft.unitPrice != null &&
-          Number(defaultPrice) !== Number(draft.unitPrice));
-      return {
-        ...draft,
-        defaultUnitPrice: defaultPrice,
-        priceOverridden: overridden,
-      };
-    }),
+    lineItems,
+    quoteItems: lineItems,
   };
 }
 
@@ -210,6 +250,7 @@ export const useQuoteStore = create<QuoteStoreState>((set) => ({
         destZip: nextQuote.destZip ?? state.destZip,
         executedBy: nextQuote.executedBy ?? state.executedBy,
         freightTotal: nextQuote.freightTotal,
+        shippingCost: nextQuote.freightTotal ?? state.shippingCost,
       };
     }),
 
@@ -225,9 +266,41 @@ export const useQuoteStore = create<QuoteStoreState>((set) => ({
   setShipToAddress: (shipToAddress) => set({ shipToAddress }),
   setDestZip: (destZip) => set({ destZip }),
   setExecutedBy: (executedBy) => set({ executedBy }),
+  setDepositPct: (depositPct) =>
+    set({
+      depositPct:
+        Number.isFinite(depositPct) && depositPct >= 0 && depositPct <= 100
+          ? depositPct
+          : 50,
+    }),
+  setDepositUnlocked: (depositUnlocked) => set({ depositUnlocked }),
   setDiscountAmount: (discountAmount) => set({ discountAmount }),
   setDiscountType: (discountType) => set({ discountType }),
+  setTaxRate: (taxRate) =>
+    set((state) => {
+      const rate = Number.isFinite(taxRate) && taxRate >= 0 ? taxRate : 0;
+      const subtotal = roundMoney(
+        state.lineItems.reduce(
+          (sum, item) => sum + (lineExtended(item.unitPrice, item.qty) ?? 0),
+          0,
+        ),
+      );
+      const rawDiscount = Number(state.discountAmount.replace(/[$,\s]/g, ""));
+      const validDiscount = Number.isFinite(rawDiscount) && rawDiscount >= 0 ? rawDiscount : 0;
+      const computedDiscount = discountDollars(subtotal, validDiscount, state.discountType);
+      const netBeforeTax = Math.max(0, roundMoney(subtotal - computedDiscount));
+      const computedTax = roundMoney((netBeforeTax * rate) / 100);
+      return {
+        taxRate: rate,
+        taxAmount: String(computedTax),
+      };
+    }),
   setTaxAmount: (taxAmount) => set({ taxAmount }),
+  setShippingCost: (shippingCost) =>
+    set({
+      shippingCost,
+      freightTotal: shippingCost.trim() === "" ? null : shippingCost,
+    }),
 
   updateLineQty: (lineId, qty) =>
     set((state) => {
@@ -236,6 +309,7 @@ export const useQuoteStore = create<QuoteStoreState>((set) => ({
       );
       return {
         lineItems,
+        quoteItems: lineItems,
         model:
           state.model.state === "quote"
             ? {
@@ -268,6 +342,7 @@ export const useQuoteStore = create<QuoteStoreState>((set) => ({
       });
       return {
         lineItems,
+        quoteItems: lineItems,
         model:
           state.model.state === "quote"
             ? {
@@ -289,6 +364,7 @@ export const useQuoteStore = create<QuoteStoreState>((set) => ({
       );
       return {
         lineItems,
+        quoteItems: lineItems,
         model:
           state.model.state === "quote"
             ? {
@@ -306,6 +382,7 @@ export const useQuoteStore = create<QuoteStoreState>((set) => ({
       const lineItems = state.lineItems.filter((item) => item.id !== lineId);
       return {
         lineItems,
+        quoteItems: lineItems,
         model:
           state.model.state === "quote"
             ? {
@@ -327,6 +404,7 @@ export const useQuoteStore = create<QuoteStoreState>((set) => ({
       return {
         version,
         lineItems,
+        quoteItems: lineItems,
         model:
           state.model.state === "quote"
             ? {

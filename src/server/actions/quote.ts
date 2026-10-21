@@ -246,6 +246,8 @@ export async function upsertQuoteDraft(
     opportunityId: string | null;
     ghlUserId?: string | null;
     ghlUserEmail?: string | null;
+    depositPct?: number | string | null;
+    shippingCost?: string | number | null;
     lines?: QuoteLinePatchInput[];
   } & QuoteCommercialInput,
 ): Promise<
@@ -263,6 +265,24 @@ export async function upsertQuoteDraft(
 
   const commercial = parseQuoteCommercials(input);
   if (!commercial.ok) return commercial;
+
+  let nextDepositPct: string | undefined;
+  if (input.depositPct != null && String(input.depositPct).trim() !== "") {
+    const parsedDeposit = Number(String(input.depositPct).replace(/[%,\s]/g, ""));
+    if (!Number.isFinite(parsedDeposit) || parsedDeposit <= 0 || parsedDeposit > 100) {
+      return { ok: false, error: "Deposit percentage must be between 1 and 100." };
+    }
+    nextDepositPct = parsedDeposit.toFixed(2);
+  }
+
+  let nextFreightTotal: string | undefined;
+  if (input.shippingCost !== undefined && input.shippingCost !== null && String(input.shippingCost).trim() !== "") {
+    const parsedShipping = Number(String(input.shippingCost).replace(/[$,\s]/g, ""));
+    if (!Number.isFinite(parsedShipping) || parsedShipping < 0) {
+      return { ok: false, error: "Shipping cost must be zero or more." };
+    }
+    nextFreightTotal = parsedShipping.toFixed(2);
+  }
 
   const normalizedLines: Array<{
     id: string;
@@ -362,6 +382,8 @@ export async function upsertQuoteDraft(
           discount_amount: commercial.patch.discountAmount,
           discount_type: commercial.patch.discountType,
           tax_amount: commercial.patch.taxAmount,
+          ...(nextDepositPct !== undefined ? { deposit_pct: nextDepositPct } : {}),
+          ...(nextFreightTotal !== undefined ? { freight_total: nextFreightTotal } : {}),
           merchandise_total: computedMerchandise,
           version: sql`${quotes.version} + 1`,
           updated_at: new Date(),

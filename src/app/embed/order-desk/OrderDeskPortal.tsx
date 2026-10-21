@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Lock, Plus, Search, Trash2, X } from "lucide-react";
+import { Lock, Plus, Search, Trash2, Unlock, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { card, eyebrow } from "@/app/showroom/showroom-ui";
 import {
@@ -424,6 +424,8 @@ export function OrderDeskPortal({
       discountAmount: discountDraft,
       discountType,
       taxAmount: taxDraft,
+      depositPct: store.depositPct,
+      shippingCost: store.shippingCost !== "" ? store.shippingCost : quote?.freightTotal ?? null,
       lines: lineItems.map((item) => ({
         id: item.id,
         qty: item.qty,
@@ -834,6 +836,8 @@ export function OrderDeskPortal({
     discountAmount: discountDraft,
     discountType,
     taxAmount: taxDraft,
+    taxRate: store.taxRate,
+    shippingCost: store.shippingCost !== "" ? store.shippingCost : quote?.freightTotal ?? null,
     freightTotal: quote?.freightTotal ?? null,
     depositPct: store.depositPct,
   });
@@ -1464,10 +1468,31 @@ export function OrderDeskPortal({
                     )}
                   </dd>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500">Delivery / Freight</dt>
-                  <dd className="font-medium text-slate-900" data-testid="order-desk-shipping">
-                    {moneyNumber(financials.shipping)}
+                <div>
+                  <dt className="text-slate-500">
+                    <label htmlFor="order-desk-shipping-input">Shipping / Delivery</label>
+                  </dt>
+                  <dd className="mt-1 flex items-center justify-between gap-2">
+                    {quote.readOnly ? null : (
+                      <input
+                        id="order-desk-shipping-input"
+                        data-testid="order-desk-shipping-input"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={store.shippingCost !== "" ? store.shippingCost : quote.freightTotal ?? ""}
+                        onChange={(event) => store.setShippingCost(event.target.value)}
+                        placeholder="0.00"
+                        aria-label="Shipping Cost"
+                        className="w-28 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      />
+                    )}
+                    <span
+                      className="ml-auto font-medium text-slate-900"
+                      data-testid="order-desk-shipping"
+                    >
+                      {moneyNumber(financials.shipping)}
+                    </span>
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
@@ -1480,21 +1505,51 @@ export function OrderDeskPortal({
                   </dd>
                 </div>
 
-                {/* Locked 50% Required Deposit */}
+                {/* Locked 50% Required Deposit with Manager Override */}
                 <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                      <Lock className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
-                      Required 50% Deposit
+                      {store.depositUnlocked ? (
+                        <Unlock className="h-3.5 w-3.5 text-amber-600" aria-hidden="true" />
+                      ) : (
+                        <Lock className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+                      )}
+                      Required {financials.depositPct}% Deposit
                     </span>
-                    <input
-                      type="text"
-                      readOnly
-                      aria-label="Deposit percentage"
-                      data-testid="order-desk-deposit-pct"
-                      value={`${financials.depositPct}%`}
-                      className="w-16 cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-right text-xs font-semibold text-slate-600"
-                    />
+                    <div className="flex items-center gap-1.5">
+                      {quote.readOnly ? null : (
+                        <button
+                          type="button"
+                          data-testid="order-desk-deposit-override"
+                          onClick={() => store.setDepositUnlocked(!store.depositUnlocked)}
+                          className="rounded-full px-2.5 py-1 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50"
+                        >
+                          {store.depositUnlocked ? "Lock" : "Manager Override"}
+                        </button>
+                      )}
+                      {store.depositUnlocked && !quote.readOnly ? (
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          step="1"
+                          aria-label="Deposit percentage"
+                          data-testid="order-desk-deposit-pct"
+                          value={store.depositPct}
+                          onChange={(event) => store.setDepositPct(Number(event.target.value))}
+                          className="w-16 rounded-lg border border-amber-300 bg-amber-50/40 px-2 py-1 text-right text-xs font-semibold text-slate-900 outline-none focus:border-slate-900"
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          readOnly
+                          aria-label="Deposit percentage"
+                          data-testid="order-desk-deposit-pct"
+                          value={`${financials.depositPct}%`}
+                          className="w-16 cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-right text-xs font-semibold text-slate-600"
+                        />
+                      )}
+                    </div>
                   </div>
                   <div className="mt-2 flex items-baseline justify-between border-t border-slate-100 pt-2">
                     <span className="text-xs text-slate-500">Due to Start Order</span>
