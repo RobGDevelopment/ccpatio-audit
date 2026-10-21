@@ -1,7 +1,7 @@
 import { requireMissionControlAuth } from "../actions";
 import { TrainingHub } from "@/components/mission-control/TrainingHub";
 import { GoldBeam } from "@/components/ui/GoldBeam";
-import { canvas, eyebrow } from "@/components/mission-control/soft-ui";
+import { canvas } from "@/components/mission-control/soft-ui";
 import { MissionControlUnauthorizedError } from "@/server/mission-control/require-role";
 import { redirect } from "next/navigation";
 
@@ -42,17 +42,6 @@ export default async function MissionControlTrainingPage() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-8 p-6 py-10">
-        <div>
-          <div className={eyebrow}>Shop Floor Tablet Portal • SOP-OPS-KATANA-002 v2.1</div>
-          <h2 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">
-            Katana MRP Digital Training Hub
-          </h2>
-          <p className="mt-2 max-w-3xl text-base text-slate-500">
-            Interactive, role-based Standard Operating Procedures and embedded video training for
-            Receiving Dock, Warehouse, Floor Foremen, and Shop Floor Tablet Operators.
-          </p>
-        </div>
-
         <TrainingHub />
       </main>
     </div>

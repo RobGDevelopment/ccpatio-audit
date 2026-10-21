@@ -65,8 +65,8 @@ Katana does not operate in isolation. It is directly wired into our custom **Nex
 > **RULE #1: NEVER MANUALLY CREATE SALES ORDERS IN KATANA.**
 > Sales Orders are automatically generated and pushed to Katana by our MDM Hub the exact second a customer pays their **50% deposit** in the showroom (via GoHighLevel / Clover POS) or completes checkout online (via WooCommerce). Creating a manual Sales Order in Katana breaks the webhook link to GoHighLevel and QuickBooks Online.
 >
-> **RULE #2: NEVER MANUALLY CREATE OR EDIT PRODUCT RECIPES (BOMs) OR OPERATIONS IN KATANA.**
-> Our 3D Quoting Engine and Factory BOM Airlock automatically extract exact aluminum extrusion lengths, mitre angles, fabric yardage, packaging consumables, and labor routing operations, pushing the Master Recipe directly to Katana. Manual edits in Katana will be overwritten by the MDM Hub and will corrupt QBO costing.
+> **RULE #2: NEVER EDIT MASTER PRODUCT RECIPES.**
+> If the 3D Engine extracts data incorrectly, DO NOT edit the Master BOM. The Foreman must adjust the 'Ingredients' on the specific Manufacturing Order, OR the Line Operator must report 'Actual Consumed' amounts on their tablet. Report all 3D errors to the MDM Admin.
 >
 > **RULE #3: EVERY BUTTON CLICK IN KATANA FIRES REAL MONEY INTO QUICKBOOKS ONLINE.**
 > Katana is our perpetual inventory sub-ledger; QuickBooks Online (QBO) is our financial system of record. Changing a status to **`Received`**, **`Finish`**, **`Done`**, or **`Delivered`** immediately triggers automated accounting transactions in QBO. Never click a status change before the physical work is 100% verified.
