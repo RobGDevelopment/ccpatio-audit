@@ -31,6 +31,10 @@
     "src/server/quotes/send-quote.ts",
     "src/lib/embed-actor-params.ts",
     "src/app/embed/order-desk/page.tsx",
-    "src/app/embed/order-desk/OrderDeskPortal.tsx"
+    "src/app/embed/order-desk/OrderDeskPortal.tsx",
+    "docs/SOP-OPS-KATANA-002.md",
+    "src/app/mission-control/page.tsx",
+    "src/app/mission-control/training/",
+    "src/components/mission-control/TrainingHub.tsx"
   ]
 }

@@ -34,9 +34,17 @@ export default async function MissionControlPage() {
             </span>
             <EscalationModal />
           </div>
-          <a href="/" className="text-xs font-medium text-slate-500 transition hover:text-slate-900">
-            ← Back to Launchpad
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href="/mission-control/training"
+              className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-200 hover:text-slate-900"
+            >
+              Digital Training Hub
+            </a>
+            <a href="/" className="text-xs font-medium text-slate-500 transition hover:text-slate-900">
+              ← Back to Launchpad
+            </a>
+          </div>
         </div>
       </header>
 
