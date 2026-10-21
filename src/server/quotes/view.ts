@@ -62,9 +62,11 @@ export type OrderDeskQuote = {
   version: number;
   status: QuoteStatus;
   opportunityId: string | null;
+  contactId?: string | null;
   opportunityName: string | null;
   customerName: string | null;
   customerEmail: string | null;
+  customerPhone?: string | null;
   billToAddress: string | null;
   shipToAddress: string | null;
   discountAmount: string;

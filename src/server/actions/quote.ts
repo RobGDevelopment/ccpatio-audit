@@ -18,7 +18,16 @@ import {
   quotes,
 } from "@/server/db/schema";
 import { resolveHoldActor } from "@/server/ghl/hold-actor";
-import { asGhlRecord, ghlGet, ghlPost, ghlPut, updateOpportunityValue } from "@/server/ghl/private-api";
+import { personName, records, text } from "@/server/ghl/parse";
+import {
+  asGhlRecord,
+  ghlGet,
+  ghlPost,
+  ghlPut,
+  readGhlConfig,
+  updateOpportunityValue,
+} from "@/server/ghl/private-api";
+import { readDraftCustomer } from "@/server/quotes/draft";
 import { lineDescription, merchandiseTotal, snapshotMsrp } from "@/server/quotes/msrp";
 import { refreshDraftSnapshot } from "@/server/quotes/load-order-desk";
 import { freezeQuote, type SendQuoteError } from "@/server/quotes/send-quote";
@@ -251,7 +260,13 @@ export async function upsertQuoteDraft(
     lines?: QuoteLinePatchInput[];
   } & QuoteCommercialInput,
 ): Promise<
-  | { ok: true; version: number; merchandiseTotal: string | null }
+  | {
+      ok: true;
+      version: number;
+      merchandiseTotal: string | null;
+      /** Set when the draft saved but GoHighLevel could not be updated with the customer edit. */
+      crmSyncError?: string | null;
+    }
   | { ok: false; error: string }
 > {
   const session = await getPimSession();
@@ -321,6 +336,9 @@ export async function upsertQuoteDraft(
       description: desc.slice(0, 500),
     });
   }
+
+  // The draft as it stood before this save. Compared with the input to find what the rep edited.
+  const customerBefore = await readDraftCustomer(input.quoteId);
 
   const db = getDb();
   let savedVersion = input.version;
@@ -436,10 +454,20 @@ export async function upsertQuoteDraft(
     return { ok: true, version: savedVersion, merchandiseTotal: nextMerchandiseTotal };
   }
 
+  // Hub -> GHL: pushes the customer fields the rep changed, and pulls back anything the CRM
+  // changed in the meantime, so the draft and the opportunity card read the same.
   const refreshed = await refreshDraftSnapshot({
     quoteId: input.quoteId,
     version: savedVersion,
     opportunityId,
+    customer: {
+      before: customerBefore,
+      next: {
+        customerName: commercial.patch.customerName ?? "",
+        customerEmail: commercial.patch.customerEmail ?? "",
+        billToAddress: commercial.patch.billToAddress ?? "",
+      },
+    },
   });
   if (!refreshed.ok) return refreshed;
 
@@ -448,7 +476,147 @@ export async function upsertQuoteDraft(
     ok: true,
     version: refreshed.version,
     merchandiseTotal: nextMerchandiseTotal,
+    crmSyncError: refreshed.crmSyncError,
   };
+}
+
+export type GhlCustomerHit = {
+  contactId: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  /** Null when the customer has no open or won opportunity, so a quote cannot start yet. */
+  opportunityId: string | null;
+  opportunityName: string | null;
+};
+
+const CUSTOMER_SEARCH_MAX_RESULTS = 20;
+const CUSTOMER_SEARCH_CONTACT_LOOKUPS = 5;
+
+/** A typed phone number such as "(480) 555-1212" is searched as digits, which is how the CRM stores it. */
+function customerSearchTerm(raw: string): string {
+  const trimmed = raw.replace(/\s+/g, " ").trim();
+  if (/^[\d\s().+-]+$/.test(trimmed)) {
+    const digits = trimmed.replace(/\D/g, "");
+    if (digits.length >= 7) return digits;
+  }
+  return trimmed;
+}
+
+function hitFromOpportunity(row: Record<string, unknown>): GhlCustomerHit | null {
+  const status = text(row.status).toLowerCase();
+  if (status !== "open" && status !== "won") return null;
+  const contact = asGhlRecord(row.contact);
+  const opportunityId = text(row.id);
+  const contactId = text(row.contactId) || text(row.contact_id) || text(contact?.id);
+  if (!opportunityId || !contactId) return null;
+  const opportunityName = text(row.name);
+  return {
+    contactId,
+    name: personName(contact) || text(row.contactName) || text(row.contact_name) || opportunityName,
+    email: text(contact?.email) || null,
+    phone: text(contact?.phone) || null,
+    opportunityId,
+    opportunityName: opportunityName || null,
+  };
+}
+
+/**
+ * Customer search for the Order Desk hub. Looks a name, email, or phone number up in GoHighLevel
+ * with the private integration token and returns one row per open or won opportunity, plus one
+ * row for a matching customer that has no opportunity yet. The token never leaves the server.
+ */
+export async function searchGhlCustomers(
+  query: string,
+): Promise<{ ok: true; results: GhlCustomerHit[] } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Sign in to search for a customer." };
+
+  const term = customerSearchTerm(typeof query === "string" ? query : "");
+  if (term.length < 2) return { ok: true, results: [] };
+  if (term.length > 80) return { ok: false, error: "Please use a shorter search." };
+
+  const config = readGhlConfig();
+  if ("error" in config) return { ok: false, error: config.error };
+  const location = encodeURIComponent(config.locationId);
+  const encoded = encodeURIComponent(term);
+
+  const [open, won, contacts] = await Promise.all([
+    ghlGet(`/opportunities/search?location_id=${location}&q=${encoded}&status=open&limit=20`),
+    ghlGet(`/opportunities/search?location_id=${location}&q=${encoded}&status=won&limit=20`),
+    ghlGet(`/contacts/?locationId=${location}&query=${encoded}&limit=${CUSTOMER_SEARCH_CONTACT_LOOKUPS}`),
+  ]);
+  if (!open.ok) return { ok: false, error: open.error };
+  if (!won.ok) return { ok: false, error: won.error };
+  if (!contacts.ok) return { ok: false, error: contacts.error };
+
+  const hits = new Map<string, GhlCustomerHit>();
+  for (const row of [...records(open.body, "opportunities"), ...records(won.body, "opportunities")]) {
+    const hit = hitFromOpportunity(row);
+    if (hit?.opportunityId && !hits.has(hit.opportunityId)) hits.set(hit.opportunityId, hit);
+  }
+
+  // A matching customer whose opportunity did not match the text still has to be findable.
+  const seenContacts = new Set([...hits.values()].map((hit) => hit.contactId));
+  const extraContacts = records(contacts.body, "contacts")
+    .filter((contact) => {
+      const id = text(contact.id);
+      return id !== "" && !seenContacts.has(id);
+    })
+    .slice(0, CUSTOMER_SEARCH_CONTACT_LOOKUPS);
+
+  const lookups = await Promise.all(
+    extraContacts.map((contact) =>
+      ghlGet(
+        `/opportunities/search?location_id=${location}&contact_id=${encodeURIComponent(text(contact.id))}&limit=20`,
+      ),
+    ),
+  );
+  const extraHits: GhlCustomerHit[] = [];
+  for (const [index, lookup] of lookups.entries()) {
+    if (!lookup.ok) return { ok: false, error: lookup.error };
+    const contact = extraContacts[index];
+    if (!contact) continue;
+    const contactId = text(contact.id);
+    const email = text(contact.email) || null;
+    const phone = text(contact.phone) || null;
+    const contactName = personName(contact);
+    const name = contactName || email || phone || "Customer";
+    const opportunities = records(lookup.body, "opportunities").flatMap((row) => {
+      const hit = hitFromOpportunity(row);
+      return hit ? [hit] : [];
+    });
+    if (opportunities.length === 0) {
+      extraHits.push({
+        contactId,
+        name,
+        email,
+        phone,
+        opportunityId: null,
+        opportunityName: null,
+      });
+      continue;
+    }
+    // The contact record is the fullest source for who this is, so it fills any gap in the row.
+    for (const hit of opportunities) {
+      extraHits.push({
+        ...hit,
+        contactId,
+        name: contactName || hit.name || name,
+        email: hit.email ?? email,
+        phone: hit.phone ?? phone,
+      });
+    }
+  }
+  for (const hit of extraHits) {
+    if (hit.opportunityId && hits.has(hit.opportunityId)) continue;
+    hits.set(hit.opportunityId ?? `contact:${hit.contactId}`, hit);
+  }
+
+  const results = [...hits.values()]
+    .sort((a, b) => a.name.localeCompare(b.name) || (a.opportunityName ?? "").localeCompare(b.opportunityName ?? ""))
+    .slice(0, CUSTOMER_SEARCH_MAX_RESULTS);
+  return { ok: true, results };
 }
 
 function formatMoney(amount: number): string {

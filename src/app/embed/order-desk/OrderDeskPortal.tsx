@@ -5,6 +5,8 @@ import { Lock, Plus, Search, Trash2, Unlock, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { card, eyebrow } from "@/app/showroom/showroom-ui";
 import {
+  orderDeskPathForCustomer,
+  orderDeskSearchPathFromHref,
   readActorFromHref,
   readOpportunityIdFromHref,
 } from "@/lib/embed-actor-params";
@@ -31,13 +33,192 @@ import {
 import {
   addCatalogFurnitureLine,
   finalizeAndSyncQuoteToGhl,
+  searchGhlCustomers,
   upsertQuoteDraft,
+  type GhlCustomerHit,
 } from "@/server/actions/quote";
 import type { OrderDeskLine, OrderDeskModel, OrderDeskQuote } from "@/server/quotes/view";
 import { selectQuoteFinancials, useQuoteStore } from "@/store/useQuoteStore";
 import type { FulfillmentMethod } from "@/types/freight";
 
 const FREIGHT_DEBOUNCE_MS = 1500;
+const CUSTOMER_SEARCH_DEBOUNCE_MS = 300;
+
+/** "+14805551212" becomes "(480) 555-1212". Anything that is not a US number is shown as typed. */
+function phoneLabel(phone: string | null | undefined): string {
+  const raw = phone?.trim() ?? "";
+  if (!raw) return "";
+  const digits = raw.replace(/\D/g, "");
+  const national = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (national.length !== 10) return raw;
+  return `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}`;
+}
+
+/**
+ * The page shown when Order Desk opens with no customer. A rep types a name, email, or phone
+ * number, picks a match, and the quote opens exactly as it does from a customer card in the CRM.
+ * It renders inline in the page (no popovers or fixed layers), so it works inside the iframe.
+ */
+function CustomerSearchHub({
+  onSelect,
+  busyOpportunityId,
+}: {
+  onSelect: (hit: GhlCustomerHit) => void;
+  busyOpportunityId: string | null;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<GhlCustomerHit[]>([]);
+  const [status, setStatus] = useState<"idle" | "searching" | "done" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const term = query.trim();
+    if (term.length < 2) {
+      setResults([]);
+      setError(null);
+      setStatus("idle");
+      return;
+    }
+    // `cancelled` drops the answer of any search that a newer keystroke has replaced.
+    let cancelled = false;
+    setStatus("searching");
+    const handle = window.setTimeout(() => {
+      searchGhlCustomers(term)
+        .then((result) => {
+          if (cancelled) return;
+          if (!result.ok) {
+            setResults([]);
+            setError(result.error);
+            setStatus("error");
+            return;
+          }
+          setError(null);
+          setResults(result.results);
+          setStatus("done");
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setResults([]);
+          setError("Search is not available right now. Please try again.");
+          setStatus("error");
+        });
+    }, CUSTOMER_SEARCH_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [query]);
+
+  const busy = busyOpportunityId !== null;
+
+  return (
+    <div
+      data-testid="order-desk-customer-search"
+      className="mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center px-4 py-10 sm:px-6"
+    >
+      <section className={`${card} px-6 py-8 sm:px-8`}>
+        <p className={eyebrow}>Order Desk</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
+          Search for a Customer
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Type a name, email address, or phone number to start a quote.
+        </p>
+
+        <div className="relative mt-6">
+          <Search
+            className="pointer-events-none absolute top-3.5 left-3.5 h-4 w-4 text-slate-400"
+            aria-hidden="true"
+          />
+          <input
+            type="search"
+            data-testid="customer-search-input"
+            aria-label="Search for a customer"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Name, email, or phone number"
+            autoComplete="off"
+            autoFocus
+            disabled={busy}
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pr-4 pl-10 text-sm text-slate-900 outline-none focus:border-slate-900 focus:bg-white disabled:opacity-60"
+          />
+        </div>
+
+        <div className="mt-4" aria-live="polite">
+          {status === "idle" ? (
+            <p className="py-6 text-center text-sm text-slate-500">
+              Start typing to see matching customers.
+            </p>
+          ) : null}
+          {status === "searching" ? (
+            <p data-testid="customer-search-loading" className="py-6 text-center text-sm text-slate-500">
+              Searching…
+            </p>
+          ) : null}
+          {status === "error" ? (
+            <p
+              role="alert"
+              data-testid="customer-search-error"
+              className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
+            >
+              {error ?? "Search is not available right now. Please try again."}
+            </p>
+          ) : null}
+          {status === "done" && results.length === 0 ? (
+            <p data-testid="customer-search-empty" className="py-6 text-center text-sm text-slate-500">
+              No customers found. Check the spelling or try an email address or phone number.
+            </p>
+          ) : null}
+          {status === "done" && results.length > 0 ? (
+            <ul
+              data-testid="customer-search-results"
+              className="max-h-96 divide-y divide-slate-100 overflow-y-auto rounded-2xl border border-slate-100"
+            >
+              {results.map((hit) => {
+                const key = hit.opportunityId ?? `contact-${hit.contactId}`;
+                const contactLine = [hit.email, phoneLabel(hit.phone)].filter(Boolean).join(" · ");
+                const opening = busyOpportunityId !== null && busyOpportunityId === hit.opportunityId;
+                return (
+                  <li
+                    key={key}
+                    data-testid={`customer-search-result-${key}`}
+                    className="flex items-center justify-between gap-4 px-4 py-3.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-900">{hit.name}</p>
+                      {contactLine ? (
+                        <p className="mt-0.5 truncate text-xs text-slate-500">{contactLine}</p>
+                      ) : null}
+                      {hit.opportunityName && hit.opportunityName !== hit.name ? (
+                        <p className="mt-0.5 truncate text-xs text-slate-400">{hit.opportunityName}</p>
+                      ) : null}
+                      {hit.opportunityId ? null : (
+                        <p className="mt-0.5 text-xs text-amber-800">
+                          No open order yet. Add one in GoHighLevel first.
+                        </p>
+                      )}
+                    </div>
+                    {hit.opportunityId ? (
+                      <button
+                        type="button"
+                        data-testid={`customer-search-select-${key}`}
+                        onClick={() => onSelect(hit)}
+                        disabled={busy}
+                        className="shrink-0 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60"
+                      >
+                        {opening ? "Starting quote…" : "Select"}
+                      </button>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </div>
+      </section>
+    </div>
+  );
+}
 
 function money(amount: string | null): string {
   if (amount == null || amount.trim() === "") return "—";
@@ -252,6 +433,10 @@ export function OrderDeskPortal({
 
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  /** The customer picked in the search hub. Drives the "Starting quote…" state until the quote opens. */
+  const [selection, setSelection] = useState<{ opportunityId: string; contactId: string } | null>(
+    null,
+  );
   const [pendingAction, setPendingAction] = useState<
     "save" | "remove" | "swap" | "release" | "send" | "edit" | "custom" | "add" | "pdf" | "package" | null
   >(null);
@@ -415,6 +600,32 @@ export function OrderDeskPortal({
     };
   }
 
+  /**
+   * Opens the quote for a customer picked in the search hub. The page URL gains the same
+   * opportunityId and contactId a CRM link carries, so the server loads, syncs, and hydrates the
+   * quote on the one path every other entry uses, and a reload or save lands on the same quote.
+   */
+  function startQuote(hit: GhlCustomerHit) {
+    if (!hit.opportunityId) return;
+    setSelection({ opportunityId: hit.opportunityId, contactId: hit.contactId });
+    startTransition(() => {
+      router.replace(
+        orderDeskPathForCustomer(window.location.href, {
+          opportunityId: hit.opportunityId ?? "",
+          contactId: hit.contactId,
+        }),
+      );
+    });
+  }
+
+  function searchForAnotherCustomer() {
+    setNotice(null);
+    setSelection(null);
+    startTransition(() => {
+      router.replace(orderDeskSearchPathFromHref(window.location.href));
+    });
+  }
+
   function commercialInput() {
     return {
       customerName,
@@ -459,7 +670,9 @@ export function OrderDeskPortal({
           version: result.version,
           merchandiseTotal: result.merchandiseTotal ?? current.merchandiseTotal,
         }));
-        setNotice("Draft saved.");
+        setNotice(
+          result.crmSyncError ? `Draft saved. ${result.crmSyncError}` : "Draft saved.",
+        );
         router.refresh();
       } finally {
         setPendingAction(null);
@@ -860,6 +1073,15 @@ export function OrderDeskPortal({
       /^\d{5}$/.test(zipDraft || quote.destZip || ""),
   );
 
+  if (model.state === "needs-opportunity") {
+    return (
+      <CustomerSearchHub
+        onSelect={startQuote}
+        busyOpportunityId={pending && selection ? selection.opportunityId : null}
+      />
+    );
+  }
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6">
       {/* Plain English Header */}
@@ -877,28 +1099,29 @@ export function OrderDeskPortal({
             </p>
           ) : null}
         </div>
-        {model.state === "quote" ? (
-          <p
-            data-testid="order-desk-status"
-            className="rounded-full bg-white px-3.5 py-1 text-xs font-medium uppercase tracking-widest text-slate-600 ring-1 ring-slate-200"
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            data-testid="order-desk-search-another"
+            onClick={searchForAnotherCustomer}
+            disabled={pending}
+            className="rounded-full px-3.5 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:opacity-60"
           >
-            {statusLabel(model.status)}
-          </p>
-        ) : null}
+            Search for another customer
+          </button>
+          {model.state === "quote" ? (
+            <p
+              data-testid="order-desk-status"
+              className="rounded-full bg-white px-3.5 py-1 text-xs font-medium uppercase tracking-widest text-slate-600 ring-1 ring-slate-200"
+            >
+              {statusLabel(model.status)}
+            </p>
+          ) : null}
+        </div>
       </header>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-5">
-          {model.state === "needs-opportunity" ? (
-            <section data-testid="order-desk-empty" className={`${card} px-6 py-8`}>
-              <p className="text-sm text-slate-700">
-                No opportunity is selected. Open Order Desk from a GoHighLevel
-                opportunity to start a draft. Active showroom holds on that
-                opportunity are added as lines.
-              </p>
-            </section>
-          ) : null}
-
           {model.state === "error" ? (
             <section role="alert" data-testid="order-desk-error" className={`${card} px-6 py-6`}>
               <p className="text-sm font-medium text-rose-700">{model.message}</p>
@@ -957,6 +1180,15 @@ export function OrderDeskPortal({
                       />
                     )}
                   </label>
+                  <div className="block text-xs text-slate-500">
+                    Phone Number
+                    <span
+                      data-testid="order-desk-customer-phone"
+                      className="mt-1 block text-sm font-medium text-slate-900"
+                    >
+                      {phoneLabel(model.customerPhone) || "—"}
+                    </span>
+                  </div>
                   <label className="block text-xs text-slate-500" htmlFor="order-desk-bill-to">
                     Billing Address
                     {model.readOnly ? (

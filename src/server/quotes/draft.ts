@@ -25,6 +25,7 @@ type ResolvedOpportunity = {
   contactId: string;
   customerName?: string | null;
   customerEmail?: string | null;
+  customerPhone?: string | null;
   billToAddress?: string | null;
   shipToAddress?: string | null;
 };
@@ -69,9 +70,11 @@ function toOrderDeskQuote(
     version: quote.version,
     status: quote.status,
     opportunityId: quote.ghl_opportunity_id,
+    contactId: quote.ghl_contact_id,
     opportunityName: quote.ghl_opportunity_name,
     customerName: quote.customer_name,
     customerEmail: quote.customer_email,
+    customerPhone: null,
     billToAddress: quote.bill_to_address,
     shipToAddress: quote.ship_to_address,
     discountAmount: quote.discount_amount,
@@ -475,6 +478,29 @@ export async function stampEstimateFreight(input: {
   return { ok: true, version: updated.version };
 }
 
+/** Customer fields a draft shares with the CRM contact. Phone is not stored on the quote. */
+export type DraftCustomer = {
+  customerName: string | null;
+  customerEmail: string | null;
+  billToAddress: string | null;
+  shipToAddress: string | null;
+};
+
+/** Current customer fields of one quote, or null when the quote does not exist. */
+export async function readDraftCustomer(quoteId: string): Promise<DraftCustomer | null> {
+  const [row] = await getDb()
+    .select({
+      customerName: quotes.customer_name,
+      customerEmail: quotes.customer_email,
+      billToAddress: quotes.bill_to_address,
+      shipToAddress: quotes.ship_to_address,
+    })
+    .from(quotes)
+    .where(eq(quotes.id, quoteId))
+    .limit(1);
+  return row ?? null;
+}
+
 export async function saveDraftVersion(input: {
   quoteId: string;
   version: number;
@@ -482,15 +508,22 @@ export async function saveDraftVersion(input: {
     ghlOpportunityName: string;
     ghlContactId: string;
     destZip: string | null;
+    /** Only the keys present are written, so a CRM mirror never touches the other fields. */
+    customer?: Partial<DraftCustomer>;
   };
 }): Promise<DraftVersionResult> {
   const db = getDb();
+  const customer = input.patch.customer ?? {};
   const updated = await db
     .update(quotes)
     .set({
       ghl_opportunity_name: input.patch.ghlOpportunityName,
       ghl_contact_id: input.patch.ghlContactId,
       dest_zip: input.patch.destZip,
+      ...(customer.customerName !== undefined ? { customer_name: customer.customerName } : {}),
+      ...(customer.customerEmail !== undefined ? { customer_email: customer.customerEmail } : {}),
+      ...(customer.billToAddress !== undefined ? { bill_to_address: customer.billToAddress } : {}),
+      ...(customer.shipToAddress !== undefined ? { ship_to_address: customer.shipToAddress } : {}),
       version: sql`${quotes.version} + 1`,
       updated_at: new Date(),
     })

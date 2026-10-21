@@ -14,6 +14,11 @@ export const dynamic = "force-dynamic";
 /**
  * GoHighLevel custom menu:
  * /embed/order-desk?embedKey=<GHL_EMBED_SECRET>&ghlUserId={{user.id}}&ghlUserEmail={{user.email}}&opportunityId={{opportunity.id}}
+ *
+ * `opportunityId` is optional. Without it (or with `quoteId`, for a saved quote) the page opens on
+ * the customer search, and picking a customer there reloads this page with that customer's
+ * `opportunityId` and `contactId` in the URL. Either way `loadOrderDesk` reads the latest contact
+ * and opportunity from GoHighLevel and brings an open draft in line with them before it renders.
  */
 export default async function EmbedOrderDeskPage({
   searchParams,

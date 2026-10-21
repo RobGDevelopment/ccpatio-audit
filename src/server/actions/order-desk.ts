@@ -20,7 +20,12 @@ import {
   requireCommercialOverride,
 } from "@/server/quotes/freight-override";
 import { addCustomQuoteLine } from "@/server/quotes/custom-line";
-import { createWalkInDraft, saveQuoteCommercials, stampEstimateFreight } from "@/server/quotes/draft";
+import {
+  createWalkInDraft,
+  readDraftCustomer,
+  saveQuoteCommercials,
+  stampEstimateFreight,
+} from "@/server/quotes/draft";
 import { parseQuoteCommercials, type QuoteCommercialInput } from "@/lib/quote-financials";
 import { loadOrderDesk, refreshDraftSnapshot } from "@/server/quotes/load-order-desk";
 import {
@@ -249,6 +254,7 @@ export async function saveOrderDeskDraft(
   const commercial = parseQuoteCommercials(input);
   if (!commercial.ok) return commercial;
 
+  const customerBefore = await readDraftCustomer(input.quoteId);
   const saved = await saveQuoteCommercials({
     quoteId: input.quoteId,
     version: input.version,
@@ -274,11 +280,19 @@ export async function saveOrderDeskDraft(
     quoteId: input.quoteId,
     version: saved.version,
     opportunityId,
+    customer: {
+      before: customerBefore,
+      next: {
+        customerName: commercial.patch.customerName ?? "",
+        customerEmail: commercial.patch.customerEmail ?? "",
+        billToAddress: commercial.patch.billToAddress ?? "",
+      },
+    },
   });
   if (!refreshed.ok) return refreshed;
 
   revalidateQuoteSurfaces();
-  return refreshed;
+  return { ok: true, version: refreshed.version };
 }
 
 export async function addCustomLine(input: {
