@@ -6,9 +6,9 @@ import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import type { IntakeSnapshot } from "@/server/factory-bom/load-airlock-snapshot";
 import type { FactoryProductRow } from "@/server/factory-bom/list-factory-products";
 import { evaluateAirlock } from "@/server/factory-bom/evaluate-airlock";
-import { releaseButton, ticket } from "@/app/admin/factory-bom/factory-bom-ui";
+import { releaseButton } from "@/app/admin/factory-bom/factory-bom-ui";
 import { UNIT_OPTIONS, type AirlockDossier } from "@/server/factory-bom/airlock.schema";
-import { publishApprovedRecipeToKatana } from "@/app/admin/factory-bom/actions";
+import { submitAirlockAction } from "@/server/factory-bom/airlock-actions";
 import { translateBlockingCode, BLOCKING_CODE_MESSAGES } from "@/lib/intake/copy";
 
 type ProductMeta = FactoryProductRow & {
@@ -40,11 +40,20 @@ function formatFriendlyError(
   fallback = "The design could not be marked complete. Please try again."
 ): string {
   if (!error) return fallback;
-  if (error === "design_locked_release_started") {
-    return "This project was already sent to production. Ask an Ops Manager about a change order.";
+  if (error === "design_locked_release_started" || error === "illegal_transition") {
+    return "This design cannot be submitted from its current state. Ask an Ops Manager if it is already in review.";
   }
   if (error === "not_authenticated") {
     return "Please reopen this page from GoHighLevel.";
+  }
+  if (error === "no_custom_build") {
+    return "This piece is not on a custom build, so it cannot be sent to the factory manager.";
+  }
+  if (error === "airlock_schema_pending") {
+    return "Factory review tracking is not ready yet. Submit again after that update is applied.";
+  }
+  if (error === "checklist") {
+    return "Confirm every item on the checklist before submitting.";
   }
   if (BLOCKING_CODE_MESSAGES[error]) {
     return BLOCKING_CODE_MESSAGES[error];
@@ -61,11 +70,10 @@ export function Step4Release({ snapshot, products }: Step4ReleaseProps) {
   const [operationsConfirmed, setOperationsConfirmed] = useState(false);
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [pendingReview, setPendingReview] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [actionBlockingCodes, setActionBlockingCodes] = useState<string[]>([]);
   const router = useRouter();
-
-  const isClientPiece = snapshot.rootSku.startsWith("JOB-");
   const allChecked =
     identityConfirmed && cutListConfirmed && operationsConfirmed && reviewConfirmed;
 
@@ -227,33 +235,29 @@ export function Step4Release({ snapshot, products }: Step4ReleaseProps) {
     setActionBlockingCodes([]);
 
     try {
-      if (isClientPiece) {
-        const { finalizeDesignAction } = await import("@/app/admin/path-a/actions");
-        const res = await finalizeDesignAction({ globalSku: snapshot.rootSku });
-        if (res.blockingCodes && res.blockingCodes.length > 0) {
-          setActionBlockingCodes(res.blockingCodes);
-          return;
-        }
-        if (!res.ok) {
-          setSubmitError(formatFriendlyError(res.error, "The design could not be marked complete."));
-          return;
-        }
+      const res = await submitAirlockAction({
+        rootSku: snapshot.rootSku,
+        identityConfirmed,
+        cutListConfirmed,
+        operationsConfirmed,
+        reviewConfirmed,
+      });
+      if (res.ok) {
+        setPendingReview(true);
         router.refresh();
         return;
       }
-
-      const res = await publishApprovedRecipeToKatana(snapshot.rootSku);
       if (res.blockingCodes && res.blockingCodes.length > 0) {
         setActionBlockingCodes(res.blockingCodes);
         return;
       }
-      if (!res.ok) {
-        setSubmitError(formatFriendlyError(res.message, "Could not send piece to production."));
+      if (res.error === "illegal_transition" && res.status === "pending_manager") {
+        setPendingReview(true);
         return;
       }
-      router.refresh();
+      setSubmitError(formatFriendlyError(res.error, "The design could not be submitted for review."));
     } catch {
-      setSubmitError("Could not send piece to production. Please retry or contact support.");
+      setSubmitError("The design could not be submitted for review. Please retry.");
     } finally {
       setIsPublishing(false);
     }
@@ -332,9 +336,7 @@ export function Step4Release({ snapshot, products }: Step4ReleaseProps) {
             onChange={(e) => setReviewConfirmed(e.target.checked)}
           />
           <span className="text-xs sm:text-sm font-medium text-stone-800 dark:text-stone-200">
-            {isClientPiece
-              ? "I understand this marks the design complete. Production starts after the deposit."
-              : "I understand this sends the piece to the factory floor."}
+            I understand this sends the design to the Factory Manager for review.
           </span>
         </label>
       </div>
@@ -364,24 +366,28 @@ export function Step4Release({ snapshot, products }: Step4ReleaseProps) {
         </div>
       )}
 
-      {/* Primary Action Button */}
-      <button
-        type="button"
-        disabled={!canRelease || isPublishing}
-        onClick={handleSubmit}
-        className={releaseButton}
-      >
-        {isPublishing ? (
-          <span className="flex items-center justify-center space-x-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>{isClientPiece ? "Marking complete…" : "Sending to production…"}</span>
-          </span>
-        ) : isClientPiece ? (
-          "Mark design complete"
-        ) : (
-          "Send to production"
-        )}
-      </button>
+      {pendingReview ? (
+        <div className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>Pending Factory Manager Review.</p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={!canRelease || isPublishing}
+          onClick={handleSubmit}
+          className={releaseButton}
+        >
+          {isPublishing ? (
+            <span className="flex items-center justify-center space-x-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Submitting…</span>
+            </span>
+          ) : (
+            "Submit to Factory"
+          )}
+        </button>
+      )}
     </div>
   );
 }

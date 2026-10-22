@@ -7,8 +7,10 @@ import type { IntakeSnapshot } from "@/server/factory-bom/load-airlock-snapshot"
 
 export function Step3Operations({
   snapshot,
+  readOnly = false,
 }: {
   snapshot: IntakeSnapshot;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -32,6 +34,7 @@ export function Step3Operations({
   });
 
   function onApplyTrack(trackId: StandardTrackId) {
+    if (readOnly) return;
     setTrackError(null);
     startTransition(async () => {
       const result = await applyStandardTrack({
@@ -48,7 +51,10 @@ export function Step3Operations({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div
+      className={`flex flex-col gap-6 ${readOnly ? "pointer-events-none select-none" : ""}`}
+      aria-disabled={readOnly || undefined}
+    >
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-bold text-zinc-800">Factory Floor Operations</h2>
         <p className="text-sm text-zinc-500">Assign work centers and adjust expected times for {snapshot.rootSku}.</p>

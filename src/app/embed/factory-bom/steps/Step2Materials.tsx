@@ -16,9 +16,10 @@ type ProductMeta = FactoryProductRow & {
 interface Step2MaterialsProps {
   snapshot: IntakeSnapshot;
   products: ProductMeta[];
+  readOnly?: boolean;
 }
 
-export function Step2Materials({ snapshot, products }: Step2MaterialsProps) {
+export function Step2Materials({ snapshot, products, readOnly = false }: Step2MaterialsProps) {
   const geomSnap = snapshot.cadUpload?.geometry_snapshot as {
     hygiene?: string;
     globalAabb?: { min: [number, number, number]; max: [number, number, number] } | null;
@@ -82,7 +83,10 @@ export function Step2Materials({ snapshot, products }: Step2MaterialsProps) {
   const visibleLines = isGeomHygiene ? [] : draftLines;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div
+      className={`flex flex-col gap-6 ${readOnly ? "pointer-events-none select-none" : ""}`}
+      aria-disabled={readOnly || undefined}
+    >
       {/* Proposal Banner */}
       {isDraftReady && hasGeometryProposal && !isGeomHygiene && (
         <div className={emeraldBanner}>

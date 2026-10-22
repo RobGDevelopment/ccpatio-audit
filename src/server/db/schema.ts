@@ -1672,6 +1672,86 @@ export const factory_release_gate = pgTable("factory_release_gate", {
   )
 ]);
 
+/**
+ * Airlock header for one custom build item.
+ * Mirrored for the app. Migration 0059 is not applied while the QBO ledger lock is active.
+ * BOM lines stay on product_bom_draft / item_operations_draft.
+ */
+export const factoryAirlockStatusEnum = pgEnum("factory_airlock_status", [
+  "draft",
+  "pending_manager",
+  "rejected",
+  "approved",
+  "pushed",
+]);
+
+export type FactoryAirlockStatus = (typeof factoryAirlockStatusEnum.enumValues)[number];
+
+export const factory_airlock_builds = pgTable(
+  "factory_airlock_builds",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    job_item_id: uuid("job_item_id")
+      .notNull()
+      .references(() => custom_build_job_items.id, { onDelete: "restrict" }),
+    root_sku: text("root_sku")
+      .notNull()
+      .references(() => sku_mappings.global_sku, {
+        onUpdate: "cascade",
+        onDelete: "restrict",
+      }),
+    status: factoryAirlockStatusEnum("status").notNull().default("draft"),
+    dossier_hash: varchar("dossier_hash", { length: 64 }),
+    submitted_by: text("submitted_by"),
+    submitted_at: timestamp("submitted_at", { withTimezone: true }),
+    approved_by: text("approved_by"),
+    approved_at: timestamp("approved_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("factory_airlock_builds_job_item_uidx").on(table.job_item_id),
+    index("factory_airlock_builds_status_idx").on(table.status),
+    check(
+      "factory_airlock_submitted_attested",
+      sql`(status = 'draft') OR (submitted_by IS NOT NULL AND submitted_at IS NOT NULL)`,
+    ),
+    check(
+      "factory_airlock_approved_attested",
+      sql`status NOT IN ('approved', 'pushed') OR (approved_by IS NOT NULL AND approved_at IS NOT NULL AND dossier_hash IS NOT NULL)`,
+    ),
+  ],
+).enableRLS();
+
+/** Append-only manager and designer decisions for an airlock build. */
+export const factory_airlock_decisions = pgTable(
+  "factory_airlock_decisions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    build_id: uuid("build_id")
+      .notNull()
+      .references(() => factory_airlock_builds.id, { onDelete: "restrict" }),
+    action: text("action").notNull(),
+    actor_email: text("actor_email").notNull(),
+    actor_role: text("actor_role").notNull(),
+    comment: text("comment"),
+    dossier_hash: varchar("dossier_hash", { length: 64 }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("factory_airlock_decisions_build_idx").on(table.build_id, table.created_at),
+    check(
+      "factory_airlock_decisions_action",
+      sql`${table.action} in ('submit', 'approve', 'reject')`,
+    ),
+    check(
+      "factory_airlock_reject_comment",
+      sql`(${table.action} <> 'reject') OR (${table.comment} IS NOT NULL AND char_length(btrim(${table.comment})) BETWEEN 10 AND 2000)`,
+    ),
+  ],
+).enableRLS();
+
 /* ---------------------------------------------------------------------------
  * Phase 9 — SRE primitives (migration 0054). ADDITIVE ONLY.
  * RLS is enabled with NO policies: deny-all for the Supabase Data API; the app

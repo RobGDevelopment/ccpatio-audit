@@ -25,6 +25,7 @@ import { syncKatanaPoReceived } from "./katana-po-received";
 import { processWooCommerceOrder } from "./woo-order";
 import { pathAReleaseToProduction } from "./path-a-release";
 import { pathAGhlSync } from "./path-a-ghl-sync";
+import { factoryAirlockRelease } from "./factory-airlock";
 import { KATANA_TENANT_CONCURRENCY } from "@/server/sre/katana-throttle";
 import {
   ghlOpportunitySyncSchema,
@@ -615,6 +616,7 @@ export const inngestFunctions = [
   processWooCommerceOrder,
   pathAReleaseToProduction,
   pathAGhlSync,
+  factoryAirlockRelease,
   globalDlqHandler,
 ];
 
