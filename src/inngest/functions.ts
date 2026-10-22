@@ -21,6 +21,7 @@ import { sendOhCrapAlert } from "@/server/alerts/oh-crap";
 import { GHL_OPPORTUNITY_WON_EVENT, ghlOpportunityIdempotencyKey } from "@/server/ghl/ingress";
 import { syncCloverPayment } from "./clover-sync";
 import { globalDlqHandler } from "./dlq";
+import { syncKatanaPoReceived } from "./katana-po-received";
 import { processWooCommerceOrder } from "./woo-order";
 import { pathAReleaseToProduction } from "./path-a-release";
 import { pathAGhlSync } from "./path-a-ghl-sync";
@@ -91,7 +92,7 @@ async function alertPipelineFailure(input: {
 
 // The Woo paid-order saga lives in ./woo-order (Phase 10, roadmap step 6). Re-exported so existing
 // imports keep working. It is REGISTERED below; it has no alerting onFailure (global DLQ alerts).
-export { processWooCommerceOrder };
+export { processWooCommerceOrder, syncKatanaPoReceived };
 
 export const syncGhlOpportunity = inngest.createFunction(
   {
@@ -610,6 +611,7 @@ export const inngestFunctions = [
   sendHoldExpirationWarnings,
   autoReleaseExpiredHolds,
   syncCloverPayment,
+  syncKatanaPoReceived,
   processWooCommerceOrder,
   pathAReleaseToProduction,
   pathAGhlSync,

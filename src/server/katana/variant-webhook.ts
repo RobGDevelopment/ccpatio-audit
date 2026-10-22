@@ -35,6 +35,16 @@ export type HoldDeletionRead =
       documentId: number | null;
     };
 
+export type PurchaseOrderReceiptRead =
+  | { kind: "ignore" }
+  | { kind: "invalid"; message: string }
+  | {
+      kind: "received";
+      action: "purchase_order.received" | "purchase_order.partially_received";
+      purchaseOrderId: number;
+      orderNo: string | null;
+    };
+
 function signaturesMatch(left: Buffer, right: Buffer): boolean {
   if (left.length !== right.length) return false;
   return timingSafeEqual(left, right);
@@ -186,6 +196,40 @@ export function readHoldDeletion(payload: unknown): HoldDeletionRead {
     documentKind,
     number: number || null,
     documentId,
+  };
+}
+
+/**
+ * Katana Purchase Order receipt events (`purchase_order.received` and `purchase_order.partially_received`).
+ */
+export function readPurchaseOrderReceipt(payload: unknown): PurchaseOrderReceiptRead {
+  const root = asRecord(payload);
+  if (!root) return { kind: "invalid", message: "Body must be a JSON object" };
+  const action = (text(root.action) || text(root.event)).toLowerCase();
+  if (
+    action !== "purchase_order.received" &&
+    action !== "purchase_order.partially_received"
+  ) {
+    return { kind: "ignore" };
+  }
+
+  const object = asRecord(root.object);
+  const data = asRecord(root.data);
+  const purchaseOrderId =
+    positiveInt(object?.id) ??
+    positiveInt(object?.purchase_order_id) ??
+    positiveInt(data?.id) ??
+    positiveInt(data?.purchase_order_id);
+  if (!purchaseOrderId) {
+    return { kind: "invalid", message: `${action} is missing a purchase order id` };
+  }
+
+  const orderNo = text(object?.order_no) || text(data?.order_no) || null;
+  return {
+    kind: "received",
+    action: action as "purchase_order.received" | "purchase_order.partially_received",
+    purchaseOrderId,
+    orderNo,
   };
 }
 

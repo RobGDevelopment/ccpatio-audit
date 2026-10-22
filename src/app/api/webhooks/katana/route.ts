@@ -5,8 +5,9 @@
  * `KATANA_WEBHOOK_SECRET`). `variant.updated` renames the local SKU for that
  * immutable variant id on `logistics_profiles` and, when one dictionary row
  * matches, `sku_mappings`. `stock_adjustment.deleted` and `sales_order.deleted`
- * release a matching HOLD- ledger row. Other events are acknowledged
- * and not written.
+ * release a matching HOLD- ledger row. `purchase_order.received` and
+ * `purchase_order.partially_received` enqueue the QBO A/P Vendor Bill saga and
+ * revalidate showroom stock views. Other events are acknowledged and not written.
  *
  * Status contract with Katana: 400 for a body that can never succeed, 401 for a bad
  * signature, 502 when Katana itself could not answer our lookup, 500 for any other
@@ -14,6 +15,11 @@
  */
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { inngest } from "@/inngest/client";
+import {
+  KATANA_PO_RECEIVED_EVENT,
+  readPurchaseOrderReceipt,
+} from "@/inngest/katana-po-received";
 import { logError, logStructured } from "@/lib/log/structured";
 import { logPimAudit } from "@/lib/pim-audit";
 import {
@@ -23,6 +29,7 @@ import {
   readVariantUpdate,
   verifyKatanaWebhookSignature,
 } from "@/server/katana/variant-webhook";
+import { inngestEventId } from "@/server/sre/idempotency";
 import { releaseDeletedHoldDocument } from "@/server/stock/release-hold";
 
 export const runtime = "nodejs";
@@ -80,6 +87,33 @@ async function handle(req: Request): Promise<Response> {
 
   const update = readVariantUpdate(payload);
   if (update.kind === "ignore") {
+    const poReceipt = readPurchaseOrderReceipt(payload);
+    if (poReceipt.kind === "invalid") {
+      return NextResponse.json(
+        { error: "invalid_event", message: poReceipt.message },
+        { status: 400 },
+      );
+    }
+    if (poReceipt.kind === "received") {
+      await inngest.send({
+        id: inngestEventId("katana:po", poReceipt.purchaseOrderId, poReceipt.action),
+        name: KATANA_PO_RECEIVED_EVENT,
+        data: {
+          purchaseOrderId: poReceipt.purchaseOrderId,
+          orderNo: poReceipt.orderNo,
+          action: poReceipt.action,
+        },
+      });
+      revalidatePath("/showroom");
+      revalidatePath("/embed/showroom");
+      revalidatePath("/tools/stock-checker");
+      return NextResponse.json({
+        ok: true,
+        queued: true,
+        action: poReceipt.action,
+        purchaseOrderId: poReceipt.purchaseOrderId,
+      });
+    }
     return NextResponse.json({ ok: true, ignored: true });
   }
   if (update.kind === "invalid") {

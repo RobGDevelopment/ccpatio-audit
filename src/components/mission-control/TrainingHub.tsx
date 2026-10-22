@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { GoldBeam } from "@/components/ui/GoldBeam";
 import {
   badge,
@@ -10,7 +11,6 @@ import {
   field,
   innerCard,
   noticeError,
-  noticeSuccess,
 } from "@/components/mission-control/soft-ui";
 import { submitTrainingSignOffAction } from "@/app/embed/training/actions";
 import {
@@ -56,6 +56,7 @@ interface RoleConfig {
   label: string;
   katanaTab: string;
   subtitle: string;
+  hoverDescription: string;
   videoTitle: string;
   videoWatchNote: string;
   watchUrl: string;
@@ -95,6 +96,8 @@ const ROLES: RoleConfig[] = [
     label: "Procurement Manager",
     katanaTab: "Katana STOCK & BUY Screen",
     subtitle: "Shortage Detection, Vendor Minimums & Purchase Order Generation",
+    hoverDescription:
+      "Responsible for monitoring raw material shortages on the Stock screen, verifying vendor minimums, and generating Purchase Orders.",
     videoTitle: "Katana Purchasing & Receiving Full Demo (Creating POs)",
     videoWatchNote: "Watch from 0:00 – 2:00",
     watchUrl: "https://www.youtube.com/watch?v=fxxbW0robyA&t=0s",
@@ -149,6 +152,8 @@ const ROLES: RoleConfig[] = [
     label: "Receiving Dock",
     katanaTab: "Katana BUY Screen",
     subtitle: "Inbound Raw Materials, Freight Inspection & PO Receiving",
+    hoverDescription:
+      "Responsible for unloading freight, inspecting incoming raw materials against packing slips, and receiving Purchase Orders.",
     videoTitle: "Katana Purchasing & Receiving Full Demo (Receiving Freight)",
     videoWatchNote: "Watch from 2:00 – 4:30",
     watchUrl: "https://www.youtube.com/watch?v=fxxbW0robyA&t=120s",
@@ -208,6 +213,8 @@ const ROLES: RoleConfig[] = [
     label: "Warehouse Manager",
     katanaTab: "Katana STOCK Screen",
     subtitle: "Weekly Cycle Counting, Stock Adjustments & Showroom Hold Integrity",
+    hoverDescription:
+      "Responsible for weekly physical cycle counts, recording Stock Adjustments, and maintaining First-In, First-Out dye lot integrity.",
     videoTitle: "Katana Inventory Management Tutorial",
     videoWatchNote: "Watch Full Video",
     watchUrl: "https://www.youtube.com/watch?v=c-JWBGA1mcY&t=0s",
@@ -263,6 +270,8 @@ const ROLES: RoleConfig[] = [
     label: "Floor Foreman",
     katanaTab: "Katana MAKE & TASKS Screen",
     subtitle: "Master Build Queue, Live Floor Progress, Work Center Filtering & Order Completion",
+    hoverDescription:
+      "Responsible for prioritizing the Make queue, filtering Tasks by physical Work Centers, bulk-assigning operators, and marking completed builds Done.",
     videoTitle: "How Katana Smart Manufacturing Works (Production & Scheduling)",
     videoWatchNote: "Watch from 0:45 – 2:20",
     watchUrl: "https://www.youtube.com/watch?v=OwoSsyzTtZg&t=45s",
@@ -426,6 +435,8 @@ const ROLES: RoleConfig[] = [
     label: "Line Operator",
     katanaTab: "Katana SHOP FLOOR APP (Tablet)",
     subtitle: "PIN/QR Login, Digital 3D Cut Cards, Start/Pause/Finish Timers & Scrap Reporting",
+    hoverDescription:
+      "Responsible for logging into workstation tablets, viewing 3D Digital Cut Cards, tracking exact Start/Pause/Finish times, and reporting actual materials used.",
     videoTitle: "How Katana Smart Manufacturing Works (Shop Floor App UI)",
     videoWatchNote: "Watch from 2:20 – End for Shop Floor UI",
     watchUrl: "https://www.youtube.com/watch?v=OwoSsyzTtZg&t=140s",
@@ -489,6 +500,8 @@ const ROLES: RoleConfig[] = [
     label: "Shipping & Fulfillment",
     katanaTab: "Katana SELL Screen",
     subtitle: "Outbound Staging, Marking Orders Packed/Delivered & QuickBooks Accounting",
+    hoverDescription:
+      "Responsible for staging completed skids on the outbound dock, verifying carrier Bills of Lading, and marking Sales Orders Packed and Delivered.",
     videoTitle: "How Katana Smart Manufacturing Works (Fulfillment & Delivery)",
     videoWatchNote: "Watch Full Overview",
     watchUrl: "https://www.youtube.com/watch?v=OwoSsyzTtZg&t=0s",
@@ -545,37 +558,63 @@ const ROLES: RoleConfig[] = [
 ];
 
 export function TrainingHub() {
-  const [selectedRole, setSelectedRole] = useState<TrainingRoleId>("procurement_manager");
-  const [viewMode, setViewMode] = useState<TrainingViewMode>("full");
-
-  // Accountability Sign-off Form State
-  const [employeeName, setEmployeeName] = useState("");
+  // Phase 1: Progressive Disclosure Gatekeeper State
+  const [unlockedRules, setUnlockedRules] = useState<number>(1);
+  const [rule1Checked, setRule1Checked] = useState(false);
+  const [rule2Checked, setRule2Checked] = useState(false);
+  const [rule3Checked, setRule3Checked] = useState(false);
   const [acknowledgedQbo, setAcknowledgedQbo] = useState(false);
+  const [employeeName, setEmployeeName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [signOffSuccess, setSignOffSuccess] = useState<{
+  const [protocolSigned, setProtocolSigned] = useState<{
     confirmationId: string;
     employeeName: string;
-    roleLabel: string;
     signedAtIso: string;
   } | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const activeRole = ROLES.find((r) => r.id === selectedRole) ?? ROLES[0];
+  // Phase 2 & 3: Clean Role Selector (null initially until clicked) & Hover Tooltip
+  const [selectedRole, setSelectedRole] = useState<TrainingRoleId | null>(null);
+  const [hoveredRole, setHoveredRole] = useState<TrainingRoleId | null>(null);
+  const [viewMode, setViewMode] = useState<TrainingViewMode>("full");
 
-  function handleRoleChange(nextRole: TrainingRoleId) {
-    setSelectedRole(nextRole);
-    setFormError(null);
+  const activeRole = ROLES.find((r) => r.id === selectedRole) ?? null;
+
+  function handleRule1Toggle(checked: boolean) {
+    setRule1Checked(checked);
+    if (checked && unlockedRules < 2) {
+      setUnlockedRules(2);
+    }
   }
 
-  function handleSignOffSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleRule2Toggle(checked: boolean) {
+    setRule2Checked(checked);
+    if (checked && unlockedRules < 3) {
+      setUnlockedRules(3);
+    }
+  }
+
+  function handleRule3Toggle(checked: boolean) {
+    setRule3Checked(checked);
+    if (checked && unlockedRules < 4) {
+      setUnlockedRules(4);
+    }
+  }
+
+  function handleGatekeeperSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
+
+    if (!rule1Checked || !rule2Checked || !rule3Checked) {
+      setFormError("Please read and check all three Golden Rules before signing off.");
+      return;
+    }
 
     startTransition(async () => {
       const result = await submitTrainingSignOffAction({
         employeeName,
-        roleId: activeRole.id,
-        roleLabel: activeRole.label,
+        roleId: selectedRole ?? "factory_protocol",
+        roleLabel: activeRole?.label ?? "Mandatory Factory Protocol",
         acknowledgedQboImpact: acknowledgedQbo,
       });
 
@@ -584,592 +623,794 @@ export function TrainingHub() {
         return;
       }
 
-      setSignOffSuccess({
+      setProtocolSigned({
         confirmationId: result.confirmationId,
         employeeName: result.employeeName,
-        roleLabel: result.roleLabel,
         signedAtIso: result.signedAtIso,
       });
-      setAcknowledgedQbo(false);
     });
   }
 
   return (
     <div className="space-y-8" data-testid="training-hub">
-      {/* Top Mode Bar: Full Training vs. Cheat Sheet Toggle */}
+      {/* Top Portal Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
         <div>
-          <div className={eyebrow}>Shop Floor Tablet Portal • SOP-OPS-KATANA-002 v2.2</div>
+          <div className={eyebrow}>Shop Floor Tablet Portal • SOP-OPS-KATANA-002 v2.3</div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             Katana MRP Digital Training Hub
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Select your workstation role below or switch between Full Video Training and Quick
-            Action Cheat Sheet mode.
+            {protocolSigned
+              ? "Protocol verified. Select your factory workstation role below to unlock your training module."
+              : "Complete the Mandatory Factory Protocol gatekeeper below to unlock role training."}
           </p>
         </div>
 
-        <div
-          className="inline-flex items-center rounded-2xl bg-slate-100 p-1.5"
-          role="group"
-          aria-label="Training view mode toggle"
-          data-testid="training-mode-toggle"
-        >
-          <button
-            type="button"
-            data-testid="mode-btn-full"
-            aria-pressed={viewMode === "full"}
-            onClick={() => setViewMode("full")}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
-              viewMode === "full"
-                ? "bg-slate-900 text-white shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
+        {protocolSigned && (
+          <div
+            className="inline-flex items-center rounded-2xl bg-slate-100 p-1.5 transition-all duration-500"
+            role="group"
+            aria-label="Training view mode toggle"
+            data-testid="training-mode-toggle"
           >
-            <BookOpen className="h-4 w-4 text-[#D4AF37]" />
-            Full Training
-          </button>
-          <button
-            type="button"
-            data-testid="mode-btn-cheat-sheet"
-            aria-pressed={viewMode === "cheat_sheet"}
-            onClick={() => setViewMode("cheat_sheet")}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
-              viewMode === "cheat_sheet"
-                ? "bg-slate-900 text-white shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <ListChecks className="h-4 w-4 text-[#D4AF37]" />
-            Cheat Sheet
-          </button>
-        </div>
+            <button
+              type="button"
+              data-testid="mode-btn-full"
+              aria-pressed={viewMode === "full"}
+              onClick={() => setViewMode("full")}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+                viewMode === "full"
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <BookOpen className="h-4 w-4 text-[#D4AF37]" />
+              Full Training
+            </button>
+            <button
+              type="button"
+              data-testid="mode-btn-cheat-sheet"
+              aria-pressed={viewMode === "cheat_sheet"}
+              onClick={() => setViewMode("cheat_sheet")}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+                viewMode === "cheat_sheet"
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <ListChecks className="h-4 w-4 text-[#D4AF37]" />
+              Cheat Sheet
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Persistent Critical System Rules Banner (Top) */}
-      <section
-        aria-label="Critical System Rules"
-        data-testid="golden-rules-banner"
-        className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
-      >
-        <GoldBeam />
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 pb-4">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
-            <ShieldAlert className="h-6 w-6" />
-          </span>
-          <div>
-            <div className={eyebrow}>Mandatory Factory Protocol — Read Before Touching Katana</div>
-            <h2 className="text-xl font-bold tracking-tight text-slate-900">
-              🚨 CRITICAL SYSTEM RULES (THE 3 GOLDEN RULES)
-            </h2>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-4 md:grid-cols-3">
-          <div className="rounded-xl bg-rose-50/70 p-4" data-testid="golden-rule-1">
-            <div className="text-xs font-bold uppercase tracking-wider text-rose-800">
-              RULE #1: NO MANUAL ORDERS
+      {/* PHASE 1: THE GATEKEEPER (PROGRESSIVE RULES) OR COLLAPSED FOREST GREEN BANNER */}
+      <AnimatePresence mode="wait">
+        {!protocolSigned ? (
+          <motion.section
+            key="gatekeeper-expanded"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.45 }}
+            aria-label="Mandatory Factory Protocol"
+            data-testid="golden-rules-banner"
+            className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-8"
+          >
+            <GoldBeam />
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-5">
+              <div className="flex items-center gap-3.5">
+                <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-[#D4AF37] shadow-sm">
+                  <ShieldAlert className="h-6 w-6" />
+                </span>
+                <div>
+                  <div className={eyebrow}>Step 0 — Cognitive Safety Gatekeeper</div>
+                  <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+                    MANDATORY FACTORY PROTOCOL
+                  </h2>
+                </div>
+              </div>
+              <span className="rounded-full bg-amber-50 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-900">
+                Rule {Math.min(unlockedRules, 3)} of 3 Unlocked
+              </span>
             </div>
-            <p className="mt-1.5 text-sm font-semibold text-slate-900">
-              NEVER MANUALLY CREATE SALES ORDERS IN KATANA.
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-slate-700">
-              Sales Orders (<code className="font-mono text-xs font-semibold text-slate-800">PA-*</code>,{" "}
-              <code className="font-mono text-xs font-semibold text-slate-800">GHL-*</code>,{" "}
-              <code className="font-mono text-xs font-semibold text-slate-800">WOO-*</code>) are
-              automatically pushed by Our Custom Software the exact second a customer pays their{" "}
-              <span className="font-semibold text-slate-900">50% deposit</span>.
-            </p>
-          </div>
 
-          <div className="rounded-xl bg-amber-50/70 p-4" data-testid="golden-rule-2">
-            <div className="text-xs font-bold uppercase tracking-wider text-amber-800">
-              RULE #2: NO MANUAL RECIPES (BOMs)
-            </div>
-            <p className="mt-1.5 text-sm font-semibold text-slate-900">
-              NEVER EDIT MASTER PRODUCT RECIPES.
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-slate-700">
-              If the 3D Engine extracts data incorrectly, DO NOT edit the Master BOM. The Foreman
-              must adjust the &apos;Ingredients&apos; on the specific Manufacturing Order, OR the
-              Line Operator must report &apos;Actual Consumed&apos; amounts on their tablet. Report
-              all 3D errors to the System Admin.
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-emerald-50/70 p-4" data-testid="golden-rule-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-emerald-800">
-              RULE #3: LIVE QUICKBOOKS ACCOUNTING
-            </div>
-            <p className="mt-1.5 text-sm font-semibold text-slate-900">
-              EVERY CLICK UPDATES QUICKBOOKS LIVE.
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-slate-700">
-              Every button you click in Katana automatically updates our live accounting in
-              QuickBooks. Never click Done or Received until the physical work is actually finished.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Tablet-First 6-Role Selector Grid with Elegant Beam & Soft UI */}
-      <section aria-label="Select Factory Role" className={card}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="w-full sm:w-auto">
-            <div className={eyebrow}>Step 1 — Touch Your Workstation Role (Factory Lifecycle Order)</div>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
-              Select Your Factory Role
-            </h2>
-            {/* Task 3: The Elegant Animated Champagne Gold Beam */}
-            <div
-              data-testid="role-heading-beam"
-              className="mt-2 h-[2px] w-full bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent bg-[length:200%_auto] animate-pulse"
-            />
-          </div>
-          <span className={`${badge} bg-slate-100 text-slate-700 ring-slate-200`}>
-            {viewMode === "cheat_sheet"
-              ? "⚡ Cheat Sheet Mode Active"
-              : "📺 Full Training Mode Active"}
-          </span>
-        </div>
-
-        <div
-          className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-          role="tablist"
-          aria-label="Factory roles"
-          data-testid="role-selector-grid"
-        >
-          {ROLES.map((role, index) => {
-            const isSelected = role.id === selectedRole;
-            const Icon =
-              role.id === "procurement_manager"
-                ? ShoppingCart
-                : role.id === "receiving_dock"
-                  ? Truck
-                  : role.id === "warehouse_manager"
-                    ? Boxes
-                    : role.id === "floor_foreman"
-                      ? Wrench
-                      : role.id === "line_operator"
-                        ? Smartphone
-                        : PackageCheck;
-
-            return (
-              <button
-                key={role.id}
-                type="button"
-                role="tab"
-                aria-selected={isSelected}
-                data-testid={`role-btn-${role.id}`}
-                onClick={() => handleRoleChange(role.id)}
-                className={`group flex min-h-[112px] flex-col justify-between rounded-2xl p-5 text-left backdrop-blur-md transition-all duration-200 hover:scale-[1.02] ${
-                  isSelected
-                    ? "bg-slate-900 text-white shadow-[0_12px_36px_-6px_rgba(212,175,55,0.45)]"
-                    : "bg-slate-900/5 text-slate-900 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:bg-slate-900/10 hover:shadow-[0_10px_28px_rgb(212,175,55,0.18)]"
+            <div className="mt-6 space-y-6">
+              {/* RULE #1 (Visible Immediately) */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                data-testid="golden-rule-1"
+                className={`rounded-2xl p-6 transition-all duration-500 ${
+                  rule1Checked
+                    ? "bg-emerald-950/[0.03] shadow-xs"
+                    : "bg-slate-50 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"
                 }`}
               >
-                <div className="flex w-full items-center justify-between">
-                  <span
-                    className={`inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
-                      isSelected
-                        ? "bg-white/15 text-[#D4AF37]"
-                        : "bg-white/90 text-slate-700 shadow-xs"
-                    }`}
-                  >
-                    <Icon className="h-6 w-6" />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-extrabold uppercase tracking-widest text-rose-800">
+                    RULE #1: NO MANUAL ORDERS
                   </span>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${
-                      isSelected
-                        ? "bg-[#D4AF37]/20 text-[#F3E5AB]"
-                        : "bg-white/80 text-slate-600"
-                    }`}
-                  >
-                    {index + 1}. {role.katanaTab}
-                  </span>
+                  {rule1Checked && (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      Confirmed
+                    </span>
+                  )}
                 </div>
-                <div className="mt-4">
-                  <div className="text-lg font-bold tracking-tight">{role.label}</div>
-                  <p
-                    className={`mt-0.5 line-clamp-1 text-xs ${
-                      isSelected ? "text-slate-300" : "text-slate-500"
-                    }`}
-                  >
-                    {role.subtitle}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+                <p className="mt-2 text-lg font-bold text-slate-900">
+                  NEVER MANUALLY CREATE SALES ORDERS IN KATANA.
+                </p>
+                <p className="mt-1.5 text-base leading-relaxed text-slate-700">
+                  Sales Orders (
+                  <code className="font-mono text-sm font-semibold text-slate-900">PA-*</code>,{" "}
+                  <code className="font-mono text-sm font-semibold text-slate-900">GHL-*</code>,{" "}
+                  <code className="font-mono text-sm font-semibold text-slate-900">WOO-*</code>) are
+                  automatically pushed by Our Custom Software the exact second a customer pays their{" "}
+                  <span className="font-semibold text-slate-900">50% deposit</span>.
+                </p>
 
-      {/* Active Role Content Area */}
-      <section
-        aria-label={`${activeRole.label} SOP Training`}
-        data-testid={`role-panel-${activeRole.id}`}
-        className="space-y-6"
-      >
-        {viewMode === "full" ? (
-          <>
-            {/* Task 1: Video Lesson Card (Replaces YouTube iframe to prevent Error 150) */}
-            <a
-              href={activeRole.watchUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="video-lesson-card"
-              className="group relative block overflow-hidden rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-200 hover:scale-[1.01] hover:shadow-[0_14px_40px_-8px_rgba(212,175,55,0.35)]"
-            >
-              <GoldBeam />
-              <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
-                <div className="flex items-start gap-4 sm:items-center">
-                  <span className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[#D4AF37] shadow-[0_8px_24px_rgba(212,175,55,0.3)] transition-transform duration-200 group-hover:scale-105">
-                    <Play className="h-8 w-8 fill-current ml-0.5" />
+                <label
+                  htmlFor="ack-rule-1"
+                  className="mt-4 flex cursor-pointer items-center gap-3 rounded-xl bg-white p-4 shadow-xs transition hover:bg-slate-50"
+                >
+                  <input
+                    id="ack-rule-1"
+                    type="checkbox"
+                    checked={rule1Checked}
+                    onChange={(e) => handleRule1Toggle(e.target.checked)}
+                    data-testid="checkbox-rule-1"
+                    className="h-5 w-5 rounded border-slate-300 text-slate-900 focus:ring-[#D4AF37]"
+                  />
+                  <span className="text-base font-semibold text-slate-900">
+                    I understand and agree to Rule #1.
                   </span>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={eyebrow}>📺 Video Lesson • {activeRole.label}</span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-0.5 text-xs font-semibold text-amber-900">
-                        <Clock className="h-3.5 w-3.5 text-[#D4AF37]" />
-                        {activeRole.videoWatchNote}
+                </label>
+              </motion.div>
+
+              {/* RULE #2 (Fades in when Rule #1 is checked) */}
+              <AnimatePresence>
+                {unlockedRules >= 2 && (
+                  <motion.div
+                    key="rule-2-block"
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    data-testid="golden-rule-2"
+                    className={`rounded-2xl p-6 transition-all duration-500 ${
+                      rule2Checked
+                        ? "bg-emerald-950/[0.03] shadow-xs"
+                        : "bg-slate-50 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-extrabold uppercase tracking-widest text-amber-800">
+                        RULE #2: NO MANUAL RECIPES (BOMs)
+                      </span>
+                      {rule2Checked && (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          Confirmed
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-2 text-lg font-bold text-slate-900">
+                      NEVER EDIT MASTER PRODUCT RECIPES.
+                    </p>
+                    <p className="mt-1.5 text-base leading-relaxed text-slate-700">
+                      If the 3D Engine extracts data incorrectly, DO NOT edit the Master BOM. The
+                      Foreman must adjust the &apos;Ingredients&apos; on the specific Manufacturing
+                      Order, OR the Line Operator must report &apos;Actual Consumed&apos; amounts on
+                      their tablet. Report all 3D errors to the System Admin.
+                    </p>
+
+                    <label
+                      htmlFor="ack-rule-2"
+                      className="mt-4 flex cursor-pointer items-center gap-3 rounded-xl bg-white p-4 shadow-xs transition hover:bg-slate-50"
+                    >
+                      <input
+                        id="ack-rule-2"
+                        type="checkbox"
+                        checked={rule2Checked}
+                        onChange={(e) => handleRule2Toggle(e.target.checked)}
+                        data-testid="checkbox-rule-2"
+                        className="h-5 w-5 rounded border-slate-300 text-slate-900 focus:ring-[#D4AF37]"
+                      />
+                      <span className="text-base font-semibold text-slate-900">
+                        I understand and agree to Rule #2.
+                      </span>
+                    </label>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* RULE #3 (Fades in when Rule #2 is checked) */}
+              <AnimatePresence>
+                {unlockedRules >= 3 && (
+                  <motion.div
+                    key="rule-3-block"
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    data-testid="golden-rule-3"
+                    className={`rounded-2xl p-6 transition-all duration-500 ${
+                      rule3Checked
+                        ? "bg-emerald-950/[0.03] shadow-xs"
+                        : "bg-slate-50 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-800">
+                        RULE #3: LIVE QUICKBOOKS ACCOUNTING
+                      </span>
+                      {rule3Checked && (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          Confirmed
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-2 text-lg font-bold text-slate-900">
+                      EVERY CLICK UPDATES QUICKBOOKS LIVE.
+                    </p>
+                    <p className="mt-1.5 text-base leading-relaxed text-slate-700">
+                      Every button you click in Katana automatically updates our live accounting in
+                      QuickBooks. Never click Done or Received until the physical work is actually
+                      finished.
+                    </p>
+
+                    <label
+                      htmlFor="ack-rule-3"
+                      className="mt-4 flex cursor-pointer items-center gap-3 rounded-xl bg-white p-4 shadow-xs transition hover:bg-slate-50"
+                    >
+                      <input
+                        id="ack-rule-3"
+                        type="checkbox"
+                        checked={rule3Checked}
+                        onChange={(e) => handleRule3Toggle(e.target.checked)}
+                        data-testid="checkbox-rule-3"
+                        className="h-5 w-5 rounded border-slate-300 text-slate-900 focus:ring-[#D4AF37]"
+                      />
+                      <span className="text-base font-semibold text-slate-900">
+                        I understand and agree to Rule #3.
+                      </span>
+                    </label>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* FINAL QBO ACKNOWLEDGMENT + EMPLOYEE SIGN-OFF FORM (Fades in when Rule #3 is checked) */}
+              <AnimatePresence>
+                {unlockedRules >= 4 && (
+                  <motion.div
+                    key="final-signoff-block"
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    data-testid="accountability-signoff-section"
+                    className="rounded-2xl bg-slate-900 p-6 text-white shadow-[0_14px_40px_-8px_rgba(212,175,55,0.3)]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-[#D4AF37]">
+                        <FileCheck2 className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <div className="text-xs font-bold uppercase tracking-widest text-[#D4AF37]">
+                          Final Gatekeeper Verification
+                        </div>
+                        <h3 className="text-lg font-bold text-white">
+                          Sign Off to Unlock Factory Role Training
+                        </h3>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleGatekeeperSubmit} className="mt-5 space-y-4" noValidate>
+                      <label
+                        htmlFor="training-qbo-ack"
+                        className="flex cursor-pointer items-center gap-3 rounded-xl bg-white/10 p-4 transition hover:bg-white/15"
+                      >
+                        <input
+                          id="training-qbo-ack"
+                          name="acknowledgedQboImpact"
+                          type="checkbox"
+                          checked={acknowledgedQbo}
+                          onChange={(e) => setAcknowledgedQbo(e.target.checked)}
+                          className="h-5 w-5 rounded border-slate-400 text-[#D4AF37] focus:ring-[#D4AF37]"
+                          data-testid="signoff-qbo-checkbox"
+                        />
+                        <span className="text-base font-semibold text-white">
+                          I understand my actions impact QuickBooks Online
+                        </span>
+                      </label>
+
+                      <div>
+                        <label
+                          htmlFor="training-employee-name"
+                          className="block text-xs font-bold uppercase tracking-wider text-slate-300"
+                        >
+                          Employee Name
+                        </label>
+                        <input
+                          id="training-employee-name"
+                          name="employeeName"
+                          type="text"
+                          autoComplete="off"
+                          required
+                          value={employeeName}
+                          onChange={(e) => setEmployeeName(e.target.value)}
+                          placeholder="Enter your full first and last name..."
+                          className={`${field} mt-1.5 bg-white py-3 text-base text-slate-900`}
+                          data-testid="signoff-employee-name"
+                        />
+                      </div>
+
+                      {formError && (
+                        <div role="alert" className={noticeError} data-testid="signoff-error-toast">
+                          {formError}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-end pt-2">
+                        <button
+                          type="submit"
+                          disabled={isPending}
+                          data-testid="signoff-submit-btn"
+                          className="rounded-full bg-[#D4AF37] px-7 py-3 text-base font-bold text-slate-950 shadow-md transition hover:bg-[#e3be42] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {isPending ? "Unlocking Training Hub..." : "Submit Sign-Off"}
+                        </button>
+                      </div>
+                    </form>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.section>
+        ) : (
+          /* Sleek, Minimalist Deep Forest Green Success Banner after Gatekeeper Submission */
+          <motion.div
+            key="gatekeeper-collapsed"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            role="status"
+            data-testid="protocol-acknowledged-banner"
+            className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[#0B3B24] px-6 py-4 text-white shadow-[0_10px_30px_rgba(11,59,36,0.25)]"
+          >
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400/20 text-[#D4AF37]">
+                <CheckCircle2 className="h-5 w-5" />
+              </span>
+              <span className="text-base font-bold tracking-tight sm:text-lg">
+                ✓ Mandatory Protocol Acknowledged by {protocolSigned.employeeName}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="rounded-full bg-white/10 px-3 py-1 font-mono text-xs text-emerald-100">
+                {protocolSigned.confirmationId}
+              </span>
+              <button
+                type="button"
+                onClick={() => setProtocolSigned(null)}
+                className="text-xs font-semibold text-emerald-200 underline-offset-4 hover:text-white hover:underline"
+              >
+                Review Rules
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PHASE 2: THE CLEAN ROLE SELECTOR (Hidden until Gatekeeper is signed) */}
+      <AnimatePresence>
+        {protocolSigned && (
+          <motion.section
+            key="phase-2-role-selector"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            aria-label="Select Factory Role"
+            className={card}
+            data-testid="phase-2-role-selector"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="w-full sm:w-auto">
+                <div className={eyebrow}>Factory Lifecycle Order (1 → 6)</div>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+                  Step 1: Select Your Factory Role
+                </h2>
+                {/* The Animated Champagne Gold Beam */}
+                <div
+                  data-testid="role-heading-beam"
+                  className="mt-2 h-[2px] w-full bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent bg-[length:200%_auto] animate-pulse"
+                />
+              </div>
+              <span className={`${badge} bg-slate-100 text-slate-700 ring-slate-200`}>
+                {selectedRole
+                  ? `Active: ${activeRole?.label}`
+                  : "Touch a role card below to reveal training"}
+              </span>
+            </div>
+
+            <div
+              className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+              role="tablist"
+              aria-label="Factory roles"
+              data-testid="role-selector-grid"
+            >
+              {ROLES.map((role, index) => {
+                const isSelected = role.id === selectedRole;
+                const isHovered = role.id === hoveredRole;
+                const Icon =
+                  role.id === "procurement_manager"
+                    ? ShoppingCart
+                    : role.id === "receiving_dock"
+                      ? Truck
+                      : role.id === "warehouse_manager"
+                        ? Boxes
+                        : role.id === "floor_foreman"
+                          ? Wrench
+                          : role.id === "line_operator"
+                            ? Smartphone
+                            : PackageCheck;
+
+                return (
+                  <button
+                    key={role.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isSelected}
+                    data-testid={`role-btn-${role.id}`}
+                    onMouseEnter={() => setHoveredRole(role.id)}
+                    onMouseLeave={() => setHoveredRole(null)}
+                    onFocus={() => setHoveredRole(role.id)}
+                    onBlur={() => setHoveredRole(null)}
+                    onClick={() => setSelectedRole(role.id)}
+                    className={`group relative flex min-h-[132px] flex-col justify-between rounded-2xl p-5 text-left backdrop-blur-md transition-all duration-300 hover:scale-[1.02] ${
+                      isSelected
+                        ? "bg-slate-900 text-white ring-2 ring-[#D4AF37] shadow-[0_14px_38px_-6px_rgba(212,175,55,0.5)]"
+                        : "bg-slate-900/5 text-slate-900 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:bg-slate-900/10 hover:shadow-[0_10px_28px_rgb(212,175,55,0.18)]"
+                    }`}
+                  >
+                    <div className="flex w-full items-center justify-between">
+                      <span
+                        className={`inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
+                          isSelected
+                            ? "bg-white/15 text-[#D4AF37]"
+                            : "bg-white/90 text-slate-700 shadow-xs"
+                        }`}
+                      >
+                        <Icon className="h-6 w-6" />
+                      </span>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${
+                          isSelected
+                            ? "bg-[#D4AF37]/20 text-[#F3E5AB]"
+                            : "bg-white/80 text-slate-600"
+                        }`}
+                      >
+                        {index + 1}. {role.katanaTab}
                       </span>
                     </div>
-                    <h3 className="mt-1 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-                      Watch the Katana Video Tutorial
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {activeRole.videoTitle} — Opens directly in YouTube at the exact timestamp for
-                      your station.
-                    </p>
+
+                    <div className="mt-4">
+                      <div className="text-lg font-bold tracking-tight">{role.label}</div>
+                      <p
+                        className={`mt-0.5 text-xs ${
+                          isSelected ? "text-slate-300" : "text-slate-500"
+                        }`}
+                      >
+                        {role.subtitle}
+                      </p>
+                    </div>
+
+                    {/* Sleek Hover / Active Tooltip Expansion */}
+                    <div
+                      data-testid={`role-tooltip-${role.id}`}
+                      className={`overflow-hidden transition-all duration-300 ${
+                        isHovered || isSelected
+                          ? "mt-3 max-h-28 opacity-100"
+                          : "mt-0 max-h-0 opacity-0"
+                      }`}
+                    >
+                      <p
+                        className={`rounded-xl p-2.5 text-xs leading-relaxed ${
+                          isSelected
+                            ? "bg-white/10 text-[#F3E5AB]"
+                            : "bg-white/90 text-slate-700 shadow-xs"
+                        }`}
+                      >
+                        {role.hoverDescription}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
+      {/* PHASE 3: FOCUSED CONTENT REVEAL (Only rendered after user clicks a specific role) */}
+      <AnimatePresence mode="wait">
+        {protocolSigned && activeRole && (
+          <motion.section
+            key={`role-content-${activeRole.id}-${viewMode}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.5 }}
+            aria-label={`${activeRole.label} SOP Training`}
+            data-testid={`role-panel-${activeRole.id}`}
+            className="space-y-6"
+          >
+            {viewMode === "full" ? (
+              <>
+                {/* Video Lesson Card */}
+                <a
+                  href={activeRole.watchUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="video-lesson-card"
+                  className="group relative block overflow-hidden rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_14px_40px_-8px_rgba(212,175,55,0.35)]"
+                >
+                  <GoldBeam />
+                  <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+                    <div className="flex items-start gap-4 sm:items-center">
+                      <span className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[#D4AF37] shadow-[0_8px_24px_rgba(212,175,55,0.3)] transition-transform duration-200 group-hover:scale-105">
+                        <Play className="ml-0.5 h-8 w-8 fill-current" />
+                      </span>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={eyebrow}>📺 Video Lesson • {activeRole.label}</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-0.5 text-xs font-semibold text-amber-900">
+                            <Clock className="h-3.5 w-3.5 text-[#D4AF37]" />
+                            {activeRole.videoWatchNote}
+                          </span>
+                        </div>
+                        <h3 className="mt-1 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+                          Watch the Katana Video Tutorial
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {activeRole.videoTitle} — Opens directly in YouTube at the exact timestamp
+                          for your station.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-xs transition group-hover:bg-slate-800 sm:self-center">
+                      <span>Watch on YouTube</span>
+                      <ExternalLink className="h-4 w-4 text-[#D4AF37]" />
+                    </div>
                   </div>
-                </div>
+                </a>
 
-                <div className="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-xs transition group-hover:bg-slate-800 sm:self-center">
-                  <span>Watch on YouTube</span>
-                  <ExternalLink className="h-4 w-4 text-[#D4AF37]" />
-                </div>
-              </div>
-            </a>
+                {/* Full Step-by-Step Instructions Card */}
+                <div className={card} data-testid="full-training-card">
+                  <div className="border-b border-slate-100 pb-4">
+                    <div className={eyebrow}>{activeRole.katanaTab}</div>
+                    <h3 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+                      {activeRole.label} — Step-by-Step Standard Operating Procedure
+                    </h3>
+                    <p className="mt-1 text-base text-slate-600">{activeRole.subtitle}</p>
+                  </div>
 
-            {/* Full Step-by-Step Instructions Card */}
-            <div className={card} data-testid="full-training-card">
-              <div className="border-b border-slate-100 pb-4">
-                <div className={eyebrow}>{activeRole.katanaTab}</div>
-                <h3 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-                  {activeRole.label} — Step-by-Step Standard Operating Procedure
-                </h3>
-                <p className="mt-1 text-base text-slate-600">{activeRole.subtitle}</p>
-              </div>
+                  <div className="mt-6 space-y-4">
+                    {activeRole.steps.map((step) => (
+                      <div
+                        key={step.title}
+                        className="rounded-2xl bg-slate-50/90 p-5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]"
+                      >
+                        <h4 className="text-lg font-bold text-slate-900">{step.title}</h4>
+                        <p className="mt-2 text-base leading-relaxed text-slate-700">
+                          {step.detail}
+                        </p>
+                        {step.subBullets && step.subBullets.length > 0 && (
+                          <ul className="mt-3 space-y-2 border-t border-slate-200/70 pt-3">
+                            {step.subBullets.map((bullet) => (
+                              <li
+                                key={bullet}
+                                className="flex items-start gap-2.5 text-base text-slate-700"
+                              >
+                                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#D4AF37]" />
+                                <span>{bullet}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
 
-              <div className="mt-6 space-y-4">
-                {activeRole.steps.map((step) => (
+                  {/* Floor Foreman Real-Time WIP Overview Section */}
+                  {activeRole.wipOverview && (
+                    <div
+                      data-testid="foreman-wip-overview"
+                      className="mt-6 rounded-2xl bg-slate-50 p-6 shadow-xs"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-900 shadow-xs">
+                          <Activity className="h-5 w-5 text-[#D4AF37]" />
+                        </span>
+                        <div>
+                          <div className={eyebrow}>{activeRole.wipOverview.subtitle}</div>
+                          <h4 className="text-lg font-bold text-slate-900">
+                            {activeRole.wipOverview.title}
+                          </h4>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-base leading-relaxed text-slate-700">
+                        {activeRole.wipOverview.description}
+                      </p>
+                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        {activeRole.wipOverview.stages.map((stage, idx) => (
+                          <div key={stage.status} className="rounded-xl bg-white p-4 shadow-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                Stage {idx + 1}
+                              </span>
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-bold ring-1 ${stage.badgeColor}`}
+                              >
+                                {stage.status}
+                              </span>
+                            </div>
+                            <p className="mt-3 text-sm leading-relaxed text-slate-700">
+                              {stage.meaning}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Foreman Work Center Reference Table */}
+                  {activeRole.workCenters && (
+                    <div className="mt-6 overflow-hidden rounded-2xl bg-slate-50/70 shadow-xs">
+                      <div className="bg-slate-100 px-5 py-3.5">
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-800">
+                          Locked CC Patio Physical Work Centers (Katana Resources Filter)
+                        </h4>
+                      </div>
+                      <div className="overflow-x-auto bg-white">
+                        <table className="w-full text-left text-sm">
+                          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
+                            <tr>
+                              <th className="px-4 py-3">Floor / Zone</th>
+                              <th className="px-4 py-3">Katana Resource Filter</th>
+                              <th className="px-4 py-3">Standard Operation</th>
+                              <th className="px-4 py-3">Primary Operator Role</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {activeRole.workCenters.map((wc) => (
+                              <tr key={wc.resource} className="hover:bg-slate-50/80">
+                                <td className="px-4 py-3 font-medium text-slate-700">{wc.zone}</td>
+                                <td className="px-4 py-3">
+                                  <code className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-900">
+                                    {wc.resource}
+                                  </code>
+                                </td>
+                                <td className="px-4 py-3 text-slate-700">{wc.operation}</td>
+                                <td className="px-4 py-3 text-slate-600">{wc.role}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Accounting Automation Notice Callout */}
                   <div
-                    key={step.title}
-                    className="rounded-2xl bg-slate-50/90 p-5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]"
+                    data-testid="accounting-automation-notice"
+                    className="mt-6 rounded-2xl bg-amber-50/90 p-6 shadow-[0_8px_24px_rgba(212,175,55,0.15)]"
                   >
-                    <h4 className="text-lg font-bold text-slate-900">{step.title}</h4>
-                    <p className="mt-2 text-base leading-relaxed text-slate-700">{step.detail}</p>
-                    {step.subBullets && step.subBullets.length > 0 && (
-                      <ul className="mt-3 space-y-2 border-t border-slate-200/70 pt-3">
-                        {step.subBullets.map((bullet) => (
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-amber-800 shadow-xs">
+                        <DollarSign className="h-6 w-6" />
+                      </span>
+                      <h4 className="text-base font-extrabold uppercase tracking-wide text-amber-950">
+                        💰 {activeRole.accountingNotice.title}
+                      </h4>
+                    </div>
+                    <p className="mt-3 text-base font-medium leading-relaxed text-amber-950">
+                      {activeRole.accountingNotice.body}
+                    </p>
+                    {activeRole.accountingNotice.bullets && (
+                      <ul className="mt-3 space-y-1.5 border-t border-amber-200/80 pt-3">
+                        {activeRole.accountingNotice.bullets.map((item) => (
                           <li
-                            key={bullet}
-                            className="flex items-start gap-2.5 text-base text-slate-700"
+                            key={item}
+                            className="flex items-start gap-2 text-sm font-semibold text-amber-900"
                           >
-                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#D4AF37]" />
-                            <span>{bullet}</span>
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                            <span>{item}</span>
                           </li>
                         ))}
                       </ul>
                     )}
                   </div>
-                ))}
-              </div>
-
-              {/* Floor Foreman Real-Time WIP Overview Section */}
-              {activeRole.wipOverview && (
-                <div
-                  data-testid="foreman-wip-overview"
-                  className="mt-6 rounded-2xl bg-slate-50 p-6 shadow-xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-900 shadow-xs">
-                      <Activity className="h-5 w-5 text-[#D4AF37]" />
-                    </span>
-                    <div>
-                      <div className={eyebrow}>{activeRole.wipOverview.subtitle}</div>
-                      <h4 className="text-lg font-bold text-slate-900">
-                        {activeRole.wipOverview.title}
-                      </h4>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-base leading-relaxed text-slate-700">
-                    {activeRole.wipOverview.description}
-                  </p>
-                  <div className="mt-4 grid gap-4 md:grid-cols-3">
-                    {activeRole.wipOverview.stages.map((stage, idx) => (
-                      <div
-                        key={stage.status}
-                        className="rounded-xl bg-white p-4 shadow-xs"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                            Stage {idx + 1}
-                          </span>
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-bold ring-1 ${stage.badgeColor}`}
-                          >
-                            {stage.status}
-                          </span>
-                        </div>
-                        <p className="mt-3 text-sm leading-relaxed text-slate-700">
-                          {stage.meaning}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
                 </div>
-              )}
-
-              {/* Foreman Work Center Reference Table */}
-              {activeRole.workCenters && (
-                <div className="mt-6 overflow-hidden rounded-2xl bg-slate-50/70 shadow-xs">
-                  <div className="bg-slate-100 px-5 py-3.5">
-                    <h4 className="text-sm font-bold uppercase tracking-wider text-slate-800">
-                      Locked CC Patio Physical Work Centers (Katana Resources Filter)
-                    </h4>
-                  </div>
-                  <div className="overflow-x-auto bg-white">
-                    <table className="w-full text-left text-sm">
-                      <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
-                        <tr>
-                          <th className="px-4 py-3">Floor / Zone</th>
-                          <th className="px-4 py-3">Katana Resource Filter</th>
-                          <th className="px-4 py-3">Standard Operation</th>
-                          <th className="px-4 py-3">Primary Operator Role</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {activeRole.workCenters.map((wc) => (
-                          <tr key={wc.resource} className="hover:bg-slate-50/80">
-                            <td className="px-4 py-3 font-medium text-slate-700">{wc.zone}</td>
-                            <td className="px-4 py-3">
-                              <code className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-900">
-                                {wc.resource}
-                              </code>
-                            </td>
-                            <td className="px-4 py-3 text-slate-700">{wc.operation}</td>
-                            <td className="px-4 py-3 text-slate-600">{wc.role}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Accounting Automation Notice Callout */}
+              </>
+            ) : (
+              /* Condensed High-Contrast Cheat Sheet View (Videos Hidden) */
               <div
-                data-testid="accounting-automation-notice"
-                className="mt-6 rounded-2xl bg-amber-50/90 p-6 shadow-[0_8px_24px_rgba(212,175,55,0.15)]"
+                className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]"
+                data-testid="cheat-sheet-card"
               >
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-amber-800 shadow-xs">
-                    <DollarSign className="h-6 w-6" />
-                  </span>
-                  <h4 className="text-base font-extrabold uppercase tracking-wide text-amber-950">
-                    💰 {activeRole.accountingNotice.title}
-                  </h4>
-                </div>
-                <p className="mt-3 text-base font-medium leading-relaxed text-amber-950">
-                  {activeRole.accountingNotice.body}
-                </p>
-                {activeRole.accountingNotice.bullets && (
-                  <ul className="mt-3 space-y-1.5 border-t border-amber-200/80 pt-3">
-                    {activeRole.accountingNotice.bullets.map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-start gap-2 text-sm font-semibold text-amber-900"
-                      >
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </>
-        ) : (
-          /* Condensed High-Contrast Cheat Sheet View (Videos Hidden) */
-          <div
-            className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]"
-            data-testid="cheat-sheet-card"
-          >
-            <GoldBeam />
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
-              <div>
-                <div className="text-xs font-extrabold uppercase tracking-widest text-[#D4AF37]">
-                  ⚡ CONDENSED SHOP FLOOR CHEAT SHEET • {activeRole.katanaTab}
-                </div>
-                <h3 className="mt-1 text-2xl font-black tracking-tight text-slate-900">
-                  {activeRole.label} — Rapid Action Steps
-                </h3>
-              </div>
-              <span className="rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-white">
-                Videos Hidden • High Contrast
-              </span>
-            </div>
-
-            <ul className="mt-6 space-y-3" data-testid="cheat-sheet-steps">
-              {activeRole.steps.map((step, index) => (
-                <li
-                  key={step.title}
-                  className="flex items-start gap-4 rounded-xl bg-slate-50 p-4 shadow-xs"
-                >
-                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm font-extrabold text-white">
-                    {index + 1}
-                  </span>
-                  <div className="text-lg font-bold leading-snug text-slate-900">
-                    {step.cheatSheetAction}
+                <GoldBeam />
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+                  <div>
+                    <div className="text-xs font-extrabold uppercase tracking-widest text-[#D4AF37]">
+                      ⚡ CONDENSED SHOP FLOOR CHEAT SHEET • {activeRole.katanaTab}
+                    </div>
+                    <h3 className="mt-1 text-2xl font-black tracking-tight text-slate-900">
+                      {activeRole.label} — Rapid Action Steps
+                    </h3>
                   </div>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-6 rounded-xl bg-amber-50 p-4">
-              <p className="text-base font-extrabold text-amber-950">
-                💰 {activeRole.accountingNotice.title}:{" "}
-                <span className="font-semibold">{activeRole.accountingNotice.body}</span>
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Daily Shift Checklist + Operator Accountability Sign-Off Card */}
-        <div className={card}>
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-              <ClipboardList className="h-5 w-5" />
-            </span>
-            <div>
-              <div className={eyebrow}>Shift Verification & Compliance</div>
-              <h3 className="text-lg font-bold tracking-tight text-slate-900">
-                {activeRole.label} — Daily Shift Checklist & Accountability Sign-Off
-              </h3>
-            </div>
-          </div>
-
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-            {activeRole.checklist.map((item) => (
-              <li
-                key={item}
-                className={`${innerCard} flex items-start gap-3 text-base text-slate-800`}
-              >
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-
-          {/* Operator / Manager Accountability Sign-Off Form */}
-          <div
-            className="mt-8 border-t border-slate-200 pt-6"
-            data-testid="accountability-signoff-section"
-          >
-            <div className="flex items-center gap-3">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-800">
-                <FileCheck2 className="h-5 w-5 text-[#D4AF37]" />
-              </span>
-              <div>
-                <div className={eyebrow}>Mandatory SOP Acknowledgment</div>
-                <h4 className="text-lg font-bold text-slate-900">
-                  Role Accountability Sign-Off ({activeRole.label})
-                </h4>
-              </div>
-            </div>
-
-            <form onSubmit={handleSignOffSubmit} className="mt-5 space-y-4" noValidate>
-              <div>
-                <label
-                  htmlFor="training-employee-name"
-                  className="block text-sm font-semibold text-slate-800"
-                >
-                  Employee Name
-                </label>
-                <input
-                  id="training-employee-name"
-                  name="employeeName"
-                  type="text"
-                  autoComplete="off"
-                  required
-                  value={employeeName}
-                  onChange={(e) => setEmployeeName(e.target.value)}
-                  placeholder="Enter your full first and last name..."
-                  className={`${field} mt-1.5 py-3 text-base`}
-                  data-testid="signoff-employee-name"
-                />
-              </div>
-
-              <label
-                htmlFor="training-qbo-ack"
-                className="flex cursor-pointer items-center gap-3 rounded-xl bg-slate-50 p-4 transition hover:bg-slate-100/80"
-              >
-                <input
-                  id="training-qbo-ack"
-                  name="acknowledgedQboImpact"
-                  type="checkbox"
-                  checked={acknowledgedQbo}
-                  onChange={(e) => setAcknowledgedQbo(e.target.checked)}
-                  className="h-5 w-5 rounded border-slate-300 text-slate-900 focus:ring-[#D4AF37]"
-                  data-testid="signoff-qbo-checkbox"
-                />
-                <span className="text-base font-semibold text-slate-900">
-                  I understand my actions impact QuickBooks Online
-                </span>
-              </label>
-
-              {formError && (
-                <div role="alert" className={noticeError} data-testid="signoff-error-toast">
-                  {formError}
+                  <span className="rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-white">
+                    Videos Hidden • High Contrast
+                  </span>
                 </div>
-              )}
 
-              {signOffSuccess && (
-                <div
-                  role="status"
-                  className={noticeSuccess}
-                  data-testid="signoff-success-toast"
-                >
-                  <div className="font-bold">
-                    ✅ Training Sign-Off Recorded ({signOffSuccess.confirmationId})
-                  </div>
-                  <p className="mt-1 text-xs text-emerald-800">
-                    Signed by <span className="font-semibold">{signOffSuccess.employeeName}</span>{" "}
-                    for role <span className="font-semibold">{signOffSuccess.roleLabel}</span> at{" "}
-                    {new Date(signOffSuccess.signedAtIso).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                    .
+                <ul className="mt-6 space-y-3" data-testid="cheat-sheet-steps">
+                  {activeRole.steps.map((step, index) => (
+                    <li
+                      key={step.title}
+                      className="flex items-start gap-4 rounded-xl bg-slate-50 p-4 shadow-xs"
+                    >
+                      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm font-extrabold text-white">
+                        {index + 1}
+                      </span>
+                      <div className="text-lg font-bold leading-snug text-slate-900">
+                        {step.cheatSheetAction}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-6 rounded-xl bg-amber-50 p-4">
+                  <p className="text-base font-extrabold text-amber-950">
+                    💰 {activeRole.accountingNotice.title}:{" "}
+                    <span className="font-semibold">{activeRole.accountingNotice.body}</span>
                   </p>
                 </div>
-              )}
-
-              <div className="flex items-center justify-end">
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  data-testid="signoff-submit-btn"
-                  className={`${btnPrimary} px-6 py-3 text-base font-semibold`}
-                >
-                  {isPending ? "Recording Sign-Off..." : "Submit Sign-Off"}
-                </button>
               </div>
-            </form>
-          </div>
-        </div>
-      </section>
+            )}
+
+            {/* Daily Shift Checklist Card */}
+            <div className={card} data-testid="role-checklist-card">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                  <ClipboardList className="h-5 w-5" />
+                </span>
+                <div>
+                  <div className={eyebrow}>Shift Verification & Compliance</div>
+                  <h3 className="text-lg font-bold tracking-tight text-slate-900">
+                    {activeRole.label} — Daily Shift Checklist
+                  </h3>
+                </div>
+              </div>
+
+              <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+                {activeRole.checklist.map((item) => (
+                  <li
+                    key={item}
+                    className={`${innerCard} flex items-start gap-3 text-base text-slate-800`}
+                  >
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
