@@ -1,8 +1,8 @@
-import { test, expect } from '@playwright/test';
-import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
-import path from 'path';
-import { createSupabaseFetch } from '../../src/lib/supabase-env';
+import { test, expect } from "@playwright/test";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import * as dotenv from "dotenv";
+import path from "path";
+import { createSupabaseFetch } from "../../src/lib/supabase-env";
 
 // Prefer .env.local (2026 publishable/secret keys) over leftover local-stack JWT aliases.
 dotenv.config({
@@ -10,77 +10,111 @@ dotenv.config({
   override: true,
 });
 
-test.describe('Gatekeeper Auth Proof', () => {
-  test('rejects unauthorized domain', async ({ page }) => {
-    await page.goto('/');
+const QA_EMAIL = "qa.test@ccpatio.com";
+const QA_PASSWORD = "TestPassword123!";
+
+/**
+ * Auth admin calls are HTTP. This client does not open a Postgres pool.
+ * Bounded pages so a large user list cannot stall teardown.
+ */
+function authAdmin(): SupabaseClient | null {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const supabaseServiceKey =
+    process.env.SUPABASE_SECRET_KEY?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!supabaseUrl || !supabaseServiceKey) return null;
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { fetch: createSupabaseFetch(supabaseServiceKey) },
+  });
+}
+
+async function deleteQaUser(email: string): Promise<void> {
+  const supabase = authAdmin();
+  if (!supabase) return;
+  try {
+    for (let page = 1; page <= 10; page += 1) {
+      const { data, error } = await supabase.auth.admin.listUsers({
+        page,
+        perPage: 200,
+      });
+      if (error || !data?.users) return;
+      const match = data.users.find((user) => user.email === email);
+      if (match) {
+        await supabase.auth.admin.deleteUser(match.id);
+        return;
+      }
+      if (data.users.length < 200) return;
+    }
+  } catch {
+    // Teardown must not replace the original failure or keep the worker alive.
+  }
+}
+
+test.describe("Gatekeeper Auth Proof", () => {
+  test("rejects unauthorized domain", async ({ page }) => {
+    await page.goto("/");
     await expect(page.locator('form[data-hydrated="true"]')).toBeVisible({
       timeout: 20_000,
     });
 
-    // Fill in the form
-    await page.fill('input[name="email"]', 'rogue.user@gmail.com');
-    await page.fill('input[name="password"]', 'TestPassword123!');
-    
-    // Click the "Create @ccpatio.com Account" button
+    await page.fill('input[name="email"]', "rogue.user@gmail.com");
+    await page.fill('input[name="password"]', QA_PASSWORD);
     await page.click('button:has-text("Create @ccpatio.com Account")');
-    
-    // Verify domain restriction error message appears
-    await expect(page.locator('text=Access denied. Must use a @ccpatio.com email address.')).toBeVisible();
+
+    await expect(
+      page.locator("text=Access denied. Must use a @ccpatio.com email address."),
+    ).toBeVisible();
   });
 
-  test('accepts authorized domain, creates session, and redirects', async ({ page }) => {
-    const testEmail = 'qa.test@ccpatio.com';
-    const testPassword = 'TestPassword123!';
-    
-    // Cleanup any previous run if it failed
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey =
-      process.env.SUPABASE_SECRET_KEY?.trim() ||
-      process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-      global: { fetch: createSupabaseFetch(supabaseServiceKey) },
-    });
-    
-    const { data: usersData } = await supabase.auth.admin.listUsers();
-    const existingUser = usersData?.users.find(u => u.email === testEmail);
-    if (existingUser) {
-      await supabase.auth.admin.deleteUser(existingUser.id);
-    }
+  test("accepts authorized domain, creates session, and redirects", async ({ page }) => {
+    await deleteQaUser(QA_EMAIL);
 
-    await page.goto('/');
-    await expect(page.locator('form[data-hydrated="true"]')).toBeVisible({
-      timeout: 20_000,
-    });
+    try {
+      await page.goto("/");
+      await expect(page.locator('form[data-hydrated="true"]')).toBeVisible({
+        timeout: 20_000,
+      });
 
-    // Fill in the form
-    await page.fill('input[name="email"]', testEmail);
-    await page.fill('input[name="password"]', testPassword);
-    
-    // Click the button
-    await page.click('button:has-text("Create @ccpatio.com Account")');
-    
-    // Wait for either a redirect or an error message to appear
-    await Promise.race([
-      page.waitForURL(/\/admin\/dictionary/),
-      page.waitForSelector('.text-rose-500', { state: 'visible' }).then(async () => {
-        const errText = await page.textContent('.text-rose-500');
-        throw new Error(`Sign up failed with error displayed on page: ${errText}`);
-      })
-    ]);
-    
-    // Should redirect to /admin/dictionary
-    await expect(page).toHaveURL(/\/admin\/dictionary/);
-    
-    // Clean up using Supabase Admin API
-    const { data: usersDataAfter } = await supabase.auth.admin.listUsers();
-    const newUser = usersDataAfter?.users.find(u => u.email === testEmail);
-    
-    if (newUser) {
-      await supabase.auth.admin.deleteUser(newUser.id);
-      console.log(`Cleaned up test user ${testEmail}`);
-    } else {
-      console.log(`Test user ${testEmail} not found in admin API (likely a mock environment).`);
+      await page.fill('input[name="email"]', QA_EMAIL);
+      await page.fill('input[name="password"]', QA_PASSWORD);
+      await page.click('button:has-text("Create @ccpatio.com Account")');
+
+      // `commit` resolves when the dictionary URL is committed. It does not wait
+      // for the full SKU table's load event, which is what burned the 120s budget
+      // and aborted the dev compile.
+      const outcome = await page.waitForFunction(
+        () => {
+          const error = document.querySelector(".text-rose-500")?.textContent?.trim() ?? "";
+          if (error) return `error:${error}`;
+          const heading = document.querySelector("h1")?.textContent ?? "";
+          if (heading.includes("couldn") && heading.includes("load")) return "server-lost";
+          if (location.pathname.startsWith("/admin/dictionary")) return "dictionary";
+          const next = new URLSearchParams(location.search).get("next") ?? "";
+          if (next.includes("/admin/dictionary")) return "bounced";
+          return "";
+        },
+        null,
+        { timeout: 45_000, polling: 250 },
+      );
+      const status = await outcome.jsonValue();
+      if (typeof status === "string" && status.startsWith("error:")) {
+        throw new Error(`Sign up failed with error displayed on page: ${status.slice("error:".length)}`);
+      }
+      if (status === "server-lost") {
+        throw new Error(
+          "Signup navigation died on the Next.js error page. The app server stopped serving /admin/dictionary.",
+        );
+      }
+      if (status === "bounced") {
+        throw new Error(
+          "Signup returned to the login page. /admin/dictionary requires a session, and this signup did not leave one.",
+        );
+      }
+
+      await expect(page).toHaveURL(/\/admin\/dictionary/, { timeout: 15_000 });
+    } finally {
+      await deleteQaUser(QA_EMAIL);
     }
   });
 });

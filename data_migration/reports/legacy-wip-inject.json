@@ -1,0 +1,164 @@
+{
+  "writtenAt": "2026-10-22T14:54:34.719Z",
+  "orders": [
+    {
+      "legacyOrder": "1796",
+      "orderNo": "LEGACY-WIP-1796",
+      "salesOrderId": 53605752,
+      "manufacturingOrderId": 19731664,
+      "manufacturingOrderNo": "LEGACY-WIP-1796",
+      "recipeRowIds": [
+        112978081
+      ],
+      "lines": [
+        {
+          "sku": "FAB-MID-IND",
+          "yards": 28,
+          "variantId": 41894187
+        }
+      ]
+    },
+    {
+      "legacyOrder": "1749",
+      "orderNo": "LEGACY-WIP-1749",
+      "salesOrderId": 53605756,
+      "manufacturingOrderId": 19731669,
+      "manufacturingOrderNo": "LEGACY-WIP-1749",
+      "recipeRowIds": [
+        112978087
+      ],
+      "lines": [
+        {
+          "sku": "FAB-PLA-MOC",
+          "yards": 24,
+          "variantId": 41894222
+        }
+      ]
+    },
+    {
+      "legacyOrder": "1791",
+      "orderNo": "LEGACY-WIP-1791",
+      "salesOrderId": 53605758,
+      "manufacturingOrderId": 19731671,
+      "manufacturingOrderNo": "LEGACY-WIP-1791",
+      "recipeRowIds": [
+        112978089
+      ],
+      "lines": [
+        {
+          "sku": "FAB-PRE-FAW",
+          "yards": 26,
+          "variantId": 41894236
+        }
+      ]
+    },
+    {
+      "legacyOrder": "1491",
+      "orderNo": "LEGACY-WIP-1491",
+      "salesOrderId": 53605759,
+      "manufacturingOrderId": 19731673,
+      "manufacturingOrderNo": "LEGACY-WIP-1491",
+      "recipeRowIds": [
+        112978090
+      ],
+      "lines": [
+        {
+          "sku": "FAB-REV-IND",
+          "yards": 40,
+          "variantId": 41894253
+        }
+      ]
+    },
+    {
+      "legacyOrder": "1762",
+      "orderNo": "LEGACY-WIP-1762",
+      "salesOrderId": 53605784,
+      "manufacturingOrderId": 19731674,
+      "manufacturingOrderNo": "LEGACY-WIP-1762",
+      "recipeRowIds": [
+        112978102,
+        112978103
+      ],
+      "lines": [
+        {
+          "sku": "FAB-SHE-SUR",
+          "yards": 9,
+          "variantId": 41894276
+        },
+        {
+          "sku": "FAB-SNO-CAP",
+          "yards": 9,
+          "variantId": 41894283
+        }
+      ]
+    },
+    {
+      "legacyOrder": "1787",
+      "orderNo": "LEGACY-WIP-1787",
+      "salesOrderId": 53605793,
+      "manufacturingOrderId": 19731678,
+      "manufacturingOrderNo": "LEGACY-WIP-1787",
+      "recipeRowIds": [
+        112978104
+      ],
+      "lines": [
+        {
+          "sku": "FAB-SHE-WHI",
+          "yards": 18,
+          "variantId": 41894277
+        }
+      ]
+    },
+    {
+      "legacyOrder": "1786",
+      "orderNo": "LEGACY-WIP-1786",
+      "salesOrderId": 53605797,
+      "manufacturingOrderId": 19731679,
+      "manufacturingOrderNo": "LEGACY-WIP-1786",
+      "recipeRowIds": [
+        112978105
+      ],
+      "lines": [
+        {
+          "sku": "FAB-SPEC-CARB",
+          "yards": 2,
+          "variantId": 41894300
+        }
+      ]
+    },
+    {
+      "legacyOrder": "1784",
+      "orderNo": "LEGACY-WIP-1784",
+      "salesOrderId": 53605800,
+      "manufacturingOrderId": 19731682,
+      "manufacturingOrderNo": "LEGACY-WIP-1784",
+      "recipeRowIds": [
+        112978117
+      ],
+      "lines": [
+        {
+          "sku": "FAB-TRU-FOG",
+          "yards": 42,
+          "variantId": 41894318
+        }
+      ]
+    },
+    {
+      "legacyOrder": "1675",
+      "orderNo": "LEGACY-WIP-1675",
+      "salesOrderId": 53605801,
+      "manufacturingOrderId": 19731684,
+      "manufacturingOrderNo": "LEGACY-WIP-1675",
+      "recipeRowIds": [
+        112978125
+      ],
+      "lines": [
+        {
+          "sku": "FAB-VAL-SED",
+          "yards": 14,
+          "variantId": 41894327
+        }
+      ]
+    }
+  ]
+}

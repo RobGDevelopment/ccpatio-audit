@@ -45,15 +45,22 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  // Run your local PIM server before starting the tests.
-  // Env comes from webServer.env (merged .env.local 2026 keys), not .env.test.local.
+  // qa:phase2 leaves `next start` on port 3000 and e2e reuses it.
+  // Do not start `next dev` here. Dev compiles /admin/dictionary on first hit,
+  // and aborting that request when a test times out takes the listener down.
+  // Later tests then fail with ECONNREFUSED. When port 3000 is free, start the
+  // same production server phase 2 uses.
   webServer: {
-    command: "npm run dev:pim",
+    command: "npm run start",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    stdout: "pipe",
+    stderr: "pipe",
+    gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },
     env: {
       ...process.env,
+      NODE_ENV: "production",
       KATANA_E2E_MIRROR: "true",
       KATANA_API_BASE: "http://127.0.0.1:3000/api/qa/katana-mirror/v1",
       KATANA_API_KEY:

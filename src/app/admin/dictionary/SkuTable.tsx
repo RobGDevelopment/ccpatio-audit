@@ -182,6 +182,7 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const modalReturnFocusRef = useRef<HTMLElement | null>(null);
+  const seededNaFields = useRef(false);
 
   useEffect(() => {
     setRows(initialRows);
@@ -198,6 +199,10 @@ export function SkuTable({ rows: initialRows, operatorEmail }: SkuTableProps) {
 
   // One-time: persist inferred N/A (bar tables â†’ arm/sit) so Missing clears without manual clicks
   useEffect(() => {
+    // Refresh replaces initialRows. Running again re-enters this effect and
+    // walks every finished good through Postgres. One pass per mount.
+    if (seededNaFields.current) return;
+    seededNaFields.current = true;
     const fgSkus = initialRows
       .filter(
         (r) =>
