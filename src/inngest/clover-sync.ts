@@ -4,7 +4,7 @@ import { pushToQBO } from "@/server/integrations/qbo/client";
 import { getDb } from "@/server/db/client";
 import { sku_mappings } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
-import { getLedgerPipelineMode } from "@/server/pipeline/ledger-mode";
+import { canPostToQbo } from "@/server/pipeline/ledger-mode";
 
 /**
  * Handler body, exported so the ledger containment gate can be unit tested
@@ -73,10 +73,11 @@ export async function runCloverPaymentSync({
       };
     });
 
-    // LEDGER CONTAINMENT GATE (fail closed): only an explicit LEDGER_PIPELINE_MODE=live
-    // may reach QuickBooks. Evaluated on every Inngest (re)invocation of this handler.
-    const mode = getLedgerPipelineMode();
-    if (mode !== "live") {
+    // LEDGER CONTAINMENT GATE (fail closed): requires both master QBO_LEDGER_MODE and
+    // CLOVER_LEDGER_MODE (or legacy fallback) to resolve to "live".
+    const allowed = canPostToQbo("clover");
+    const mode = allowed ? ("live" as const) : ("log" as const);
+    if (!allowed) {
       console.log(
         JSON.stringify({
           tag: "ledger-containment",

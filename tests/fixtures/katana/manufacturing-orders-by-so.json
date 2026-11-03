@@ -1,0 +1,53 @@
+{
+  "data": [
+    {
+      "id": 19833041,
+      "status": "DONE",
+      "order_no": "[REDACTED]",
+      "variant_id": 42561748,
+      "includes_partial_completions": false,
+      "planned_quantity": 1,
+      "actual_quantity": 1,
+      "completed_quantity": 1,
+      "remaining_quantity": 0,
+      "location_id": 98179,
+      "order_created_date": "2026-10-28T19:47:18.168Z",
+      "done_date": "2026-10-28T19:48:50.989Z",
+      "production_deadline_date": "2026-11-06T19:00:00.000Z",
+      "additional_info": "[REDACTED]",
+      "sales_order_id": 53609101,
+      "sales_order_row_id": 127160001,
+      "sales_order_delivery_deadline": "2026-11-18T15:00:00.000Z",
+      "ingredient_availability": "PROCESSED",
+      "created_at": "2026-10-28T19:47:18.246Z",
+      "updated_at": "2026-10-28T19:48:52.322Z",
+      "deleted_at": null,
+      "custom_fields": null
+    },
+    {
+      "id": 19833042,
+      "status": "IN_PROGRESS",
+      "order_no": "[REDACTED]",
+      "variant_id": 42561749,
+      "includes_partial_completions": false,
+      "planned_quantity": 1,
+      "actual_quantity": 0,
+      "completed_quantity": 0,
+      "remaining_quantity": 1,
+      "location_id": 98179,
+      "order_created_date": "2026-10-28T19:47:19.000Z",
+      "done_date": null,
+      "production_deadline_date": "2026-11-06T19:00:00.000Z",
+      "additional_info": "[REDACTED]",
+      "sales_order_id": 53609101,
+      "sales_order_row_id": 127160001,
+      "sales_order_delivery_deadline": "2026-11-18T15:00:00.000Z",
+      "ingredient_availability": "IN_STOCK",
+      "created_at": "2026-10-28T19:47:19.100Z",
+      "updated_at": "2026-10-29T18:20:00.000Z",
+      "deleted_at": null,
+      "custom_fields": null
+    }
+  ]
+}
+

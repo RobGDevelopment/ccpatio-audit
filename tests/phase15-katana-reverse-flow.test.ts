@@ -1,10 +1,14 @@
 import { createHmac } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import moFixture from "./fixtures/katana/manufacturing-order-done.json";
+import moListFixture from "./fixtures/katana/manufacturing-orders-by-so.json";
+import poPartialFixture from "./fixtures/katana/purchase-order-partially-received.json";
 import poFixture from "./fixtures/katana/purchase-order-received.json";
+import soGhlFixture from "./fixtures/katana/sales-order-ghl.json";
 import soFixture from "./fixtures/katana/sales-order-legacy-deleted.json";
+import supplierFixture from "./fixtures/katana/supplier.json";
 
 const sendMock = vi.hoisted(() => vi.fn(async (_event: { id: string }) => ({ ids: ["evt"] })));
 vi.mock("@/inngest/client", () => ({
@@ -59,6 +63,15 @@ import {
   readPurchaseOrderReceipt,
   readSalesOrderStatus,
 } from "@/server/katana/webhook-events";
+import {
+  deriveFactoryStage,
+  readManufacturingOrderSnapshot,
+  readSalesOrderSnapshot,
+} from "@/server/katana/order-status";
+import {
+  parseQboVendorIdFromSupplier,
+  readPoReceiptRows,
+} from "@/server/katana/po-receipt-ledger";
 
 const ROOT = path.resolve(__dirname, "..");
 const SECRET = "phase15-test-secret";
@@ -274,14 +287,14 @@ describe("POST /api/webhooks/katana audit + routing (QA-15.3-03/04/05)", () => {
     expect(ids[0]).not.toBe(ids[1]);
   });
 
-  it("identical PO-receipt bodies twice: two audit rows, two sends (event id stays stable until Step 15.2)", async () => {
-    const body = { action: "purchase_order.received", object: { id: PO_ID } };
+  it("identical PO-receipt bodies twice: two audit rows, two sends with distinct per-delivery event ids (QA-15.3-04)", async () => {
+    const body = { action: "purchase_order.partially_received", object: { id: PO_ID } };
     await deliver(body);
     await deliver(body);
     expect(fakeDb.state.rows).toHaveLength(2);
     expect(sendMock).toHaveBeenCalledTimes(2);
     const ids = sendMock.mock.calls.map((call) => call[0].id);
-    expect(ids[0]).toBe(ids[1]);
+    expect(ids[0]).not.toBe(ids[1]);
   });
 
   it("audit insert throws: 500 persistence_failed with a ref, never driver text, no enqueue", async () => {
@@ -303,5 +316,142 @@ describe("POST /api/webhooks/katana audit + routing (QA-15.3-03/04/05)", () => {
     expect(res.status).toBe(500);
     expect(await res.text()).not.toContain("hunter2");
     expect(fakeDb.state.updates).toEqual([expect.objectContaining({ status: "failed" })]);
+  });
+});
+
+describe("Katana fixtures PII & schema verification (QA-15.0-01)", () => {
+  it("all required Phase 15 fixtures exist and contain zero email, phone, or street PII", () => {
+    const fixtureDir = path.join(ROOT, "tests", "fixtures", "katana");
+    const files = readdirSync(fixtureDir).filter((f) => f.endsWith(".json"));
+    expect(files).toEqual(
+      expect.arrayContaining([
+        "manufacturing-order-done.json",
+        "manufacturing-orders-by-so.json",
+        "purchase-order-partially-received.json",
+        "purchase-order-received.json",
+        "sales-order-ghl.json",
+        "supplier.json",
+      ]),
+    );
+
+    const emailRe = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+    const phoneRe = /\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b/;
+    const streetRe = /\b\d{2,5}\s+[A-Z][a-z]+\s+(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Dr|Drive|Ln|Lane)\b/;
+
+    for (const file of files) {
+      const content = readFileSync(path.join(fixtureDir, file), "utf8");
+      expect(content, `${file} contains email`).not.toMatch(emailRe);
+      expect(content, `${file} contains phone`).not.toMatch(phoneRe);
+      expect(content, `${file} contains street`).not.toMatch(streetRe);
+    }
+  });
+
+  it("parses real SO, MO, PO, and supplier fixtures through domain readers", () => {
+    const soSnap = readSalesOrderSnapshot(soGhlFixture);
+    expect(soSnap).toEqual({
+      id: 53609101,
+      orderNo: "GHL-opp_fixture_01",
+      status: "NOT_SHIPPED",
+      productionStatus: "IN_PROGRESS",
+    });
+
+    const moSnaps = moListFixture.data.map(readManufacturingOrderSnapshot);
+    expect(moSnaps).toEqual([
+      { id: 19833041, status: "DONE", salesOrderId: 53609101 },
+      { id: 19833042, status: "IN_PROGRESS", salesOrderId: 53609101 },
+    ]);
+
+    const poRows = readPoReceiptRows(poPartialFixture as Record<string, unknown>);
+    expect(poRows).toHaveLength(2);
+    expect(poRows[0]?.receivedQtyCumulative).toBe(4);
+    expect(poRows[1]?.receivedQtyCumulative).toBe(0);
+
+    expect(parseQboVendorIdFromSupplier(supplierFixture as Record<string, unknown>)).toEqual({
+      ok: true,
+      qboVendorId: "145",
+    });
+  });
+});
+
+describe("deriveFactoryStage truth table (QA-15.4-01, QA-R12-01/02)", () => {
+  const baseSo = readSalesOrderSnapshot(soGhlFixture);
+
+  it("precedence 1: DELIVERED wins over everything", () => {
+    expect(
+      deriveFactoryStage(
+        { ...baseSo, status: "DELIVERED", productionStatus: "NOT_STARTED" },
+        [],
+        [10],
+      ),
+    ).toBe("delivered");
+  });
+
+  it("precedence 2: PACKED yields ready_to_ship", () => {
+    expect(
+      deriveFactoryStage(
+        { ...baseSo, status: "PACKED", productionStatus: "IN_PROGRESS" },
+        [],
+        [10],
+      ),
+    ).toBe("ready_to_ship");
+  });
+
+  it("precedence 3a: productionStatus DONE yields build_complete even with empty expectedMoIds", () => {
+    expect(
+      deriveFactoryStage(
+        { ...baseSo, status: "NOT_SHIPPED", productionStatus: "DONE" },
+        [],
+        [],
+      ),
+    ).toBe("build_complete");
+  });
+
+  it("precedence 3b: all expected MOs present and DONE yields build_complete before SO production_status catches up", () => {
+    const mos = moListFixture.data.map((m) => ({
+      ...readManufacturingOrderSnapshot(m),
+      status: "DONE",
+    }));
+    expect(
+      deriveFactoryStage(
+        { ...baseSo, status: "NOT_SHIPPED", productionStatus: "IN_PROGRESS" },
+        mos,
+        [19833041, 19833042],
+      ),
+    ).toBe("build_complete");
+  });
+
+  it("precedence 4: mixed MO statuses or IN_PROGRESS/BLOCKED yields in_production", () => {
+    const mos = moListFixture.data.map(readManufacturingOrderSnapshot);
+    expect(
+      deriveFactoryStage(
+        { ...baseSo, status: "NOT_SHIPPED", productionStatus: "NOT_STARTED" },
+        mos,
+        [19833041, 19833042],
+      ),
+    ).toBe("in_production");
+    expect(
+      deriveFactoryStage(
+        { ...baseSo, status: "PENDING", productionStatus: "BLOCKED" },
+        [],
+        [],
+      ),
+    ).toBe("in_production");
+  });
+
+  it("precedence 5: NOT_STARTED / NONE / unknown strings yield null", () => {
+    expect(
+      deriveFactoryStage(
+        { ...baseSo, status: "NOT_SHIPPED", productionStatus: "NOT_STARTED" },
+        [{ id: 19833041, status: "NOT_STARTED", salesOrderId: baseSo.id }],
+        [19833041],
+      ),
+    ).toBeNull();
+    expect(
+      deriveFactoryStage(
+        { ...baseSo, status: "MYSTERY_STATUS", productionStatus: "MYSTERY_PROD" },
+        [{ id: 19833041, status: "MYSTERY_MO", salesOrderId: baseSo.id }],
+        [19833041],
+      ),
+    ).toBeNull();
   });
 });

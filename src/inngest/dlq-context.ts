@@ -121,6 +121,119 @@ const RESOLVERS: ReadonlyArray<{ functionId: string; resolve: Resolver }> = [
       };
     },
   },
+  // Phase 15 — Katana PO receipt delta ledger & QBO bill recovery lane
+  {
+    functionId: "sync-katana-po-received",
+    resolve: (data) => {
+      const poId = textOf(data?.purchaseOrderId);
+      const orderNo = textOf(data?.orderNo);
+      return {
+        externalId: orderNo || poId || undefined,
+        resolutionPath: "/mission-control",
+        source: "katana",
+      };
+    },
+  },
+  {
+    functionId: "post-katana-po-bill",
+    resolve: (data) => {
+      const billRowId = textOf(data?.billRowId);
+      const poId = textOf(data?.katanaPoId);
+      return {
+        externalId: billRowId || poId || undefined,
+        resolutionPath: "/mission-control",
+        source: "qbo",
+      };
+    },
+  },
+  {
+    functionId: "redrive-katana-po-bill",
+    resolve: (data) => {
+      const billRowId = textOf(data?.billRowId);
+      const poId = textOf(data?.katanaPoId);
+      return {
+        externalId: billRowId || poId || undefined,
+        resolutionPath: "/mission-control",
+        source: "qbo",
+      };
+    },
+  },
+  {
+    functionId: "refresh-katana-po-bill-vendor",
+    resolve: (data) => {
+      const billRowId = textOf(data?.billRowId);
+      const poId = textOf(data?.katanaPoId);
+      return {
+        externalId: billRowId || poId || undefined,
+        resolutionPath: "/mission-control",
+        source: "katana",
+      };
+    },
+  },
+  {
+    functionId: "resolve-katana-po-bill",
+    resolve: (data) => {
+      const billRowId = textOf(data?.billRowId);
+      const poId = textOf(data?.katanaPoId);
+      return {
+        externalId: billRowId || poId || undefined,
+        resolutionPath: "/mission-control",
+        source: "qbo",
+      };
+    },
+  },
+  // Phase 15 — Katana reverse-flow order status & GHL stage push
+  {
+    functionId: "sync-katana-order-status",
+    resolve: (data) => {
+      const soId = textOf(data?.salesOrderId);
+      return {
+        externalId: soId || undefined,
+        resolutionPath: "/admin/order-triage",
+        source: "katana",
+      };
+    },
+  },
+  {
+    functionId: "push-ghl-factory-stage",
+    resolve: (data) => {
+      const oppId = textOf(data?.opportunityId);
+      return {
+        externalId: oppId || undefined,
+        resolutionPath: "/admin/order-triage",
+        source: "ghl",
+      };
+    },
+  },
+  {
+    functionId: "katana-mo-done",
+    resolve: (data) => {
+      const moId = textOf(data?.manufacturingOrderId);
+      return {
+        externalId: moId || undefined,
+        resolutionPath: "/admin/order-triage",
+        source: "katana",
+      };
+    },
+  },
+  {
+    functionId: "heal-katana-variant-sku",
+    resolve: (data) => {
+      const variantId = textOf(data?.variantId);
+      return {
+        externalId: variantId || undefined,
+        resolutionPath: "/admin/dictionary",
+        source: "katana",
+      };
+    },
+  },
+  {
+    functionId: "katana-order-status-reconcile",
+    resolve: () => ({
+      resolutionPath: "/admin/order-triage",
+      source: "katana",
+    }),
+  },
 ];
 
 /**

@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { assertKatanaDeferContext } from "@/inngest/katana-step";
 import { katanaFetch } from "@/lib/katana";
 import { getDb } from "@/server/db/client";
 import { logistics_profiles, sku_mappings } from "@/server/db/schema";
@@ -182,6 +183,7 @@ function skuFromVariantPayload(payload: unknown): string | null {
 }
 
 export async function loadKatanaVariantSku(variantId: number): Promise<string | null> {
+  assertKatanaDeferContext("loadKatanaVariantSku");
   const { data } = await katanaFetch<unknown>(`/variants/${variantId}`);
   return skuFromVariantPayload(data);
 }

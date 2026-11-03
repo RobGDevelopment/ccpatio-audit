@@ -1,11 +1,23 @@
+import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import { qbo_auth_tokens } from "@/server/db/schema";
-import { eq } from "drizzle-orm";
-import { getLedgerPipelineMode } from "@/server/pipeline/ledger-mode";
-import { qboRequestId } from "@/server/sre/idempotency";
-import { createDefaultQboFetchDeps, qboFetchWithRefresh } from "./token-refresh";
+import { canPostToQbo } from "@/server/pipeline/ledger-mode";
+import { QBO_REQUEST_ID_MAX_LENGTH } from "@/server/sre/idempotency";
+import {
+  QboApiError,
+  createDefaultQboFetchDeps,
+  qboFetchWithRefresh,
+} from "./token-refresh";
 
 export type QboEnvironment = "sandbox" | "production";
+
+export class QboConfigError extends Error {
+  readonly code = "QBO_CONFIG_ERROR";
+  constructor(message: string) {
+    super(message);
+    this.name = "QboConfigError";
+  }
+}
 
 /**
  * Returns the active QBO environment strictly from QBO_ENVIRONMENT,
@@ -39,7 +51,7 @@ export function getQboTokenId(env: QboEnvironment = getQboEnvironment()): boolea
 }
 
 /**
- * Executes a fetch against the Intuit Quickbooks Online API.
+ * Executes a fetch against the Intuit QuickBooks Online API.
  * Token refresh is serialized per environment with a Postgres advisory lock and is
  * double-checked, see ./token-refresh.ts (Phase 9 Task 4).
  */
@@ -51,7 +63,6 @@ async function qboFetch(endpoint: string, options: RequestInit = {}) {
     createDefaultQboFetchDeps({
       env: qboEnv,
       targetId: getQboTokenId(qboEnv),
-      // Derive Base URL strictly from QBO_ENVIRONMENT, decoupled from NODE_ENV
       baseUrl: getQboBaseUrl(),
     }),
   );
@@ -82,25 +93,27 @@ async function getActiveRealmId(): Promise<string> {
   return tokenRow.realm_id;
 }
 
-export async function pushToQBO(salesReceiptPayload: any) {
-  // Defense in depth (Phase 9 Task 0): even if a caller forgets the gate, the ledger
-  // POST itself refuses to run unless LEDGER_PIPELINE_MODE is explicitly "live".
-  const ledgerMode = getLedgerPipelineMode();
-  if (ledgerMode !== "live") {
+export async function pushToQBO(salesReceiptPayload: Record<string, unknown>) {
+  // Defense in depth (§I.3): requires both master QBO_LEDGER_MODE and CLOVER_LEDGER_MODE to be live.
+  if (!canPostToQbo("clover")) {
     throw new Error(
-      `LEDGER_PIPELINE_MODE=${ledgerMode}: refusing to POST to QuickBooks (fail-closed ledger containment).`,
+      "Clover/QBO ledger mode is log: refusing to POST to QuickBooks (fail-closed ledger containment).",
     );
   }
 
-  // Map strictly to the clearing account configuration
+  const clearingAccountId = process.env.QBO_GATEWAY_CLEARING_ACCOUNT_ID?.trim() ?? "";
+  if (!/^\d+$/.test(clearingAccountId)) {
+    throw new QboConfigError(
+      "QBO_GATEWAY_CLEARING_ACCOUNT_ID must be configured to a numeric QuickBooks Account Id.",
+    );
+  }
+
   salesReceiptPayload.DepositToAccountRef = {
-    value: process.env.QBO_GATEWAY_CLEARING_ACCOUNT_ID,
+    value: clearingAccountId,
   };
 
   const realmId = await getActiveRealmId();
   const endpoint = `/v3/company/${realmId}/salesreceipt`;
-
-  console.log(`[QBO] Pushing sales receipt to ${endpoint}`);
 
   return await qboFetch(endpoint, {
     method: "POST",
@@ -111,7 +124,7 @@ export async function pushToQBO(salesReceiptPayload: any) {
 export interface KatanaPoBillLineInput {
   sku: string;
   description: string;
-  quantity: number;
+  billedQtyDelta: number;
   pricePerUnitCents: number;
   amountCents: number;
 }
@@ -119,67 +132,230 @@ export interface KatanaPoBillLineInput {
 export interface CreateQboVendorBillInput {
   katanaPoId: number;
   orderNo: string;
-  supplierName: string;
+  qboVendorId: string;
+  requestId: string;
+  docNumber: string;
   txnDate: string;
-  lines: KatanaPoBillLineInput[];
+  lines: readonly KatanaPoBillLineInput[];
+}
+
+export type QboVendorRecord = {
+  id: string;
+  displayName: string | null;
+  active: boolean;
+  currency: string | null;
+};
+
+export type QboBillSummary = {
+  id: string;
+  docNumber: string | null;
+  vendorId: string | null;
+  totalCents: number;
+};
+
+export type QboVendorCreditSummary = {
+  id: string;
+  vendorId: string | null;
+  totalCents: number;
+};
+
+/**
+ * Validates a Katana-supplied QBO Vendor Id via `GET /vendor/{id}` (§VII S-2.5).
+ * Never searches by name and never creates vendors.
+ */
+export async function fetchQboVendorById(
+  qboVendorId: string,
+): Promise<QboVendorRecord | null> {
+  const id = qboVendorId.trim();
+  if (!/^[1-9]\d{0,11}$/.test(id)) {
+    throw new QboConfigError(`Invalid QBO Vendor Id format: "${qboVendorId}"`);
+  }
+  const realmId = await getActiveRealmId();
+  try {
+    const res = (await qboFetch(
+      `/v3/company/${realmId}/vendor/${encodeURIComponent(id)}?minorversion=75`,
+      { method: "GET" },
+    )) as {
+      Vendor?: {
+        Id?: string;
+        DisplayName?: string;
+        Active?: boolean;
+        CurrencyRef?: { value?: string };
+      };
+    };
+    const vendor = res?.Vendor;
+    if (!vendor?.Id) return null;
+    return {
+      id: String(vendor.Id),
+      displayName: typeof vendor.DisplayName === "string" ? vendor.DisplayName : null,
+      active: vendor.Active !== false,
+      currency:
+        typeof vendor.CurrencyRef?.value === "string" ? vendor.CurrencyRef.value : null,
+    };
+  } catch (error) {
+    if (
+      error instanceof QboApiError &&
+      (error.status === 404 ||
+        (error.status === 400 && /(?:\b610\b|Object Not Found)/i.test(error.message)))
+    ) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 /**
- * Resolves a QBO Vendor.Id by DisplayName (e.g., "Cosentino" or "Glen Raven / Sunbrella"),
- * creating the Vendor in QBO if it does not exist yet.
+ * Queries QBO for an existing Bill matching `DocNumber` before POSTing (§VI R-7.2).
  */
-export async function resolveOrCreateQboVendor(
-  realmId: string,
-  supplierName: string,
-): Promise<string> {
-  const cleanName = supplierName.trim().slice(0, 100) || "Katana Supplier";
-  const escaped = cleanName.replace(/'/g, "\\'");
-  const query = `SELECT Id, DisplayName FROM Vendor WHERE DisplayName = '${escaped}' MAXRESULTS 1`;
-  const lookup = (await qboFetch(
+export async function findQboBillsByDocNumber(docNumber: string): Promise<QboBillSummary[]> {
+  const clean = docNumber.trim();
+  if (!clean) return [];
+  const realmId = await getActiveRealmId();
+  const escaped = clean.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+  const query = `SELECT Id, DocNumber, TotalAmt, VendorRef FROM Bill WHERE DocNumber = '${escaped}' MAXRESULTS 5`;
+  const res = (await qboFetch(
     `/v3/company/${realmId}/query?query=${encodeURIComponent(query)}&minorversion=75`,
     { method: "GET" },
-  )) as { QueryResponse?: { Vendor?: Array<{ Id?: string }> } };
+  )) as {
+    QueryResponse?: {
+      Bill?: Array<{
+        Id?: string;
+        DocNumber?: string;
+        TotalAmt?: number | string;
+        VendorRef?: { value?: string };
+      }>;
+    };
+  };
 
-  const existingId = lookup?.QueryResponse?.Vendor?.[0]?.Id;
-  if (existingId) return existingId;
+  const rows = Array.isArray(res?.QueryResponse?.Bill) ? res.QueryResponse.Bill : [];
+  return rows
+    .filter((b) => typeof b.Id === "string" && b.Id.trim().length > 0)
+    .map((b) => ({
+      id: String(b.Id),
+      docNumber: typeof b.DocNumber === "string" ? b.DocNumber : null,
+      vendorId: typeof b.VendorRef?.value === "string" ? b.VendorRef.value : null,
+      totalCents: Math.round(Number(b.TotalAmt ?? 0) * 100),
+    }));
+}
 
-  const reqId = qboRequestId(`qbo:vendor:${cleanName.toLowerCase()}`, "create");
-  const created = (await qboFetch(
-    `/v3/company/${realmId}/vendor?requestid=${reqId}&minorversion=75`,
-    {
-      method: "POST",
-      body: JSON.stringify({ DisplayName: cleanName }),
-    },
-  )) as { Vendor?: { Id?: string } };
-
-  const newId = created?.Vendor?.Id;
-  if (!newId) {
-    throw new Error(`Failed to resolve or create QBO Vendor for "${cleanName}"`);
+export async function fetchQboBillById(billId: string): Promise<QboBillSummary | null> {
+  const id = billId.trim();
+  if (!id) return null;
+  const realmId = await getActiveRealmId();
+  try {
+    const res = (await qboFetch(
+      `/v3/company/${realmId}/bill/${encodeURIComponent(id)}?minorversion=75`,
+      { method: "GET" },
+    )) as {
+      Bill?: {
+        Id?: string;
+        DocNumber?: string;
+        TotalAmt?: number | string;
+        VendorRef?: { value?: string };
+      };
+    };
+    const bill = res?.Bill;
+    if (!bill?.Id) return null;
+    return {
+      id: String(bill.Id),
+      docNumber: typeof bill.DocNumber === "string" ? bill.DocNumber : null,
+      vendorId: typeof bill.VendorRef?.value === "string" ? bill.VendorRef.value : null,
+      totalCents: Math.round(Number(bill.TotalAmt ?? 0) * 100),
+    };
+  } catch (error) {
+    if (
+      error instanceof QboApiError &&
+      (error.status === 404 ||
+        (error.status === 400 && /(?:\b610\b|Object Not Found)/i.test(error.message)))
+    ) {
+      return null;
+    }
+    throw error;
   }
-  return newId;
+}
+
+export async function fetchQboVendorCreditById(
+  creditId: string,
+): Promise<QboVendorCreditSummary | null> {
+  const id = creditId.trim();
+  if (!id) return null;
+  const realmId = await getActiveRealmId();
+  try {
+    const res = (await qboFetch(
+      `/v3/company/${realmId}/vendorcredit/${encodeURIComponent(id)}?minorversion=75`,
+      { method: "GET" },
+    )) as {
+      VendorCredit?: {
+        Id?: string;
+        TotalAmt?: number | string;
+        VendorRef?: { value?: string };
+      };
+    };
+    const credit = res?.VendorCredit;
+    if (!credit?.Id) return null;
+    return {
+      id: String(credit.Id),
+      vendorId: typeof credit.VendorRef?.value === "string" ? credit.VendorRef.value : null,
+      totalCents: Math.round(Number(credit.TotalAmt ?? 0) * 100),
+    };
+  } catch (error) {
+    if (
+      error instanceof QboApiError &&
+      (error.status === 404 ||
+        (error.status === 400 && /(?:\b610\b|Object Not Found)/i.test(error.message)))
+    ) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 /**
- * Creates an Accounts Payable (A/P) Vendor Bill in QBO when a Katana PO is marked Received.
+ * Creates an Accounts Payable (A/P) Vendor Bill in QBO for a Katana PO receipt delta (§15.2a, §VI R-6, §VII S-2).
  */
 export async function createQboVendorBillFromKatanaPo(
   input: CreateQboVendorBillInput,
 ): Promise<{ billId: string; vendorId: string; totalDollars: string }> {
-  const ledgerMode = getLedgerPipelineMode();
-  if (ledgerMode !== "live") {
+  if (!canPostToQbo("qbo")) {
     throw new Error(
-      `LEDGER_PIPELINE_MODE=${ledgerMode}: refusing to POST Bill to QuickBooks (fail-closed ledger containment).`,
+      "QBO_LEDGER_MODE=log: refusing to POST Bill to QuickBooks (fail-closed ledger containment).",
     );
   }
 
-  const accountId = process.env.QBO_RAW_MATERIALS_ASSET_ACCOUNT_ID?.trim() || "81";
+  const accountId = process.env.QBO_RAW_MATERIALS_ASSET_ACCOUNT_ID?.trim() ?? "";
+  if (!/^\d+$/.test(accountId)) {
+    throw new QboConfigError(
+      "QBO_RAW_MATERIALS_ASSET_ACCOUNT_ID must be configured to a numeric QuickBooks Account Id.",
+    );
+  }
+
+  const vendorId = input.qboVendorId.trim();
+  if (!/^[1-9]\d{0,11}$/.test(vendorId)) {
+    throw new QboConfigError("qboVendorId must be a positive numeric QuickBooks Vendor Id.");
+  }
+
+  const requestId = input.requestId.trim();
+  if (!requestId || requestId.length > QBO_REQUEST_ID_MAX_LENGTH) {
+    throw new QboConfigError(
+      `requestId must be 1..${QBO_REQUEST_ID_MAX_LENGTH} characters.`,
+    );
+  }
+
+  const docNumber = input.docNumber.trim();
+  if (!docNumber || docNumber.length > 21) {
+    throw new QboConfigError("docNumber must be 1..21 characters.");
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.txnDate)) {
+    throw new QboConfigError("txnDate must be a YYYY-MM-DD calendar date.");
+  }
+
   const realmId = await getActiveRealmId();
-  const vendorId = await resolveOrCreateQboVendor(realmId, input.supplierName);
 
   const qboLines = input.lines.map((line, idx) => ({
     Id: String(idx + 1),
     Amount: Number((line.amountCents / 100).toFixed(2)),
-    Description: `${line.sku ? `[${line.sku}] ` : ""}${line.description} (Qty: ${line.quantity} @ $${(line.pricePerUnitCents / 100).toFixed(2)})`,
+    Description: `${line.sku ? `[${line.sku}] ` : ""}${line.description} (Qty: ${line.billedQtyDelta} @ $${(line.pricePerUnitCents / 100).toFixed(2)})`,
     DetailType: "AccountBasedExpenseLineDetail",
     AccountBasedExpenseLineDetail: {
       AccountRef: { value: accountId },
@@ -188,26 +364,30 @@ export async function createQboVendorBillFromKatanaPo(
   }));
 
   const totalCents = input.lines.reduce((acc, l) => acc + l.amountCents, 0);
-  const reqId = qboRequestId(`katana:po:${input.katanaPoId}`, "ap-bill");
 
   const billPayload = {
-    VendorRef: { value: vendorId, name: input.supplierName },
-    DocNumber: input.orderNo.slice(0, 21),
+    VendorRef: { value: vendorId },
+    DocNumber: docNumber,
     TxnDate: input.txnDate,
     PrivateNote: `Automated from Katana MRP PO ${input.orderNo} (Katana ID #${input.katanaPoId})`,
     Line: qboLines,
   };
 
   const response = (await qboFetch(
-    `/v3/company/${realmId}/bill?requestid=${reqId}&minorversion=75`,
+    `/v3/company/${realmId}/bill?requestid=${encodeURIComponent(requestId)}&minorversion=75`,
     {
       method: "POST",
       body: JSON.stringify(billPayload),
     },
   )) as { Bill?: { Id?: string } };
 
+  const createdBillId = response?.Bill?.Id?.trim();
+  if (!createdBillId) {
+    throw new Error("QBO Bill create returned no Id");
+  }
+
   return {
-    billId: String(response?.Bill?.Id ?? "unknown"),
+    billId: createdBillId,
     vendorId,
     totalDollars: (totalCents / 100).toFixed(2),
   };

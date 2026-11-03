@@ -10,6 +10,16 @@ import { KatanaApiError, katanaRateLimitStore } from "@/lib/katana";
  */
 const KATANA_THROTTLE_FATAL_CODES = new Set(["RATE_LIMIT_TABLE_MISSING", "RATE_LIMIT_NO_DATABASE"]);
 
+/**
+ * Runtime guard (§VI R-9.1): throws immediately when a Phase 15 Katana reader is invoked
+ * outside `runKatanaStep`, preventing accidental fallback to the 65s-sleep rate-limit policy.
+ */
+export function assertKatanaDeferContext(label: string): void {
+  if (katanaRateLimitStore.getStore() !== "defer") {
+    throw new Error(`${label} must run inside runKatanaStep`);
+  }
+}
+
 export async function runKatanaStep<T>(
   step: { run: (id: string, fn: () => Promise<T>) => Promise<T> },
   id: string,

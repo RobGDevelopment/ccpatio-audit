@@ -1,5 +1,5 @@
 import { inngest } from "@/inngest/client";
-import { runKatanaStep } from "./katana-step";
+import { assertKatanaDeferContext, runKatanaStep } from "./katana-step";
 import { suggestProductSeo } from "./seo-suggest";
 import {
   ORDER_APPROVED_EVENT,
@@ -15,13 +15,28 @@ import {
   createKatanaSalesOrder,
   createMakeToOrderManufacturingOrders,
   KatanaApiError,
+  katanaFetch,
   mapGhlOpportunityToKatanaSalesOrder,
 } from "@/lib/katana";
 import { sendOhCrapAlert } from "@/server/alerts/oh-crap";
 import { GHL_OPPORTUNITY_WON_EVENT, ghlOpportunityIdempotencyKey } from "@/server/ghl/ingress";
 import { syncCloverPayment } from "./clover-sync";
 import { globalDlqHandler } from "./dlq";
-import { syncKatanaPoReceived } from "./katana-po-received";
+import {
+  refreshKatanaPoBillVendor,
+  syncKatanaPoReceived,
+} from "./katana-po-received";
+import {
+  postKatanaPoBill,
+  redriveKatanaPoBill,
+  resolveKatanaPoBill,
+} from "./katana-po-bill-post";
+import {
+  katanaMoDone,
+  katanaOrderStatusReconcile,
+  syncKatanaOrderStatus,
+} from "./katana-order-status";
+import { pushGhlFactoryStage } from "./ghl-factory-stage-push";
 import { healKatanaVariantSkuFn } from "./katana-variant-heal";
 import { processWooCommerceOrder } from "./woo-order";
 import { pathAReleaseToProduction } from "./path-a-release";
@@ -94,7 +109,19 @@ async function alertPipelineFailure(input: {
 
 // The Woo paid-order saga lives in ./woo-order (Phase 10, roadmap step 6). Re-exported so existing
 // imports keep working. It is REGISTERED below; it has no alerting onFailure (global DLQ alerts).
-export { processWooCommerceOrder, syncKatanaPoReceived };
+export {
+  healKatanaVariantSkuFn,
+  katanaMoDone,
+  katanaOrderStatusReconcile,
+  postKatanaPoBill,
+  processWooCommerceOrder,
+  pushGhlFactoryStage,
+  redriveKatanaPoBill,
+  refreshKatanaPoBillVendor,
+  resolveKatanaPoBill,
+  syncKatanaOrderStatus,
+  syncKatanaPoReceived,
+};
 
 export const syncGhlOpportunity = inngest.createFunction(
   {
@@ -293,36 +320,87 @@ export const sendStaffFeedbackDigest = inngest.createFunction(
   }
 );
 
+export async function runArchiveKatanaVariant(
+  input: {
+    event: { data?: Record<string, unknown> | null };
+    step: { run: <T>(id: string, fn: () => Promise<T>) => Promise<T> };
+  },
+  deps: {
+    lookupKatanaVariantId?: (globalSku: string) => Promise<number | null>;
+    deleteVariant?: (variantId: number) => Promise<void>;
+  } = {},
+) {
+  const globalSku = String(input.event.data?.globalSku ?? "").trim();
+  if (!globalSku) {
+    const { NonRetriableError } = await import("inngest");
+    throw new NonRetriableError("katana/variant.archive requires event.data.globalSku");
+  }
+
+  return runKatanaStep<
+    | { ok: true; globalSku: string; skipped: "no_katana_variant" | "already_absent" }
+    | { ok: true; globalSku: string; archivedVariantId: number }
+  >(input.step, "archive-variant-in-katana", async () => {
+    assertKatanaDeferContext("archiveKatanaVariant");
+
+    const variantId = deps.lookupKatanaVariantId
+      ? await deps.lookupKatanaVariantId(globalSku)
+      : await (async () => {
+          const { getDb } = await import("@/server/db/client");
+          const { sku_mappings } = await import("@/server/db/schema");
+          const { eq } = await import("drizzle-orm");
+          const db = getDb();
+          const mapping = await db.query.sku_mappings.findFirst({
+            where: eq(sku_mappings.global_sku, globalSku),
+          });
+          return mapping?.katana_variant_id ?? null;
+        })();
+
+    if (!variantId) {
+      return { ok: true as const, globalSku, skipped: "no_katana_variant" as const };
+    }
+
+    try {
+      if (deps.deleteVariant) {
+        await deps.deleteVariant(variantId);
+      } else {
+        await katanaFetch<unknown>(`/variants/${variantId}`, { method: "DELETE" });
+      }
+      return { ok: true as const, globalSku, archivedVariantId: variantId };
+    } catch (error) {
+      if (error instanceof KatanaApiError) {
+        if (error.status === 404) {
+          return { ok: true as const, globalSku, skipped: "already_absent" as const };
+        }
+        if (
+          error.status >= 400 &&
+          error.status < 500 &&
+          error.status !== 408 &&
+          error.status !== 409 &&
+          error.status !== 429
+        ) {
+          const { NonRetriableError } = await import("inngest");
+          throw new NonRetriableError(error.message, { cause: error });
+        }
+      }
+      throw error;
+    }
+  });
+}
+
 export const archiveKatanaVariant = inngest.createFunction(
-  { 
-    id: "archive-katana-variant", 
+  {
+    id: "archive-katana-variant",
     name: "Archive Katana Variant on Discontinue",
     triggers: [{ event: "katana/variant.archive" }],
     concurrency: KATANA_TENANT_CONCURRENCY,
   },
-  async ({ event, step }: any) => {
-    await runKatanaStep(step, "archive-variant-in-katana", async () => {
-      const { getDb } = await import("@/server/db/client");
-      const { sku_mappings } = await import("@/server/db/schema");
-      const { eq } = await import("drizzle-orm");
-      
-      const db = getDb();
-      const mapping = await db.query.sku_mappings.findFirst({
-        where: eq(sku_mappings.global_sku, event.data.globalSku),
-      });
-
-      if (mapping && mapping.katana_variant_id) {
-        const { archiveKatanaVariant: archiveApiCall } = await import("@/lib/katana/client");
-        try {
-          await archiveApiCall(mapping.katana_variant_id);
-        } catch (e) {
-          console.error("[Katana Archive] Failed", e);
-        }
-      }
-    });
-
-    return { ok: true, globalSku: event.data.globalSku };
-  }
+  async ({ event, step }) =>
+    runArchiveKatanaVariant({
+      event: { data: event.data as Record<string, unknown> },
+      step: step as unknown as {
+        run: <T>(id: string, fn: () => Promise<T>) => Promise<T>;
+      },
+    }),
 );
 
 /**
@@ -614,6 +692,14 @@ export const inngestFunctions = [
   autoReleaseExpiredHolds,
   syncCloverPayment,
   syncKatanaPoReceived,
+  refreshKatanaPoBillVendor,
+  postKatanaPoBill,
+  redriveKatanaPoBill,
+  resolveKatanaPoBill,
+  katanaMoDone,
+  syncKatanaOrderStatus,
+  katanaOrderStatusReconcile,
+  pushGhlFactoryStage,
   healKatanaVariantSkuFn,
   processWooCommerceOrder,
   pathAReleaseToProduction,

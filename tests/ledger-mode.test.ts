@@ -26,6 +26,8 @@ vi.mock("@/inngest/client", () => ({
 
 import {
   canMutateLedger,
+  canPostToQbo,
+  getLedgerMode,
   getLedgerPipelineMode,
 } from "@/server/pipeline/ledger-mode";
 import { runCloverPaymentSync } from "@/inngest/clover-sync";
@@ -176,4 +178,106 @@ describe("pushToQBO defense in depth", () => {
     await expect(real.pushToQBO({ Line: [] })).rejects.toThrow(/fail-closed ledger containment/);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it("refuses to POST in live mode when QBO_GATEWAY_CLEARING_ACCOUNT_ID is unset or non-numeric (QA-R6-05)", async () => {
+    const prevClearing = process.env.QBO_GATEWAY_CLEARING_ACCOUNT_ID;
+    const prevQbo = process.env.QBO_LEDGER_MODE;
+    const prevClover = process.env.CLOVER_LEDGER_MODE;
+    try {
+      vi.doUnmock("@/server/integrations/qbo/client");
+      vi.resetModules();
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      process.env.QBO_LEDGER_MODE = "live";
+      process.env.CLOVER_LEDGER_MODE = "live";
+      delete process.env.QBO_GATEWAY_CLEARING_ACCOUNT_ID;
+      const real = await vi.importActual<typeof import("@/server/integrations/qbo/client")>(
+        "@/server/integrations/qbo/client",
+      );
+      await expect(real.pushToQBO({ Line: [] })).rejects.toThrow(real.QboConfigError);
+      process.env.QBO_GATEWAY_CLEARING_ACCOUNT_ID = "abc";
+      await expect(real.pushToQBO({ Line: [] })).rejects.toThrow(real.QboConfigError);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      if (prevClearing === undefined) delete process.env.QBO_GATEWAY_CLEARING_ACCOUNT_ID;
+      else process.env.QBO_GATEWAY_CLEARING_ACCOUNT_ID = prevClearing;
+      if (prevQbo === undefined) delete process.env.QBO_LEDGER_MODE;
+      else process.env.QBO_LEDGER_MODE = prevQbo;
+      if (prevClover === undefined) delete process.env.CLOVER_LEDGER_MODE;
+      else process.env.CLOVER_LEDGER_MODE = prevClover;
+    }
+  });
+});
+
+describe("per-lane ledger modes (QA-I-03)", () => {
+  it("WOO_LEDGER_MODE never falls back to legacy LEDGER_PIPELINE_MODE=live", () => {
+    expect(
+      getLedgerMode("woo", {
+        LEDGER_PIPELINE_MODE: "live",
+      }),
+    ).toBe("log");
+    expect(
+      getLedgerMode("woo", {
+        LEDGER_PIPELINE_MODE: "live",
+        WOO_LEDGER_MODE: "  LIVE  ",
+      }),
+    ).toBe("live");
+  });
+
+  it("QBO_LEDGER_MODE and CLOVER_LEDGER_MODE fall back to LEDGER_PIPELINE_MODE when unset or blank", () => {
+    expect(getLedgerMode("qbo", { LEDGER_PIPELINE_MODE: "live" })).toBe("live");
+    expect(getLedgerMode("qbo", { QBO_LEDGER_MODE: "   ", LEDGER_PIPELINE_MODE: "live" })).toBe(
+      "live",
+    );
+    expect(getLedgerMode("clover", { LEDGER_PIPELINE_MODE: "live" })).toBe("live");
+  });
+
+  it("QBO_LEDGER_MODE acts as the master kill-switch over CLOVER_LEDGER_MODE", () => {
+    expect(
+      canPostToQbo("clover", {
+        CLOVER_LEDGER_MODE: "live",
+        QBO_LEDGER_MODE: "log",
+      }),
+    ).toBe(false);
+    expect(
+      canPostToQbo("clover", {
+        CLOVER_LEDGER_MODE: "live",
+        QBO_LEDGER_MODE: "live",
+      }),
+    ).toBe(true);
+    expect(
+      canPostToQbo("qbo", {
+        QBO_LEDGER_MODE: "live",
+      }),
+    ).toBe(true);
+    expect(
+      canPostToQbo("qbo", {
+        QBO_LEDGER_MODE: "log",
+        LEDGER_PIPELINE_MODE: "live",
+      }),
+    ).toBe(false);
+  });
+
+  it.each(["garbage", "1", "true", "approve", "liv", "live!"])(
+    "garbage lane value %j fails closed to log even when legacy is live",
+    (raw) => {
+      expect(
+        getLedgerMode("qbo", {
+          QBO_LEDGER_MODE: raw,
+          LEDGER_PIPELINE_MODE: "live",
+        }),
+      ).toBe("log");
+      expect(
+        getLedgerMode("clover", {
+          CLOVER_LEDGER_MODE: raw,
+          LEDGER_PIPELINE_MODE: "live",
+        }),
+      ).toBe("log");
+      expect(
+        getLedgerMode("woo", {
+          WOO_LEDGER_MODE: raw,
+          LEDGER_PIPELINE_MODE: "live",
+        }),
+      ).toBe("log");
+    },
+  );
 });

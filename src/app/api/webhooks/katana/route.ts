@@ -129,7 +129,11 @@ async function dispatch(payload: unknown, auditKey: string): Promise<Outcome> {
   if (poReceipt.kind === "invalid") return invalidEvent(poReceipt.message);
   if (poReceipt.kind === "received") {
     await inngest.send({
-      id: inngestEventId("katana:po", poReceipt.purchaseOrderId, poReceipt.action),
+      id: inngestEventId(
+        "katana:po",
+        poReceipt.purchaseOrderId,
+        `${poReceipt.action}:${auditKey}`,
+      ),
       name: KATANA_PO_RECEIVED_EVENT,
       data: {
         purchaseOrderId: poReceipt.purchaseOrderId,
