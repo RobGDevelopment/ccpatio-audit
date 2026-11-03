@@ -2,9 +2,10 @@ import path from "path";
 import * as dotenv from "dotenv";
 import { defineConfig, devices } from "@playwright/test";
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env.test.local") });
+// .env.test.local must win: seeds and the web server have to share the local Supabase stack, never live.
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 dotenv.config({
-  path: path.resolve(process.cwd(), ".env.local"),
+  path: path.resolve(process.cwd(), ".env.test.local"),
   override: true,
 });
 

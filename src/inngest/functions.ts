@@ -22,6 +22,7 @@ import { GHL_OPPORTUNITY_WON_EVENT, ghlOpportunityIdempotencyKey } from "@/serve
 import { syncCloverPayment } from "./clover-sync";
 import { globalDlqHandler } from "./dlq";
 import { syncKatanaPoReceived } from "./katana-po-received";
+import { healKatanaVariantSkuFn } from "./katana-variant-heal";
 import { processWooCommerceOrder } from "./woo-order";
 import { pathAReleaseToProduction } from "./path-a-release";
 import { pathAGhlSync } from "./path-a-ghl-sync";
@@ -613,6 +614,7 @@ export const inngestFunctions = [
   autoReleaseExpiredHolds,
   syncCloverPayment,
   syncKatanaPoReceived,
+  healKatanaVariantSkuFn,
   processWooCommerceOrder,
   pathAReleaseToProduction,
   pathAGhlSync,

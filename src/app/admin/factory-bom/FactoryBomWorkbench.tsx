@@ -637,13 +637,11 @@ export function FactoryBomWorkbench({
                 const result = await publishApprovedRecipeToKatana(selectedSku);
                 if (!result.ok) {
                   setError(result.error);
-                  toast.error(result.error);
                   return { ok: false, error: result.error };
                 }
                 const msg =
                   result.message ??
                   "Catalog BOM posted (or dry-run) via POST /bom_rows (recipes fallback)";
-                toast.success(msg);
                 router.refresh();
                 await reload(selectedSku);
                 return {

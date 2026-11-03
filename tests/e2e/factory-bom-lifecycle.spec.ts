@@ -330,7 +330,9 @@ test.describe("Factory BOM lifecycle (hub SoT → Katana recipes)", () => {
     // --------------------------------------------------------------------------
     await page.getByRole("button", { name: "Publish recipes to Katana" }).click();
     await expect(
-      page.getByText(/Catalog BOM posted|Catalog recipes posted|Dry-run|Synced/i),
+      page
+        .getByTestId("factory-bom-publish-katana")
+        .getByText(/Catalog BOM posted|Catalog recipes posted|Dry-run|Synced/i),
     ).toBeVisible({ timeout: 30_000 });
 
     const preview = await fetchRecipePreview(page, E2E_FG_SKU);

@@ -2,9 +2,9 @@
  * QA Phase 4 — Katana webhook rejects unsigned calls and heals a renamed SKU.
  */
 import { createHmac, randomInt, randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, like, or, sql } from "drizzle-orm";
 import { closeDb, getDb } from "../../src/server/db/client";
-import { logistics_profiles, sku_mappings } from "../../src/server/db/schema";
+import { incoming_webhooks, logistics_profiles, sku_mappings } from "../../src/server/db/schema";
 
 const SECRET = process.env.KATANA_WEBHOOK_SECRET?.trim() || "qa-katana-webhook-secret";
 const URL = "http://localhost:3000/api/webhooks/katana";
@@ -30,6 +30,7 @@ async function simulateKatanaWebhook() {
   const oldSku = `QA-HEAL-OLD-${randomUUID().slice(0, 8).toUpperCase()}`;
   const newSku = `QA-HEAL-NEW-${randomUUID().slice(0, 8).toUpperCase()}`;
   const db = getDb();
+  const startedAt = new Date(Date.now() - 1000);
   let exitCode = 0;
 
   try {
@@ -106,18 +107,46 @@ async function simulateKatanaWebhook() {
       throw new Error(`Dictionary SKU was not healed: ${JSON.stringify(mapping)}`);
     }
 
+    // Valid SO/MO events enqueue to the configured Inngest bus, so QA only drives the
+    // non-enqueuing branches here; enqueue paths are covered by phase15-katana-reverse-flow.test.ts.
     const orderBody = JSON.stringify({
       resource_type: "sales_order",
       action: "sales_order.updated",
-      object: { id: 99, status: "PACKED" },
+      object: { status: "PACKED", qa_marker: variantId },
     });
-    const ignored = await post(orderBody, sign(orderBody));
-    const ignoredJson = (await ignored.json()) as { ignored?: boolean };
-    if (ignored.status !== 200 || ignoredJson.ignored !== true) {
-      throw new Error(`Expected sales order ignore, got ${ignored.status}: ${JSON.stringify(ignoredJson)}`);
+    const invalid = await post(orderBody, sign(orderBody));
+    const invalidJson = (await invalid.json()) as { error?: string };
+    if (invalid.status !== 400 || invalidJson.error !== "invalid_event") {
+      throw new Error(`Expected SO without id to be 400 invalid_event, got ${invalid.status}: ${JSON.stringify(invalidJson)}`);
     }
 
-    console.log("[SUCCESS] Webhook Simulation Passed (signature + SKU auto-heal)");
+    const unrelatedBody = JSON.stringify({ action: "customer.updated", object: { id: variantId } });
+    const ignored = await post(unrelatedBody, sign(unrelatedBody));
+    const ignoredJson = (await ignored.json()) as { ignored?: boolean };
+    if (ignored.status !== 200 || ignoredJson.ignored !== true) {
+      throw new Error(`Expected unrelated event ignore, got ${ignored.status}: ${JSON.stringify(ignoredJson)}`);
+    }
+
+    const audit = await db
+      .select({ event: incoming_webhooks.event_name, status: incoming_webhooks.status })
+      .from(incoming_webhooks)
+      .where(
+        and(
+          eq(incoming_webhooks.source, "katana"),
+          gte(incoming_webhooks.created_at, startedAt),
+          or(
+            like(incoming_webhooks.idempotency_key, `katana:%:${variantId}:%`),
+            sql`${incoming_webhooks.payload}->'object'->>'qa_marker' = ${String(variantId)}`,
+          ),
+        ),
+      );
+    const seen = audit.map((row) => `${row.event}:${row.status}`).sort();
+    const expected = ["customer.updated:processed", "sales_order.updated:failed", "variant.updated:processed"];
+    if (JSON.stringify(seen) !== JSON.stringify(expected)) {
+      throw new Error(`Expected one katana audit row per signed delivery ${JSON.stringify(expected)}, got ${JSON.stringify(seen)}`);
+    }
+
+    console.log("[SUCCESS] Webhook Simulation Passed (signature + SKU auto-heal + katana audit log)");
   } catch (err) {
     console.error("[QA PHASE 4 FAILED]", err);
     exitCode = 1;

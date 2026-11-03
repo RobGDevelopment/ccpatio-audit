@@ -16,9 +16,9 @@ import {
   product_assets,
 } from "../../../src/server/db/schema";
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env.test.local") });
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 dotenv.config({
-  path: path.resolve(process.cwd(), ".env.local"),
+  path: path.resolve(process.cwd(), ".env.test.local"),
   override: true,
 });
 

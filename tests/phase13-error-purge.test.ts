@@ -23,6 +23,14 @@ vi.mock("@/server/katana/variant-webhook", () => ({
   loadKatanaVariantSku: katana.loadSku,
   healKatanaVariantSku: katana.heal,
 }));
+const auditLog = vi.hoisted(() => ({
+  insert: vi.fn(async () => "inserted" as const),
+  update: vi.fn(async () => undefined),
+}));
+vi.mock("@/server/webhooks/incoming-log", () => ({
+  insertIncomingWebhookOnce: auditLog.insert,
+  updateIncomingWebhookStatus: auditLog.update,
+}));
 vi.mock("@/server/stock/release-hold", () => ({ releaseDeletedHoldDocument: vi.fn() }));
 vi.mock("@/lib/pim-audit", () => ({ logPimAudit: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -212,6 +220,8 @@ describe("POST /api/webhooks/katana", () => {
     katana.readVariantUpdate.mockReset();
     katana.loadSku.mockReset();
     katana.heal.mockReset();
+    auditLog.insert.mockClear();
+    auditLog.update.mockClear();
   });
   afterEach(() => vi.restoreAllMocks());
 
@@ -233,14 +243,31 @@ describe("POST /api/webhooks/katana", () => {
     expect(((await res.json()) as { error: string }).error).toBe("invalid_json");
   });
 
-  it("502 on a Katana lookup failure, without leaking the upstream text", async () => {
+  it("enqueues the variant heal without calling Katana; an enqueue failure is 500 without leaking the upstream text", async () => {
     katana.readVariantUpdate.mockReturnValue({ kind: "update", variantId: 7, sku: null });
-    katana.loadSku.mockRejectedValue(new Error(SECRET_TEXT));
+    sendMock.mockReset().mockResolvedValueOnce({ ids: ["x"] });
+    const queued = await post("{}");
+    expect(queued.status).toBe(200);
+    expect(await queued.json()).toMatchObject({ ok: true, queued: true, variantId: 7 });
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "katana/variant.heal.requested",
+        data: { variantId: 7 },
+      }),
+    );
+    expect(katana.loadSku).not.toHaveBeenCalled();
+
+    sendMock.mockRejectedValueOnce(new Error(SECRET_TEXT));
     const res = await post("{}");
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(500);
     const text = await res.text();
     expect(text).not.toContain("leaked-token-123");
-    expect(JSON.parse(text)).toMatchObject({ error: "variant_lookup_failed" });
+    expect(JSON.parse(text)).toMatchObject({ error: "internal_error" });
+    expect(auditLog.update).toHaveBeenLastCalledWith(
+      expect.any(String),
+      "failed",
+      expect.not.stringContaining("leaked-token-123"),
+    );
   });
 
   it("500 with a ref on any unexpected fault (Katana retries 5xx)", async () => {

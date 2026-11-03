@@ -26,8 +26,8 @@ import {
   user_roles,
 } from "../../../src/server/db/schema";
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env.test.local") });
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true });
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+dotenv.config({ path: path.resolve(process.cwd(), ".env.test.local"), override: true });
 
 if (process.env.POSTGRES_URL_TX?.trim()) {
   process.env.POSTGRES_URL = process.env.POSTGRES_URL_TX.trim();

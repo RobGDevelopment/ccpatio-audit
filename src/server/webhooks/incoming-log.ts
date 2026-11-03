@@ -3,7 +3,7 @@ import { getDb } from "@/server/db/client";
 import { incoming_webhooks } from "@/server/db/schema";
 
 export type WebhookLogInput = {
-  source: "woocommerce" | "ghl" | "cad_convert";
+  source: "woocommerce" | "ghl" | "cad_convert" | "katana";
   eventName: string;
   idempotencyKey: string;
   payload: unknown;

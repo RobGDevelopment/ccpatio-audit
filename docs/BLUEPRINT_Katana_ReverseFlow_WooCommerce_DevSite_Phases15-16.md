@@ -5,6 +5,7 @@
 **Author role:** Lead Integration Architect / QA Inspector (Cursor).
 **Date:** 2026-10-29.
 **Revision 2 (2026-10-29, same day):** imported into the repo at `docs/`; active lock rotated to `phase-15-katana-lifecycle`; executive decisions D-6 and D-10 recorded; NetSuite-grade edge-case sweep appended as **Section VI (R-1 … R-17)**. **Section VI is binding and wins over any earlier passage it amends.** Passages it overturns carry an inline `⚠ AMENDED BY §VI R-n` marker. AG must read Section VI before starting step 15.0.
+**Revision 3 (2026-10-29, same day):** Phase 3 red-team audit (recovery, race inversions, state drift) appended as **Section VII (S-1 … S-9)**, including executive decision **D-12 (rev 3): Katana-driven QBO vendor id, no auto-create, no mapping table** and the operator redrive workflow (D-14). **Section VII is binding and wins over Section VI and every earlier passage it amends** (inline `⚠ AMENDED BY §VII S-n` markers).
 
 ---
 
@@ -80,7 +81,8 @@ These are authoritative. Where the brief and this section disagree, **this secti
 | D-9 | Phase 17 (BOM-driven lead-time sync) is out of scope. | **Approved.** |
 | D-10 | `QBO_RAW_MATERIALS_ASSET_ACCOUNT_ID` has **no default**. No fallback to `81` or any hard-coded integer. Missing or non-numeric ⇒ hard error, saga parked in `SAGA_FAILED_REQUIRES_MANUAL_INTERVENTION`, Ops alerted through the global DLQ. Financial ledgers fail safe. Same rule for every QBO account id the A/P and Clover lanes read. | **APPROVED by executive decision (rev 2).** See §VI R-6. |
 | D-11 | Any Inngest function that carries `KATANA_TENANT_CONCURRENCY` may perform **only** Katana I/O and local Postgres I/O. QBO and GHL calls run in separate functions that do not hold the Katana slot. | Architect ruling (rev 2). See §VI R-1. |
-| D-12 | QBO vendor auto-create from the Katana supplier name (existing `resolveOrCreateQboVendor`) stays as-is for Phase 15, but an **inactive** QBO vendor with the same name parks the bill for a human instead of creating a duplicate. Whether to replace auto-create with a Katana-supplier → QBO-vendor mapping table is an **open operator question** (not Phase 15). | Open. AG surfaces in handback. |
+| D-12 | ~~QBO vendor auto-create from the Katana supplier name stays as-is for Phase 15~~ **Rev 3 executive decision:** QBO vendor auto-create is **killed** and **no** middleware mapping table is built. Purchasing writes the QBO Vendor id into the Katana supplier record (`QBO_ID: 145`); `post-katana-po-bill` uses only that id. Missing/invalid ⇒ bill parked, Ops alerted to fix the Katana record. `resolveOrCreateQboVendor` is deleted. | **APPROVED by executive decision (rev 3).** See §VII S-2. |
+| D-14 | Parked `katana_po_bills` rows are resumed **only** through the operator CLI `scripts/ops/redrive-parked-po-bills.ts`, which emits typed domain events. It never writes the database, never calls Katana or QBO, and never replays `dlq_events`. Architect ruling: this is not the forbidden `/api/admin/redrive` route or DLQ UI (CLAUDE.md §4). | Architect ruling (rev 3); operator confirms at handback. See §VII S-4. |
 | D-13 | Webhooks are hints, not the guarantee. A low-rate reconciliation cron re-drives open hub orders through the same status event. | Architect ruling (rev 2). See §VI R-10. |
 
 ### 0.6 Phase locks AG must create (Triad Kernel Track 2)
@@ -452,6 +454,8 @@ export function computeReceiptDelta(rows: PoReceiptRow[], prior: PriorBill[]):
 
 #### 15.2b Supplier lookup must not swallow (`katana-po-received.ts:100-113`)
 
+⚠ AMENDED BY §VII S-2, S-7: supplier problems no longer throw before `record-receipt`. The receipt is always recorded; the supplier outcome is stored as `vendor_ref_error` and the bill parks at post time. The supplier **name** is no longer used to pick a QBO vendor.
+
 Replace the `try { ... } catch { /* fallback */ }` with:
 - `supplier_id` missing / ≤ 0 ⇒ `throw new NonRetriableError(\`Katana PO ${orderNo} has no supplier_id; cannot attribute A/P bill\`)`.
 - `GET /suppliers/{id}`: no try/catch. `KatanaApiError` with status 404 ⇒ convert to `NonRetriableError` (data problem). 429/5xx/network ⇒ propagate (`runKatanaStep` already turns 429 into `RetryAfterError`).
@@ -801,8 +805,9 @@ Known anchors for the future design (do not build):
 3. **Criteria table:** every `QA-*` id above is marked PASS/FAIL with evidence (test name, grep output, or file:line). One FAIL ⇒ phase not certified.
 4. **Proof of life:** raw, unedited `npm run qa:lifecycle` stdout ending in exit code 0, plus verbatim `qca.mjs` JSON. Summaries or excerpts are not accepted.
 5. **VERIFY answers:** V-1…V-7 answered with the fixture path that proves each.
-6. **Open questions AG must surface (not decide):** ~~D-6 sign-off status~~ (approved rev 2); ~~`QBO_RAW_MATERIALS_ASSET_ACCOUNT_ID` default `81`~~ (D-10: no default, rev 2); D-12 vendor mapping; any VERIFY item (V-1 … V-11) where Katana's, Inngest's, or GHL's real behavior contradicted this blueprint.
+6. **Open questions AG must surface (not decide):** ~~D-6 sign-off status~~ (approved rev 2); ~~`QBO_RAW_MATERIALS_ASSET_ACCOUNT_ID` default `81`~~ (D-10: no default, rev 2); ~~D-12 vendor mapping~~ (decided rev 3, §VII S-2); D-14 redrive CLI confirmation; any VERIFY item (V-1 … V-14) where Katana's, Inngest's, or GHL's real behavior contradicted this blueprint.
 7. **Section VI criteria:** every `QA-R*` id in §VI is graded exactly like the `QA-15.*` ids. One FAIL ⇒ phase not certified.
+8. **Section VII criteria:** every `QA-S*` id in §VII is graded the same way. One FAIL ⇒ phase not certified.
 
 ---
 
@@ -827,7 +832,7 @@ Known anchors for the future design (do not build):
 
 **Requirement (D-11).**
 1. Split the PO saga. `sync-katana-po-received` keeps only Katana reads and `record-receipt` (+ `mark-dry-run` in log mode). In live mode, when the recorded row is `pending`, it emits `step.sendEvent("request-qbo-bill", { id: \`katana-po-bill:${billRowId}\`, name: "katana/po_bill.post_requested", data: { billRowId, katanaPoId } })`.
-2. New function **`post-katana-po-bill`** in `src/inngest/katana-po-bill-post.ts`: trigger `katana/po_bill.post_requested`; `concurrency: [{ limit: 1, key: "event.data.katanaPoId" }, { limit: 2, key: '"qbo-realm"', scope: "env" }]` (QBO allows at most 10 concurrent requests per realm and other lanes share it); `idempotency: "event.data.billRowId"`; `retries: 5`; no `onFailure`; **no Katana import**. Steps are in R-6 and R-7.
+2. New function **`post-katana-po-bill`** in `src/inngest/katana-po-bill-post.ts`: trigger `katana/po_bill.post_requested`; `concurrency: [{ limit: 1, key: "event.data.katanaPoId" }, { limit: 2, key: '"qbo-realm"', scope: "env" }]` (QBO allows at most 10 concurrent requests per realm and other lanes share it); `idempotency: "event.data.billRowId"`; `retries: 5`; no `onFailure`; **no Katana import**. Steps are in R-6 and R-7. ⚠ AMENDED BY §VII S-3: the function-level `idempotency` is **removed** (it would silently drop a redrive within Inngest's 24 h window); the request event id becomes `katana-po-bill:${billRowId}:r${redriveSeq}`.
 3. Split the status saga. `sync-katana-order-status` ends after `persist-hub-status` and emits `step.sendEvent("request-ghl-stage", { name: "ghl/factory_stage.push_requested", data: { opportunityId } })` when the persisted stage rank exceeds the stored `ghl_stage_pushed` rank.
 4. New function **`push-ghl-factory-stage`** in `src/inngest/ghl-factory-stage-push.ts`: trigger `ghl/factory_stage.push_requested`; `concurrency: [{ limit: 1, key: "event.data.opportunityId" }]`; `throttle: { limit: 20, period: "10s" }` (GHL's per-location burst limit is shared with every other GHL lane; V-11 confirms the published number); `retries: 4`; no `onFailure`; **no Katana import**. Steps are in R-11.
 
@@ -857,7 +862,7 @@ Known anchors for the future design (do not build):
 **Requirement.**
 1. `fetch-katana-sales-order` returns `observedAt` (ISO string captured **inside** the step, so it is memoized with the snapshot).
 2. New nullable column `katana_status_observed_at timestamptz` on `order_intake` and `custom_build_jobs` (§VI.M).
-3. `persist-hub-status` is ONE conditional UPDATE: `… WHERE id = $id AND (katana_status_observed_at IS NULL OR katana_status_observed_at < $observedAt)`. `factory_stage` is computed in SQL as the higher of stored and derived rank (`CASE` over the four literals), never by a prior SELECT. 0 rows updated ⇒ `{ skipped: "stale_snapshot" }` (log, no throw).
+3. `persist-hub-status` is ONE conditional UPDATE: `… WHERE id = $id AND (katana_status_observed_at IS NULL OR katana_status_observed_at < $observedAt)`. `factory_stage` is computed in SQL as the higher of stored and derived rank (`CASE` over the four literals), never by a prior SELECT. ⚠ AMENDED BY §VII S-1: both ranks must be `COALESCE`d to 0 (NULL three-valued-logic trap). 0 rows updated ⇒ `{ skipped: "stale_snapshot" }` (log, no throw).
 4. `persist-ghl-stage` (in `push-ghl-factory-stage`) is likewise conditional on the stored `ghl_stage_pushed` rank being lower.
 5. Wall-clock time is allowed here: `observedAt` is an ordering token for a status mirror, not a financial idempotency key. The C-3 ban on time in QBO `requestid` is unchanged.
 
@@ -869,7 +874,7 @@ Known anchors for the future design (do not build):
 
 **Evidence.** §15.2a counted only `posted`/`dry_run` rows as already billed. A row stays `pending` from `record-receipt` until `mark-posted`. Per-PO concurrency does not cover a run waiting on retry backoff (R-3), so receipt #2 can be recorded while #1 is still `pending`. #2's delta then re-includes #1's quantity and the vendor is billed twice. Also, a run holding an **older** memoized snapshot that records after a newer one computes a negative delta and throws `NonRetriableError` ("needs a vendor credit"): a false alarm and a dead receipt.
 
-**Requirement.**
+**Requirement.** ⚠ AMENDED BY §VII S-5, S-6: item 1 gains `resolved_manually`; items 3 and 4 merge into one "refetch on any decrease" rule with high-watermark semantics; item 5's formula is **defective under price drift** and is replaced; item 6 parks instead of only logging.
 1. **Accounted statuses.** `billedQtyBefore(rowId)` sums `billedQtyDelta` over prior rows whose status ∈ `{pending, posted, dry_run, requires_manual_intervention}`. A recorded receipt is owed by its own row until a human resolves it; a ledger failure is retried, never rolled back (CLAUDE.md §5).
 2. **Serialize in Postgres.** `record-receipt` runs in one `getDb().transaction(...)` that first executes `SELECT pg_advisory_xact_lock(hashtextextended('katana_po_bills:' || $poId, 0))`. It is transaction-scoped, so it is safe on the Supavisor transaction pooler (same family as `token-refresh.ts`). The UNIQUE `(katana_po_id, receipt_seq)` index stays as the backstop.
 3. **Superseded snapshots.** New result `{ kind: "superseded" }`: when, for every row, the snapshot's `receivedQtyCumulative` ≤ the highest cumulative already recorded for that row, and at least one row is strictly lower. No row is inserted; the run returns `{ ok: true, skipped: "superseded" }`.
@@ -921,7 +926,7 @@ Known anchors for the future design (do not build):
 **Evidence.** `qboFetchWithRefresh` throws `QboApiError(message, status)` for any non-2xx (`token-refresh.ts:441-446`), `QboApiTimeoutError` on timeout, and `QboAuthError` after a failed refresh retry. A timeout on a POST is **ambiguous**: the bill may exist. QBO deduplicates a repeated `requestid`, but its retention window is not documented as unlimited.
 
 **Requirement (in `post-katana-po-bill`).**
-1. Step `resolve-vendor`: QBO vendor lookup must include inactive vendors (`… WHERE DisplayName = '…' AND Active IN (true, false)`). Inactive match ⇒ parking path (D-12). Persist the resolved id into `katana_po_bills.qbo_vendor_id`.
+1. ~~Step `resolve-vendor`: QBO vendor lookup must include inactive vendors (`… WHERE DisplayName = '…' AND Active IN (true, false)`). Inactive match ⇒ parking path (D-12). Persist the resolved id into `katana_po_bills.qbo_vendor_id`.~~ ⚠ AMENDED BY §VII S-2: no lookup by `DisplayName`. `resolve-vendor` validates the Katana-supplied `qbo_vendor_id` with `GET /vendor/{id}`.
 2. Step `reconcile-existing-bill` (always, before POST): `SELECT Id, TotalAmt, VendorRef FROM Bill WHERE DocNumber = '<docNumber>'`. A match with the same vendor and `TotalAmt` equal to `deltaTotalCents / 100` ⇒ adopt its `Id`, mark posted, skip the POST. A match with a different amount or vendor ⇒ parking path ("bill already exists in QBO with different content").
 3. Step `post-qbo-vendor-bill`: same deterministic `requestid` on every attempt.
 4. Error mapping: `QboApiError` 400/422 (including duplicate-name 6240) ⇒ parking path; 429 ⇒ `RetryAfterError(msg, "60s")`; 5xx / `QboApiTimeoutError` / network ⇒ rethrow (Inngest retries, same `requestid`); `QboAuthError` ⇒ `NonRetriableError` (token-refresh already alerts `qbo_auth_failed`; that alert predates G-6 and is accepted).
@@ -988,7 +993,7 @@ Known anchors for the future design (do not build):
 3. **Opportunity gates (in `moveOpportunityStage`).** `locationId` must equal `GHL_LOCATION_ID`, else `wrong_location`. `status` ∈ `{open, won}` (trimmed, lower-cased), else `foreign_status` (Lost/Abandoned are human decisions). `pipelineId` must equal `GHL_FACTORY_PIPELINE_ID`, else `wrong_pipeline`. Current stage: in our 4 ⇒ its rank; in `GHL_FACTORY_STAGE_IDS ∪ GHL_WON_STAGE_IDS` ⇒ rank 0 (movable); otherwise `foreign_stage`. If both env sets are empty, every non-ours stage is foreign: zero moves, fail closed, one log line per run.
 4. **PUT body** is exactly `{ pipelineId, pipelineStageId }`. Never `status`, `monetaryValue`, or `name`.
 5. **Post-write verification.** GET again after the PUT. Stage ≠ target, or status no longer `open`/`won` ⇒ log `ghl-stage-race-detected` with both values (a human moved it in the window). No retry loop, no throw. GHL has no conditional write, so this is detection only.
-6. **Multi-lane aggregation.** The push target for an opportunity is the **minimum** `factory_stage` rank across its `order_intake` and `custom_build_jobs` rows that have a non-null `factory_stage`. An opportunity is only as far along as its least advanced order.
+6. **Multi-lane aggregation.** ~~The push target for an opportunity is the **minimum** `factory_stage` rank across its `order_intake` and `custom_build_jobs` rows that have a non-null `factory_stage`.~~ ⚠ AMENDED BY §VII S-1: the minimum is taken over every **live** row of the opportunity; a live row whose `factory_stage` is NULL counts as rank 0 and blocks the push. An opportunity is only as far along as its least advanced order.
 7. **Mode gate.** `KATANA_REVERSE_SYNC_MODE` ≠ `live` ⇒ dry-run log and return before any GHL call, including the GETs.
 8. **Path A summary refresh** (original §15.4c step 9) moves into this function, after `persist-ghl-stage`.
 
@@ -1052,6 +1057,8 @@ Known anchors for the future design (do not build):
 
 ### VI.M Migration delta for `0057_katana_reverse_flow.sql` (supersedes the matching lines in §15.1b)
 
+⚠ AMENDED BY §VII.M: further additive columns, a new status `resolved_manually`, and a replaced delta CHECK on `katana_po_bills`.
+
 Inside `CREATE TABLE "katana_po_bills"`, add after `"last_error" text,`:
 
 ```sql
@@ -1094,6 +1101,299 @@ All registered in `inngestFunctions` (`src/inngest/functions.ts`). None defines 
 
 ---
 
+## VII. Phase 3 Red-Team Audit — Recovery, Race Inversions, State Drift (rev 3, 2026-10-29) — BINDING
+
+**Method.** Cursor attacked Section VI with three failure classes: out-of-order delivery, operator recovery from parked states, and Katana data that changes between partial receipts. It re-checked the code those paths touch: the supplier fetch (`src/inngest/katana-po-received.ts:98-113`), QBO vendor auto-create (`src/server/integrations/qbo/client.ts:131-158`, `:177`, `:182`, `:194`), the saga store (`src/server/sre/saga-store.ts:103-113`), the DLQ table (`src/server/db/schema.ts:1762-1782`), the Phase 14 triage table (`schema.ts:1923-1963`), and the Katana throttle (`src/server/sre/katana-throttle.ts:4-11`). Section VII wins over Section VI wherever they disagree.
+
+### VII.0 Direct answers to the three audit questions
+
+| Question | Answer | Findings |
+|---|---|---|
+| **1. Out-of-order race.** `manufacturing_order.done` arrives before `sales_order.updated`. Does `deriveFactoryStage` break or downgrade? | **No, by design.** Neither webhook body feeds `deriveFactoryStage`. Every run re-reads the SO and the MO list from Katana, so arrival order only changes *when* a run happens, not *what it sees*. The SQL compare-and-set keeps the higher of stored and derived rank, so a later run that sees less cannot lower the stage. Four real holes remain: (a) a NULL three-valued-logic trap in the rank `CASE` that stops the **first** stage from ever being written; (b) cross-lane aggregation that skips NULL-stage rows, so GHL can jump ahead of a lane that has not synced yet; (c) an MO that finishes before the hub persists `katana_mo_ids` is dropped until the cron runs; (d) the GHL push target must be read from the database at run time, never from the event. | S-1 |
+| **2. Operator recovery.** How does a parked `katana_po_bills` row resume after the root cause is fixed? | **It cannot today. Every parked bill is permanently stuck.** Three independent blockers: `load-bill-row` returns `{ parked: true }` forever (R-6.1); the function-level `idempotency: "event.data.billRowId"` drops any re-sent request inside 24 h (R-1.2); and reusing the same QBO `requestid` may replay QBO's cached 400 (V-13). Phase 14's `ledger_triage` has the same gap (no resume path exists anywhere in `src/`). A redrive workflow is **required**: a read-only operator CLI that emits typed events, three small Inngest functions that do the compare-and-set transitions, and a per-redrive `requestid` suffix. | S-3, S-4, S-6 |
+| **3. Price drift.** PO received 50 %, price corrected in Katana, final 50 % received. Is the final bill accurate? | **No. R-4.5's cumulative-rounding formula is defective under price drift.** It re-prices already-billed quantity at the new price and hides the true-up inside the final bill. A price raise overbills the final line (and its `Qty @ $price` description contradicts the amount). A large price cut produces a **negative** amount for a positive quantity, violating `katana_po_bills_delta_nonnegative` inside `record-receipt`. The receipt then fails on every retry and is **never recorded**. Fix: price only the delta, at the current price, with telescoping rounding inside one price; detect drift on every previously billed row; **park** in live mode so a human fixes the earlier bill before money moves. | S-5 |
+
+### VII.1 Findings and binding requirements
+
+#### S-1 · Out-of-order delivery: safe by design, four holes pinned (HIGH)
+
+**Evidence.** §15.3 treats `statusHint` as advisory and the saga always re-reads Katana. Both webhook kinds reach `sync-katana-order-status`: SO events directly, MO events through hub-first `katana-mo-done` (R-9.3). That function is debounced per SO and re-reads `GET /sales_orders/{id}` plus the strict MO listing (R-9.2). Katana updates the SO's `production_status` slightly after an MO goes DONE, so a run can see `production_status = IN_PROGRESS` with every MO DONE. R-12 routes that case to `build_complete` when every expected MO is DONE, and to `in_production` otherwise. Either way it is never lower than the stored stage, because of R-3's SQL max. A later `sales_order.updated` run then sees the same or more advanced state. So far the design holds. It breaks in four places:
+
+1. **NULL rank trap.** A rank `CASE` that returns NULL for a NULL stage makes `derivedRank > storedRank` evaluate to NULL when the stored stage is NULL. Postgres then takes the `ELSE stored` branch and writes NULL. The very first stage is never persisted, and every later run repeats the mistake.
+2. **Cross-lane inversion.** R-11.6 took the minimum over rows *with* a non-null stage. Suppose an opportunity has an `order_intake` row at `delivered` and a released Path A job whose `factory_stage` is still NULL because its first sync has not happened yet. The minimum is then `delivered`, and GHL is told the whole opportunity is delivered.
+3. **MO before hub persist.** If an MO finishes before `push-factory-order` / `path-a-release` persists `katana_mo_ids` (fast sub-MOs, manual completion), `katana-mo-done` returns `mo_not_in_hub` or `so_not_persisted_yet`. Nothing re-triggers it. If the row already has a `katana_status_synced_at`, the reconcile cron waits 6 h.
+4. **Stale target.** If `push-ghl-factory-stage` trusted a stage in its event payload, two push events arriving out of order could PUT the older stage. D-8 makes that a no-op instead of a downgrade, but it can PUT an intermediate stage after a newer one was decided.
+
+**Requirement.**
+1. Rank SQL: `COALESCE(<rank of derived>, 0)` and `COALESCE(<rank of stored>, 0)` on both sides; the new value is `CASE WHEN COALESCE(derivedRank,0) > COALESCE(storedRank,0) THEN $derived ELSE factory_stage END`. A NULL derived stage never overwrites a stored one, and a non-NULL derived stage always replaces a NULL stored one.
+2. Aggregation: the GHL target is the minimum rank over every **live** hub row of the opportunity. A live row with NULL `factory_stage` counts as rank 0, which means no push. "Live" excludes only closed, will-never-produce states: `order_intake.status = 'rejected'`, and for `custom_build_jobs` the cancelled/abandoned values AG reads from the schema and lists in the handback (**V-14b**). A guessed list is a defect.
+3. `katana-mo-done`: on `mo_not_in_hub` or `so_not_persisted_yet`, run `step.sleep("await-hub-persist", "2m")` **once**, then `lookup-hub-after-wait`. A hit emits the SO event as normal; a miss returns the original skip. A sleep holds no concurrency slot and makes no Katana call, so R-9.3 is unchanged.
+4. Reconcile cron (R-10.4) gains a second selection clause inside the same 25-row budget: rows with `factory_stage IS NULL OR factory_stage = 'in_production'` and `katana_status_synced_at < now() - interval '1 hour'`, ordered oldest first after the original clause.
+5. `ghl/factory_stage.push_requested` carries **only** `{ opportunityId }`. `push-ghl-factory-stage` computes the target from the database inside its own step. Any stage field in that event's data is a defect.
+6. `observedAt` is captured only inside `fetch-katana-sales-order`, which runs before `fetch-katana-mos`. It is never re-captured at persist time.
+
+**QA.**
+- **QA-S1-01** Real-DB test: stored `factory_stage` NULL, derived `in_production` ⇒ the row becomes `in_production`. Stored `build_complete`, derived NULL ⇒ stays `build_complete`.
+- **QA-S1-02** MO-first sequence: deliver `manufacturing_order.done` (all expected MOs DONE, SO `production_status = IN_PROGRESS`), then `sales_order.updated` with the same Katana state ⇒ final `factory_stage = build_complete`, exactly one GHL push request, zero `katana-status-regression` logs.
+- **QA-S1-03** Opportunity with `order_intake.factory_stage = delivered` and a live `custom_build_jobs` row with NULL `factory_stage` ⇒ zero GHL PUTs. Same with the Path A row in a closed state ⇒ target `delivered`.
+- **QA-S1-04** `katana-mo-done` miss, then the hub row gains the MO id during the sleep (fake step) ⇒ the SO event is emitted; still missing ⇒ `mo_not_in_hub`, zero `fetch` calls in both cases.
+- **QA-S1-05** Static test: the `push_requested` send site passes an object whose only key is `opportunityId`.
+
+#### S-2 · D-12 (rev 3): Katana-driven QBO vendor id (CRITICAL, financial, executive decision)
+
+**Evidence.** `resolveOrCreateQboVendor` looks a vendor up by `DisplayName` and POSTs a new QBO vendor when there is no match (`client.ts:131-158`). Its only caller is `createQboVendorBillFromKatanaPo` (`:177`). A spelling difference between Katana and QBO creates a duplicate vendor and puts A/P on the wrong vendor. The bill also sends `VendorRef.name` from Katana (`:194`). D-12 rev 3 makes Katana the single source of truth: purchasing writes the QBO Vendor id into the Katana supplier record.
+
+**Exact payload path (AG implements to this; V-12 confirms against a fixture before coding).**
+
+1. **Source call** (in the Katana-slot function `sync-katana-po-received`, step `fetch-katana-po-details`, already inside `runKatanaStep`, with the R-9 guard):
+   - `GET /purchase_orders/{purchaseOrderId}` ⇒ PO object `po` (envelope normalized exactly as today: `isRecord(body.data) ? body.data : body`). Supplier id = `po.supplier_id`. It must be a positive integer.
+   - `GET /suppliers/{po.supplier_id}` ⇒ supplier object `sup`, normalized the same way.
+   - If V-12 shows the retrieve form is unsupported (404/405 for a valid id), use `GET /suppliers?ids={supplier_id}` and require `body.data` to be an array with **exactly one** element whose `id === supplier_id`. Zero or more than one ⇒ `supplier_not_found`.
+2. **Field:** `sup.comment`. This is the free-text notes field on the Katana supplier card. Katana's public API exposes no custom fields on suppliers. If V-12 finds a structured custom field that the API actually returns, AG reports it and **does not switch** without architect sign-off.
+3. **Pure parser** `parseQboVendorIdFromSupplier(sup: Record<string, unknown>): { ok: true; qboVendorId: string } | { ok: false; reason: VendorRefError }` in `src/server/katana/po-receipt-ledger.ts`:
+   - `sup.comment` not a string, or blank after trim ⇒ `vendor_qbo_id_missing`.
+   - Normalize: `\r\n` and `\r` ⇒ `\n`. If V-12 shows the comment is stored as HTML, then `<br>`, `</p>`, `</div>` ⇒ `\n`, strip the remaining tags, and decode `&nbsp;` `&amp;` `&lt;` `&gt;`. Normalization is pure and covered by a test.
+   - **Candidate lines:** lines whose trimmed text matches `/^qbo[\s_-]*id\b/i` (loose, used only to detect intent).
+   - **Strict grammar:** `/^\s*QBO_ID\s*:\s*([1-9]\d{0,11})\s*$/i`. One token per line; digits only; no leading zero; no sign or decimal point.
+   - No candidate lines ⇒ `vendor_qbo_id_missing`. Any candidate line that fails the strict grammar (`QBO ID: 145`, `QBO_ID=145`, `QBO_ID: 145a`, `QBO_ID: 0145`) ⇒ `vendor_qbo_id_invalid`. Strict matches with more than one **distinct** value ⇒ `vendor_qbo_id_ambiguous`. Exactly one distinct value ⇒ `ok`.
+   - The parser never logs or returns the comment text, which may carry contact details. Logs carry only `supplierId` and `reason`.
+   - `VendorRefError = "vendor_qbo_id_missing" | "vendor_qbo_id_invalid" | "vendor_qbo_id_ambiguous" | "supplier_missing" | "supplier_not_found"`. `supplier_missing` means `po.supplier_id` is absent or ≤ 0; `supplier_not_found` means a Katana 404 or zero list hits.
+4. **Persist at receipt time** (`record-receipt`): `katana_supplier_id`, `qbo_vendor_id` (parsed id or NULL), `vendor_ref_error` (reason or NULL). A vendor problem **never** prevents the receipt from being recorded (S-7).
+5. **Validate at post time** (`post-katana-po-bill`, step `resolve-vendor`, QBO side, no Katana import):
+   - `vendor_ref_error` set ⇒ parking path with `park_reason = vendor_ref_error`.
+   - `GET /v3/company/{realm}/vendor/{qbo_vendor_id}?minorversion=75`. QBO "Object Not Found" (HTTP 400, fault code `610`) ⇒ park `vendor_qbo_id_not_found`. `Vendor.Active === false` ⇒ park `vendor_inactive`. `Vendor.CurrencyRef.value` present and not `USD` ⇒ park `vendor_currency_mismatch`. Other errors follow R-7.4.
+   - `Vendor.DisplayName` differing from the Katana supplier name (trimmed, case-insensitive) ⇒ log `katana-qbo-vendor-name-mismatch` with both names and the ids. **Non-blocking:** the id is the authority.
+   - Bill payload `VendorRef = { value: qbo_vendor_id }`. No `name`.
+6. **Alert text.** The parking `NonRetriableError` message names the action Ops must take, for example `Katana supplier 812 has no valid "QBO_ID: <id>" line in its Comment field. Add it in Katana, then run: npm run ops:po-bills -- retry --id <billRowId>`. No secrets, no comment text.
+7. **Delete auto-create.** Remove `resolveOrCreateQboVendor` and the vendor POST from `client.ts`. `CreateQboVendorBillInput` replaces `supplierName` with `qboVendorId: string` (required, `/^[1-9]\d{0,11}$/`, otherwise throw).
+8. **Log mode.** Rows are `dry_run` as before; the dry-run summary gains `qboVendorIdReady: boolean` and `vendorRefError`. Before the A/P lane flips to live, `npm run ops:po-bills -- list --vendor-gaps` lists every Katana supplier that needs a `QBO_ID` line (S-4).
+
+**QA.**
+- **QA-S2-01** Parser table test: `"QBO_ID: 145"` ⇒ `145`; `"Net 30\nqbo_id:145 \n"` ⇒ `145`; `"QBO_ID: 145\nQBO_ID: 145"` ⇒ `145`; `"QBO_ID: 145\nQBO_ID: 146"` ⇒ ambiguous; `"QBO ID: 145"`, `"QBO_ID=145"`, `"QBO_ID: 145a"`, `"QBO_ID: 0145"`, `"QBO_ID:"` ⇒ invalid; `""`, `null`, `"Net 30"` ⇒ missing.
+- **QA-S2-02** `rg "resolveOrCreateQboVendor|/vendor\?requestid|DisplayName = " src/` ⇒ 0.
+- **QA-S2-03** Live mode with a fake QBO: vendor inactive ⇒ parked `vendor_inactive`, zero bill POSTs. Vendor 610 ⇒ parked `vendor_qbo_id_not_found`. Valid vendor ⇒ the bill body's `VendorRef` deep-equals `{ value: "145" }`.
+- **QA-S2-04** Supplier comment missing the id ⇒ the receipt **is** recorded (row exists, `vendor_ref_error = vendor_qbo_id_missing`), and the post parks without any QBO call.
+- **QA-S2-05** Static test: no `console.*` or log call in `parseQboVendorIdFromSupplier`, and no log call site receives `sup.comment`.
+
+#### S-3 · Parked bills are permanently stuck today (CRITICAL, recovery)
+
+**Evidence.**
+1. R-6.1: `load-bill-row` returns `{ parked: true }` for `requires_manual_intervention`, and no code path ever changes that status.
+2. R-1.2: `idempotency: "event.data.billRowId"` makes Inngest drop a second `post_requested` event for the same row within 24 h, **silently**. A manual re-send would look successful and do nothing.
+3. QBO `requestid` is deterministic per receipt (C-3). If Intuit replays the cached response for a repeated `requestid` (**V-13**), a redrive with the same id returns the original 400 forever, even after the root cause is fixed.
+4. `sagaStore.setStatus` has no transition guard (`saga-store.ts:103-113`), so a resume path must enforce its own compare-and-set.
+5. Phase 14's `ledger_triage` (`schema.ts:1923-1963`) has open/resolved columns but no resume code in `src/`. The pattern was never built. That is out of scope here; it is recorded for the Phase 14 owner.
+
+**Requirement.** Build the redrive workflow in S-4. Remove function-level `idempotency` from `post-katana-po-bill`. Correctness rests on: the event id (`katana-po-bill:${billRowId}:r${redriveSeq}`), the `load-bill-row` status gate (only `pending` proceeds), the per-PO concurrency key, `reconcile-existing-bill` (R-7.2), and the per-redrive `requestid` below.
+
+**`requestid` per redrive (deterministic, no time):** `redrive_count = 0` ⇒ `qboRequestId(\`katana:po:${poId}:${fingerprint}\`, "ap-bill")` (unchanged); `redrive_count = n ≥ 1` ⇒ `qboRequestId(\`katana:po:${poId}:${fingerprint}:r${n}\`, "ap-bill")`. `reconcile-existing-bill` (DocNumber + vendor + amount) runs before **every** POST, so a bill created by an earlier ambiguous attempt is adopted, never duplicated. The C-3 ban on time and randomness still applies.
+
+**QA.**
+- **QA-S3-01** Registration test: `post-katana-po-bill` has no `idempotency` option.
+- **QA-S3-02** Parked row redriven twice ⇒ three distinct `qbo_request_id` values over its life (`r0`, `r1`, `r2`), each within `QBO_REQUEST_ID_MAX_LENGTH`; `rg "Date.now|new Date\(|randomUUID"` over the request-id derivation ⇒ 0.
+- **QA-S3-03** Redrive after an ambiguous earlier POST that did create the bill ⇒ the reconcile step adopts it, zero POSTs, row `posted`.
+
+#### S-4 · Operator redrive workflow (D-14) (CRITICAL, recovery)
+
+**Principles.**
+1. **One writer.** The CLI never writes the database and never calls Katana or QBO. It reads (SELECT) and emits events. Every state change happens inside an Inngest function, so it runs with the **deployment's** mode flags and QBO configuration, not the operator laptop's. The CLI also cannot call Katana: CLI scripts install their own pacer, which wins over the shared bucket (`katana-throttle.ts:9-11`), so a direct call would bypass the tenant limit.
+2. **Compare-and-set everywhere.** Every transition is `UPDATE … WHERE id = $id AND status = 'requires_manual_intervention' AND redrive_count = $expected`. Zero rows ⇒ `stale_redrive` (no throw, no alert). Two operators racing, or a double-pressed Enter, change nothing extra.
+3. **Append-only history.** The bill's lines, fingerprint, and receipt state are frozen. A redrive refreshes only vendor attribution (S-2) or approval stamps (S-5). Each attempt appends one entry to `redrive_log`: `{ seq, at, operator, action, parkReason, previousRequestId, previousError, outcome }`. Wall-clock time is fine here; it is an audit stamp, not an idempotency key.
+4. **Same safety net.** A redriven bill runs through the full `post-katana-po-bill` path: config check, vendor validation, reconcile, POST. If the root cause is not actually fixed, it parks again and alerts once, through a new DLQ row.
+
+**Park reasons (closed set, stored in `katana_po_bills.park_reason`) and allowed operator actions:**
+
+| `park_reason` | Set by | `retry` | `resolve` kinds allowed |
+|---|---|---|---|
+| `config_missing` | `post-katana-po-bill` `assert-ledger-config` (R-6) | yes | `entered_by_hand` |
+| `vendor_qbo_id_missing`, `vendor_qbo_id_invalid`, `vendor_qbo_id_ambiguous`, `supplier_missing`, `supplier_not_found` | `resolve-vendor` from `vendor_ref_error` (S-2) | yes (refreshes the supplier from Katana first) | `entered_by_hand` |
+| `vendor_qbo_id_not_found`, `vendor_inactive`, `vendor_currency_mismatch` | `resolve-vendor` QBO check (S-2) | yes (refreshes the supplier from Katana first) | `entered_by_hand` |
+| `currency_unsupported` | R-8.3 | **no** | `entered_by_hand` |
+| `qbo_rejected` | R-7.4 (400/422) | yes | `entered_by_hand` |
+| `qbo_bill_mismatch` | R-7.2 (same DocNumber, different content) | yes (after Ops voids or fixes the QBO bill) | `entered_by_hand` |
+| `price_drift` | `record-receipt` (S-5) | yes, **only** with `--approve-price-drift` | `entered_by_hand` |
+| `negative_receipt` | `record-receipt` (S-6) | **no** | `vendor_credit_issued`, `katana_correction` |
+| `po_frozen` | `record-receipt` while the PO has an open `negative_receipt` (S-6) | yes, only after that negative row is resolved | `entered_by_hand` |
+
+**CLI `scripts/ops/redrive-parked-po-bills.ts`** (run as `npm run ops:po-bills -- <command>`; add `"ops:po-bills"` to `package.json` with the same runner the other `scripts/ops/*.ts` scripts use):
+
+| Command | Behaviour |
+|---|---|
+| `list [--po <katanaPoId>] [--reason <park_reason>] [--json]` | Default command. Read-only. Prints parked rows grouped by reason: order no, `receipt_seq`, DocNumber, delta $, reason, scrubbed `last_error`, age, `redrive_count`, and the actions allowed for that reason. |
+| `list --vendor-gaps` | Read-only. Distinct `katana_supplier_id` + `vendor_ref_error` over rows in `pending`, `dry_run`, `requires_manual_intervention`. This is the pre-live checklist for purchasing. No supplier names or comments are printed (ids only); Ops looks the suppliers up in Katana. |
+| `status --id <billRowId>` | Read-only. The row plus its `redrive_log`. |
+| `retry (--id <billRowId> \| --po <katanaPoId> \| --reason <park_reason>) --operator <email> [--approve-price-drift] [--limit N] [--execute]` | Without `--execute`: prints the plan (rows, eligibility, the event ids it would send) and exits 0. With `--execute`: sends one `katana/po_bill.redrive_requested` event per eligible row, in `receipt_seq` order per PO, `--limit` default 25. Event `id = katana-po-bill-redrive:${billRowId}:${redrive_count + 1}`; data `{ billRowId, katanaPoId, expectedRedriveCount, operator, approvePriceDrift }`. Prints every event id so Ops can trace it in Inngest. |
+| `resolve --id <billRowId> --kind <entered_by_hand\|vendor_credit_issued\|katana_correction> --operator <email> --note "<text>" [--qbo-ref <QBO Id>] [--allow-amount-difference] [--execute]` | `--qbo-ref` is required for `entered_by_hand` (QBO Bill Id) and `vendor_credit_issued` (QBO VendorCredit Id). Sends `katana/po_bill.resolve_requested` with `id = katana-po-bill-resolve:${billRowId}:${redrive_count + 1}`. |
+
+CLI rules: `--operator` is required for any `--execute` (exit 1 otherwise). An ineligible row, as defined by the table above, ⇒ exit 2 with the reason and nothing sent. It needs `POSTGRES_URL` (read) and `INNGEST_EVENT_KEY` (send) only, and it sends through the existing Inngest client. It imports nothing from `@/lib/katana`, `@/lib/katana/client`, or `@/server/integrations/qbo`. Output contains no secrets, no supplier comment text, and no customer PII. It must not use the paths `/api/admin/redrive` or `app/**/redrive` (G-8).
+
+**New Inngest functions (no `onFailure`, G-6):**
+
+1. **`redrive-katana-po-bill`** in `src/inngest/katana-po-bill-post.ts` (QBO-side file; this function makes no QBO or Katana call). Trigger `katana/po_bill.redrive_requested`. `concurrency: [{ limit: 1, key: "event.data.katanaPoId" }]`, `retries: 3`, no `idempotency` (the event id plus the compare-and-set are the guards).
+   - `load-parked-row`: status `requires_manual_intervention` **and** `redrive_count = expectedRedriveCount`, otherwise return `{ skipped: "not_parked" | "stale_redrive" }`.
+   - `check-eligibility` (pure): the matrix above. Ineligible ⇒ append `redrive_log` `{ outcome: "refused:<why>" }` and return. `price_drift` without `approvePriceDrift` ⇒ refused. `po_frozen` while the PO still has an open `negative_receipt` row ⇒ refused.
+   - Vendor-group reasons ⇒ `step.sendEvent("request-vendor-refresh", { id: \`katana-po-bill-vendor:${billRowId}:${expectedRedriveCount + 1}\`, name: "katana/po_bill.vendor_refresh_requested", data: { billRowId, katanaPoId, expectedRedriveCount, operator } })` and return. Supplier data lives in Katana, so the refresh must run in a Katana-slot function (D-11).
+   - Otherwise `reopen-bill-row` (see the shared transition below), then `step.sendEvent("request-qbo-bill", { id: \`katana-po-bill:${billRowId}:r${n}\`, name: "katana/po_bill.post_requested", data: { billRowId, katanaPoId, redriveSeq: n } })`.
+2. **`refresh-katana-po-bill-vendor`** in `src/inngest/katana-po-received.ts` (Katana-slot file). Trigger `katana/po_bill.vendor_refresh_requested`. `concurrency: [{ limit: 1, key: "event.data.katanaPoId" }, KATANA_TENANT_CONCURRENCY]`, `retries: 3`. Katana reads plus Postgres only (D-11).
+   - `refetch-katana-supplier` (`runKatanaStep`, R-9 guard): `GET /purchase_orders/{id}` **header only**, for `supplier_id`, then the S-2 supplier call and parser. The PO's rows are **ignored**: the bill's lines and fingerprint stay frozen.
+   - Parse ok ⇒ in one transaction, update `katana_supplier_id`, `qbo_vendor_id`, clear `vendor_ref_error`, run `reopen-bill-row`, and then send `post_requested` exactly as in function 1. Parse still failing ⇒ update `vendor_ref_error`, append `redrive_log { outcome: "still_blocked:<reason>" }`, keep the row parked, return. No throw and no new alert (the operator asked and gets the answer from `status --id`).
+3. **`resolve-katana-po-bill`** in `src/inngest/katana-po-bill-post.ts`. Trigger `katana/po_bill.resolve_requested`. `concurrency: [{ limit: 1, key: "event.data.katanaPoId" }, { limit: 2, key: '"qbo-realm"', scope: "env" }]`, `retries: 5`. Performs QBO **reads only**, so it runs in every `QBO_LEDGER_MODE`.
+   - `load-parked-row` + eligibility, as in function 1.
+   - `verify-qbo-document`:
+     - `entered_by_hand`: `GET /bill/{qboRef}`. It must exist; `VendorRef.value` must equal the row's `qbo_vendor_id` when that is known; `TotalAmt × 100` must equal `delta_total_cents` unless `--allow-amount-difference` was passed (recorded in `redrive_log`). A mismatch ⇒ refused.
+     - `vendor_credit_issued`: `GET /vendorcredit/{qboRef}`. Vendor must match; `TotalAmt × 100` must equal the S-6 credit amount exactly; the PO must have no `po_frozen` rows. Otherwise refused.
+     - `katana_correction`: no QBO document; `--note` is required.
+   - `mark-resolved` (one transaction, compare-and-set): `status = 'resolved_manually'`, `resolution_kind`, `resolution_ref`, `resolved_by`, `resolved_at = now()`; `qbo_bill_id = qboRef` for `entered_by_hand`. For `vendor_credit_issued`, also apply the S-6 adjustment lines. Saga row ⇒ `COMPLETED` with `current_step = 'resolved_manually'`. `dlq_events` row `WHERE run_id = parked_run_id AND status = 'open'` ⇒ `resolved`.
+
+**Shared transition `reopen-bill-row`** (one transaction on `getDb()`, no QBO/GHL call inside, R-5):
+- Compare-and-set `katana_po_bills`: `status = 'pending'`, `redrive_count = expected + 1`, `qbo_request_id` = the S-3 derivation for `n = expected + 1`, `last_error = NULL`, append `redrive_log`. When `approvePriceDrift`, also set `price_drift_approved_by` and `price_drift_approved_at`. `park_reason` is **kept** as history; `load-bill-row` gates on `status`, not on `park_reason`.
+- `saga_runs` (`katana_po_bill`, `${katanaPoId}:${receiptSeq}`): `IN_PROGRESS`, `current_step = 'redriven_r${n}'`. This clears the row from the Mission Control QBO lamp count (`health-probes.ts:100-103`).
+- `dlq_events WHERE run_id = parked_run_id AND status = 'open'` ⇒ `resolved`. The superseded failure is closed; a new failure creates its own row.
+- `parked_run_id` is written by every parking step from the Inngest handler's `runId`, so the DLQ link is exact. No JSON matching on `original_event`.
+
+**Operator runbooks (AG copies these verbatim into the handback):**
+- *Missing QBO account / timezone:* set `QBO_RAW_MATERIALS_ASSET_ACCOUNT_ID` / `LEDGER_COMPANY_TIMEZONE` on the deployment and redeploy. Then `npm run ops:po-bills -- retry --reason config_missing --operator you@ccpatio.com` (review the plan), and re-run with `--execute`.
+- *Missing QBO_ID in Katana:* in Katana, open the supplier, add the line `QBO_ID: <QBO Vendor Id>` to its Comment field, then `retry --id <billRowId> --execute --operator …`. If `status --id` shows `still_blocked`, the line is still wrong.
+- *Negative receipt:* see S-6.
+
+**QA.**
+- **QA-S4-01** End-to-end (real test DB, fake QBO): park on `config_missing` ⇒ set the env ⇒ `redrive_requested` ⇒ row `posted`, `redrive_count = 1`, saga `COMPLETED`, the original `dlq_events` row `resolved`, `redrive_log` length 1.
+- **QA-S4-02** The same `redrive_requested` delivered twice (different event ids, same `expectedRedriveCount`) ⇒ exactly one transition, one `stale_redrive` skip, and one QBO POST.
+- **QA-S4-03** Vendor park ⇒ redrive ⇒ `refresh-katana-po-bill-vendor` with a still-missing id ⇒ row still parked, `still_blocked:vendor_qbo_id_missing`, zero QBO calls, zero new `dlq_events`. With a fixed id ⇒ posted.
+- **QA-S4-04** `refresh-katana-po-bill-vendor` with a Katana PO whose rows changed since the receipt ⇒ the bill's `lines`, `receipt_fingerprint`, and `delta_total_cents` are byte-identical before and after.
+- **QA-S4-05** `resolve --kind entered_by_hand` with a QBO bill whose total differs ⇒ refused; with `--allow-amount-difference` ⇒ `resolved_manually`, and the flag is recorded.
+- **QA-S4-06** Static test: the CLI imports none of `@/lib/katana`, `@/lib/katana/client`, `@/server/integrations/qbo`, and contains no `.insert(`, `.update(`, `.delete(`, or `sql\`UPDATE` / `INSERT` / `DELETE`.
+- **QA-S4-07** CLI without `--execute` sends zero events (spy on `inngest.send`); an ineligible row ⇒ exit code 2.
+- **QA-S4-08** `rg "api/admin/redrive" src/` ⇒ 0; no new directory under `src/app/` (G-8).
+- **QA-S4-09** `refresh-katana-po-bill-vendor` carries `KATANA_TENANT_CONCURRENCY` and imports nothing from QBO/GHL (QA-R1-01 applies). `redrive-katana-po-bill` and `resolve-katana-po-bill` import nothing from Katana (QA-R1-02 applies).
+
+#### S-5 · Price drift between partial receipts: R-4.5 is defective (CRITICAL, financial)
+
+**Evidence.** R-4.5 bills `round(C × p) − Σ amountCents previously billed for the row`, where `C` is the cumulative received quantity and `p` is the **current** price.
+- *Price raised.* 100 units PO at $10.00. Receipt 1: 50 units ⇒ $500.00. Price corrected to $12.00; receipt 2: 50 units ⇒ `round(100 × 1200) − 50000 = 70000` ⇒ **$700.00 for 50 units**. The line's description says `Qty: 50 @ $12.00` (`client.ts:182`), which contradicts the amount. The $100 re-pricing of receipt 1 is buried in receipt 2, with no audit trail.
+- *Price cut.* Same PO, $100.00 ⇒ $10.00. Receipt 1: $5,000.00. Receipt 2: `round(100 × 1000) − 500000 = −400000` ⇒ a **negative** amount for a positive quantity. The INSERT violates `katana_po_bills_delta_nonnegative` inside `record-receipt`. That is a plain database error, not a `NonRetriableError`, so Inngest retries it to exhaustion and the receipt is **never recorded**. That breaks the ledger's core promise.
+
+**Requirement.**
+1. **Delta-only telescoping formula** (replaces R-4.5). Per row, with `B` = accounted billed quantity before this receipt (R-4.1, amended by S-6) and `C` = cumulative received now: `amountCents = roundHalfUp(C × p) − roundHalfUp(B × p)`, where `p` is the row's current `pricePerUnitCents`. With a constant price the sum telescopes to `roundHalfUp(total × p)` to the cent (QA-R4-04 still holds). Already-billed quantity is never re-priced. Every line amount is ≥ 0 whenever `C ≥ B`.
+2. **Exact arithmetic.** Quantities are normalized to integer ten-thousandths (`Math.round(qty × 10_000)`); `roundHalfUp` runs in integer (or `BigInt`) math over `qtyE4 × p`. **V-14a** records Katana's maximum quantity decimals; more than 4 ⇒ AG reports and stops.
+3. **Drift detection on every billed row, not only on rows in this delta.** For each row with `B > 0`, `lastBilledPrice` = `pricePerUnitCents` on that row's most recent accounted line. If it differs from `p`, build `price_drift` entries `{ rowId, sku, billedQtyE4: B, oldPriceCents, newPriceCents, trueUpCents: roundHalfUp(B × new) − roundHalfUp(B × old) }`.
+4. **Policy.**
+   - `QBO_LEDGER_MODE=live`: record the row with the correct delta lines (`priceChanged: true` on drifted lines), `price_drift` jsonb, `status = 'requires_manual_intervention'`, `park_reason = 'price_drift'`, `parked_run_id`; saga ⇒ parked; throw `NonRetriableError("PO ${orderNo} price changed on rows [...] after billing; earlier bills differ by ${Σ trueUp}. Fix the earlier bill in QBO, then: npm run ops:po-bills -- retry --id ${billRowId} --approve-price-drift")`. One DLQ alert.
+   - `log`: `dry_run` with `priceChanged` flags and `price_drift`, plus a log `katana-po-price-drift`; no throw.
+   - After approval, the delta posts at the **new** price. The true-up of earlier bills is a human QBO action (edit the bill, add a supplemental bill, or issue a vendor credit). The hub never retro-edits a posted bill.
+5. Drift is detected only when a later receipt arrives. A price edited **after** the final receipt is invisible to this lane, because the hub does not subscribe to `purchase_order.updated`. This is accepted residual risk, recorded in the handback, and **not** built in Phase 15.
+
+**QA.**
+- **QA-S5-01** $10 ⇒ $12 scenario (50 + 50): receipt 2 lines total exactly 60000 cents, row parked `price_drift` with `trueUpCents = 10000`. After `retry --approve-price-drift` ⇒ the posted bill is $600.00 and its description reads `Qty: 50 @ $12.00`.
+- **QA-S5-02** $100 ⇒ $10 scenario: the receipt **is recorded** (no constraint error), its delta is 50000 cents, it is parked `price_drift` with `trueUpCents = −450000`, and there is exactly one `NonRetriableError`.
+- **QA-S5-03** A drifted row with zero new quantity, while another row has a positive delta ⇒ still parked `price_drift` (drift is checked on every billed row).
+- **QA-S5-04** Constant price, three fractional receipts (QA-R4-04 data) ⇒ Σ equals `roundHalfUp(10 × 107)` cents exactly; no `price_drift`.
+- **QA-S5-05** Log mode drift ⇒ `dry_run`, zero QBO calls, no throw, `katana-po-price-drift` logged.
+
+#### S-6 · Negative receipts: high-watermark semantics and a frozen PO lane (HIGH, financial)
+
+**Evidence.** §15.2a and R-4.4 park a confirmed decrease, but leave three gaps open. They do not define what the parked row contributes to "billed so far". They let later receipts post while the decrease is unresolved. And they give a human no way to close the row. Storing the decrease as negative deltas would double-bill when Katana is simply corrected back up. Example: billed 7, typo to 5, restored to 7; the restore then bills 2 again.
+
+**Requirement.**
+1. **One decrease rule (replaces R-4.3 and R-4.4).** If any row's snapshot cumulative is lower than that row's cumulative on the PO's **latest recorded** row (highest `receipt_seq`), run `refetch-katana-po` and compute from the fresh read only. If the fresh read equals an existing fingerprint ⇒ duplicate. If it has no decrease ⇒ record normally. If it still decreases against `B` ⇒ negative path. A row missing from the snapshot that has `B > 0` counts as cumulative 0.
+2. **High watermark.** A negative row is recorded with zero-delta lines (`billedQtyDelta = 0`, plus `decreaseQtyE4` per affected row), `delta_total_cents = 0`, `status = 'requires_manual_intervention'`, `park_reason = 'negative_receipt'`. `B` therefore stays at the high watermark. If Katana is corrected back up, the next receipt is `no_delta` and nothing is double-billed. Parks in both ledger modes, because it is a data-integrity event and not a QBO call.
+3. **Frozen PO lane.** While a PO has an open `negative_receipt` row, every new receipt for that PO is still recorded (computed against `B`) but gets `status = 'requires_manual_intervention'`, `park_reason = 'po_frozen'`. No money moves until a human has seen the whole sequence. `po_frozen` rows are retryable only after the negative row is resolved.
+4. **Resolutions.**
+   - `katana_correction`: the decrease was a Katana data error and no credit is owed. The watermark stays. Frozen rows become retryable as recorded.
+   - `vendor_credit_issued --qbo-ref <VendorCredit Id>`: the decrease is real, and Ops issued a QBO VendorCredit by hand. Expected credit = `Σ roundHalfUp(decreaseQtyE4 × lastBilledPrice)` over the affected rows. `resolve-katana-po-bill` verifies vendor and exact amount, then appends **adjustment lines** to the negative row (`billedQtyDelta = −decrease`, negative `amountCents`) and sets `delta_total_cents` to the negative credit total. This lowers the watermark to Katana's truth, so a replacement shipment is billed later. The command is refused if the PO has any `po_frozen` row (their math assumed the old watermark); Ops resolves those `entered_by_hand` first.
+5. **Accounted statuses** (amends R-4.1): `{pending, posted, dry_run, requires_manual_intervention, resolved_manually}`.
+
+**QA.**
+- **QA-S6-01** Billed 7, fresh-confirmed decrease to 5 ⇒ parked `negative_receipt`, zero delta. Katana restored to 7 ⇒ the next receipt is `po_frozen` with delta 0. After `katana_correction` ⇒ total billed stays 7; zero extra QBO POSTs.
+- **QA-S6-02** Billed 7, decrease to 5, VendorCredit of exactly 2 × last price ⇒ `resolved_manually`, watermark 5. A replacement receipt to 7 ⇒ a bill for 2.
+- **QA-S6-03** `vendor_credit_issued` with a wrong amount, or with an existing `po_frozen` row ⇒ refused, row unchanged.
+- **QA-S6-04** A stale memoized snapshot lower than the latest recorded row, where the fresh refetch equals the latest ⇒ `duplicate`, no new row, no throw (replaces QA-R4-02).
+- **QA-S6-05** Real-DB test: `delta_total_cents < 0` is rejected by the CHECK unless `resolution_kind = 'vendor_credit_issued'`.
+
+#### S-7 · Supplier problems must not drop receipts (HIGH, ledger integrity)
+
+**Evidence.** §15.2b throws `NonRetriableError` before `record-receipt` for a missing `supplier_id`, a Katana 404, or an empty name. The receipt then never enters `katana_po_bills`. There is nothing to redrive, and the next receipt's delta silently absorbs the lost quantity under a different DocNumber, so A/P loses its audit trail.
+
+**Requirement.** In `fetch-katana-po-details`, supplier outcomes become data (`vendor_ref_error`, S-2), never throws. A Katana 429/5xx/network error still propagates (retry). `record-receipt` always runs. The empty-name rule is dropped, because the name is no longer used for posting. The `"Katana Vendor"` literal stays banned (QA-15.2-05).
+
+**QA.**
+- **QA-S7-01** PO with `supplier_id` missing ⇒ the row is recorded with `vendor_ref_error = supplier_missing`; live post ⇒ parked; zero QBO calls.
+- **QA-S7-02** Katana 503 on the supplier GET ⇒ the step throws (retry); no row is written in that attempt.
+
+#### S-8 · DLQ context and Mission Control for the recovery lane (LOW)
+
+**Requirement.** Add `resolveDlqContext` entries (R-13 pattern) for `redrive-katana-po-bill`, `refresh-katana-po-bill-vendor`, `resolve-katana-po-bill` ⇒ `resolutionPath: "/mission-control"`. Every parking alert for `post-katana-po-bill` and `sync-katana-po-received` includes the exact CLI command (S-2.6, S-5.4). No new UI (G-8).
+
+**QA.**
+- **QA-S8-01** R-13's test is extended to the three new ids.
+
+#### S-9 · Lock amendment required before AG starts (BLOCKER, process)
+
+**Evidence.** `scripts/ops/redrive-parked-po-bills.ts` is not in `.cursor/phase.lock` `allowed_files`. Every other file Section VII touches is already in the lock: `katana-po-bill-post.ts`, `katana-po-received.ts`, `po-receipt-ledger.ts`, `qbo/client.ts`, `schema.ts`, `0057_katana_reverse_flow.sql`, `dlq-context.ts`, `functions.ts`, `package.json`, the three Phase 15 test files.
+
+**Requirement (operator, not AG; Appendix C forbids AG widening the lock).** Add `scripts/ops/redrive-parked-po-bills.ts` to `allowed_files` and raise `expected_blast_radius` by 1. Tests for Section VII go into the existing `tests/phase15-po-receipt-ledger.test.ts` (S-2, S-3, S-5, S-6, S-7) and `tests/phase15-reverse-flow-resilience.test.ts` (S-1, S-4, S-8). No new test file.
+
+### VII.2 New VERIFY items (add to the 15.0 handback)
+
+- **V-12** Katana supplier: (a) whether `GET /suppliers/{id}` is supported, or only `GET /suppliers?ids=`; (b) the exact name of the notes field (`comment` expected); (c) whether it returns plain text or HTML. Proof: a redacted fixture `tests/fixtures/katana/supplier.json` whose comment text is replaced with `"Net 30\nQBO_ID: 145"`.
+- **V-13** Intuit docs: whether a repeated `requestid` replays a cached **error** response, and the dedupe retention window. S-3's per-redrive suffix is correct either way.
+- **V-14** (a) Katana's maximum decimals on PO quantities (S-5.2). (b) The `custom_build_jobs` lifecycle values that mean "will never produce" (S-1.2), read from `schema.ts` and the Path A code.
+
+### VII.M Migration delta for `0057_katana_reverse_flow.sql` (supersedes the matching lines in §15.1b and §VI.M)
+
+The table is new and not yet applied (no `0057_*` file exists at `ec87d08`), so every change below is additive (G-2). Inside `CREATE TABLE "katana_po_bills"`, after the §VI.M columns, add:
+
+```sql
+	"katana_supplier_id" integer,
+	"vendor_ref_error" text,
+	"park_reason" text,
+	"parked_run_id" text,
+	"redrive_count" integer DEFAULT 0 NOT NULL,
+	"redrive_log" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"price_drift" jsonb,
+	"price_drift_approved_by" text,
+	"price_drift_approved_at" timestamp with time zone,
+	"resolution_kind" text,
+	"resolution_ref" text,
+	"resolved_by" text,
+	"resolved_at" timestamp with time zone,
+```
+
+Replace the status CHECK and the delta CHECK, and add the new CHECKs:
+
+```sql
+	CONSTRAINT "katana_po_bills_status_check" CHECK ("katana_po_bills"."status" in ('pending', 'posted', 'dry_run', 'no_delta', 'requires_manual_intervention', 'resolved_manually')),
+	CONSTRAINT "katana_po_bills_delta_nonnegative" CHECK ("katana_po_bills"."delta_total_cents" >= 0 or "katana_po_bills"."resolution_kind" = 'vendor_credit_issued'),
+	CONSTRAINT "katana_po_bills_park_reason_check" CHECK ("katana_po_bills"."park_reason" is null or "katana_po_bills"."park_reason" in ('config_missing', 'vendor_qbo_id_missing', 'vendor_qbo_id_invalid', 'vendor_qbo_id_ambiguous', 'vendor_qbo_id_not_found', 'vendor_inactive', 'vendor_currency_mismatch', 'supplier_missing', 'supplier_not_found', 'currency_unsupported', 'qbo_rejected', 'qbo_bill_mismatch', 'price_drift', 'negative_receipt', 'po_frozen')),
+	CONSTRAINT "katana_po_bills_parked_has_reason" CHECK ("katana_po_bills"."status" <> 'requires_manual_intervention' or "katana_po_bills"."park_reason" is not null),
+	CONSTRAINT "katana_po_bills_resolution_kind_check" CHECK ("katana_po_bills"."resolution_kind" is null or "katana_po_bills"."resolution_kind" in ('entered_by_hand', 'vendor_credit_issued', 'katana_correction')),
+	CONSTRAINT "katana_po_bills_resolved_stamped" CHECK ("katana_po_bills"."status" <> 'resolved_manually' or ("katana_po_bills"."resolution_kind" is not null and "katana_po_bills"."resolved_by" is not null and "katana_po_bills"."resolved_at" is not null)),
+	CONSTRAINT "katana_po_bills_redrive_count_nonnegative" CHECK ("katana_po_bills"."redrive_count" >= 0),
+	CONSTRAINT "katana_po_bills_vendor_id_format" CHECK ("katana_po_bills"."qbo_vendor_id" is null or "katana_po_bills"."qbo_vendor_id" ~ '^[1-9][0-9]{0,11}$'),
+```
+
+Add one index (the frozen-lane and CLI lookups):
+
+```sql
+CREATE INDEX "katana_po_bills_po_status_idx" ON "katana_po_bills" USING btree ("katana_po_id","status");--> statement-breakpoint
+```
+
+Mirror in `schema.ts`: `KATANA_PO_BILL_STATUSES` gains `"resolved_manually"`. Export `KATANA_PO_BILL_PARK_REASONS` and `KATANA_PO_BILL_RESOLUTION_KINDS` as `as const` arrays matching the CHECK text character for character (QA-15.1-03 covers every new CHECK). `KatanaPoBillLine` gains `decreaseQtyE4?: number`. The `qbo_request_id` UNIQUE index stays: each redrive writes a new, still-unique id.
+
+### VII.3 Inngest function inventory delta (supersedes the matching §VI.3 rows)
+
+| Function id | File | Trigger | Concurrency | Other | External I/O |
+|---|---|---|---|---|---|
+| `post-katana-po-bill` (amended) | `katana-po-bill-post.ts` | `katana/po_bill.post_requested` | `[{1, event.data.katanaPoId}, {2, "qbo-realm", env}]` | **no idempotency**, retries 5, event id `katana-po-bill:${billRowId}:r${n}` | QBO, Postgres |
+| `katana-mo-done` (amended) | `katana-order-status.ts` | `katana/manufacturing_order.done` | none | one `step.sleep("2m")` recheck on miss (S-1.3) | Postgres |
+| `redrive-katana-po-bill` (new) | `katana-po-bill-post.ts` | `katana/po_bill.redrive_requested` | `[{1, event.data.katanaPoId}]` | retries 3, no idempotency | Postgres |
+| `refresh-katana-po-bill-vendor` (new) | `katana-po-received.ts` | `katana/po_bill.vendor_refresh_requested` | `[{1, event.data.katanaPoId}, KATANA_TENANT_CONCURRENCY]` | retries 3 | Katana GET, Postgres |
+| `resolve-katana-po-bill` (new) | `katana-po-bill-post.ts` | `katana/po_bill.resolve_requested` | `[{1, event.data.katanaPoId}, {2, "qbo-realm", env}]` | retries 5, QBO reads only | QBO GET, Postgres |
+
+All are registered in `inngestFunctions`; none defines `onFailure`. The Katana-tenant `it.each` in `tests/woo-static-guards.test.ts` gains `refresh-katana-po-bill-vendor` (four rows in total).
+
+---
+
 ## Appendix A — Complete new-file manifest
 
 | Phase | Path | Kind |
@@ -1113,6 +1413,8 @@ All registered in `inngestFunctions` (`src/inngest/functions.ts`). None defines 
 | 15 | `src/inngest/ghl-factory-stage-push.ts` | `push-ghl-factory-stage` (rev 2, §VI R-1/R-11) |
 | 15 | `src/inngest/katana-variant-heal.ts` | `heal-katana-variant-sku` (rev 2, §VI R-10) |
 | 15 | `tests/phase15-reverse-flow-resilience.test.ts` | `QA-R*` tests (rev 2) |
+| 15 | `scripts/ops/redrive-parked-po-bills.ts` | operator redrive CLI (rev 3, §VII S-4; needs the S-9 lock amendment) |
+| 15 | `tests/fixtures/katana/supplier.json` | redacted supplier fixture (rev 3, V-12) |
 | 16 | `src/server/pipeline/woo-catalog-mode.ts` | mode gate |
 | 16 | `src/server/woocommerce/devsite-guard.ts` | DevSite guard |
 | 16 | `src/inngest/woo-catalog-backfill.ts` | `wooCatalogBackfill`, `wooCatalogPublishSku` |
@@ -1150,3 +1452,9 @@ All registered in `inngestFunctions` (`src/inngest/functions.ts`). None defines 
 - (rev 2) Do not call Katana from the webhook route (§VI R-10).
 - (rev 2) Do not look up hub rows by `katana_sales_order_id` / `katana_order_no` in the reverse flow; use the opportunity id from the order number (§VI R-2).
 - (rev 2) Do not use `.includes()` or name matching for GHL stage decisions (§VI R-11).
+- (rev 3) Do not create, search for, or match QBO vendors by name. The only vendor source is `QBO_ID: <id>` in the Katana supplier Comment (§VII S-2).
+- (rev 3) Do not let a supplier problem stop `record-receipt` (§VII S-7).
+- (rev 3) Do not re-price already-billed quantity; price only the delta, and park on drift in live mode (§VII S-5).
+- (rev 3) Do not give `post-katana-po-bill` a function-level `idempotency`, and do not reuse a parked row's `requestid` on redrive (§VII S-3).
+- (rev 3) Do not let the redrive CLI write the database or call Katana/QBO; do not add an HTTP redrive route or UI (§VII S-4, G-8).
+- (rev 3) Do not put a stage in the `ghl/factory_stage.push_requested` payload (§VII S-1).

@@ -1,0 +1,92 @@
+{
+  "id": 3074008,
+  "status": "RECEIVED",
+  "billing_status": "NOT_BILLED",
+  "last_document_status": "NOT_SENT",
+  "order_no": "KEY cart 9845",
+  "entity_type": "regular",
+  "supplier_id": 1698512,
+  "currency": "USD",
+  "expected_arrival_date": "2026-11-03T19:00:00.000Z",
+  "order_created_date": "2026-10-27T19:00:00.000Z",
+  "additional_info": "[REDACTED]",
+  "location_id": 98179,
+  "tracking_location_id": null,
+  "created_at": "2026-10-28T17:46:25.023Z",
+  "updated_at": "2026-10-28T23:19:33.349Z",
+  "deleted_at": null,
+  "total": 210.16,
+  "total_in_base_currency": 210.16,
+  "default_group_id": 6875420,
+  "purchase_order_rows": [
+    {
+      "id": 8896468,
+      "quantity": 8,
+      "variant_id": 41894010,
+      "tax_rate_id": 554050,
+      "price_per_unit": 20,
+      "purchase_uom_conversion_rate": null,
+      "purchase_uom": "yd",
+      "created_at": "2026-10-28T17:46:25.047Z",
+      "updated_at": "2026-10-28T23:19:33.338Z",
+      "deleted_at": null,
+      "batch_transactions": [],
+      "traceability": [
+        {
+          "batch_id": null,
+          "serial_number_id": null,
+          "bin_location_id": null,
+          "quantity": "8"
+        }
+      ],
+      "total": 160,
+      "total_in_base_currency": 160,
+      "currency": "USD",
+      "conversion_rate": null,
+      "conversion_date": null,
+      "received_date": "2026-10-28T23:19:33.300Z",
+      "purchase_order_id": 3074008,
+      "landed_cost": 0,
+      "group_id": 6875420,
+      "arrival_date": "2026-11-03T19:00:00.000Z",
+      "location_id": 98179,
+      "custom_fields": null
+    },
+    {
+      "id": 8896469,
+      "quantity": 3,
+      "variant_id": 41894272,
+      "tax_rate_id": 554050,
+      "price_per_unit": 16.72,
+      "purchase_uom_conversion_rate": null,
+      "purchase_uom": "yd",
+      "created_at": "2026-10-28T17:46:25.047Z",
+      "updated_at": "2026-10-28T23:19:33.338Z",
+      "deleted_at": null,
+      "batch_transactions": [],
+      "traceability": [
+        {
+          "batch_id": null,
+          "serial_number_id": null,
+          "bin_location_id": null,
+          "quantity": "3"
+        }
+      ],
+      "total": 50.16,
+      "total_in_base_currency": 50.16,
+      "currency": "USD",
+      "conversion_rate": null,
+      "conversion_date": null,
+      "received_date": "2026-10-28T23:19:33.300Z",
+      "purchase_order_id": 3074008,
+      "landed_cost": 0,
+      "group_id": 6875420,
+      "arrival_date": "2026-11-03T19:00:00.000Z",
+      "location_id": 98179,
+      "custom_fields": null
+    }
+  ],
+  "custom_fields": null,
+  "ingredient_availability": null,
+  "ingredient_expected_date": null
+}

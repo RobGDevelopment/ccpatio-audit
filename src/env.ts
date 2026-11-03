@@ -21,7 +21,7 @@ export const coreEnvSchema = z.object({
   KATANA_API_BASE: z.string().optional(),
   KATANA_E2E_MIRROR: z.string().optional(),
   CATALOG_PUBLISH_MODE: z.enum(["log", "live"]).default("log"),
-  ORDER_PIPELINE_MODE: z.enum(["log", "live"]).default("log"),
+  ORDER_PIPELINE_MODE: z.enum(["log", "approve", "live"]).default("log"),
   LEDGER_PIPELINE_MODE: z.enum(["log", "live"]).default("log"),
   PATH_A_GHL_SYNC_MODE: z.enum(["log", "live"]).default("log"),
   GHL_OPPORTUNITY_BUILD_SUMMARY_FIELD_ID: z.string().optional(),

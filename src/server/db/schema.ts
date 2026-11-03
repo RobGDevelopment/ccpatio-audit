@@ -502,6 +502,28 @@ export const item_operations_draft = pgTable("item_operations_draft", {
   index("item_operations_draft_item_sku_idx").on(table.item_sku),
 ]);
 
+/** Derived factory progress mirrored from Katana (Phase 15). Enforced in TS, not SQL. */
+export const FACTORY_STAGES = ["in_production", "build_complete", "ready_to_ship", "delivered"] as const;
+export type FactoryStage = (typeof FACTORY_STAGES)[number];
+
+/**
+ * Phase 15 (0057) reverse-flow mirror columns, shared by `order_intake` and `custom_build_jobs`.
+ * A function so each table gets its own column instances.
+ */
+function katanaReverseFlowColumns() {
+  return {
+    katana_so_status: text("katana_so_status"),
+    katana_production_status: text("katana_production_status"),
+    katana_mo_done_ids: jsonb("katana_mo_done_ids").$type<number[] | null>(),
+    factory_stage: text("factory_stage").$type<FactoryStage | null>(),
+    katana_status_synced_at: timestamp("katana_status_synced_at", { withTimezone: true }),
+    ghl_stage_pushed: text("ghl_stage_pushed").$type<FactoryStage | null>(),
+    ghl_stage_pushed_at: timestamp("ghl_stage_pushed_at", { withTimezone: true }),
+    /** Compare-and-set ordering token for the status mirror (never a financial key). */
+    katana_status_observed_at: timestamp("katana_status_observed_at", { withTimezone: true }),
+  };
+}
+
 /** Header for a custom build factory order, created from a designer's PDF. */
 export const custom_build_jobs = pgTable(
   "custom_build_jobs",
@@ -519,6 +541,7 @@ export const custom_build_jobs = pgTable(
     katana_mo_ids: jsonb("katana_mo_ids"),
     ghl_sync_hash: text("ghl_sync_hash"),
     ghl_synced_at: timestamp("ghl_synced_at", { withTimezone: true }),
+    ...katanaReverseFlowColumns(),
     created_at: timestamp("created_at").defaultNow().notNull(),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
   }
@@ -709,6 +732,7 @@ export const order_intake = pgTable(
     /** OCC token — bumped on every triage mutation. */
     version: integer("version").notNull().default(1),
     last_error: text("last_error"),
+    ...katanaReverseFlowColumns(),
     created_at: timestamp("created_at").defaultNow().notNull(),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -1146,7 +1170,7 @@ export const channel_sync = pgTable(
  */
 export const incoming_webhooks = pgTable("incoming_webhooks", {
   id: uuid("id").defaultRandom().primaryKey(),
-  source: text("source", { enum: ["woocommerce", "ghl", "cad_convert"] }).notNull(),
+  source: text("source", { enum: ["woocommerce", "ghl", "cad_convert", "katana"] }).notNull(),
   event_name: text("event_name").notNull(),
   idempotency_key: text("idempotency_key").notNull().unique(),
   payload: jsonb("payload").notNull(),
@@ -1958,6 +1982,158 @@ export const ledger_triage = pgTable(
     check(
       "ledger_triage_resolved_stamped",
       sql`${table.status} = 'open' or ${table.resolved_at} is not null`,
+    ),
+  ],
+).enableRLS();
+
+/* ── 0057 (Phase 15) — Katana PO receipt → QBO Bill delta ledger ──────────────
+ * One row per distinct Katana PO receipt state. The QBO requestid derives from
+ * (katana_po_id, receipt_fingerprint[, redrive seq]) — never from time. Rows are never
+ * deleted; a ledger failure is retried or parked for a human, never rolled back.
+ * CHECK SQL below must match 0057_katana_reverse_flow.sql character for character.
+ */
+export const KATANA_PO_BILL_STATUSES = [
+  "pending",
+  "posted",
+  "dry_run",
+  "no_delta",
+  "requires_manual_intervention",
+  "resolved_manually",
+] as const;
+export type KatanaPoBillStatus = (typeof KATANA_PO_BILL_STATUSES)[number];
+
+export const KATANA_PO_BILL_ACTIONS = [
+  "purchase_order.received",
+  "purchase_order.partially_received",
+] as const;
+export type KatanaPoBillAction = (typeof KATANA_PO_BILL_ACTIONS)[number];
+
+export const KATANA_PO_BILL_PARK_REASONS = [
+  "config_missing",
+  "vendor_qbo_id_missing",
+  "vendor_qbo_id_invalid",
+  "vendor_qbo_id_ambiguous",
+  "vendor_qbo_id_not_found",
+  "vendor_inactive",
+  "vendor_currency_mismatch",
+  "supplier_missing",
+  "supplier_not_found",
+  "currency_unsupported",
+  "qbo_rejected",
+  "qbo_bill_mismatch",
+  "price_drift",
+  "negative_receipt",
+  "po_frozen",
+] as const;
+export type KatanaPoBillParkReason = (typeof KATANA_PO_BILL_PARK_REASONS)[number];
+
+export const KATANA_PO_BILL_RESOLUTION_KINDS = [
+  "entered_by_hand",
+  "vendor_credit_issued",
+  "katana_correction",
+] as const;
+export type KatanaPoBillResolutionKind = (typeof KATANA_PO_BILL_RESOLUTION_KINDS)[number];
+
+/** One billed line. Quantities in integer ten-thousandths are the delta-math source of truth. */
+export type KatanaPoBillLine = {
+  rowId: number;
+  sku: string;
+  description: string;
+  receivedQtyCumulative: number;
+  billedQtyBefore: number;
+  billedQtyDelta: number;
+  pricePerUnitCents: number;
+  amountCents: number;
+  priceChanged?: boolean;
+  decreaseQtyE4?: number;
+};
+
+export type KatanaPoBillRedriveEntry = {
+  seq: number;
+  at: string;
+  operator: string;
+  action: string;
+  parkReason: string | null;
+  previousRequestId: string | null;
+  previousError: string | null;
+  outcome: string;
+};
+
+export const katana_po_bills = pgTable(
+  "katana_po_bills",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    katana_po_id: integer("katana_po_id").notNull(),
+    order_no: text("order_no").notNull(),
+    receipt_fingerprint: text("receipt_fingerprint").notNull(),
+    receipt_seq: integer("receipt_seq").notNull(),
+    action: text("action").$type<KatanaPoBillAction>().notNull(),
+    lines: jsonb("lines").$type<KatanaPoBillLine[]>().notNull(),
+    delta_total_cents: integer("delta_total_cents").notNull(),
+    qbo_request_id: text("qbo_request_id").notNull(),
+    qbo_bill_id: text("qbo_bill_id"),
+    status: text("status").$type<KatanaPoBillStatus>().notNull().default("pending"),
+    last_error: text("last_error"),
+    receipt_date: date("receipt_date"),
+    qbo_vendor_id: text("qbo_vendor_id"),
+    katana_supplier_id: integer("katana_supplier_id"),
+    vendor_ref_error: text("vendor_ref_error"),
+    park_reason: text("park_reason").$type<KatanaPoBillParkReason | null>(),
+    parked_run_id: text("parked_run_id"),
+    redrive_count: integer("redrive_count").notNull().default(0),
+    redrive_log: jsonb("redrive_log")
+      .$type<KatanaPoBillRedriveEntry[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    price_drift: jsonb("price_drift").$type<Record<string, unknown>[] | null>(),
+    price_drift_approved_by: text("price_drift_approved_by"),
+    price_drift_approved_at: timestamp("price_drift_approved_at", { withTimezone: true }),
+    resolution_kind: text("resolution_kind").$type<KatanaPoBillResolutionKind | null>(),
+    resolution_ref: text("resolution_ref"),
+    resolved_by: text("resolved_by"),
+    resolved_at: timestamp("resolved_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("katana_po_bills_po_fingerprint_uidx").on(table.katana_po_id, table.receipt_fingerprint),
+    uniqueIndex("katana_po_bills_po_seq_uidx").on(table.katana_po_id, table.receipt_seq),
+    uniqueIndex("katana_po_bills_request_id_uidx").on(table.qbo_request_id),
+    index("katana_po_bills_status_created_idx").on(table.status, table.created_at),
+    index("katana_po_bills_po_status_idx").on(table.katana_po_id, table.status),
+    check(
+      "katana_po_bills_status_check",
+      sql`${table.status} in ('pending', 'posted', 'dry_run', 'no_delta', 'requires_manual_intervention', 'resolved_manually')`,
+    ),
+    check(
+      "katana_po_bills_action_check",
+      sql`${table.action} in ('purchase_order.received', 'purchase_order.partially_received')`,
+    ),
+    check(
+      "katana_po_bills_delta_nonnegative",
+      sql`${table.delta_total_cents} >= 0 or ${table.resolution_kind} = 'vendor_credit_issued'`,
+    ),
+    check("katana_po_bills_seq_positive", sql`${table.receipt_seq} >= 1`),
+    check(
+      "katana_po_bills_park_reason_check",
+      sql`${table.park_reason} is null or ${table.park_reason} in ('config_missing', 'vendor_qbo_id_missing', 'vendor_qbo_id_invalid', 'vendor_qbo_id_ambiguous', 'vendor_qbo_id_not_found', 'vendor_inactive', 'vendor_currency_mismatch', 'supplier_missing', 'supplier_not_found', 'currency_unsupported', 'qbo_rejected', 'qbo_bill_mismatch', 'price_drift', 'negative_receipt', 'po_frozen')`,
+    ),
+    check(
+      "katana_po_bills_parked_has_reason",
+      sql`${table.status} <> 'requires_manual_intervention' or ${table.park_reason} is not null`,
+    ),
+    check(
+      "katana_po_bills_resolution_kind_check",
+      sql`${table.resolution_kind} is null or ${table.resolution_kind} in ('entered_by_hand', 'vendor_credit_issued', 'katana_correction')`,
+    ),
+    check(
+      "katana_po_bills_resolved_stamped",
+      sql`${table.status} <> 'resolved_manually' or (${table.resolution_kind} is not null and ${table.resolved_by} is not null and ${table.resolved_at} is not null)`,
+    ),
+    check("katana_po_bills_redrive_count_nonnegative", sql`${table.redrive_count} >= 0`),
+    check(
+      "katana_po_bills_vendor_id_format",
+      sql`${table.qbo_vendor_id} is null or ${table.qbo_vendor_id} ~ '^[1-9][0-9]{0,11}$'`,
     ),
   ],
 ).enableRLS();

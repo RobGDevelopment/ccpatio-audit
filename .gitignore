@@ -6,6 +6,11 @@ node_modules/
 # testing
 coverage/
 playwright-report/
+test-results/
+
+# supabase cli local state
+supabase/.temp/
+supabase/.branches/
 
 # next.js
 .next/

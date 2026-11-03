@@ -4,9 +4,10 @@ import * as dotenv from "dotenv";
 import path from "path";
 import { createSupabaseFetch } from "../../src/lib/supabase-env";
 
-// Prefer .env.local (2026 publishable/secret keys) over leftover local-stack JWT aliases.
+// .env.test.local must win so auth admin calls hit the same local Supabase stack as the app under test.
+dotenv.config({ path: path.resolve(__dirname, "../../.env.local") });
 dotenv.config({
-  path: path.resolve(__dirname, "../../.env.local"),
+  path: path.resolve(__dirname, "../../.env.test.local"),
   override: true,
 });
 

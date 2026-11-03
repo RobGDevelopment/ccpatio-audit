@@ -7,9 +7,9 @@ import {
   signE2eGodModeCookie,
 } from "../../../src/lib/e2e-god-mode";
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env.test.local") });
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 dotenv.config({
-  path: path.resolve(process.cwd(), ".env.local"),
+  path: path.resolve(process.cwd(), ".env.test.local"),
   override: true,
 });
 

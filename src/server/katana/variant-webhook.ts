@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { katanaFetch } from "@/lib/katana";
 import { getDb } from "@/server/db/client";
 import { logistics_profiles, sku_mappings } from "@/server/db/schema";
+import { asRecord, positiveInt, text } from "@/server/katana/webhook-events";
 
 const SKU_MAX = 128;
 
@@ -35,16 +36,6 @@ export type HoldDeletionRead =
       documentId: number | null;
     };
 
-export type PurchaseOrderReceiptRead =
-  | { kind: "ignore" }
-  | { kind: "invalid"; message: string }
-  | {
-      kind: "received";
-      action: "purchase_order.received" | "purchase_order.partially_received";
-      purchaseOrderId: number;
-      orderNo: string | null;
-    };
-
 function signaturesMatch(left: Buffer, right: Buffer): boolean {
   if (left.length !== right.length) return false;
   return timingSafeEqual(left, right);
@@ -65,21 +56,6 @@ export function verifyKatanaWebhookSignature(
   return signaturesMatch(given, expected);
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
-}
-
-function text(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function positiveInt(value: unknown): number | null {
-  const numeric = typeof value === "number" ? value : Number(text(value));
-  if (!Number.isInteger(numeric) || numeric <= 0) return null;
-  return numeric;
-}
-
 export function normalizeKatanaSku(raw: string): string | null {
   const sku = raw.trim().toUpperCase();
   if (!sku || sku.length > SKU_MAX) return null;
@@ -90,7 +66,7 @@ export function normalizeKatanaSku(raw: string): string | null {
 /**
  * Katana's documented event is `{ action, object: { id, href } }`.
  * A SKU on `object` or `data` is used when present. Otherwise the route
- * loads the live variant.
+ * enqueues `heal-katana-variant-sku`, which loads the live variant.
  */
 export function readVariantUpdate(payload: unknown): VariantUpdateRead {
   const root = asRecord(payload);
@@ -196,40 +172,6 @@ export function readHoldDeletion(payload: unknown): HoldDeletionRead {
     documentKind,
     number: number || null,
     documentId,
-  };
-}
-
-/**
- * Katana Purchase Order receipt events (`purchase_order.received` and `purchase_order.partially_received`).
- */
-export function readPurchaseOrderReceipt(payload: unknown): PurchaseOrderReceiptRead {
-  const root = asRecord(payload);
-  if (!root) return { kind: "invalid", message: "Body must be a JSON object" };
-  const action = (text(root.action) || text(root.event)).toLowerCase();
-  if (
-    action !== "purchase_order.received" &&
-    action !== "purchase_order.partially_received"
-  ) {
-    return { kind: "ignore" };
-  }
-
-  const object = asRecord(root.object);
-  const data = asRecord(root.data);
-  const purchaseOrderId =
-    positiveInt(object?.id) ??
-    positiveInt(object?.purchase_order_id) ??
-    positiveInt(data?.id) ??
-    positiveInt(data?.purchase_order_id);
-  if (!purchaseOrderId) {
-    return { kind: "invalid", message: `${action} is missing a purchase order id` };
-  }
-
-  const orderNo = text(object?.order_no) || text(data?.order_no) || null;
-  return {
-    kind: "received",
-    action: action as "purchase_order.received" | "purchase_order.partially_received",
-    purchaseOrderId,
-    orderNo,
   };
 }
 
