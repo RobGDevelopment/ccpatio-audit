@@ -122,4 +122,38 @@ describe("src/env.ts - Environment & Secrets Hardening (Step 3)", () => {
       ).toThrow(/QBO_CLIENT_ID/);
     });
   });
+
+  describe("Phase 15 & 16 Mode and Target Flags", () => {
+    it("accepts ORDER_PIPELINE_MODE=approve and rejects garbage", () => {
+      expect(validateEnv({ ...baseValid, ORDER_PIPELINE_MODE: "log" }).ORDER_PIPELINE_MODE).toBe("log");
+      expect(validateEnv({ ...baseValid, ORDER_PIPELINE_MODE: "approve" }).ORDER_PIPELINE_MODE).toBe("approve");
+      expect(validateEnv({ ...baseValid, ORDER_PIPELINE_MODE: "live" }).ORDER_PIPELINE_MODE).toBe("live");
+      expect(() => validateEnv({ ...baseValid, ORDER_PIPELINE_MODE: "garbage" })).toThrow();
+    });
+
+    it("defaults WOOCOMMERCE_TARGET to devsite, accepts production, and rejects other values", () => {
+      expect(validateEnv(baseValid).WOOCOMMERCE_TARGET).toBe("devsite");
+      expect(validateEnv({ ...baseValid, WOOCOMMERCE_TARGET: "devsite" }).WOOCOMMERCE_TARGET).toBe("devsite");
+      expect(validateEnv({ ...baseValid, WOOCOMMERCE_TARGET: "production" }).WOOCOMMERCE_TARGET).toBe("production");
+      expect(() => validateEnv({ ...baseValid, WOOCOMMERCE_TARGET: "staging" })).toThrow();
+      expect(() => validateEnv({ ...baseValid, WOOCOMMERCE_TARGET: "" })).toThrow();
+    });
+
+    it.each([
+      "QBO_LEDGER_MODE",
+      "CLOVER_LEDGER_MODE",
+      "WOO_LEDGER_MODE",
+      "KATANA_REVERSE_SYNC_MODE",
+      "WOO_CATALOG_PUBLISH_MODE",
+    ] as const)("%s accepts unset (undefined), log, and live, and rejects garbage", (flag) => {
+      const unsetResult = validateEnv(baseValid);
+      expect(unsetResult[flag]).toBeUndefined();
+
+      expect(validateEnv({ ...baseValid, [flag]: "log" })[flag]).toBe("log");
+      expect(validateEnv({ ...baseValid, [flag]: "live" })[flag]).toBe("live");
+
+      expect(() => validateEnv({ ...baseValid, [flag]: "garbage" })).toThrow();
+      expect(() => validateEnv({ ...baseValid, [flag]: "" })).toThrow();
+    });
+  });
 });

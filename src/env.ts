@@ -27,6 +27,8 @@ export const coreEnvSchema = z.object({
   CLOVER_LEDGER_MODE: z.enum(["log", "live"]).optional(),
   WOO_LEDGER_MODE: z.enum(["log", "live"]).optional(),
   KATANA_REVERSE_SYNC_MODE: z.enum(["log", "live"]).optional(),
+  WOOCOMMERCE_TARGET: z.enum(["devsite", "production"]).default("devsite"),
+  WOO_CATALOG_PUBLISH_MODE: z.enum(["log", "live"]).optional(),
   PATH_A_GHL_SYNC_MODE: z.enum(["log", "live"]).default("log"),
   GHL_OPPORTUNITY_BUILD_SUMMARY_FIELD_ID: z.string().optional(),
   GHL_FACTORY_PIPELINE_ID: z.string().optional(),
