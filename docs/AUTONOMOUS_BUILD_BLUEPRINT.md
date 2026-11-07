@@ -2,7 +2,7 @@
 
 **Document type:** Execution playbook and system prompt for an autonomous coding agent ("the Agent", e.g. Antigravity).
 **Author role:** Lead Systems Architect (Cursor).
-**Date:** 2026-11-03. **Baseline commit:** `3b02dc2` plus the uncommitted Phase 15 working tree.
+**Date:** 2026-11-07 (revision 2; supersedes the 2026-11-03 revision). **Baseline commit:** `0cdda91` on `main`, pushed to `origin/main`.
 **Status:** BINDING. Read §0 in full before touching any file. You execute exactly one Phase at a time, then STOP.
 
 ---
@@ -17,36 +17,42 @@
 4. This document. It orders the work and adds production-safety rules. When this document cites a Parent Blueprint section, implement that section **exactly**. Where this document and the Parent Blueprint disagree, **this document wins only on the topics it addresses explicitly**: production DB access, migration numbering, airlock hand-off, and Academy.
 5. `docs/AIRLOCK_DUAL_APPROVAL.md` for the airlock (Phase 3), as amended by §3 below.
 
-### 0.2 Verified baseline (2026-11-03). Re-verify before Phase 1; on any mismatch, HALT.
+### 0.2 Verified baseline (2026-11-07). Re-verify before Phase 1; on any mismatch, HALT.
 
 | Fact | Value | How to re-verify |
 |---|---|---|
-| HEAD | `3b02dc2` | `git log -1 --format=%h` |
-| Active lock | `phase-15-katana-lifecycle`, `base_ref: 3b02dc2` | read `.cursor/phase.lock` |
-| Uncommitted tree | 23 modified, 9 untracked (listed in `.cursor/aar.json`) | `git status --short` |
-| Migration journal | 60 entries; last = idx 59, tag `0057_katana_reverse_flow`; two `0056_*` tags exist (idx 57, 58) | `src/server/db/migrations/meta/_journal.json` |
-| Last snapshot | `meta/0059_snapshot.json` (untracked). Contains `katana_po_bills`, does **not** contain `factory_airlock_*` | grep the file |
-| Snapshot numbering | snapshot file number = journal **idx**, not SQL tag | `meta/` |
-| Production Drizzle tracker | `drizzle.__drizzle_migrations`: 45 rows; `max(created_at) = 1791139890227` = journal idx 46 = tag `0045_ecommerce_listings_slug_unique` | read-only query (operator) |
-| Production objects 0046–0052, 0054 | present | read-only probes |
-| Production 0053 (RLS on `qbo_auth_tokens`, `incoming_webhooks`) | **NOT applied** (`relrowsecurity = false` on both) | `pg_class.relrowsecurity` |
-| Production 0055, 0056×2, 0057 | **NOT applied** (`custom_build_job_items`, `pos_receipts`, `ledger_triage`, `katana_po_bills` absent) | `to_regclass` |
+| HEAD | `0cdda91` (`feat(phase-15): implement katana reverse flow listeners and tests`), parent `68bdd89`. Also accepted: exactly one commit on top of `0cdda91` whose only changed path is `docs/AUTONOMOUS_BUILD_BLUEPRINT.md` (this revision) | `git log -3 --format=%h` and `git diff --name-only 0cdda91..HEAD` |
+| Remote | `main` is in sync with `origin/main` (0 ahead, 0 behind) | `git status -sb` |
+| Working tree | Clean. The only permitted difference is `.cursor/session-stamp.json`, which the session hook rewrites at the start of every session | `git status --short` |
+| Active lock | `phase-15-katana-lifecycle`, `base_ref: 3b02dc2` until the operator installs the §1.0 amendment | read `.cursor/phase.lock` |
+| Local migration journal | 60 entries (idx 0–59); last = idx 59, tag `0057_katana_reverse_flow`, `when` `1793289542107`; two `0056_*` tags exist (idx 57, 58) | `src/server/db/migrations/meta/_journal.json` |
+| Last snapshot | `meta/0059_snapshot.json` (tracked). Contains `katana_po_bills`, does **not** contain `factory_airlock_*` | grep the file |
+| Snapshot numbering | snapshot file number = journal **idx**, not SQL tag. `meta/0056_snapshot.json` (idx 56, `0055`) does not exist; `drizzle-kit generate` diffs against the latest, `0059_snapshot.json` | `meta/` |
+| Production Drizzle tracker | `drizzle.__drizzle_migrations`: **58 rows**; `max(created_at) = 1793289542107` = journal idx 59 = tag `0057_katana_reverse_flow`. Repaired manually by the operator on 2026-11-07 | read-only query (operator only; the Agent never connects to production) |
+| Production objects 0046–0057 | **all present and tracked**, including 0053 RLS (`relrowsecurity = true` on `qbo_auth_tokens` and `incoming_webhooks`), `custom_build_job_items`, `pos_receipts`, `ledger_triage`, `katana_po_bills` | operator-attested |
+| Production `saga_status` enum | `AWAITING_DEPOSIT` label committed | operator-attested |
 | Production airlock tables | absent; **no SQL file exists**; Drizzle mirror exists at `src/server/db/schema.ts:1699-1777` | grep |
 | `employee_certifications` / Academy | absent everywhere (no table, no code, no `ENTERPRISE_ACADEMY_PLAN.md`) | `rg -i academy` |
-| Test DB | `.env.test.local` → `127.0.0.1:54322` (local Supabase). **Was down at audit time** | Phase 0 |
+| Test DB | `.env.test.local` → `127.0.0.1:54322` (local Supabase). Must be running before Phase 1 | Phase 0 |
 | QA gauntlet | `npm run qa:lifecycle` = build → DB proof → unit → hygiene-live → phase14-live → webhooks → e2e | `package.json` |
+| `qa:phase0-unit` | already lists `env.test`, `ledger-mode`, `woo-static-guards`, `phase15-katana-reverse-flow`, `phase15-po-receipt-ledger`, `phase15-reverse-flow-resilience` | `package.json` |
 | Next.js / Inngest / Drizzle | 16.3.2 / 4.18.1 / orm ^0.45.2, kit ^0.31.10 | `package.json` |
+
+**What is already on `main`:**
+- `68bdd89` is the Phase 1.1 checkpoint. It also landed `ORDER_PIPELINE_MODE: z.enum(["log","approve","live"])` in `src/env.ts`.
+- `0cdda91` landed most of the Phase 2 code. Inngest functions: `katana-order-status.ts`, `ghl-factory-stage-push.ts`, `katana-po-received.ts` (rewired), `katana-po-bill-post.ts`, `dlq-context.ts`. Server modules: `order-status.ts`, `opportunity-stage.ts`, `po-receipt-ledger.ts`, `katana-reverse-mode.ts`, plus the split `ledger-mode.ts`. Also `redrive-parked-po-bills.ts`, the three missing fixtures, the Phase 15 test files, and the env flags `QBO_LEDGER_MODE`, `CLOVER_LEDGER_MODE`, `WOO_LEDGER_MODE`, `KATANA_REVERSE_SYNC_MODE`.
+- **Still missing from `src/env.ts`:** `WOOCOMMERCE_TARGET` and `WOO_CATALOG_PUBLISH_MODE`. `tests/env.test.ts` has no cases for any of the Phase 15 flags.
 
 ### 0.3 Known hazards (each one is handled by a specific phase; do not "fix" them out of order)
 
-| ID | Hazard | Handled in |
+| ID | Hazard | Status / handled in |
 |---|---|---|
-| **H-1** | Production `__drizzle_migrations` stops at `0045`, but 0046–0052 and 0054 objects already exist. A plain `drizzle-kit migrate` against production would re-run `0046` and fail on `CREATE TABLE "nomenclature_sku_tokens"` (already exists). | Phase 1.3, Phase 3.4 |
-| **H-2** | `0053` (RLS lockdown) is missing in production. QBO OAuth tokens and raw webhook PII are not RLS-protected. **Security exposure.** | Phase 0 (operator, immediate), Phase 1.3 |
-| **H-3** | `0055` runs `ALTER TYPE "saga_status" ADD VALUE 'AWAITING_DEPOSIT'` and then creates a partial index `WHERE status = 'AWAITING_DEPOSIT'` **in the same file**. Drizzle's migrator wraps all pending migrations in **one transaction** (`drizzle-orm/pg-core/dialect.js:60`). Postgres rejects use of an enum value added in an uncommitted transaction (`unsafe use of new value`). Production migrate will fail at 0055 unless the enum value is committed first. | Phase 3.4 |
-| **H-4** | The Katana webhook route already emits `katana/sales_order.status_changed` and `katana/manufacturing_order.done`, but **no Inngest function consumes them**. Status updates are silently dropped today. | Phase 2A |
+| **H-1** | Production `__drizzle_migrations` stopped at `0045` while 0046–0054 objects existed. | **RESOLVED 2026-11-07.** The operator repaired the tracker by hand: 58 rows, high-water mark `1793289542107` (`0057`). No reconcile script is needed. |
+| **H-2** | `0053` (RLS lockdown on `qbo_auth_tokens`, `incoming_webhooks`) was missing in production. | **RESOLVED 2026-11-07.** RLS enabled on both tables; tracked. |
+| **H-3** | `0055` adds the enum value `AWAITING_DEPOSIT` and uses it in the same transaction (`unsafe use of new value`). | **RESOLVED in production 2026-11-07.** The value is committed and 0055 is tracked. It can still bite a **local** database that is behind 0055; see Phase 2 step 2.2 for the test-DB-only remedy. |
+| **H-4** | The Katana webhook route emits `katana/sales_order.status_changed` and `katana/manufacturing_order.done`. | Consumers implemented in `0cdda91`; **certified in Phase 2**. |
 | **H-5** | `publishToWooCommerce` reads no mode flag, the mapper falls back to `regular_price "0.00"` and always sends `status: "publish"`. Every approved product is published live to whatever `WOOCOMMERCE_URL` points at, including $0 products. | Phase 4 |
-| **H-6** | `npm run db:migrate` / `db:generate` load `.env.local` via `drizzle.config.ts` (`loadEnvConfig`). **`.env.local` points at PRODUCTION.** Any bare `npm run db:*` command is a production command. | Rule DB-1 |
+| **H-6** | `npm run db:migrate` / `db:generate` load `.env.local` via `drizzle.config.ts` (`loadEnvConfig`). **`.env.local` points at PRODUCTION.** Any bare `npm run db:*` command is a production command. | Rule DB-1 (permanent) |
 | **H-7** | `submitTrainingSignOffAction` (`src/app/embed/training/actions.ts`) persists nothing; the confirmation id is `Math.random()`. | Phase 5 |
 
 ### 0.4 Global rules (a single violation fails the phase)
@@ -61,7 +67,7 @@
   (`@next/env` does not override variables that are already set, so the test URL wins). **Never** run `npm run db:migrate`, `npm run db:push`, `drizzle-kit push`, or any `db:seed*` / `ops:*:confirm` / `migrate:*` script.
 - **DB-3.** Every script you write that can mutate production must default to dry-run, require `--confirm` **and** an explicit env acknowledgement, and print the target hostname first. You never run such a script with `--confirm`. Production execution is an **operator** action, listed in an "Operator Runbook" block.
 - **DB-4.** Schema changes are additive only: `CREATE TABLE`, `CREATE TYPE` (new type only), `ADD COLUMN` (nullable or with default), `CREATE INDEX`, `ENABLE ROW LEVEL SECURITY`, guarded `REVOKE`. Forbidden: `DROP`, `ALTER COLUMN`, `RENAME`, `TRUNCATE`, `DELETE`, `ALTER TYPE ... ADD VALUE` in any **new** migration. Use `text` + `CHECK` instead of a new enum value.
-- **DB-5.** Never edit an existing migration SQL file or an existing snapshot. New migrations only.
+- **DB-5.** Never edit an existing migration SQL file or an existing snapshot. New migrations only. **Never edit an existing `_journal.json` entry**: production's tracker high-water mark is `1793289542107`, and any new entry must have a strictly greater `when`.
 - **K-1. Katana is ONE live tenant with no sandbox.** You may only issue Katana `GET`s, through `katanaFetch` inside `runKatanaStep`, for fixture capture. No Katana POST/PUT/PATCH/DELETE in any test, script, or manual run. Production Katana writes happen only through existing, flag-gated Inngest functions.
 - **K-2.** Never flip any mode flag to `live` in any env file: `ORDER_PIPELINE_MODE`, `CATALOG_PUBLISH_MODE`, `GHL_FACTORY_ORDERS`, `KATANA_REVERSE_SYNC_MODE`, `WOO_CATALOG_PUBLISH_MODE`, `QBO_LEDGER_MODE`, `CLOVER_LEDGER_MODE`, `WOO_LEDGER_MODE`, `LEDGER_PIPELINE_MODE`, `PATH_A_GHL_SYNC_MODE`. Tests set flags in-process only.
 
@@ -111,12 +117,17 @@
 
 **Objective:** Make the environment safe and testable before the Agent starts.
 
-**Operator actions:**
-1. **Close H-2 now.** In the Supabase SQL editor for production, run the body of `src/server/db/migrations/0053_rls_qbo_tokens_incoming_webhooks.sql` verbatim. It is idempotent and creates no policies. Then confirm `select relname, relrowsecurity from pg_class where relname in ('qbo_auth_tokens','incoming_webhooks');` returns `true` twice. Confirm the app still works (it connects as the table owner and bypasses RLS).
-2. Take a production backup or confirm PITR is enabled, and record the restore point.
-3. Start the local test database (`npx supabase start`) and confirm `127.0.0.1:54322` accepts connections.
-4. Install the Phase 1 lock (§1.0) with `base_ref: 3b02dc2`.
-5. Confirm the Phase 0 decisions below by editing this table, or leave the defaults.
+**Completed by the operator on 2026-11-07:**
+- [x] Production tracker repaired: 58 rows, high-water mark `1793289542107` (`0057_katana_reverse_flow`) (H-1).
+- [x] 0053 RLS applied to `qbo_auth_tokens` and `incoming_webhooks` (H-2).
+- [x] `saga_status.AWAITING_DEPOSIT` committed; 0055 tracked (H-3).
+- [x] All local commits pushed; `main` = `origin/main` = `0cdda91`.
+
+**Remaining operator actions before Phase 1:**
+1. Confirm a production backup or PITR restore point exists after the manual repair, and record it.
+2. Start the local test database (`npx supabase start`) and confirm `127.0.0.1:54322` accepts connections.
+3. Install the Phase 1 lock amendment (§1.0).
+4. Confirm the Phase 0 decisions below by editing this table, or leave the defaults.
 
 | ID | Decision | Default ruling |
 |---|---|---|
@@ -128,205 +139,148 @@
 
 ---
 
-## PHASE 1 — Codebase Stabilization & Drizzle Surgery
+## PHASE 1 — Codebase Stabilization
 
-**Objective:** Checkpoint the Phase 15 work in progress, fix the `ORDER_PIPELINE_MODE` env validation bug, and ship a verified, dry-run-first script that reconciles the production Drizzle tracker for 0046–0054.
+**Objective:** Finish the env validation work: declare the two missing Woo variables in `src/env.ts` and cover every Phase 15 flag in `tests/env.test.ts`.
 
 ### 1.0 Lock (operator installs; amends the active Phase 15 lock)
 
-`phase_id: "phase-15-katana-lifecycle"`, `base_ref: "3b02dc2"`. Add to `allowed_files`:
+`phase_id: "phase-15-katana-lifecycle"`, `base_ref: <current HEAD>` (`0cdda91`, or the blueprint-revision commit on top of it). Add to `allowed_files`:
 
 ```
-docs/AUTONOMOUS_BUILD_BLUEPRINT.md
 tests/env.test.ts
-scripts/ops/reconcile-drizzle-ledger.ts
-src/server/ops/drizzle-ledger-plan.ts
-tests/drizzle-ledger-reconcile.test.ts
 ```
+
+(`src/env.ts`, `.env.example`, `package.json`, and `docs/AUTONOMOUS_BUILD_BLUEPRINT.md` are already listed.)
 
 ### Context & Constraints
 
 - DB-1 … DB-5, P-1 … P-6 apply.
-- Step 1.1 commits the working tree **as-is**, without refactoring it. The goal is a clean diff base for Phase 2.
-- The reconcile script **never** runs DDL. It inserts tracker rows only, and only for migrations whose objects it has verified exist.
-- Drizzle's migrator decides what to run by comparing each journal `when` with the **single latest** `created_at` in the tracker (`dialect.js:57-62`). It does not compare hashes. A wrong `created_at` therefore causes silent skips or re-runs. `created_at` must equal the journal `when` exactly.
-- Hash parity: Drizzle computes `sha256(fs.readFileSync(<tag>.sql).toString())` (`node_modules/drizzle-orm/migrator.js`). `0054_sre_dlq_saga_buckets.sql` has **mixed line endings** (`git ls-files --eol`). Hash the bytes on disk, never normalize.
+- Do not touch any Phase 2 file in this phase.
 
 ### Action Steps
 
-**1.1 Checkpoint commit (no code changes).**
-1. `git status --short` must equal the 32 paths in `.cursor/aar.json` **plus** `docs/AUTONOMOUS_BUILD_BLUEPRINT.md`, which is new and untracked. `.cursor/phase.lock` and `.cursor/session-stamp.json` may also differ. On any other difference, HALT.
-2. Run `npx tsc --noEmit`. If it fails, do **not** fix anything in this step. Record the errors in the handback and continue to 1.2. The checkpoint is a snapshot, not a claim of correctness.
-3. `git add` exactly those paths (including the two staged deletions and this blueprint). Commit: `phase-15(1.1): checkpoint uncommitted reverse-flow scaffolding`.
+**1.1 Checkpoint commit.** **DONE** in `68bdd89` (`chore(phase-15): stabilize env validation and checkpoint katana reverse flow scaffold`). Do not redo it.
 
-**1.2 Fix `ORDER_PIPELINE_MODE` validation (Parent C-10).**
-1. Read `src/server/pipeline/mode.ts` and confirm it accepts `log | approve | live`.
-2. `src/env.ts:24`: `ORDER_PIPELINE_MODE: z.enum(["log", "approve", "live"]).default("log")`.
-3. In the same edit, add the Parent §I.3 variables as `z.enum(["log","live"]).optional()`: `QBO_LEDGER_MODE`, `CLOVER_LEDGER_MODE`, `WOO_LEDGER_MODE`, `WOO_CATALOG_PUBLISH_MODE`, `KATANA_REVERSE_SYNC_MODE`. Also add `WOOCOMMERCE_TARGET: z.enum(["devsite","production"]).default("devsite")`. Do **not** change `LEDGER_PIPELINE_MODE` or `CATALOG_PUBLISH_MODE`.
-4. Document every new variable in `.env.example`, with an empty or `log` value and a one-line comment.
-5. `tests/env.test.ts`: add cases for `approve` accepted, garbage rejected, and new flags optional (unset accepted).
-6. Commit: `phase-15(1.2): accept ORDER_PIPELINE_MODE=approve and declare split mode flags`.
+**1.2 Declare the missing Woo variables and test the env schema.**
+1. Read `src/env.ts` and confirm these are already present and **leave them unchanged**: `ORDER_PIPELINE_MODE: z.enum(["log","approve","live"]).default("log")`, `QBO_LEDGER_MODE`, `CLOVER_LEDGER_MODE`, `WOO_LEDGER_MODE`, `KATANA_REVERSE_SYNC_MODE` (each `z.enum(["log","live"]).optional()`). If any is missing, HALT (baseline mismatch).
+2. Add to `coreEnvSchema` in `src/env.ts`:
+   - `WOOCOMMERCE_TARGET: z.enum(["devsite","production"]).default("devsite")`
+   - `WOO_CATALOG_PUBLISH_MODE: z.enum(["log","live"]).optional()` (Parent §I.3; Phase 4 reads it at runtime from `process.env` per C-2, but the schema must declare it).
+   - Do **not** change `LEDGER_PIPELINE_MODE` or `CATALOG_PUBLISH_MODE`.
+3. Document both in `.env.example` with a one-line comment each: `WOOCOMMERCE_TARGET=devsite` and `WOO_CATALOG_PUBLISH_MODE=log`.
+4. `tests/env.test.ts`: add **new** cases only (C-7):
+   - `ORDER_PIPELINE_MODE=approve` is accepted; `ORDER_PIPELINE_MODE=garbage` is rejected.
+   - `WOOCOMMERCE_TARGET` defaults to `devsite` when unset; `production` is accepted; any other value is rejected.
+   - `QBO_LEDGER_MODE`, `CLOVER_LEDGER_MODE`, `WOO_LEDGER_MODE`, `KATANA_REVERSE_SYNC_MODE`, `WOO_CATALOG_PUBLISH_MODE`: unset is accepted (value `undefined`); `log` and `live` are accepted; garbage is rejected.
+5. Commit: `phase-15(1.2): declare WOOCOMMERCE_TARGET and WOO_CATALOG_PUBLISH_MODE and test env flags`.
 
-**1.3 Drizzle tracker reconciliation script.**
-
-Create the pure planner `src/server/ops/drizzle-ledger-plan.ts` (no I/O, fully unit-tested):
-
-```ts
-export type JournalEntry = { idx: number; tag: string; when: number };
-export type ProbeResult = { tag: string; ok: boolean; failures: string[] };
-export type TrackerState = { lastCreatedAt: number | null; hashes: Set<string> };
-export type LedgerPlan = {
-  toInsert: Array<{ tag: string; hash: string; createdAt: number }>;
-  stoppedAt: { tag: string; failures: string[] } | null; // first unverified migration
-  alreadyTracked: string[];
-};
-export function planLedgerReconcile(input: {
-  journal: JournalEntry[]; hashes: Record<string, string>; probes: ProbeResult[];
-  tracker: TrackerState; expectedLastCreatedAt: number; upToTag: string;
-}): LedgerPlan;
-// Rules:
-// - Throw if tracker.lastCreatedAt !== expectedLastCreatedAt (someone migrated since the audit).
-// - Candidates = journal entries with when > tracker.lastCreatedAt and idx <= idx(upToTag), ascending idx.
-// - Walk candidates in order; include while probe.ok; on the FIRST failing probe set stoppedAt and stop.
-//   A later verified migration must never be inserted past an unverified one (the tracker is a high-water mark).
-// - Skip (alreadyTracked) any candidate whose hash is already in tracker.hashes.
-```
-
-Create the I/O shell `scripts/ops/reconcile-drizzle-ledger.ts`:
-- Flags: `--up-to=<tag>` (default `0054_sre_dlq_saga_buckets`; hard maximum `0054_sre_dlq_saga_buckets`), `--expect-last=<ms>` (default `1791139890227`), `--confirm`.
-- Always: print `new URL(POSTGRES_URL).hostname`, the tracker row count, and the max `created_at`; run every probe inside `sql.begin("read only", ...)`; print a plan table (tag, when, hash prefix, probe result, action).
-- Probes: you must read each SQL file **in full** and probe **every** object it creates or alters. Minimum set:
-
-| Tag | Required probes |
-|---|---|
-| `0046_bitter_red_ghost` | table `nomenclature_sku_tokens` (+ its indexes) |
-| `0047_strange_wong` | columns `ecommerce_listings.sale_price`, `ecommerce_listings.sale_ends_at` |
-| `0048_reflective_human_cannonball` | type `factory_release_status`; table `factory_release_gate` |
-| `0049_free_stellaris` | column `cad_uploads.geometry_snapshot` |
-| `0050_even_chamber` | type `cushion_fulfillment_mode`; columns `recipe_estimates_draft.gross_freight_weight_lbs`, `.cushion_fulfillment_mode` |
-| `0051_numerous_adam_warlock` | enum label `shop_drawing` on `product_asset_kind` |
-| `0052_custom_build_jobs` | table `custom_build_jobs` |
-| `0053_rls_qbo_tokens_incoming_webhooks` | `relrowsecurity = true` on `qbo_auth_tokens` **and** `incoming_webhooks` |
-| `0054_sre_dlq_saga_buckets` | type `saga_status`; tables `dlq_events`, `rate_limit_buckets`, `saga_runs` (+ indexes) |
-
-- With `--confirm`: require `DRIZZLE_LEDGER_RECONCILE_ACK=I_HAVE_A_BACKUP`. Insert `plan.toInsert` in **one** transaction with `insert into drizzle.__drizzle_migrations (hash, created_at) select $1, $2 where not exists (select 1 from drizzle.__drizzle_migrations where hash = $1)`. Re-read and print the new max `created_at`. Any error rolls back and exits 1.
-- Without `--confirm`: exit 0 after printing. If `stoppedAt` is set, exit 3 (distinct from errors), print the failures, and print the remedy: "apply that migration's SQL by hand, then re-run".
-- `package.json`: `"ops:reconcile-drizzle-ledger": "npx dotenv -e .env.local -- tsx scripts/ops/reconcile-drizzle-ledger.ts"`. **Do not** add a `:confirm` alias; the operator types `--confirm` deliberately.
-
-Tests, in `tests/drizzle-ledger-reconcile.test.ts` (add to `qa:phase0-unit`):
-- (a) The hash helper equals `readMigrationFiles({ migrationsFolder })` from `drizzle-orm/migrator` for every tag 0046–0054, including the mixed-EOL `0054`.
-- (b) All probes ok gives 9 inserts, with `createdAt` equal to the journal `when`.
-- (c) The 0053 probe failing gives 7 inserts (0046–0052) and `stoppedAt = 0053`. 0054 is **not** inserted even though it is verified.
-- (d) A tracker last value ≠ expected throws.
-- (e) A hash already present is skipped.
-- (f) `--up-to` beyond 0054 is rejected.
-- (g) A static check that the script contains no `CREATE`, `ALTER`, `DROP`, or `DELETE` SQL text.
-
-Commit: `phase-15(1.3): add dry-run-first Drizzle tracker reconciliation for 0046-0054`.
+**1.3** — **REMOVED.** The operator's manual tracker repair (H-1) made the Drizzle reconcile script obsolete. Do not create `scripts/ops/reconcile-drizzle-ledger.ts`, `src/server/ops/drizzle-ledger-plan.ts`, or `tests/drizzle-ledger-reconcile.test.ts`.
 
 ### Validation Checkpoint
 
 1. `npx tsc --noEmit` exits 0.
-2. `npx vitest run tests/env.test.ts tests/drizzle-ledger-reconcile.test.ts` passes.
-3. DB-1 host check, then `npx dotenv -e .env.test.local -- npx tsx scripts/ops/reconcile-drizzle-ledger.ts` (dry run against the **test** DB). Paste the plan. On a fully migrated test DB the expected result is "0 candidates".
+2. `npx vitest run tests/env.test.ts` passes.
+3. `rg "WOOCOMMERCE_API_URL" src/ scripts/ tests/ .env.example` returns 0 hits (Parent C-2).
 4. `npm run qa:lifecycle` exits 0. If failures pre-date this phase, fix them only if the fix is inside the lock. Otherwise HALT and report.
 5. `node .cursor/skills/qca/scripts/qca.mjs`, verbatim JSON.
 
-### Operator Runbook (after QC, before Phase 3; never by the Agent)
-
-1. `npm run ops:reconcile-drizzle-ledger`, a production dry run. Expect 0046–0054 all verified, provided Phase 0 step 1 applied 0053. Otherwise expect `stoppedAt = 0053`.
-2. `DRIZZLE_LEDGER_RECONCILE_ACK=I_HAVE_A_BACKUP npm run ops:reconcile-drizzle-ledger -- --confirm`.
-3. Re-run the dry run. Expect max `created_at` = journal `when` of `0054_sre_dlq_saga_buckets` (`1791917907682`).
-
 ### Stop & Commit
 
-Three commits (1.1, 1.2, 1.3). Print the §0.5 handback, then STOP. `Awaiting "PROCEED TO PHASE 2".`
+One commit (1.2). Print the §0.5 handback, then STOP. `Awaiting "PROCEED TO PHASE 2".`
 
 ---
 
-## PHASE 2 — Finish the Katana Reverse Flow
+## PHASE 2 — Certify the Katana Reverse Flow
 
-**Objective:** Consume the Katana sales-order and manufacturing-order events (H-4), persist factory status into the hub, push monotonic GHL stage moves behind `KATANA_REVERSE_SYNC_MODE`, and land the PO-receipt delta ledger with the two missing Phase 15 test files.
+**Objective:** Prove, on the local test database, that the reverse-flow code already committed in `0cdda91` works. It consumes the Katana SO and MO events (H-4), persists factory status, gates the GHL stage push behind `KATANA_REVERSE_SYNC_MODE`, and runs the PO-receipt delta ledger. Fill any gap against the Parent spec, then certify with `qa:lifecycle`.
 
-Phase 2 has **two stops**: 2A (status flow), then 2B (PO bill ledger).
+`0057_katana_reverse_flow` is **already applied and tracked in production** (§0.2). In this phase you apply it to the **local test database only**.
 
 ### 2.0 Lock
 
-The active `phase-15-katana-lifecycle` lock, unchanged from Phase 1. All Phase 2 files are already in it. Operator sets `base_ref` to the Phase 1 HEAD.
+The active `phase-15-katana-lifecycle` lock, unchanged from Phase 1. All Phase 2 files are already in it. The operator sets `base_ref` to the Phase 1 HEAD.
 
 ### Context & Constraints
 
-- Implement Parent §15.0, §15.2, §15.3 (already mostly built), §15.4, §15.5, **as amended by §VI (R-1 … R-17) and §VII (S-1 … S-9)**. Read §VI and §VII **before** writing code; they move GHL I/O out of Katana-slot functions, make `katana-mo-done` hub-first with zero Katana calls, and add a reconciliation cron.
-- Reverse flow is **read-only against Katana** (K-1). Hub persistence happens in both modes; only the GHL PUT is gated (Parent D-5).
+- The binding spec is Parent §15.0, §15.2, §15.3, §15.4, §15.5, **as amended by §VI (R-1 … R-17) and §VII (S-1 … S-9)**. Read §VI and §VII before changing any code.
+- Reverse flow is **read-only against Katana** (K-1). `katana-order-status.ts` and `katana-po-received.ts` read Katana through `katanaFetch` inside `runKatanaStep` (`assertKatanaDeferContext`). That is the sanctioned read path, not a violation.
 - Never write `order_intake.status` or `order_intake.version`. Never move a GHL opportunity backwards, across pipelines, or out of a foreign stage (Parent D-8, §VI R-11).
-- Hub lookup is by opportunity id derived from `order_no` (§VI R-2). Persistence uses compare-and-set UPDATEs on `getDb()` (§VI R-3).
 - QBO vendor id comes **only** from `QBO_ID: <id>` in the Katana supplier comment. No auto-create, no name matching, no default account ids (Parent D-10, D-12, §VII S-2).
-- Tests run against the **test** DB with `0057` applied via DB-2. `0057` is **not** applied to production in this phase.
+- This is a certification phase. Change code only to close a gap the audit in 2.3 finds, or to fix a gauntlet failure. Never weaken an existing assertion (C-7).
 
-### Action Steps — 2A: Order status flow
+### Action Steps
 
-1. **Fixtures (Parent §15.0).** Already present: `manufacturing-order-done.json`, `purchase-order-received.json`, `sales-order-legacy-deleted.json`, `supplier.json`. Capture the missing ones with read-only `katanaFetch` GETs and redact PII: `sales-order-ghl.json`, `manufacturing-orders-by-so.json`, `purchase-order-partially-received.json`. Answer V-3, V-4, V-5, V-6 in the handback with the fixture path as proof.
-2. **Test DB migration.** DB-1 check, then DB-2. Confirm `katana_po_bills` exists on the test DB.
-3. **Create `src/server/pipeline/katana-reverse-mode.ts`**: `getKatanaReverseSyncMode()` / `canPushGhlFactoryStage()`, fail closed, same shape as `ghl-factory-mode.ts`.
-4. **Create `src/server/katana/order-status.ts`** (Parent §15.4a, with the §VI R-12 `expectedMoIds` signature). Pure; status literals come from fixtures and are exported as `as const` arrays.
-5. **Create `src/server/ghl/opportunity-stage.ts`** (Parent §15.4b plus all §VI R-11 closed-set rules): `stageIdFor`, `assertStageConfigDisjoint`, `moveOpportunityStage`. No Katana imports. `GhlResult` `!ok` throws.
-6. **Create `src/inngest/katana-order-status.ts`** with `katanaMoDone`, `syncKatanaOrderStatus`, and `katanaOrderStatusReconcile`. Use the exact ids, triggers, concurrency, and options from Parent §VI.3 and §VII.3. `syncKatanaOrderStatus` ends after `persist-hub-status` and emits `ghl/factory_stage.push_requested` with **no stage in the payload** (§VII S-1).
-7. **Create `src/inngest/ghl-factory-stage-push.ts`** (`push-ghl-factory-stage`, no `KATANA_TENANT_CONCURRENCY`, throttle 20/10 s, retries 4). It re-reads the hub row and calls `moveOpportunityStage` only when `canPushGhlFactoryStage()` returns true. For `path_a` rows, emit `PATH_A_GHL_SYNC_REQUESTED_EVENT`. First read `src/inngest/path-a-ghl-sync.ts` for the exact `data` shape.
-8. **Register** all new functions in `inngestFunctions` (`src/inngest/functions.ts`). Extend the Katana-tenant `it.each` in `tests/woo-static-guards.test.ts` per Parent §VI.3 and §VII.3.
-9. **Tests:**
-   - Extend `tests/phase15-katana-reverse-flow.test.ts` (parsers, `deriveFactoryStage` truth table, route).
-   - Create `tests/phase15-reverse-flow-resilience.test.ts` with every `QA-R*` and `QA-S*` case that is not a parser or ledger unit (Parent §VI.4).
-   - Cover QA-15.4-01 … 09.
-10. **`package.json` `qa:phase0-unit`:** append `tests/phase15-reverse-flow-resilience.test.ts`, `tests/ledger-mode.test.ts`, and `tests/woo-static-guards.test.ts` if absent. A test not listed there does not run in `qa:lifecycle`.
-11. **`scripts/qa/simulate-webhooks.ts`:** add signed `sales_order.updated` and `manufacturing_order.done` deliveries that assert 200 + `queued: true` (Parent §15.5.2).
+**2.1 Pre-flight.**
+1. Confirm the local test DB is up. Run the DB-1 host check; it must print `127.0.0.1` or `localhost`.
 
-Commit: `phase-15(2A): consume Katana SO/MO status events and gate GHL stage push`.
+**2.2 Apply 0057 to the local test database only.**
+1. Run DB-2: `npx dotenv -e .env.test.local -- npx drizzle-kit migrate`.
+2. If it fails on `0055` with `unsafe use of new value "AWAITING_DEPOSIT"` (H-3 on a local DB behind 0055), then, **against the local test DB only** and after re-running the DB-1 check, run this statement alone in autocommit:
+   `npx dotenv -e .env.test.local -- node -e "const p=require('postgres');const s=p(process.env.POSTGRES_URL);s.unsafe(\"ALTER TYPE public.saga_status ADD VALUE IF NOT EXISTS 'AWAITING_DEPOSIT'\").then(()=>s.end())"`
+   Then re-run DB-2. Never run this against any other host.
+3. Verify on the test DB that `to_regclass('public.katana_po_bills')` is not null, and that the test tracker's `max(created_at)` = `1793289542107`. Paste both results.
 
-### Validation Checkpoint — 2A
+**2.3 Gap audit against the Parent spec.** For each item, state PRESENT or MISSING, citing `path:line`. Implement only what is MISSING, exactly per the cited Parent section.
 
-1. `npx vitest run tests/phase15-katana-reverse-flow.test.ts tests/phase15-reverse-flow-resilience.test.ts tests/woo-static-guards.test.ts` passes.
-2. Grep gates, each expecting 0 hits:
-   - `rg "fetchKatana" src/inngest/katana-order-status.ts src/inngest/ghl-factory-stage-push.ts`
-   - `rg "@/lib/katana" src/server/ghl/opportunity-stage.ts`
-   - `rg "onFailure" src/inngest/katana-order-status.ts src/inngest/ghl-factory-stage-push.ts`
-   - `rg "getMutexDb" src/inngest/katana-order-status.ts`
-3. Registration test: no duplicate function ids.
-4. `npm run qa:lifecycle` exits 0, then the QCA JSON.
+| # | Deliverable | Parent ref |
+|---|---|---|
+| a | Fixtures `sales-order-ghl.json`, `manufacturing-orders-by-so.json`, `purchase-order-partially-received.json` (PII redacted); answer V-3 … V-6 with the fixture path as proof | §15.0 |
+| b | `src/server/pipeline/katana-reverse-mode.ts`: `getKatanaReverseSyncMode()` / `canPushGhlFactoryStage()`, fail closed, runtime read | §15.4, C-2 |
+| c | `src/server/katana/order-status.ts`: pure; status literals exported `as const`; `expectedMoIds` signature | §15.4a, §VI R-12 |
+| d | `src/server/ghl/opportunity-stage.ts`: `stageIdFor`, `assertStageConfigDisjoint`, `moveOpportunityStage`; no Katana imports; `!ok` throws | §15.4b, §VI R-11 |
+| e | `src/inngest/katana-order-status.ts`: `katanaMoDone` (hub-first, zero Katana calls), `syncKatanaOrderStatus` (ends after `persist-hub-status`, emits `ghl/factory_stage.push_requested` with **no stage** in the payload), `katanaOrderStatusReconcile`, with the exact ids, triggers, and concurrency | §VI.3, §VII.3, §VII S-1 |
+| f | `src/inngest/ghl-factory-stage-push.ts`: no `KATANA_TENANT_CONCURRENCY`, throttle 20/10 s, retries 4; re-reads the hub row; `path_a` rows emit `PATH_A_GHL_SYNC_REQUESTED_EVENT` with the `data` shape from `path-a-ghl-sync.ts` | §VII.3 |
+| g | `src/server/katana/po-receipt-ledger.ts`: pure; no `Date.now`, `new Date(`, `randomUUID` | §15.2a, §VI R-4, §VII S-5 |
+| h | `src/inngest/katana-po-received.ts`: ends after `record-receipt`; always records; supplier problems stored as `vendor_ref_error`; transaction-scoped advisory lock on `getDb()` | §VII S-7 |
+| i | `src/inngest/katana-po-bill-post.ts`: `post-katana-po-bill` (no function-level idempotency), `redrive-katana-po-bill` (new `requestid` suffix), `resolve-katana-po-bill` | §VII.3, §VII S-3 |
+| j | `src/server/integrations/qbo/client.ts`: `requestId` and `docNumber` required; no `"81"` fallback; `resolveOrCreateQboVendor` deleted; throws on a missing bill id | D-10, D-12 |
+| k | `src/server/pipeline/ledger-mode.ts` split; only `clover-sync.ts`, `katana-po-received.ts`, `qbo/client.ts` rewired (Woo deferred) | §I.3, §VI R-15 |
+| l | `scripts/ops/redrive-parked-po-bills.ts`: emits typed events only, no DB writes, no Katana or QBO calls, dry run by default | §VII S-4 |
+| m | Every function above registered in `inngestFunctions` (`src/inngest/functions.ts`), no duplicate ids; Katana-tenant `it.each` in `tests/woo-static-guards.test.ts` extended | §VI.3, §VII.3 |
+| n | Tests cover QA-15.2-01 … 08, QA-15.4-01 … 09, every `QA-R*` and `QA-S*`, and QA-I-03 in `tests/ledger-mode.test.ts` | §VI.4 |
 
-**STOP 2A.** Print the §0.5 handback. `Awaiting "PROCEED TO PHASE 2B".`
+**2.4 Resolve the `fetchKatana` grep gate.** The old gate `rg "fetchKatana" src/inngest/katana-order-status.ts` is a false positive. It matches the sanctioned read helper `fetchKatanaSalesOrderSnapshot` (`katana-order-status.ts:59`), which calls `katanaFetch` inside `runKatanaStep`. The invariant it was meant to enforce is "no legacy `fetchKatana(` client calls and no Katana writes in the reverse flow". That invariant is already asserted by `tests/phase15-reverse-flow-resilience.test.ts` (`not.toContain("fetchKatana(")`). Replace the gate with the precise checks listed in Validation Checkpoint item 2 below. Do not rename the helper and do not weaken the test.
 
-### Action Steps — 2B: PO receipt delta ledger
+**2.5 Webhook simulation.**
+1. Read `scripts/qa/simulate-webhooks.ts`. It currently covers the signature check, the SKU auto-heal, and a `sales_order.updated` delivery that asserts the non-enqueuing `failed` audit branch.
+2. Add signed `manufacturing_order.done` and two identical `purchase_order.partially_received` deliveries. Assert 200, plus `queued: true` where the route enqueues (Parent §15.5.2). The duplicate PO delivery must return 200 twice and produce no second ledger row.
+3. If an enqueue path cannot be exercised in the QA environment (for example, no Inngest dev server), do **not** assert a weaker result. Report it under VERIFY with the raw output.
+4. DB-1 check, then `npm run qa:phase4-webhooks`. Paste the raw output.
 
-1. **Create `src/server/katana/po-receipt-ledger.ts`** (Parent §15.2a as amended by §VI R-4 and §VII S-5). It is pure. No `Date.now`, `new Date(`, or `randomUUID`.
-2. **Rewire `src/inngest/katana-po-received.ts`** so it ends after `record-receipt`. The receipt is always recorded, and supplier problems are stored as `vendor_ref_error` (§VII S-7). Use a transaction-scoped advisory lock on `getDb()`.
-3. **Create `src/inngest/katana-po-bill-post.ts`** with `post-katana-po-bill`, `redrive-katana-po-bill`, and `resolve-katana-po-bill` (§VII.3). No function-level idempotency on `post-katana-po-bill`. Redrive uses a new `requestid` suffix (§VII S-3).
-4. **Change `src/server/integrations/qbo/client.ts`.** `requestId` and `docNumber` are required inputs. Delete the `"81"` fallback. Delete `resolveOrCreateQboVendor` (D-12). Throw on a missing bill id.
-5. **Split the ledger flags in `src/server/pipeline/ledger-mode.ts`** (Parent §I.3). Rewire only the Phase 15 call sites: `clover-sync.ts`, `katana-po-received.ts`, `qbo/client.ts`. The `woo-order.ts` / `ledger-leg.ts` rewiring is deferred (§VI R-15).
-6. **Create `scripts/ops/redrive-parked-po-bills.ts`** (§VII S-4). It emits typed events only, never writes the DB, never calls Katana or QBO, and is dry-run by default.
-7. **Create `tests/phase15-po-receipt-ledger.test.ts`** covering QA-15.2-01 … 08 and every ledger-related `QA-R*` / `QA-S*`. Extend `tests/ledger-mode.test.ts` per QA-I-03. Do not modify existing assertions.
-8. Add two identical `purchase_order.partially_received` deliveries to `simulate-webhooks.ts`, asserting two 200s.
+**2.6 Certify.** `npm run qa:lifecycle` must exit 0. Then run QCA.
 
-Commit: `phase-15(2B): delta-bill Katana PO receipts and park QBO bills fail-closed`.
+Commit (only if 2.3–2.5 changed files): `phase-15(2): certify Katana reverse flow and close audit gaps`.
 
-### Validation Checkpoint — 2B
+### Validation Checkpoint
 
-1. The lock's `target_test`: `npx vitest run tests/phase15-katana-reverse-flow.test.ts tests/phase15-po-receipt-ledger.test.ts tests/phase15-reverse-flow-resilience.test.ts` passes.
-2. Grep gates:
-   - `rg '"81"' src/server/integrations/qbo/` expects 0 hits.
-   - `rg "Katana Vendor" src/` expects 0 hits.
-   - `rg "resolveOrCreateQboVendor" src/` expects 0 hits.
-   - `rg "LEDGER_PIPELINE_MODE" src/` may hit only `ledger-mode.ts`, `env.ts`, and the deferred Woo files.
-3. `npm run qa:lifecycle` exits 0, then the QCA JSON.
+1. The lock `target_test`: `npx vitest run tests/phase15-katana-reverse-flow.test.ts tests/phase15-po-receipt-ledger.test.ts tests/phase15-reverse-flow-resilience.test.ts` passes.
+2. Grep gates, each expecting **0 hits**:
+   - `rg "fetchKatana\(" src/inngest/katana-order-status.ts src/inngest/ghl-factory-stage-push.ts`
+   - `rg "@/lib/katana|KATANA_TENANT_CONCURRENCY" src/inngest/ghl-factory-stage-push.ts src/server/ghl/opportunity-stage.ts`
+   - `rg "method:\s*[\"'](POST|PUT|PATCH|DELETE)[\"']" src/inngest/katana-order-status.ts src/inngest/katana-po-received.ts`
+   - `rg "onFailure" src/inngest/katana-order-status.ts src/inngest/ghl-factory-stage-push.ts src/inngest/katana-po-bill-post.ts`
+   - `rg "getMutexDb" src/inngest/katana-order-status.ts src/inngest/katana-po-received.ts`
+   - `rg '"81"' src/server/integrations/qbo/`
+   - `rg "Katana Vendor|resolveOrCreateQboVendor" src/`
+3. `rg "LEDGER_PIPELINE_MODE" src/` may hit only `ledger-mode.ts`, `env.ts`, and the deferred Woo files.
+4. Registration test: no duplicate function ids.
+5. The 2.2 test-DB verification and the 2.5 `qa:phase4-webhooks` output, both raw.
+6. `npm run qa:lifecycle` exits 0, then the QCA JSON.
+
+### Operator Runbook (after QC)
+
+None for the database (0057 is already in production). Keep `KATANA_REVERSE_SYNC_MODE`, `QBO_LEDGER_MODE`, and `CLOVER_LEDGER_MODE` at `log` in every deployment.
 
 ### Stop & Commit
 
-**STOP 2B.** Print the §0.5 handback, including all V-1 … V-14 answers. `Awaiting "PROCEED TO PHASE 3".`
+Print the §0.5 handback, including all V-1 … V-14 answers. STOP. `Awaiting "PROCEED TO PHASE 3".`
 
 ---
 
-## PHASE 3 — Migration Execution & Airlock Hand-off
+## PHASE 3 — Airlock Migration & Hand-off
 
-**Objective:** Write the airlock migration, prove the full 0055 → 0058 chain on the test DB, wire `factory-airlock-release` to the existing Path A Katana writer, and hand the operator an exact production migration runbook.
+**Objective:** Write and migrate **only** `0058_factory_airlock.sql`, wire `factory-airlock-release` to the existing Path A Katana writer, and hand the operator a one-migration production runbook.
 
 ### 3.0 Lock (operator installs)
 
@@ -363,28 +317,30 @@ tests/woo-static-guards.test.ts
 - OD-1 and OD-2 apply (Phase 0).
 - `release_source` is a `text` column, so adding the value `factory_airlock` needs no SQL. It is a TypeScript and Zod change only.
 - The migration is hand-checked, additive, and never pushed (DB-2 … DB-5). `CREATE TYPE factory_airlock_status` is allowed: it is a **new** type, not `ADD VALUE`.
+- Production and the test DB are both at high-water mark `1793289542107` (`0057`). `0058` is the **only** pending migration. Nothing in this phase touches 0046–0057.
 
 ### Action Steps
 
 **3.1 Write `0058_factory_airlock.sql`.**
 1. DB-1 host check. Generate a draft: `npx dotenv -e .env.test.local -- npx drizzle-kit generate --name factory_airlock`. Generate does not connect, but the config demands `POSTGRES_URL`.
-2. Make sure the result is: tag `0058_factory_airlock`, journal idx **60**, snapshot `meta/0060_snapshot.json`. If drizzle-kit chose another tag, fix the tag in the journal entry and the file name. Never renumber older entries.
+2. Make sure the result is: tag `0058_factory_airlock`, journal idx **60**, snapshot `meta/0060_snapshot.json`, and journal `when` **strictly greater than `1793289542107`**. If drizzle-kit chose another tag, fix the tag in the new journal entry and the file name. Never renumber or edit older entries (DB-5).
 3. The generated DDL must contain **only** the `factory_airlock_status` type, the two `factory_airlock_*` tables, their indexes, CHECKs, and FKs. Compare with `docs/AIRLOCK_DUAL_APPROVAL.md` "Schema change". Any other statement means the snapshot and schema have drifted: HALT.
 4. Prepend the hand-written header used by `0057`: "ADDITIVE ONLY ... never applied with drizzle-kit push". Append `ENABLE ROW LEVEL SECURITY` for both tables, if drizzle did not emit it, and guarded `REVOKE ALL ... FROM anon, authenticated` blocks in the `0057` style.
 5. Update the `schema.ts:1701` comment so it reads "Migration 0058_factory_airlock". Update `AIRLOCK_DUAL_APPROVAL.md` status and file name (OD-3).
 6. Create `tests/factory-airlock-migration.test.ts`:
    - The static check from QA-15.1-01 (no `DROP`, `ALTER COLUMN`, `ALTER TYPE`, `RENAME`, `TRUNCATE`, `DELETE`).
    - The CHECK strings in `schema.ts` equal those in the SQL (the Phase 14 technique).
-   - The journal's last entry is idx 60, tag `0058_factory_airlock`.
+   - The journal's last entry is idx 60, tag `0058_factory_airlock`, and its `when` > `1793289542107`. The previous entry is still idx 59 `0057_katana_reverse_flow` with `when` `1793289542107`.
 7. `npx dotenv -e .env.test.local -- npx drizzle-kit check` exits 0.
 
 Commit: `phase-15b(3.1): add additive 0058_factory_airlock migration`.
 
-**3.2 Prove the migration chain on a scratch database.**
-1. DB-1 check. Create a scratch database on the local Postgres (`createdb ccpatio_chain_proof` or `create database` via psql on `127.0.0.1:54322`). Never on a remote host.
-2. Reproduce H-3: run `drizzle-kit migrate` from zero against the scratch DB with `POSTGRES_URL` pointing at it, and record whether 0055 fails with `unsafe use of new value`.
-3. Prove the remedy: on a fresh scratch DB, migrate up to 0054. Then run `ALTER TYPE "public"."saga_status" ADD VALUE IF NOT EXISTS 'AWAITING_DEPOSIT';` **alone**, in autocommit. Then run `drizzle-kit migrate` to the end (0055 … 0058). It must succeed. The `IF NOT EXISTS` in 0055 makes its own `ALTER TYPE` a no-op.
-4. Paste both raw outputs in the handback. Drop the scratch databases.
+**3.2 Migrate 0058 on the local test database.**
+1. DB-1 check. Record the test tracker row count and `max(created_at)` (expect `1793289542107`).
+2. Run DB-2: `npx dotenv -e .env.test.local -- npx drizzle-kit migrate`. It must apply exactly one migration, `0058_factory_airlock`.
+3. Verify on the test DB: `to_regclass` is not null for `factory_airlock_builds` and `factory_airlock_decisions`; `relrowsecurity = true` on both; the tracker gained exactly one row; and the new `max(created_at)` equals the 0058 journal `when`.
+4. Run DB-2 a second time. It must apply nothing.
+5. Paste all raw outputs in the handback.
 
 **3.3 Airlock hand-off code.**
 1. **`src/server/path-a/events.ts`.**
@@ -428,19 +384,19 @@ Commit: `phase-15b(3.3): hand approved airlock builds to the Path A Katana write
 1. The lock `target_test` passes.
 2. `npx vitest run tests/path-a-release-saga.test.ts tests/path-a-claim-release.test.ts tests/path-a-static-guards.test.ts` passes. Existing Path A behavior is unchanged.
 3. `rg "@/lib/katana|KATANA_TENANT_CONCURRENCY" src/inngest/factory-airlock.ts src/server/path-a/airlock-release.ts` returns 0 hits.
-4. The scratch-DB chain proof from 3.2 is pasted.
-5. `npm run qa:lifecycle` exits 0, then the QCA JSON.
+4. `git diff <base_ref>..HEAD --name-only -- src/server/db/migrations/` lists only `0058_factory_airlock.sql`, `meta/0060_snapshot.json`, and `meta/_journal.json`. The `_journal.json` diff adds one entry and changes nothing else.
+5. The 3.2 test-DB migrate outputs are pasted.
+6. `npm run qa:lifecycle` exits 0, then the QCA JSON.
 
 ### Operator Runbook — production migration (HUMAN ONLY, after Phase 3 QC)
 
-Prerequisite: the Phase 1 runbook is done, so the tracker high-water mark is `0054`.
+Prerequisite: the production tracker high-water mark is still `1793289542107` (`0057`). Confirm it with a read-only `select count(*), max(created_at) from drizzle.__drizzle_migrations;`, which should return 58 and `1793289542107`. If not, stop.
 1. Take a backup or record a PITR timestamp.
-2. In the Supabase SQL editor (autocommit), run alone: `ALTER TYPE "public"."saga_status" ADD VALUE IF NOT EXISTS 'AWAITING_DEPOSIT';` (H-3).
-3. From a checkout at the Phase 3 HEAD, run `npm run db:migrate`. It applies 0055, 0056_pos_receipts, 0056_ledger_triage, 0057, and 0058 in one transaction.
-4. Verify with read-only queries: `to_regclass` is not null for `custom_build_job_items`, `pos_receipts`, `ledger_triage`, `katana_po_bills`, `factory_airlock_builds`, `factory_airlock_decisions`; and the tracker max `created_at` equals the journal `when` of `0058_factory_airlock`.
-5. Deploy the app **after** step 4. Keep `GHL_FACTORY_ORDERS`, `KATANA_REVERSE_SYNC_MODE`, `QBO_LEDGER_MODE`, and `CLOVER_LEDGER_MODE` at `log`.
-6. Ensure the Factory Manager (Christian) has a `user_roles` row with `Ops_Manager`.
-7. In Katana settings, add webhook subscriptions for `sales_order.updated`, `sales_order.packed`, `sales_order.delivered`, `manufacturing_order.done` (Parent §I.5.5).
+2. From a checkout at the Phase 3 HEAD, run `npm run db:migrate`. It applies exactly one migration: `0058_factory_airlock`. No enum pre-step is needed.
+3. Verify with read-only queries: `to_regclass` is not null for `factory_airlock_builds` and `factory_airlock_decisions`; `relrowsecurity = true` on both; the tracker has 59 rows and `max(created_at)` equals the journal `when` of `0058_factory_airlock`.
+4. Deploy the app **after** step 3. Keep `GHL_FACTORY_ORDERS`, `KATANA_REVERSE_SYNC_MODE`, `QBO_LEDGER_MODE`, and `CLOVER_LEDGER_MODE` at `log`.
+5. Ensure the Factory Manager (Christian) has a `user_roles` row with `Ops_Manager`.
+6. In Katana settings, add webhook subscriptions for `sales_order.updated`, `sales_order.packed`, `sales_order.delivered`, `manufacturing_order.done` (Parent §I.5.5).
 
 ### Stop & Commit
 
@@ -482,8 +438,8 @@ tests/woo-webhook-route.test.ts
 ### Context & Constraints
 
 - Implement Parent §I.2, §16.1, §16.2, §16.3, §16.4 **exactly**. Out of scope for this phase (do not build): §I.3 Woo call-site rewiring, §I.4 (D-6 terminal state), §16.5 replay utility, and anything for Parent Phase 17.
-- `CATALOG_PUBLISH_MODE` stays Katana-only (Parent C-5). The Woo gate is the new `WOO_CATALOG_PUBLISH_MODE`.
-- Keep `WOOCOMMERCE_URL`. `WOOCOMMERCE_API_URL` must never appear (Parent C-2).
+- `CATALOG_PUBLISH_MODE` stays Katana-only (Parent C-5). The Woo gate is the new `WOO_CATALOG_PUBLISH_MODE`, declared in `src/env.ts` by Phase 1.2.
+- Keep `WOOCOMMERCE_URL`. `WOOCOMMERCE_API_URL` must never appear (Parent C-2). `WOOCOMMERCE_TARGET` is declared in `src/env.ts` by Phase 1.2.
 - Woo `status: "draft"` on **create only**; on **update**, omit `status` (Parent C-6). Never `manage_stock: true`.
 - The backfill makes no Katana, Clover, or QBO calls and does not carry `KATANA_TENANT_CONCURRENCY`.
 - The Woo lane must never reach `order_intake` or `src/server/ghl/` (Parent §16.4).
@@ -491,7 +447,7 @@ tests/woo-webhook-route.test.ts
 ### Action Steps
 
 1. **Create `src/server/woocommerce/devsite-guard.ts`** (Parent §I.2). Wire usage site 1 (`wooFetch` non-GET) and usage site 2 (the Woo webhook route floor check: 200 `below_devsite_floor`, or 503 when the floor is unset on devsite).
-2. **Create `src/server/pipeline/woo-catalog-mode.ts`**: `getWooCatalogPublishMode()`, `canMutateWooCatalog()`, fail closed, runtime read.
+2. **Create `src/server/pipeline/woo-catalog-mode.ts`**: `getWooCatalogPublishMode()`, `canMutateWooCatalog()`, fail closed, runtime read from `process.env` (C-2).
 3. **`src/mappers/woocommerce.ts`** (Parent §16.1a and §16.2):
    - Delete the `(commerce.msrp?.trim() || "0.00")` fallback; a price ≤ 0 or unparseable gives `{ skip: true, reason: "msrp_missing_or_zero" }`.
    - The only status the mapper emits is `"draft"`. Remove `"publish"` from the type.
@@ -549,7 +505,7 @@ Print the §0.5 handback. STOP. `Awaiting "PROCEED TO PHASE 5".`
 
 Search the repo, `.cursor/plans/`, and `docs/` for `ENTERPRISE_ACADEMY_PLAN.md` or any "Academy Blueprint".
 - **If found:** HALT and report its path. The operator decides whether it supersedes §5 below.
-- **If not found** (the state on 2026-11-03): build exactly the specification in this section. Do not invent features beyond it: no quizzes engine beyond the knowledge-check shape below, no file uploads (OD-5), no GHL writes, no email.
+- **If not found** (the state on 2026-11-07): build exactly the specification in this section. Do not invent features beyond it: no quizzes engine beyond the knowledge-check shape below, no file uploads (OD-5), no GHL writes, no email.
 
 ### 5.1 Lock (operator installs)
 
@@ -609,7 +565,7 @@ Exports:
 - `isExpired(certifiedAt, validityDays, now)`. Expiry is **computed**, never stored.
 - `revoked` is terminal for that row. Re-certification creates a new row with `module_version` ≥ the current one.
 
-**Migration `0059_employee_certifications.sql`** (journal idx 61, `meta/0061_snapshot.json`; generate via the DB-1/DB-2-safe `drizzle-kit generate`, then add the hand header, RLS, and guarded REVOKEs exactly as in 3.1):
+**Migration `0059_employee_certifications.sql`** (journal idx 61, `meta/0061_snapshot.json`, `when` > the 0058 `when`; generate via the DB-1/DB-2-safe `drizzle-kit generate`, then add the hand header, RLS, and guarded REVOKEs exactly as in 3.1):
 
 ```sql
 CREATE TABLE "employee_certifications" (
@@ -714,7 +670,7 @@ Seed: one module per role, id `katana-v1-<roleId>`, version 1. Port `steps`, `vi
 
 ### Operator Runbook (after QC)
 
-Apply `0059_employee_certifications` to production with `npm run db:migrate`. It is a single additive migration on top of 0058, with no enum hazard. Verify `to_regclass`. Deploy. Pilot `/embed/academy` with one role before any cut-over from `/embed/training` (a separate decision).
+Apply `0059_employee_certifications` to production with `npm run db:migrate`. It is a single additive migration on top of 0058, with no enum hazard. Verify `to_regclass` and that the tracker has 60 rows. Deploy. Pilot `/embed/academy` with one role before any cut-over from `/embed/training` (a separate decision).
 
 ### Stop & Commit
 
@@ -728,7 +684,7 @@ Print the §0.5 handback. STOP. **End of this blueprint.** Do not start any furt
 - Never point any command at a non-local Postgres host.
 - Never call a Katana write endpoint. Never create a second Katana sales-order or manufacturing-order writer.
 - Never set a mode flag to `live` in a file.
-- Never edit `.cursor/phase.lock`, an existing migration SQL file, or an existing snapshot.
+- Never edit `.cursor/phase.lock`, an existing migration SQL file, an existing snapshot, or an existing `_journal.json` entry.
 - Never weaken a test or mock Postgres in Phase 2 DB proof.
 - Never swallow an error. Never add an alerting `onFailure`.
 - Never call QBO or GHL from a function that holds `KATANA_TENANT_CONCURRENCY`.
@@ -737,15 +693,25 @@ Print the §0.5 handback. STOP. **End of this blueprint.** Do not start any furt
 - Never trust a client-sent quiz score, or an embed-iframe email, as an authorization.
 - Never continue past a STOP without `PROCEED TO PHASE <n>`.
 
-## Appendix B — Migration numbering after this blueprint
+## Appendix B — Migration numbering (production state as of 2026-11-07)
 
-| Journal idx | SQL tag | Snapshot | Production state at start |
+Production tracker: 58 rows, `max(created_at) = 1793289542107`. The local journal has 60 entries (idx 0–59). The tracker holds 58 rows because the operator's manual repair recorded the high-water mark rather than one row per historic entry. Drizzle only compares journal `when` values against the single latest `created_at`, so every entry at or below `1793289542107` counts as applied.
+
+| Journal idx | SQL tag | Snapshot | Production state |
 |---|---|---|---|
-| 46 | `0045_ecommerce_listings_slug_unique` | `0046_snapshot.json` | applied and tracked (high-water mark) |
-| 47–55 | `0046` … `0054` | `0047` … `0055` | objects present except 0053; **untracked** (Phase 1 runbook) |
-| 56 | `0055_path_a_stateless_release` | `0056_snapshot.json` | not applied (H-3 pre-step required) |
-| 57 | `0056_pos_receipts` | `0057_snapshot.json` | not applied |
-| 58 | `0056_ledger_triage` | `0058_snapshot.json` | not applied |
-| 59 | `0057_katana_reverse_flow` | `0059_snapshot.json` | not applied |
-| 60 | `0058_factory_airlock` (Phase 3) | `0060_snapshot.json` | not yet written |
+| 46 | `0045_ecommerce_listings_slug_unique` | `0046_snapshot.json` | applied and tracked |
+| 47 | `0046_bitter_red_ghost` | `0047_snapshot.json` | applied and tracked |
+| 48 | `0047_strange_wong` | `0048_snapshot.json` | applied and tracked |
+| 49 | `0048_reflective_human_cannonball` | `0049_snapshot.json` | applied and tracked |
+| 50 | `0049_free_stellaris` | `0050_snapshot.json` | applied and tracked |
+| 51 | `0050_even_chamber` | `0051_snapshot.json` | applied and tracked |
+| 52 | `0051_numerous_adam_warlock` | `0052_snapshot.json` | applied and tracked |
+| 53 | `0052_custom_build_jobs` | `0053_snapshot.json` | applied and tracked |
+| 54 | `0053_rls_qbo_tokens_incoming_webhooks` | `0054_snapshot.json` | applied and tracked (H-2 resolved) |
+| 55 | `0054_sre_dlq_saga_buckets` | `0055_snapshot.json` | applied and tracked |
+| 56 | `0055_path_a_stateless_release` | none (hand-written; no `0056_snapshot.json` exists, do not create one) | applied and tracked (H-3 resolved) |
+| 57 | `0056_pos_receipts` | `0057_snapshot.json` | applied and tracked |
+| 58 | `0056_ledger_triage` | `0058_snapshot.json` | applied and tracked |
+| 59 | `0057_katana_reverse_flow` | `0059_snapshot.json` | applied and tracked; **high-water mark** `1793289542107` |
+| 60 | `0058_factory_airlock` (Phase 3) | `0060_snapshot.json` | not yet written; the only migration Phase 3 creates |
 | 61 | `0059_employee_certifications` (Phase 5) | `0061_snapshot.json` | not yet written |
