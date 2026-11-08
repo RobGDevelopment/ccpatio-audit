@@ -3,13 +3,17 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { globalDlqHandler } from "@/inngest/dlq";
 import {
+  archiveKatanaVariant,
+  healKatanaVariantSkuFn,
   inngestFunctions,
   processWooCommerceOrder,
   publishApprovedProduct,
   pushApprovedFactoryOrder,
+  refreshKatanaPoBillVendor,
   releaseCustomJob,
-  archiveKatanaVariant,
   syncGhlOpportunity,
+  syncKatanaOrderStatus,
+  syncKatanaPoReceived,
   systemHealthPing,
 } from "@/inngest/functions";
 import { KATANA_TENANT_CONCURRENCY } from "@/server/sre/katana-throttle";
@@ -186,6 +190,10 @@ describe("Katana-calling registered functions carry the tenant concurrency limit
     ["autoReleaseExpiredHolds", autoReleaseExpiredHolds],
     ["sweepExpiredInventoryHolds", sweepExpiredInventoryHolds],
     ["systemHealthPing", systemHealthPing],
+    ["syncKatanaPoReceived", syncKatanaPoReceived],
+    ["refreshKatanaPoBillVendor", refreshKatanaPoBillVendor],
+    ["syncKatanaOrderStatus", syncKatanaOrderStatus],
+    ["healKatanaVariantSkuFn", healKatanaVariantSkuFn],
   ])("%s", (_name, fn) => {
     expect(concurrencyEntries(fn)).toContainEqual(KATANA_TENANT_CONCURRENCY);
   });
