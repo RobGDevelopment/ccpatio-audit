@@ -2,10 +2,10 @@
   "phase_id": "phase-15-katana-lifecycle",
   "intent": "Katana lifecycle and reverse flow per docs/BLUEPRINT_Katana_ReverseFlow_WooCommerce_DevSite_Phases15-16.md (Section II plus the binding Section VI sweep amendments R-1..R-17). Additive 0057_katana_reverse_flow migration, katana_po_bills delta-billing ledger with fail-closed QBO config (no account 81 fallback), Katana-slot isolation (QBO and GHL I/O run in separate Inngest functions), reverse-flow SO/MO status sync to hub, gated GHL stage push with closed-set stage checks, thin Katana webhook route. Read-only against Katana except the archive path. No drizzle-kit push.",
   "mode": "edit",
-  "base_ref": "bafd133",
+  "base_ref": "62ace6f",
   "override_blast_cap": true,
   "allow_dirty_base": true,
-  "expected_blast_radius": 6,
+  "expected_blast_radius": 4,
   "target_test": "npx vitest run tests/phase15-katana-reverse-flow.test.ts tests/phase15-po-receipt-ledger.test.ts tests/phase15-reverse-flow-resilience.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",
