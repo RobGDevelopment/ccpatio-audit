@@ -4,7 +4,7 @@
   "base_ref": "c06cf7a",
   "override_blast_cap": true,
   "allow_dirty_base": false,
-  "expected_blast_radius": 2,
+  "expected_blast_radius": 3,
   "target_test": "npx vitest run tests/stock-categories.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",

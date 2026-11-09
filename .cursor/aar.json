@@ -1,219 +1,35 @@
 {
-  "phase_id": "phase-15-katana-lifecycle",
-  "base_ref": "3b02dc2",
-  "blast_radius": 32,
+  "phase_id": "hotfix-showroom-categories",
+  "base_ref": "c06cf7a",
+  "blast_radius": 3,
   "counts": {
-    "files": 32,
-    "tracked": 23,
-    "untracked": 9,
-    "insertions": 774,
-    "deletions": 266
+    "files": 3,
+    "tracked": 3,
+    "untracked": 0,
+    "insertions": 99,
+    "deletions": 56
   },
   "files": [
     {
-      "status": "??",
-      "path": "src/inngest/katana-variant-heal.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/db/migrations/0057_katana_reverse_flow.sql",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/db/migrations/meta/0059_snapshot.json",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/katana/webhook-events.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/fixtures/katana/manufacturing-order-done.json",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/fixtures/katana/purchase-order-received.json",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/fixtures/katana/sales-order-legacy-deleted.json",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/fixtures/katana/supplier.json",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/phase15-katana-reverse-flow.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "D",
-      "path": "supabase/.temp/cli-latest",
-      "insertions": 0,
-      "deletions": 1
-    },
-    {
-      "status": "D",
-      "path": "test-results/.last-run.json",
-      "insertions": 0,
-      "deletions": 4
-    },
-    {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 16,
-      "deletions": 3
-    },
-    {
-      "status": "M",
-      "path": ".cursor/session-stamp.json",
-      "insertions": 2,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": ".gitignore",
-      "insertions": 5,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "docs/BLUEPRINT_Katana_ReverseFlow_WooCommerce_DevSite_Phases15-16.md",
-      "insertions": 315,
-      "deletions": 7
-    },
-    {
-      "status": "M",
-      "path": "package.json",
-      "insertions": 2,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "playwright.config.ts",
-      "insertions": 3,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "scripts/qa/simulate-webhooks.ts",
-      "insertions": 35,
-      "deletions": 6
-    },
-    {
-      "status": "M",
-      "path": "src/app/admin/factory-bom/FactoryBomWorkbench.tsx",
-      "insertions": 0,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/app/api/webhooks/katana/route.ts",
-      "insertions": 163,
-      "deletions": 102
-    },
-    {
-      "status": "M",
-      "path": "src/inngest/functions.ts",
-      "insertions": 2,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/inngest/katana-po-received.ts",
-      "insertions": 0,
-      "deletions": 59
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/migrations/meta/_journal.json",
       "insertions": 8,
-      "deletions": 1
+      "deletions": 56
     },
     {
       "status": "M",
-      "path": "src/server/db/schema.ts",
-      "insertions": 177,
-      "deletions": 1
+      "path": "src/lib/stock-categories.ts",
+      "insertions": 11,
+      "deletions": 0
     },
     {
       "status": "M",
-      "path": "src/server/katana/variant-webhook.ts",
-      "insertions": 2,
-      "deletions": 60
-    },
-    {
-      "status": "M",
-      "path": "src/server/webhooks/incoming-log.ts",
-      "insertions": 1,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "tests/e2e/auth.spec.ts",
-      "insertions": 3,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "tests/e2e/factory-bom-lifecycle.spec.ts",
-      "insertions": 3,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "tests/e2e/helpers/factory-bom-seed.ts",
-      "insertions": 2,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "tests/e2e/helpers/god-mode-auth.ts",
-      "insertions": 2,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "tests/e2e/helpers/phase13-seed.ts",
-      "insertions": 2,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "tests/phase13-error-purge.test.ts",
-      "insertions": 31,
-      "deletions": 4
+      "path": "tests/stock-categories.test.ts",
+      "insertions": 80,
+      "deletions": 0
     }
   ],
-  "untracked": [
-    "src/inngest/katana-variant-heal.ts",
-    "src/server/db/migrations/0057_katana_reverse_flow.sql",
-    "src/server/db/migrations/meta/0059_snapshot.json",
-    "src/server/katana/webhook-events.ts",
-    "tests/fixtures/katana/manufacturing-order-done.json",
-    "tests/fixtures/katana/purchase-order-received.json",
-    "tests/fixtures/katana/sales-order-legacy-deleted.json",
-    "tests/fixtures/katana/supplier.json",
-    "tests/phase15-katana-reverse-flow.test.ts"
-  ],
-  "file_list_sha256": "0b1457d6e573ef1ba9cbb41de404749d2d910bb7ec714c0843de3267dc4d95d4",
+  "untracked": [],
+  "file_list_sha256": "df496ff4e90f28015693d882ce3757a655fc3b64231ea83a5e1ecca814089c2c",
   "notes": ""
 }
