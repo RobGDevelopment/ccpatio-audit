@@ -22,6 +22,11 @@ export const EXCLUDED_CATEGORIES = [
   "Weldment",
   "Raw Material",
   "Raw Materials",
+  "metal - steel",
+  "metal - hardware",
+  "metal - shop supplies",
+  "cushion - parts",
+  "shop - delivery",
 ] as const;
 
 /** The only categories this screen may show, in pill order. */
@@ -35,6 +40,8 @@ export const SHOWROOM_STOCK_CATEGORIES = [
   "Marina",
   "Fire Glass",
   "Firepit Accessory",
+  "Fire Pits",
+  "Cushion Sets",
 ] as const;
 
 const ALLOWED = new Set<string>(
@@ -72,6 +79,10 @@ const ALIASES: Record<string, string> = {
   "firepit accessory": "Firepit Accessory",
   "fire pit accessory": "Firepit Accessory",
   "firepit accessories": "Firepit Accessory",
+  "cushion - fabric": "Fabric",
+  "dekton - slabs": "Dekton",
+  "fire pit": "Fire Pits",
+  "cushion sets": "Cushion Sets",
 };
 
 function cleanLabel(raw: string): string {
