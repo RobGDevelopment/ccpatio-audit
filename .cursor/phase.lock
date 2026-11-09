@@ -1,15 +1,32 @@
 {
-  "phase_id": "hotfix-showroom-categories",
+  "phase_id": "phase-15b-airlock-handoff",
   "mode": "edit",
-  "base_ref": "c06cf7a",
+  "base_ref": "YOUR_CURRENT_COMMIT_HASH",
   "override_blast_cap": true,
   "allow_dirty_base": false,
-  "expected_blast_radius": 3,
-  "target_test": "npx vitest run tests/stock-categories.test.ts",
+  "expected_blast_radius": 13,
+  "target_test": "npx vitest run tests/factory-airlock-release.test.ts tests/factory-airlock-migration.test.ts tests/path-a-release-request.test.ts tests/path-a-events.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/session-stamp.json",
-    "src/lib/stock-categories.ts",
-    "tests/stock-categories.test.ts"
+    "docs/AUTONOMOUS_BUILD_BLUEPRINT.md",
+    "docs/AIRLOCK_DUAL_APPROVAL.md",
+    "package.json",
+    "src/server/db/schema.ts",
+    "src/server/db/migrations/0058_factory_airlock.sql",
+    "src/server/db/migrations/meta/",
+    "src/inngest/factory-airlock.ts",
+    "src/inngest/functions.ts",
+    "src/server/factory-bom/airlock-actions.ts",
+    "src/server/path-a/events.ts",
+    "src/server/path-a/release-store.ts",
+    "src/server/path-a/release-request.ts",
+    "src/server/path-a/airlock-release.ts",
+    "tests/factory-airlock-release.test.ts",
+    "tests/factory-airlock-migration.test.ts",
+    "tests/path-a-release-request.test.ts",
+    "tests/path-a-events.test.ts",
+    "tests/path-a-static-guards.test.ts",
+    "tests/woo-static-guards.test.ts"
   ]
 }
