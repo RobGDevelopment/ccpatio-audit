@@ -1,6 +1,6 @@
 # Airlock Dual-Approval BOM Pipeline
 
-**Status:** Blueprint. Not applied. Schema, routes, and the Inngest function are still to be built.  
+**Status:** Implemented (Phase 15b). Migration `0058_factory_airlock.sql` and event hand-off to `path-a-release-to-production` active.  
 **Audience:** Factory Manager / Systems Architecture  
 **Binding SoT:** [`docs/MDM_MASTER_BLUEPRINT.md`](MDM_MASTER_BLUEPRINT.md) §2.4 (GHL factory orders) and §3.1 (adjacency-list BOM, Inngest, no JSONB recipe tree as the system of record).  
 **Related:** [`docs/CAD_UPLOAD_PIPELINE_PLAN.md`](CAD_UPLOAD_PIPELINE_PLAN.md), [`docs/FACTORY_BOM_KATANA_UX_PLAN.md`](FACTORY_BOM_KATANA_UX_PLAN.md)  
@@ -88,7 +88,7 @@ sequenceDiagram
 
 ## Schema change
 
-Next hand-written file: `src/server/db/migrations/0059_factory_airlock.sql`, mirrored in `src/server/db/schema.ts`.
+Next hand-written file: `src/server/db/migrations/0058_factory_airlock.sql`, mirrored in `src/server/db/schema.ts`.
 
 One mutable row per `custom_build_job_items` id. A rejection appends a decision and returns that same row to `draft`.
 
@@ -241,7 +241,7 @@ Function `factory-airlock-release`, registered beside `pathAReleaseToProduction`
 
 ## Execution order
 
-1. Add `0059_factory_airlock.sql` and the Drizzle mirror. Apply it with the normal migrate path.
+1. Add `0058_factory_airlock.sql` and the Drizzle mirror. Apply it with the normal migrate path.
 2. Add `submitAirlockAction`, `approveAirlockAction`, and `rejectAirlockAction`. Each one is a compare-and-swap plus a decision insert. Only approve calls `inngest.send`.
 3. Point Step 4 at submit. Delete the Katana publish import from `Step4Release`.
 4. Add `/admin/factory-airlock`, gated by `Ops_Manager` or `SuperAdmin` on a Supabase user. Give Christian that `user_roles` row if he does not have it.

@@ -1698,7 +1698,7 @@ export const factory_release_gate = pgTable("factory_release_gate", {
 
 /**
  * Airlock header for one custom build item.
- * Mirrored for the app. Migration 0059 is not applied while the QBO ledger lock is active.
+ * Migration 0058_factory_airlock (additive only; never applied with drizzle-kit push).
  * BOM lines stay on product_bom_draft / item_operations_draft.
  */
 export const factoryAirlockStatusEnum = pgEnum("factory_airlock_status", [

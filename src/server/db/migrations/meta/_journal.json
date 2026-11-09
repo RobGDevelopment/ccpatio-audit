@@ -421,6 +421,13 @@
       "when": 1793289542107,
       "tag": "0057_katana_reverse_flow",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1794267593517,
+      "tag": "0058_factory_airlock",
+      "breakpoints": true
     }
   ]
 }
