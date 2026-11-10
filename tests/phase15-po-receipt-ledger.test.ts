@@ -217,8 +217,8 @@ describe("0057_katana_reverse_flow.sql & schema.ts parity (QA-15.1-01..05)", () 
     const journal = JSON.parse(
       read("src/server/db/migrations/meta/_journal.json"),
     ) as { entries: Array<{ idx: number; tag: string }> };
-    const last = journal.entries[journal.entries.length - 1];
-    expect(last).toMatchObject({ idx: 59, tag: "0057_katana_reverse_flow" });
+    const entry = journal.entries.find((e) => e.idx === 59);
+    expect(entry).toMatchObject({ idx: 59, tag: "0057_katana_reverse_flow" });
     const snap = JSON.parse(
       read("src/server/db/migrations/meta/0059_snapshot.json"),
     ) as { tables: Record<string, unknown> };

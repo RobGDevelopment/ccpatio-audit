@@ -10,6 +10,7 @@ import {
   buildPathAReleaseEventData,
   buildPathAReleaseEventDataFromSaga,
   pathAGhlSyncEventId,
+  pathAReleaseEventId,
   pathAReleaseEventSchema,
 } from "@/server/path-a/events";
 
@@ -120,5 +121,52 @@ describe("pathAGhlSyncEventId (M9)", () => {
   it("differs per attempt discriminator so Inngest dedupe cannot swallow a re-sync", () => {
     expect(pathAGhlSyncEventId("opp-1", 1)).not.toBe(pathAGhlSyncEventId("opp-1", 2));
     expect(pathAGhlSyncEventId("opp-1", 1)).toBe(pathAGhlSyncEventId("opp-1", 1));
+  });
+});
+
+describe("factory_airlock source and { airlock } discriminator (Phase 15b)", () => {
+  it("builds a schema-valid factory_airlock release payload without money fields", () => {
+    const data = buildPathAReleaseEventData({
+      ghlOpportunityId: "opp-airlock-1",
+      source: "factory_airlock",
+      requestedBy: "christian@ccpatio.com",
+      reason: "factory airlock approved 11111111-1111-1111-1111-111111111111",
+      attempt: 1,
+    });
+    expect(data).toEqual({
+      ghlOpportunityId: "opp-airlock-1",
+      source: "factory_airlock",
+      requestedBy: "christian@ccpatio.com",
+      reason: "factory airlock approved 11111111-1111-1111-1111-111111111111",
+      attempt: 1,
+    });
+    expect(pathAReleaseEventSchema.safeParse(data).success).toBe(true);
+  });
+
+  it("rebuilds a factory_airlock payload from a recorded saga row", () => {
+    const data = buildPathAReleaseEventDataFromSaga(
+      "opp-airlock-1",
+      {
+        release_source: "factory_airlock",
+        release_requested_by: "christian@ccpatio.com",
+        release_reason: "factory airlock approved build-1",
+        deposit_cents: 150000,
+        deposit_ref: "DEP-EARLY-1",
+      },
+      2,
+    );
+    expect(data.source).toBe("factory_airlock");
+    expect(data.requestedBy).toBe("christian@ccpatio.com");
+    expect(data.attempt).toBe(2);
+  });
+
+  it("encodes { airlock: jobId } as path-a:release:<oppId>:airlock:<jobId> and rejects blank jobId", () => {
+    expect(pathAReleaseEventId("opp-42", { airlock: "job-uuid-99" })).toBe(
+      "path-a:release:opp-42:airlock:job-uuid-99",
+    );
+    expect(pathAReleaseEventId("opp-42", { airlock: "job-uuid-99" })).not.toBe(
+      pathAReleaseEventId("opp-42", "override"),
+    );
+    expect(() => pathAReleaseEventId("opp-42", { airlock: "   " })).toThrow();
   });
 });

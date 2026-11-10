@@ -66,6 +66,11 @@ export type ReleaseStore = {
     depositCents?: number | null;
     depositRef?: string | null;
   }): Promise<ReleaseRequestResult>;
+  recordDeposit(input: {
+    oppId: string;
+    depositCents: number;
+    depositRef: string;
+  }): Promise<void>;
   bumpReleaseAttempt(oppId: string): Promise<number>;
   claimRelease(oppId: string): Promise<ClaimReleaseResult>;
   markSagaCompleted(oppId: string): Promise<{ completed: boolean }>;
@@ -270,6 +275,26 @@ export function createReleaseStore(resolveDb: () => ReleaseDb = getDb): ReleaseS
         requestedBy: current?.release_requested_by ?? null,
         source: current?.release_source ?? null,
       };
+    },
+
+    async recordDeposit(input) {
+      const db = resolveDb();
+      const now = new Date();
+      await db
+        .update(saga_runs)
+        .set({
+          deposit_cents: sql`COALESCE(${saga_runs.deposit_cents}, ${input.depositCents})`,
+          deposit_ref: sql`COALESCE(${saga_runs.deposit_ref}, ${input.depositRef})`,
+          deposit_recorded_at: sql`COALESCE(${saga_runs.deposit_recorded_at}, ${now})`,
+          paid_at: sql`COALESCE(${saga_runs.paid_at}, ${now})`,
+          updated_at: now,
+        })
+        .where(
+          and(
+            eq(saga_runs.saga_type, PATH_A_SAGA_TYPE),
+            eq(saga_runs.correlation_key, input.oppId),
+          ),
+        );
     },
 
     async bumpReleaseAttempt(oppId) {

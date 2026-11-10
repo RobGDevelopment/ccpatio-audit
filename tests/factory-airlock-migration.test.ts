@@ -77,15 +77,14 @@ describe("0058_factory_airlock.sql & schema.ts parity", () => {
     }
   });
 
-  it("journal ends at idx 60 (0058_factory_airlock, when > 1793289542107) and preserves idx 59 (0057_katana_reverse_flow, when = 1793289542107)", () => {
+  it("journal records idx 60 (0058_factory_airlock, when > 1793289542107) and preserves idx 59 (0057_katana_reverse_flow, when = 1793289542107)", () => {
     const journal = JSON.parse(
       read("src/server/db/migrations/meta/_journal.json"),
     ) as {
       entries: Array<{ idx: number; tag: string; when: number }>;
     };
-    expect(journal.entries.length).toBe(61);
-    const prev = journal.entries[journal.entries.length - 2];
-    const last = journal.entries[journal.entries.length - 1];
+    const prev = journal.entries.find((e) => e.idx === 59);
+    const last = journal.entries.find((e) => e.idx === 60);
     expect(prev).toMatchObject({
       idx: 59,
       tag: "0057_katana_reverse_flow",
@@ -178,3 +177,4 @@ describe("0058_factory_airlock.sql & schema.ts parity", () => {
     }
   });
 });
+

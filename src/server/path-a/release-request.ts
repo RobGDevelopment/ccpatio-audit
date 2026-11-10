@@ -5,8 +5,13 @@
  */
 import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
-import { pim_audit_log } from "@/server/db/schema";
+import { custom_build_jobs, pim_audit_log } from "@/server/db/schema";
 import { type PimSession } from "@/lib/pim-audit";
+import {
+  decideAirlockRelease,
+  loadJobAirlockState,
+  type JobAirlockState,
+} from "./airlock-release";
 import { hasOverrideAuthority } from "./authz";
 import {
   createReleaseStore,
@@ -35,6 +40,7 @@ export type ReleaseRequestDeps = {
   sagaStore?: SagaStore;
   inngestSend?: (event: Parameters<typeof inngest.send>[0]) => Promise<unknown>;
   db?: ReleaseDb;
+  loadAirlockState?: (oppId: string) => Promise<JobAirlockState | null>;
 };
 
 export async function requestManagementOverride(
@@ -157,6 +163,7 @@ export async function requestManagementOverride(
 export type RecordDepositResult =
   | { outcome: "released"; attempt: number }
   | { outcome: "recorded_early" }
+  | { outcome: "recorded_awaiting_airlock" }
   | { outcome: "recorded_already_requested" }
   | { outcome: "recorded_post_completion" }
   | { outcome: "invalid_input"; error: string };
@@ -200,6 +207,40 @@ export async function recordDepositAndRequestRelease(
       status: "PENDING",
       currentStep: "deposit_received_early",
     });
+  }
+
+  // OD-2: When the job has airlock builds that are not yet releasable, record the deposit
+  // money columns without stamping release_requested_at or emitting a release event.
+  const loadAirlock =
+    deps.loadAirlockState ??
+    (async (oppId: string): Promise<JobAirlockState | null> => {
+      const [job] = await db
+        .select({ id: custom_build_jobs.id })
+        .from(custom_build_jobs)
+        .where(eq(custom_build_jobs.ghl_opportunity_id, oppId))
+        .limit(1);
+      if (!job?.id) return null;
+      return loadJobAirlockState(job.id, db);
+    });
+
+  const airlockState = await loadAirlock(ghlOpportunityId);
+  const hasAirlockBuilds = Boolean(
+    airlockState?.items.some((item) => item.buildId !== null),
+  );
+  if (hasAirlockBuilds && airlockState) {
+    const airlockDecision = decideAirlockRelease(airlockState);
+    if (airlockDecision.kind !== "release") {
+      await releaseStore.recordDeposit({
+        oppId: ghlOpportunityId,
+        depositCents,
+        depositRef: cleanRef,
+      });
+      const postDepositSaga = await releaseStore.getSaga(ghlOpportunityId);
+      if (postDepositSaga?.status === "COMPLETED") {
+        return { outcome: "recorded_post_completion" };
+      }
+      return { outcome: "recorded_awaiting_airlock" };
+    }
   }
 
   // Request release with source customer_deposit (records money regardless of race)

@@ -61,6 +61,13 @@ describe("Path A Release Request & Deposit Seam (Task 6)", () => {
         }
         return { outcome: "recorded" };
       }),
+      recordDeposit: vi.fn(async (input: any) => {
+        const saga = fakeSagas.get(input.oppId);
+        if (saga) {
+          if (saga.depositAmountCents == null) saga.depositAmountCents = input.depositCents;
+          if (!saga.depositRef) saga.depositRef = input.depositRef;
+        }
+      }),
     };
 
     const sagaStore: any = {
@@ -436,6 +443,41 @@ describe("Path A Release Request & Deposit Seam (Task 6)", () => {
 
       expect(res).toEqual({ outcome: "recorded_post_completion" });
       expect(sendFn).not.toHaveBeenCalled();
+    });
+
+    it("OD-2: returns recorded_awaiting_airlock, records deposit money only, and emits NO event when job has unapproved airlock builds", async () => {
+      const { releaseStore, sagaStore, db, sendFn } = createMockStores();
+      fakeSagas.set("opp-airlock-pending", {
+        status: "AWAITING_DEPOSIT",
+        releaseRequestedAt: null,
+      });
+
+      const res = await recordDepositAndRequestRelease(
+        { ghlOpportunityId: "opp-airlock-pending", depositCents: 185000, depositRef: "QBO-DEP-555" },
+        {
+          releaseStore,
+          sagaStore,
+          db,
+          inngestSend: sendFn,
+          loadAirlockState: async () => ({
+            items: [
+              { itemId: "item-1", buildId: "build-1", status: "pending_manager" },
+              { itemId: "item-2", buildId: null, status: null },
+            ],
+          }),
+        },
+      );
+
+      expect(res).toEqual({ outcome: "recorded_awaiting_airlock" });
+      expect(releaseStore.recordDeposit).toHaveBeenCalledWith({
+        oppId: "opp-airlock-pending",
+        depositCents: 185000,
+        depositRef: "QBO-DEP-555",
+      });
+      expect(releaseStore.requestRelease).not.toHaveBeenCalled();
+      expect(sendFn).not.toHaveBeenCalled();
+      expect(fakeSagas.get("opp-airlock-pending").depositAmountCents).toBe(185000);
+      expect(fakeSagas.get("opp-airlock-pending").releaseRequestedAt).toBeNull();
     });
   });
 });

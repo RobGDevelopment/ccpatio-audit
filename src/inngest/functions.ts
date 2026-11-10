@@ -41,7 +41,10 @@ import { healKatanaVariantSkuFn } from "./katana-variant-heal";
 import { processWooCommerceOrder } from "./woo-order";
 import { pathAReleaseToProduction } from "./path-a-release";
 import { pathAGhlSync } from "./path-a-ghl-sync";
-import { factoryAirlockRelease } from "./factory-airlock";
+import {
+  factoryAirlockMarkPushed,
+  factoryAirlockRelease,
+} from "./factory-airlock";
 import { KATANA_TENANT_CONCURRENCY } from "@/server/sre/katana-throttle";
 import {
   ghlOpportunitySyncSchema,
@@ -705,6 +708,7 @@ export const inngestFunctions = [
   pathAReleaseToProduction,
   pathAGhlSync,
   factoryAirlockRelease,
+  factoryAirlockMarkPushed,
   globalDlqHandler,
 ];
 

@@ -14,7 +14,10 @@ export const PATH_A_RELEASE_TO_PRODUCTION_EVENT = "path-a/release-to-production"
 export const PATH_A_RELEASE_COMPLETED_EVENT = "path-a/release.completed" as const;
 export const PATH_A_GHL_SYNC_REQUESTED_EVENT = "path-a/ghl.sync.requested" as const;
 
-export type PathAReleaseSource = "management_override" | "customer_deposit";
+export type PathAReleaseSource =
+  | "management_override"
+  | "customer_deposit"
+  | "factory_airlock";
 
 // Event ID Builders
 export function cadConvertCompletedEventId(uploadId: string, status: string): string {
@@ -28,6 +31,7 @@ export function pathADesignFinalizedEventId(sku: string, dossierHash: string): s
 export type PathAReleaseDiscriminator =
   | "override"
   | { depositRef: string }
+  | { airlock: string }
   | { replay: number }
   | { retry: number };
 
@@ -40,6 +44,12 @@ export function pathAReleaseEventId(
     disc = "override";
   } else if ("depositRef" in discriminator) {
     disc = `deposit:${discriminator.depositRef}`;
+  } else if ("airlock" in discriminator) {
+    const jobId = discriminator.airlock.trim();
+    if (!jobId) {
+      throw new Error("pathAReleaseEventId: airlock jobId is required");
+    }
+    disc = `airlock:${jobId}`;
   } else if ("replay" in discriminator) {
     disc = `replay:${discriminator.replay}`;
   } else {
@@ -60,7 +70,11 @@ export function pathAGhlSyncEventId(oppId: string, attempt: number): string {
 export const pathAReleaseEventSchema = z
   .object({
     ghlOpportunityId: z.string().trim().min(1, "ghlOpportunityId is required"),
-    source: z.enum(["management_override", "customer_deposit"]),
+    source: z.enum([
+      "management_override",
+      "customer_deposit",
+      "factory_airlock",
+    ]),
     requestedBy: z.string().trim().min(1, "requestedBy is required"),
     reason: z.string().optional(),
     depositCents: z.number().int().positive().optional(),

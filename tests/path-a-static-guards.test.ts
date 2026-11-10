@@ -411,4 +411,34 @@ describe("Phase 11 Path A Static Guards", () => {
       expect(code, `${f} reads item.status`).not.toMatch(/\bitem\.status\b/);
     }
   });
+
+  it("guard 18 (Phase 15b): factory-airlock.ts and airlock-release.ts import nothing from @/lib/katana, contain no KATANA_TENANT_CONCURRENCY, and register factoryAirlockMarkPushed", () => {
+    for (const f of [
+      "src/inngest/factory-airlock.ts",
+      "src/server/path-a/airlock-release.ts",
+    ]) {
+      const src = readSource(f);
+      expect(src, `${f} must not reference @/lib/katana`).not.toMatch(/@\/lib\/katana/);
+      expect(src, `${f} must not reference KATANA_TENANT_CONCURRENCY`).not.toMatch(
+        /KATANA_TENANT_CONCURRENCY/,
+      );
+      expect(src, `${f} must not reference katanaFetch or runKatanaStep`).not.toMatch(
+        /katanaFetch|runKatanaStep/,
+      );
+      const reach = reachableFrom(f);
+      expect(reach.has("src/lib/katana.ts"), `${f} transitively reaches src/lib/katana.ts`).toBe(
+        false,
+      );
+      expect(
+        reach.has("src/lib/katana/client.ts"),
+        `${f} transitively reaches src/lib/katana/client.ts`,
+      ).toBe(false);
+    }
+
+    const funcsSrc = readSource("src/inngest/functions.ts");
+    const arrayMatch = funcsSrc.match(/export const inngestFunctions\s*=\s*\[([\s\S]*?)\];/);
+    const arrayBody = arrayMatch ? arrayMatch[1] : "";
+    expect(arrayBody).toContain("factoryAirlockRelease");
+    expect(arrayBody).toContain("factoryAirlockMarkPushed");
+  });
 });
