@@ -4,7 +4,7 @@
   "base_ref": "c281990",
   "override_blast_cap": true,
   "allow_dirty_base": false,
-  "expected_blast_radius": 18,
+  "expected_blast_radius": 19,
   "target_test": "npx vitest run tests/factory-airlock-release.test.ts tests/factory-airlock-migration.test.ts tests/path-a-release-request.test.ts tests/path-a-events.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",
@@ -28,5 +28,6 @@
     "tests/path-a-events.test.ts",
     "tests/path-a-static-guards.test.ts",
     "tests/woo-static-guards.test.ts"
+    "tests/phase15-po-receipt-ledger.test.ts"
   ]
 }
