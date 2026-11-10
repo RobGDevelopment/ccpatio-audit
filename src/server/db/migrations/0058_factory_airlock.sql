@@ -54,4 +54,3 @@ DO $$ BEGIN
 EXCEPTION
   WHEN undefined_object THEN NULL;
 END $$;
-
