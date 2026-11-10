@@ -1,35 +1,137 @@
 {
-  "phase_id": "hotfix-showroom-categories",
-  "base_ref": "c06cf7a",
-  "blast_radius": 3,
+  "phase_id": "phase-15b-airlock-handoff",
+  "base_ref": "c281990",
+  "blast_radius": 20,
   "counts": {
-    "files": 3,
-    "tracked": 3,
+    "files": 20,
+    "tracked": 20,
     "untracked": 0,
-    "insertions": 99,
-    "deletions": 56
+    "insertions": 8871,
+    "deletions": 73
   },
   "files": [
     {
+      "status": "A",
+      "path": "src/server/db/migrations/0058_factory_airlock.sql",
+      "insertions": 56,
+      "deletions": 0
+    },
+    {
+      "status": "A",
+      "path": "src/server/db/migrations/meta/0060_snapshot.json",
+      "insertions": 7176,
+      "deletions": 0
+    },
+    {
+      "status": "A",
+      "path": "src/server/path-a/airlock-release.ts",
+      "insertions": 96,
+      "deletions": 0
+    },
+    {
+      "status": "A",
+      "path": "tests/factory-airlock-migration.test.ts",
+      "insertions": 180,
+      "deletions": 0
+    },
+    {
+      "status": "A",
+      "path": "tests/factory-airlock-release.test.ts",
+      "insertions": 794,
+      "deletions": 0
+    },
+    {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 8,
-      "deletions": 56
+      "insertions": 4,
+      "deletions": 3
     },
     {
       "status": "M",
-      "path": "src/lib/stock-categories.ts",
-      "insertions": 11,
+      "path": ".cursor/session-stamp.json",
+      "insertions": 2,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "docs/AIRLOCK_DUAL_APPROVAL.md",
+      "insertions": 3,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "package.json",
+      "insertions": 1,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/inngest/factory-airlock.ts",
+      "insertions": 341,
+      "deletions": 57
+    },
+    {
+      "status": "M",
+      "path": "src/inngest/functions.ts",
+      "insertions": 5,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/db/migrations/meta/_journal.json",
+      "insertions": 7,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": "tests/stock-categories.test.ts",
-      "insertions": 80,
+      "path": "src/server/db/schema.ts",
+      "insertions": 1,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/path-a/events.ts",
+      "insertions": 16,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/server/path-a/release-request.ts",
+      "insertions": 42,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/path-a/release-store.ts",
+      "insertions": 25,
       "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/path-a-events.test.ts",
+      "insertions": 48,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/path-a-release-request.test.ts",
+      "insertions": 42,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/path-a-static-guards.test.ts",
+      "insertions": 30,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/phase15-po-receipt-ledger.test.ts",
+      "insertions": 2,
+      "deletions": 2
     }
   ],
   "untracked": [],
-  "file_list_sha256": "df496ff4e90f28015693d882ce3757a655fc3b64231ea83a5e1ecca814089c2c",
+  "file_list_sha256": "6a20979d44f39dc5a84b8259785e0e92f33c1b517e8396cea35450e1e36a0b9c",
   "notes": ""
 }
