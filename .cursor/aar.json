@@ -1,50 +1,44 @@
 {
-  "phase_id": "phase-15b-airlock-handoff",
-  "base_ref": "c281990",
-  "blast_radius": 20,
+  "phase_id": "launch-c1-workspace-hygiene",
+  "base_ref": "4761f71",
+  "blast_radius": 8,
   "counts": {
-    "files": 20,
-    "tracked": 20,
-    "untracked": 0,
-    "insertions": 8871,
-    "deletions": 73
+    "files": 8,
+    "tracked": 4,
+    "untracked": 4,
+    "insertions": 18,
+    "deletions": 30
   },
   "files": [
     {
-      "status": "A",
-      "path": "src/server/db/migrations/0058_factory_airlock.sql",
-      "insertions": 56,
+      "status": "??",
+      "path": "data_migration/Primeview/product_export_import_headers.csv",
+      "insertions": 0,
       "deletions": 0
     },
     {
-      "status": "A",
-      "path": "src/server/db/migrations/meta/0060_snapshot.json",
-      "insertions": 7176,
+      "status": "??",
+      "path": "data_migration/Primeview/wc-product-export-30-10-2026.csv",
+      "insertions": 0,
       "deletions": 0
     },
     {
-      "status": "A",
-      "path": "src/server/path-a/airlock-release.ts",
-      "insertions": 96,
+      "status": "??",
+      "path": "scripts/ops/audit-katana-recipes.ts",
+      "insertions": 0,
       "deletions": 0
     },
     {
-      "status": "A",
-      "path": "tests/factory-airlock-migration.test.ts",
-      "insertions": 180,
-      "deletions": 0
-    },
-    {
-      "status": "A",
-      "path": "tests/factory-airlock-release.test.ts",
-      "insertions": 794,
+      "status": "??",
+      "path": "tests/woo-webhook-receiver.test.ts",
+      "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 4,
-      "deletions": 3
+      "insertions": 12,
+      "deletions": 27
     },
     {
       "status": "M",
@@ -54,84 +48,23 @@
     },
     {
       "status": "M",
-      "path": "docs/AIRLOCK_DUAL_APPROVAL.md",
+      "path": ".gitignore",
       "insertions": 3,
-      "deletions": 3
+      "deletions": 0
     },
     {
       "status": "M",
       "path": "package.json",
       "insertions": 1,
       "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/inngest/factory-airlock.ts",
-      "insertions": 341,
-      "deletions": 57
-    },
-    {
-      "status": "M",
-      "path": "src/inngest/functions.ts",
-      "insertions": 5,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/migrations/meta/_journal.json",
-      "insertions": 7,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/schema.ts",
-      "insertions": 1,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/server/path-a/events.ts",
-      "insertions": 16,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/server/path-a/release-request.ts",
-      "insertions": 42,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/server/path-a/release-store.ts",
-      "insertions": 25,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "tests/path-a-events.test.ts",
-      "insertions": 48,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "tests/path-a-release-request.test.ts",
-      "insertions": 42,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "tests/path-a-static-guards.test.ts",
-      "insertions": 30,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "tests/phase15-po-receipt-ledger.test.ts",
-      "insertions": 2,
-      "deletions": 2
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "6a20979d44f39dc5a84b8259785e0e92f33c1b517e8396cea35450e1e36a0b9c",
+  "untracked": [
+    "data_migration/Primeview/product_export_import_headers.csv",
+    "data_migration/Primeview/wc-product-export-30-10-2026.csv",
+    "scripts/ops/audit-katana-recipes.ts",
+    "tests/woo-webhook-receiver.test.ts"
+  ],
+  "file_list_sha256": "28d62d5972b2c10f935296c2d803fa2d07dffe0b0b6f76103ed3f49b96ec803c",
   "notes": ""
 }

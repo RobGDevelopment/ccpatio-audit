@@ -48,6 +48,9 @@ next-env.d.ts
 # quarantined legacy bloat (local only — not tracked)
 _ARCHIVE_TO_REMOVE_/
 
+# Customer factory orders (names, addresses) — local working copies only
+docs/NewWIP/
+
 .vercel
 
 # Isolated 3D WebGL Sandbox
