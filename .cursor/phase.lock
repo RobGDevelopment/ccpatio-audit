@@ -1,27 +1,17 @@
 {
-  "phase_id": "pipe-hardening",
-  "intent": "Deterministic Woo→Katana pipe hardening: soft-delete variant fallback, ^FRM- frame recognition, sku_aliases pre-resolution, finish-key aliases, ACF add-on resolution, third_party_sources resale MO bypass.",
+  "phase_id": "hub-phase1-data",
+  "intent": "Additive Hub enablement for all 102 unique Phase 1 SOW rows: Katana variant relink, web_sellable finishes, third_party_sources resale, sku_aliases, FGC weight/dims/MSRP + sync_to_woo, and dry-run BOM blueprint for Chunk C2.",
   "mode": "edit",
-  "base_ref": "67b9882",
+  "base_ref": "8f71897",
   "allow_dirty_base": false,
   "override_blast_cap": true,
-  "expected_blast_radius": 14,
-  "target_test": "npx vitest run tests/woo-sku-resolver.test.ts tests/woo-finish-keys.test.ts tests/woo-order-saga.test.ts tests/woo-katana-bind.test.ts tests/woo-webhook-receiver.test.ts",
+  "expected_blast_radius": 4,
+  "target_test": "npx dotenv -e .env.local -- vitest run tests/phase1-hub-data.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/session-stamp.json",
     ".cursor/aar.json",
-    "src/lib/katana.ts",
-    "src/server/woocommerce/sku-resolver.ts",
-    "src/server/woocommerce/finish-keys.ts",
-    "src/server/woocommerce/line-specs.ts",
-    "src/inngest/woo-order.ts",
-    "tests/helpers/woo-fakes.ts",
-    "tests/woo-sku-resolver.test.ts",
-    "tests/woo-finish-keys.test.ts",
-    "tests/woo-line-specs.test.ts",
-    "tests/woo-order-saga.test.ts",
-    "tests/woo-katana-bind.test.ts",
-    "tests/woo-webhook-route.test.ts"
+    "scripts/ops/enable-phase1-hub-data.ts",
+    "tests/phase1-hub-data.test.ts"
   ]
 }

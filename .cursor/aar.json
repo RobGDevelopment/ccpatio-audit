@@ -1,101 +1,44 @@
 {
-  "phase_id": "pipe-hardening",
-  "base_ref": "67b9882",
-  "blast_radius": 14,
+  "phase_id": "hub-phase1-data",
+  "base_ref": "8f71897",
+  "blast_radius": 4,
   "counts": {
-    "files": 14,
-    "tracked": 14,
-    "untracked": 0,
-    "insertions": 860,
-    "deletions": 170
+    "files": 4,
+    "tracked": 2,
+    "untracked": 2,
+    "insertions": 8,
+    "deletions": 18
   },
   "files": [
     {
+      "status": "??",
+      "path": "scripts/ops/enable-phase1-hub-data.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/phase1-hub-data.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 18,
-      "deletions": 13
+      "insertions": 7,
+      "deletions": 17
     },
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
       "insertions": 1,
       "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/inngest/woo-order.ts",
-      "insertions": 4,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/lib/katana.ts",
-      "insertions": 102,
-      "deletions": 26
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/finish-keys.ts",
-      "insertions": 41,
-      "deletions": 28
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/line-specs.ts",
-      "insertions": 87,
-      "deletions": 5
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/sku-resolver.ts",
-      "insertions": 241,
-      "deletions": 81
-    },
-    {
-      "status": "M",
-      "path": "tests/helpers/woo-fakes.ts",
-      "insertions": 19,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-finish-keys.test.ts",
-      "insertions": 19,
-      "deletions": 7
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-katana-bind.test.ts",
-      "insertions": 90,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-line-specs.test.ts",
-      "insertions": 52,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-order-saga.test.ts",
-      "insertions": 45,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-sku-resolver.test.ts",
-      "insertions": 136,
-      "deletions": 3
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-webhook-route.test.ts",
-      "insertions": 5,
-      "deletions": 4
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "2c3853aa28cb2953b9ff10a94ac78a498bc7958f8de83590b92d70a0ee4d6675",
+  "untracked": [
+    "scripts/ops/enable-phase1-hub-data.ts",
+    "tests/phase1-hub-data.test.ts"
+  ],
+  "file_list_sha256": "493038f76ea89434c4ac7c41e52a5f62f794ddcf939a62c4d830f3c68ac26360",
   "notes": ""
 }
