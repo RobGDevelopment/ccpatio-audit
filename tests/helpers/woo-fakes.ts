@@ -67,17 +67,25 @@ export const DEFAULT_RECIPE = [
 export function makeHub(opts: {
   records?: Map<string, SkuRecord>;
   recipes?: Map<string, string[]>;
+  aliases?: Map<string, string>;
+  thirdParty?: Set<string>;
 } = {}): WooResolveDeps & {
   records: Map<string, SkuRecord>;
   recipes: Map<string, string[]>;
+  aliases: Map<string, string>;
+  thirdParty: Set<string>;
   lookups: string[][];
 } {
   const records = opts.records ?? defaultRecords();
   const recipes = opts.recipes ?? new Map([[BASE_SKU, DEFAULT_RECIPE]]);
+  const aliases = opts.aliases ?? new Map<string, string>();
+  const thirdParty = opts.thirdParty ?? new Set<string>();
   const lookups: string[][] = [];
   return {
     records,
     recipes,
+    aliases,
+    thirdParty,
     lookups,
     async lookupSkus(skus) {
       lookups.push([...skus]);
@@ -90,6 +98,17 @@ export function makeHub(opts: {
     },
     async recipeSkus(sku) {
       return recipes.get(sku) ?? [];
+    },
+    async resolveAliases(skus) {
+      const out = new Map<string, string>();
+      for (const sku of skus) {
+        const canonical = aliases.get(sku);
+        if (canonical) out.set(sku, canonical);
+      }
+      return out;
+    },
+    async isThirdParty(sku) {
+      return thirdParty.has(sku);
     },
   };
 }

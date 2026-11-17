@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { deriveRecipeSlots, resolveWooOrder } from "@/server/woocommerce/sku-resolver";
+import {
+  deriveRecipeSlots,
+  isFrameBearingSku,
+  resolveWooOrder,
+} from "@/server/woocommerce/sku-resolver";
 import {
   BASE_SKU,
   DEFAULT_RECIPE,
@@ -22,6 +26,7 @@ describe("deriveRecipeSlots", () => {
       fabric: true,
       powder_coat: true,
       frame: true,
+      dekton: false,
       frameSwappable: false,
       unsupportedPlaceholders: [],
     });
@@ -34,9 +39,24 @@ describe("deriveRecipeSlots", () => {
     expect(slots.powder_coat).toBe(false);
   });
 
+  it("recognizes ^FRM- children as frame-bearing modular recipes", () => {
+    expect(isFrameBearingSku("FRM-BRK-BAR-36X36")).toBe(true);
+    expect(isFrameBearingSku("SA-TST-CHA-FRAME")).toBe(true);
+    expect(isFrameBearingSku("CSS-BRV-CUSH")).toBe(false);
+    const slots = deriveRecipeSlots(["FRM-BRK-DIN-42X42", "RM-DKT-GENERIC-SLAB"]);
+    expect(slots.frame).toBe(true);
+    expect(slots.dekton).toBe(true);
+    expect(slots.unsupportedPlaceholders).toEqual([]);
+  });
+
+  it("RM-DKT-GENERIC-SLAB is a supported dekton placeholder (no false quarantine)", () => {
+    expect(deriveRecipeSlots(["RM-DKT-GENERIC-SLAB", "RM-FAB-GENERIC"]).unsupportedPlaceholders).toEqual([]);
+    expect(deriveRecipeSlots(["RM-DKT-GENERIC-SLAB", "RM-FAB-GENERIC"]).dekton).toBe(true);
+  });
+
   it("lists placeholders B1 cannot bind", () => {
-    expect(deriveRecipeSlots(["RM-DKT-GENERIC-SLAB", "RM-FAB-GENERIC"]).unsupportedPlaceholders).toEqual([
-      "RM-DKT-GENERIC-SLAB",
+    expect(deriveRecipeSlots(["RM-UNKNOWN-GENERIC", "RM-FAB-GENERIC"]).unsupportedPlaceholders).toEqual([
+      "RM-UNKNOWN-GENERIC",
     ]);
   });
 });
@@ -152,5 +172,118 @@ describe("resolveWooOrder", () => {
       requireKatanaIds: false,
     });
     expect(res.ok).toBe(true);
+  });
+
+  it("resolves sku_aliases (-ALU / -CNT) to the canonical Hub SKU before authority lookup", async () => {
+    const hub = makeHub({
+      aliases: new Map([
+        [`${BASE_SKU}-ALU`, BASE_SKU],
+        ["FIN-WFT-FLY-BST-18X18-CNT", BASE_SKU],
+      ]),
+    });
+    const alu = await resolveWooOrder(
+      wooOrder({ line_items: [wooLine({ sku: `${BASE_SKU}-ALU` })] }),
+      hub,
+      { requireKatanaIds: false },
+    );
+    expect(alu.ok).toBe(true);
+    if (!alu.ok) return;
+    expect(alu.lines[0]!.spec.sku).toBe(BASE_SKU);
+
+    const cnt = await resolveWooOrder(
+      wooOrder({ line_items: [wooLine({ sku: "FIN-WFT-FLY-BST-18X18-CNT" })] }),
+      hub,
+      { requireKatanaIds: false },
+    );
+    expect(cnt.ok).toBe(true);
+    if (!cnt.ok) return;
+    expect(cnt.lines[0]!.spec.sku).toBe(BASE_SKU);
+  });
+
+  it("third_party_sources resale skips empty-recipe quarantine and marks skipMo", async () => {
+    const resaleSku = "FIN-TJM-TAB";
+    const records = defaultRecords();
+    records.set(
+      resaleSku,
+      skuRecord(resaleSku, {
+        itemType: "finished_good",
+        syncToWoo: true,
+        hasCatalogRow: true,
+        katanaVariantId: 777,
+      }),
+    );
+    const hub = makeHub({
+      records,
+      recipes: new Map(),
+      thirdParty: new Set([resaleSku]),
+    });
+    const res = await resolveWooOrder(
+      wooOrder({
+        line_items: [wooLine({ sku: resaleSku, meta_data: [] })],
+      }),
+      hub,
+      { requireKatanaIds: false },
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.lines).toHaveLength(1);
+    expect(res.lines[0]!.skipMo).toBe(true);
+    expect(res.lines[0]!.finishes).toEqual([]);
+  });
+
+  it("mapped ACF add-on SKUs append as extra resolved SO lines; bare '1' quarantines", async () => {
+    const addonSku = "FIN-ADD-CASTERS";
+    const records = defaultRecords();
+    records.set(
+      addonSku,
+      skuRecord(addonSku, {
+        itemType: "finished_good",
+        syncToWoo: true,
+        hasCatalogRow: true,
+        katanaVariantId: 880,
+      }),
+    );
+    const hub = makeHub({ records, thirdParty: new Set([addonSku]) });
+
+    const mapped = await resolveWooOrder(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [
+              { key: "fabric", value: FAB_SKU },
+              { key: "powder_coat", value: PWD_SKU },
+              { key: "frame", value: "MET-ALUM" },
+              { key: "casters", value: addonSku },
+            ],
+          }),
+        ],
+      }),
+      hub,
+      { requireKatanaIds: false },
+    );
+    expect(mapped.ok).toBe(true);
+    if (!mapped.ok) return;
+    expect(mapped.lines).toHaveLength(2);
+    expect(mapped.lines[0]!.spec.sku).toBe(BASE_SKU);
+    expect(mapped.lines[1]!.spec.sku).toBe(addonSku);
+    expect(mapped.lines[1]!.skipMo).toBe(true);
+
+    const unmapped = await resolveWooOrder(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [
+              { key: "fabric", value: FAB_SKU },
+              { key: "powder_coat", value: PWD_SKU },
+              { key: "frame", value: "MET-ALUM" },
+              { key: "casters", value: "1" },
+            ],
+          }),
+        ],
+      }),
+      hub,
+      { requireKatanaIds: false },
+    );
+    expect(messages(unmapped).some((m) => /Add-on "casters".*no mapped add-on SKU/.test(m))).toBe(true);
   });
 });

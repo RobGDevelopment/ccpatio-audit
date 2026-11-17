@@ -28,7 +28,57 @@ describe("extractWooLineSpecs", () => {
         sku: BASE_SKU,
         quantity: 3,
         finishes: { fabric: FAB_SKU, powder_coat: "PWD-BLK", frame: "MET-STEEL" },
+        addons: [],
       },
+    ]);
+  });
+
+  it("accepts fabric_sku / frame_material aliases as finish slots", () => {
+    const { specs, issues } = extractWooLineSpecs(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [
+              { key: "fabric_sku", value: FAB_SKU },
+              { key: "powder_coat", value: "PWD-BLK" },
+              { key: "frame_material", value: "MET-ALUM" },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(issues).toEqual([]);
+    expect(specs[0]!.finishes).toEqual({
+      fabric: FAB_SKU,
+      powder_coat: "PWD-BLK",
+      frame: "MET-ALUM",
+    });
+  });
+
+  it("parses ACF add-ons: SKU-valued and truthy flags; ignores 0/empty", () => {
+    const { specs, issues } = extractWooLineSpecs(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [
+              { key: "fabric", value: FAB_SKU },
+              { key: "powder_coat", value: "PWD-BLK" },
+              { key: "frame", value: "MET-ALUM" },
+              { key: "casters", value: "1" },
+              { key: "arms", value: "0" },
+              { key: "ironwood", value: "" },
+              { key: "dekton_sidearm", value: "FIN-ADD-DKT-SIDE" },
+              { key: "fly_tables", value: "true" },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(issues).toEqual([]);
+    expect(specs[0]!.addons).toEqual([
+      { key: "casters", rawValue: "1", sku: null },
+      { key: "dekton_sidearm", rawValue: "FIN-ADD-DKT-SIDE", sku: "FIN-ADD-DKT-SIDE" },
+      { key: "fly_tables", rawValue: "true", sku: null },
     ]);
   });
 
@@ -64,7 +114,7 @@ describe("extractWooLineSpecs", () => {
     const { issues } = extractWooLineSpecs(
       wooOrder({ line_items: [wooLine({ meta_data: [{ key: "cushion_fabric", value: "FAB-A" }] })] }),
     );
-    expect(issues[0]!.message).toContain("fabric, powder_coat, frame");
+    expect(issues[0]!.message).toContain("fabric, powder_coat, frame, dekton");
     expect(issues[0]!.message).toContain("Use: fabric");
   });
 
@@ -79,5 +129,6 @@ describe("extractWooLineSpecs", () => {
   it("wooLineKey is the Woo line id, or idx<position> when Woo sent none", () => {
     expect(wooLineKey({ index: 2, wooLineItemId: 77 })).toBe("77");
     expect(wooLineKey({ index: 2, wooLineItemId: null })).toBe("idx2");
+    expect(wooLineKey({ index: 2, wooLineItemId: 77, addonKey: "casters" })).toBe("77:addon:casters");
   });
 });

@@ -122,7 +122,46 @@ export type KatanaVariantRecord = {
   material_id: number | null;
   purchase_price: number | null;
   sales_price: number | null;
+  /** Katana soft-delete stamp. Live lookups must ignore non-null values. */
+  deleted_at: string | null;
 };
+
+/** True when the variant is usable for SO/MO binding (not soft-deleted). */
+export function isLiveKatanaVariant(
+  record: Pick<KatanaVariantRecord, "deleted_at"> | { deleted_at?: string | null },
+): boolean {
+  const deleted = record.deleted_at;
+  return deleted == null || String(deleted).trim() === "";
+}
+
+/**
+ * Pure soft-delete fallback: prefer a live hub-mapped variant; if that id is soft-deleted /
+ * missing, fall back to a live SKU lookup; fail loud when neither exists.
+ */
+export function resolveLiveVariantId(opts: {
+  sku: string;
+  hubVariantId: number | null;
+  byId: KatanaVariantRecord | null;
+  bySku: KatanaVariantRecord | null;
+}): number {
+  const needle = opts.sku.trim().toUpperCase();
+  if (opts.byId && isLiveKatanaVariant(opts.byId)) {
+    return opts.byId.id;
+  }
+  if (opts.bySku && isLiveKatanaVariant(opts.bySku)) {
+    return opts.bySku.id;
+  }
+  if (opts.hubVariantId != null) {
+    throw new KatanaApiError(
+      `Hub katana_variant_id ${opts.hubVariantId} is soft-deleted or missing and no live Katana variant exists for SKU ${needle}.`,
+      { status: 422 },
+    );
+  }
+  throw new KatanaApiError(
+    `No Katana variant found for SKU ${needle}. Sync the product dictionary first.`,
+    { status: 422 },
+  );
+}
 
 export type KatanaSyncResult =
   | {
@@ -493,6 +532,7 @@ export async function katanaFetch<T = unknown>(
 }
 
 function mapVariant(row: Record<string, unknown>): KatanaVariantRecord {
+  const deletedRaw = row.deleted_at;
   return {
     id: Number(row.id),
     sku: String(row.sku ?? ""),
@@ -504,6 +544,10 @@ function mapVariant(row: Record<string, unknown>): KatanaVariantRecord {
     purchase_price:
       row.purchase_price == null ? null : Number(row.purchase_price),
     sales_price: row.sales_price == null ? null : Number(row.sales_price),
+    deleted_at:
+      deletedRaw == null || String(deletedRaw).trim() === ""
+        ? null
+        : String(deletedRaw),
   };
 }
 
@@ -530,6 +574,9 @@ export async function findVariantBySku(
       continue;
     }
     const variant = mapVariant(record);
+    if (!isLiveKatanaVariant(variant)) {
+      continue;
+    }
     if (variant.sku.toUpperCase() === needle.toUpperCase()) {
       return variant;
     }
@@ -548,14 +595,18 @@ export async function findVariantById(
   try {
     const { data } = await katanaFetch<unknown>(`/variants/${id}`);
     const record = asRecord(data);
-    if (!record?.id) {
-      const wrapped = asRecord(asRecord(data)?.data);
-      if (!wrapped?.id) {
-        return null;
+    const mapped = (() => {
+      if (!record?.id) {
+        const wrapped = asRecord(asRecord(data)?.data);
+        if (!wrapped?.id) return null;
+        return mapVariant(wrapped);
       }
-      return mapVariant(wrapped);
+      return mapVariant(record);
+    })();
+    if (!mapped || !isLiveKatanaVariant(mapped)) {
+      return null;
     }
-    return mapVariant(record);
+    return mapped;
   } catch {
     return null;
   }
@@ -1098,11 +1149,38 @@ export async function ensureKatanaVariantForSku(
   }
 
   if (mapping.katana_variant_id != null) {
+    const byId = await findVariantById(mapping.katana_variant_id);
+    if (!byId) {
+      // Soft-deleted or missing hub id: fall back to live SKU lookup before recreating.
+      const bySku = await findVariantBySku(needle);
+      if (!bySku) {
+        return {
+          ok: false,
+          error: `Hub katana_variant_id ${mapping.katana_variant_id} is soft-deleted or missing and no live Katana variant exists for SKU ${needle}.`,
+        };
+      }
+      await db
+        .update(sku_mappings)
+        .set({
+          katana_variant_id: bySku.id,
+          katana_material_id: bySku.material_id,
+          updated_at: new Date(),
+          version: mapping.version + 1,
+        })
+        .where(eq(sku_mappings.global_sku, needle));
+      return {
+        ok: true,
+        action: "updated",
+        sku: needle,
+        variantId: bySku.id,
+        materialId: bySku.material_id,
+        message: `Hub katana_variant_id ${mapping.katana_variant_id} was soft-deleted; rebound ${needle} to live variant ${bySku.id}.`,
+      };
+    }
+
     let materialId = mapping.katana_material_id;
     if (effectiveType === "raw_material" && materialId == null) {
-      const live =
-        (await findVariantById(mapping.katana_variant_id)) ??
-        (await findVariantBySku(needle));
+      const live = byId ?? (await findVariantBySku(needle));
       if (live?.material_id != null) {
         materialId = live.material_id;
         await db
@@ -1559,9 +1637,14 @@ export function mapWooOrderToKatanaSalesOrder(
   order: WooOrderWebhook,
   lines?: ResolvedWooLine[],
 ): KatanaSalesOrderPayload {
-  const resolved: Array<Pick<ResolvedWooLine, "spec" | "finishes">> =
+  const resolved: Array<Pick<ResolvedWooLine, "spec" | "finishes" | "addons" | "skipMo">> =
     lines ??
-    extractWooLineSpecs(order).specs.map((spec) => ({ spec, finishes: [] }));
+    extractWooLineSpecs(order).specs.map((spec) => ({
+      spec,
+      finishes: [],
+      addons: [],
+      skipMo: false,
+    }));
 
   const billing = order.billing;
   const shipping = order.shipping;
@@ -1577,11 +1660,13 @@ export function mapWooOrderToKatanaSalesOrder(
     wooAddressToKatana(billing ? { ...billing, phone: undefined } : undefined, "shipping");
   const addresses = shippingAddress ? [shippingAddress] : [];
 
-  const lineSummaries = resolved.map(({ spec, finishes }, i) => {
+  // Caller expands mapped ACF add-ons into their own ResolvedWooLine entries (1 SO row each).
+  const lineSummaries = resolved.map(({ spec, finishes, addons }, i) => {
     const parts = finishes.map((f) =>
       f.mode === "attribute_only" ? `${f.slot}=${f.sku} [attribute only]` : `${f.slot}=${f.sku}`,
     );
-    return `L${i + 1} ${spec.sku} x${spec.quantity}${parts.length ? ` ${parts.join(" ")}` : ""}`;
+    const addonParts = (addons ?? []).map((a) => `addon_${a.key}=${a.sku}`);
+    return `L${i + 1} ${spec.sku} x${spec.quantity}${parts.length ? ` ${parts.join(" ")}` : ""}${addonParts.length ? ` ${addonParts.join(" ")}` : ""}`;
   });
 
   return {
@@ -1753,19 +1838,10 @@ async function resolveVariantIdForSku(sku: string): Promise<number> {
     .where(eq(sku_mappings.global_sku, needle))
     .limit(1);
 
-  if (mapping?.variantId != null) {
-    return mapping.variantId;
-  }
-
-  const variant = await findVariantBySku(needle);
-  if (!variant) {
-    throw new KatanaApiError(
-      `No Katana variant found for SKU ${needle}. Sync the product dictionary first.`,
-      { status: 422 },
-    );
-  }
-
-  return variant.id;
+  const hubVariantId = mapping?.variantId ?? null;
+  const byId = hubVariantId != null ? await findVariantById(hubVariantId) : null;
+  const bySku = await findVariantBySku(needle);
+  return resolveLiveVariantId({ sku: needle, hubVariantId, byId, bySku });
 }
 
 function katanaAddressPayload(

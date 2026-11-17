@@ -1,5 +1,6 @@
 /**
- * Phase B1: extract the manufacturing spec of every line item (base SKU, quantity, finishes).
+ * Phase B1 / pipe-hardening: extract the manufacturing spec of every line item
+ * (base SKU, quantity, finishes, ACF add-ons).
  *
  * Pure: no I/O. The result is the input to `resolveWooOrder` (DB authority) and to the Katana
  * leg. Anything ambiguous is an issue, never a guess.
@@ -12,6 +13,30 @@ import {
 } from "./finish-keys";
 import type { SkuIngressIssue, WooOrderWebhook } from "./ingress.schema";
 
+/** PrimeView ACF add-on meta keys. Truthy / `"1"` / SKU-valued → structured addons[]; `"0"` / empty ignored. */
+export const ACF_ADDON_KEYS: ReadonlySet<string> = new Set([
+  "arms",
+  "arms_8_thick_textile-wrapped",
+  "casters",
+  "dekton_sidearm",
+  "ironwood",
+  "fly_tables",
+  "fly_table",
+  "umbrella_holder",
+  "umbrella_cover",
+]);
+
+export type WooLineAddon = {
+  key: string;
+  /** Raw meta value after trim (e.g. `"1"`, `"true"`, or an add-on SKU). */
+  rawValue: string;
+  /**
+   * When the value is a hub-shaped SKU (`XXX-YYY…`), the normalized SKU.
+   * When the value is a bare truthy flag (`1` / `true` / `yes`), `null` — resolver must map or quarantine.
+   */
+  sku: string | null;
+};
+
 export type WooLineSpec = {
   /** Position in `line_items`. */
   index: number;
@@ -22,6 +47,13 @@ export type WooLineSpec = {
   quantity: number;
   /** Upper-cased finish SKUs by slot. Absent slot = customer did not choose it. */
   finishes: Partial<Record<FinishSlot, string>>;
+  /** Structured ACF add-ons (empty when none). */
+  addons: WooLineAddon[];
+  /**
+   * When this spec is an expanded mapped ACF add-on SO row, the add-on key
+   * (makes `wooLineKey` unique vs the parent line).
+   */
+  addonKey?: string | null;
 };
 
 export type ExtractedLineSpecs = {
@@ -32,12 +64,41 @@ export type ExtractedLineSpecs = {
 function scalarValue(value: unknown): string | null {
   if (typeof value === "string") return value.trim();
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean") return value ? "1" : "0";
   return null;
 }
 
+/** Hub-shaped SKU: at least one hyphenated segment (FIN-…, ADD-…, etc.). */
+export function looksLikeAddonSku(value: string): boolean {
+  return /^[A-Z0-9]+(?:-[A-Z0-9]+)+$/i.test(value.trim());
+}
+
+function isTruthyAddonFlag(value: string): boolean {
+  const v = value.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
+
+function isFalsyAddonFlag(value: string): boolean {
+  const v = value.trim().toLowerCase();
+  return v === "" || v === "0" || v === "false" || v === "no" || v === "off";
+}
+
+function normalizeAddonKey(raw: string): string {
+  let key = raw.trim().toLowerCase().replace(/\s+/g, "_");
+  let prev = "";
+  while (key !== prev) {
+    prev = key;
+    key = key.replace(/^attribute_/, "").replace(/^pa_/, "").replace(/^_/, "");
+  }
+  return key;
+}
+
 /** Stable key used on the Katana SO row attributes to map a row back to its Woo line. */
-export function wooLineKey(spec: Pick<WooLineSpec, "index" | "wooLineItemId">): string {
-  return spec.wooLineItemId !== null ? String(spec.wooLineItemId) : `idx${spec.index}`;
+export function wooLineKey(
+  spec: Pick<WooLineSpec, "index" | "wooLineItemId" | "addonKey">,
+): string {
+  const base = spec.wooLineItemId !== null ? String(spec.wooLineItemId) : `idx${spec.index}`;
+  return spec.addonKey ? `${base}:addon:${spec.addonKey}` : base;
 }
 
 export function extractWooLineSpecs(order: WooOrderWebhook): ExtractedLineSpecs {
@@ -56,17 +117,37 @@ export function extractWooLineSpecs(order: WooOrderWebhook): ExtractedLineSpecs 
 
   order.line_items.forEach((item, index) => {
     const finishes: Partial<Record<FinishSlot, string>> = {};
+    const addons: WooLineAddon[] = [];
 
     item.meta_data.forEach((entry, metaIndex) => {
-      const keyClass = classifyFinishKey(entry.key);
       const keyPath = `line_items.${index}.meta_data.${metaIndex}`;
+      const addonKey = normalizeAddonKey(entry.key);
 
+      if (ACF_ADDON_KEYS.has(addonKey)) {
+        const raw = scalarValue(entry.value);
+        if (raw === null || isFalsyAddonFlag(raw)) return;
+        if (looksLikeAddonSku(raw)) {
+          addons.push({ key: addonKey, rawValue: raw, sku: normalizeSku(raw) });
+          return;
+        }
+        if (isTruthyAddonFlag(raw)) {
+          addons.push({ key: addonKey, rawValue: raw, sku: null });
+          return;
+        }
+        issues.push({
+          path: `${keyPath}.value`,
+          message: `Add-on "${addonKey}" has an unusable value "${raw}". Send "1"/"0" or an add-on SKU.`,
+        });
+        return;
+      }
+
+      const keyClass = classifyFinishKey(entry.key);
       if (keyClass.kind === "ignored") return;
 
       if (keyClass.kind === "rejected") {
         issues.push({
           path: `${keyPath}.key`,
-          message: `Finish key "${entry.key}" is not accepted. The only accepted finish keys are ${FINISH_SLOTS.join(", ")}. Use: ${keyClass.use}.`,
+          message: `Finish key "${entry.key}" is not accepted. The only accepted finish keys are ${FINISH_SLOTS.join(", ")} (aliases: fabric_sku→fabric, frame_material→frame). Use: ${keyClass.use}.`,
         });
         return;
       }
@@ -98,6 +179,7 @@ export function extractWooLineSpecs(order: WooOrderWebhook): ExtractedLineSpecs 
       sku: normalizeSku(item.sku),
       quantity: item.quantity,
       finishes,
+      addons,
     });
   });
 

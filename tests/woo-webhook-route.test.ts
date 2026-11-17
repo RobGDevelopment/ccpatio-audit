@@ -249,12 +249,13 @@ describe("POST /api/webhooks/woocommerce", () => {
       expect(issues.some((i) => /no recipe/.test(i.message))).toBe(true);
     });
 
-    it("a recipe carrying an unsupported placeholder (Dekton) is quarantined", async () => {
+    it("a recipe with RM-DKT-GENERIC-SLAB requires a dekton finish (no false unsupported quarantine)", async () => {
       h.hub.recipes.set(BASE_SKU, ["SA-X-FRAME", "RM-FAB-GENERIC", "RM-PWD-GENERIC", "RM-DKT-GENERIC-SLAB"]);
       const res = await post(wooOrder());
       expect(res.status).toBe(202);
       const issues = h.quarantineOnce.mock.calls[0]![0].issues as Array<{ message: string }>;
-      expect(issues.some((i) => /RM-DKT-GENERIC-SLAB/.test(i.message))).toBe(true);
+      expect(issues.some((i) => /requires a dekton finish/.test(i.message))).toBe(true);
+      expect(issues.some((i) => /cannot bind/.test(i.message))).toBe(false);
     });
 
     it("all SKUs of an order are fetched in ONE batched lookup", async () => {
@@ -264,7 +265,7 @@ describe("POST /api/webhooks/woocommerce", () => {
   });
 
   describe("finish keys", () => {
-    it.each(["cushion_fabric", "powder-coat", "frame_type", "dekton", "pillow"])(
+    it.each(["cushion_fabric", "powder-coat", "frame_type", "pillow"])(
       "the near-miss key %s quarantines the order instead of being dropped",
       async (key) => {
         const res = await post(
@@ -274,7 +275,7 @@ describe("POST /api/webhooks/woocommerce", () => {
         );
         expect(res.status).toBe(202);
         const issues = h.quarantineOnce.mock.calls[0]![0].issues as Array<{ message: string }>;
-        expect(issues.some((i) => /only accepted finish keys are fabric, powder_coat, frame/.test(i.message))).toBe(true);
+        expect(issues.some((i) => /only accepted finish keys are fabric, powder_coat, frame, dekton/.test(i.message))).toBe(true);
         expect(h.send).not.toHaveBeenCalled();
       },
     );

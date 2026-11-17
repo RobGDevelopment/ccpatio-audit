@@ -1,77 +1,101 @@
 {
-  "phase_id": "launch-c2-stale-server-gate",
-  "base_ref": "9053cd1",
-  "blast_radius": 9,
+  "phase_id": "pipe-hardening",
+  "base_ref": "67b9882",
+  "blast_radius": 14,
   "counts": {
-    "files": 9,
-    "tracked": 4,
-    "untracked": 5,
-    "insertions": 45,
-    "deletions": 36
+    "files": 14,
+    "tracked": 14,
+    "untracked": 0,
+    "insertions": 860,
+    "deletions": 170
   },
   "files": [
     {
-      "status": "??",
-      "path": ".cursor/plans/primeview_25_go-live_1cb437b3.plan.md",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "data_migration/Primeview/E-Commerce - Website Product Info - vividworks_phase1_products.csv",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "data_migration/Primeview/E-Commerce - Website Product Info - vividworks_phase2_products.csv",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "scripts/qa/server-freshness.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/server-freshness.test.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 14,
-      "deletions": 11
+      "insertions": 18,
+      "deletions": 13
     },
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
-      "insertions": 2,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "playwright.config.ts",
-      "insertions": 7,
+      "insertions": 1,
       "deletions": 1
     },
     {
       "status": "M",
-      "path": "scripts/qa/proof-of-life.runner.ts",
-      "insertions": 22,
-      "deletions": 22
+      "path": "src/inngest/woo-order.ts",
+      "insertions": 4,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/lib/katana.ts",
+      "insertions": 102,
+      "deletions": 26
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/finish-keys.ts",
+      "insertions": 41,
+      "deletions": 28
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/line-specs.ts",
+      "insertions": 87,
+      "deletions": 5
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/sku-resolver.ts",
+      "insertions": 241,
+      "deletions": 81
+    },
+    {
+      "status": "M",
+      "path": "tests/helpers/woo-fakes.ts",
+      "insertions": 19,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-finish-keys.test.ts",
+      "insertions": 19,
+      "deletions": 7
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-katana-bind.test.ts",
+      "insertions": 90,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-line-specs.test.ts",
+      "insertions": 52,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-order-saga.test.ts",
+      "insertions": 45,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-sku-resolver.test.ts",
+      "insertions": 136,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-webhook-route.test.ts",
+      "insertions": 5,
+      "deletions": 4
     }
   ],
-  "untracked": [
-    ".cursor/plans/primeview_25_go-live_1cb437b3.plan.md",
-    "data_migration/Primeview/E-Commerce - Website Product Info - vividworks_phase1_products.csv",
-    "data_migration/Primeview/E-Commerce - Website Product Info - vividworks_phase2_products.csv",
-    "scripts/qa/server-freshness.ts",
-    "tests/server-freshness.test.ts"
-  ],
-  "file_list_sha256": "67be2e3d2b71414ac112073749890e17664742c119c788a7c1c784094bb78bea",
+  "untracked": [],
+  "file_list_sha256": "2c3853aa28cb2953b9ff10a94ac78a498bc7958f8de83590b92d70a0ee4d6675",
   "notes": ""
 }

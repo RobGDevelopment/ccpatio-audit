@@ -1,27 +1,27 @@
 /**
- * Phase B1: dynamic SKU authority for WooCommerce orders.
+ * Phase B1 / pipe-hardening: dynamic SKU authority for WooCommerce orders.
  *
- * Replaces the deleted static SKU dictionary file. Every SKU on an order is checked
- * against the LIVE hub database (`sku_mappings`, `finished_goods_catalog`, `ecommerce_listings`,
- * `product_bom`). Lookups are batched (one `sku_mappings` query per order, plus one recursive BOM
- * query per distinct base SKU) and injectable so the pure rules are testable without a database.
+ * Every SKU on an order is checked against the LIVE hub database (`sku_mappings`,
+ * `finished_goods_catalog`, `ecommerce_listings`, `product_bom`, `sku_aliases`,
+ * `third_party_sources`). Lookups are batched and injectable so the pure rules are
+ * testable without a database.
  *
- * Rules (operator decisions D3, D5, D6):
- *   base SKU     active, item_type finished_good, has a finished_goods_catalog row, and approved
- *                for web (sku_mappings.sync_to_woo OR a non-archived ecommerce_listings row)
- *   finish SKU   active, item_type raw_material, prefix matches the slot, attributes.web_sellable
- *   required     fabric / powder_coat / frame are REQUIRED when the base SKU's recipe carries the
- *                matching slot, and REJECTED when it does not
- *   recipe       must exist in product_bom and may contain no placeholder B1 cannot bind
+ * Pipe-hardening upgrades:
+ *   - `sku_aliases` pre-resolution (alias_sku → canonical_sku) before Hub authority
+ *   - `^FRM-` frame recognition + Dekton slot (`RM-DKT-GENERIC-SLAB` / `dekton` meta)
+ *   - structured ACF add-on resolution (mapped SKU → SO line; unmapped → quarantine)
+ *   - `third_party_sources` resale: empty BOM allowed; MO/finish-bind skipped downstream
  */
-import { getTableName, inArray, sql, type AnyColumn } from "drizzle-orm";
+import { eq, getTableName, inArray, sql, type AnyColumn } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import { getDb } from "@/server/db/client";
 import { explodeBomTree } from "@/server/db/queries/bom";
 import {
   ecommerce_listings,
   finished_goods_catalog,
+  sku_aliases,
   sku_mappings,
+  third_party_sources,
 } from "@/server/db/schema";
 import {
   FINISH_RULES,
@@ -33,7 +33,7 @@ import {
   type FinishSlot,
 } from "./finish-keys";
 import type { SkuIngressIssue, WooOrderWebhook } from "./ingress.schema";
-import { extractWooLineSpecs, type WooLineSpec } from "./line-specs";
+import { extractWooLineSpecs, type WooLineAddon, type WooLineSpec } from "./line-specs";
 
 export type SkuRecord = {
   sku: string;
@@ -46,11 +46,24 @@ export type SkuRecord = {
   hasActiveListing: boolean;
 };
 
+export type ResolvedAddon = {
+  key: string;
+  sku: string;
+  variantId: number | null;
+};
+
 export type WooResolveDeps = {
   /** Batched `sku_mappings` lookup. Keys are upper-case SKUs; unknown SKUs are absent. */
   lookupSkus(skus: string[]): Promise<Map<string, SkuRecord>>;
   /** Every descendant child SKU in `product_bom` under a finished good (empty = no recipe). */
   recipeSkus(finishedGoodSku: string): Promise<string[]>;
+  /**
+   * Map alias SKUs → canonical Hub SKUs (`sku_aliases`). Missing keys stay as-sent.
+   * Optional for legacy fakes; live deps always provide it.
+   */
+  resolveAliases?(skus: string[]): Promise<Map<string, string>>;
+  /** True when a `third_party_sources` row exists for the canonical SKU (resale / no MO). */
+  isThirdParty?(sku: string): Promise<boolean>;
 };
 
 export type ResolvedFinish = {
@@ -68,6 +81,10 @@ export type ResolvedWooLine = {
   spec: WooLineSpec;
   baseVariantId: number | null;
   finishes: ResolvedFinish[];
+  /** Mapped ACF add-ons that become extra Katana SO rows. */
+  addons: ResolvedAddon[];
+  /** Resale: `third_party_sources` present — create SO, skip MO + finish binding. */
+  skipMo: boolean;
 };
 
 export type WooResolution =
@@ -84,13 +101,21 @@ export type ResolveOptions = {
   requireKatanaIds: boolean;
 };
 
+/** Legacy FRAME segment OR modular `FRM-*` children (Star Leg / Waterfall frames). */
 const FRAME_SEGMENT = /(^|-)FRAME(-|$)/;
+const FRM_PREFIX = /^FRM-/;
+
+export function isFrameBearingSku(sku: string): boolean {
+  const upper = sku.trim().toUpperCase();
+  return FRAME_SEGMENT.test(upper) || FRM_PREFIX.test(upper);
+}
 
 /** Slots a recipe offers, derived from its descendant SKUs. */
 export type RecipeSlots = {
   fabric: boolean;
   powder_coat: boolean;
   frame: boolean;
+  dekton: boolean;
   frameSwappable: boolean;
   unsupportedPlaceholders: string[];
 };
@@ -101,7 +126,8 @@ export function deriveRecipeSlots(recipe: readonly string[]): RecipeSlots {
   return {
     fabric: set.has(FINISH_RULES.fabric.placeholderSku ?? ""),
     powder_coat: set.has(FINISH_RULES.powder_coat.placeholderSku ?? ""),
-    frame: frameSwappable || [...set].some((sku) => FRAME_SEGMENT.test(sku)),
+    frame: frameSwappable || [...set].some((sku) => isFrameBearingSku(sku)),
+    dekton: set.has(FINISH_RULES.dekton.placeholderSku ?? ""),
     frameSwappable,
     unsupportedPlaceholders: [...set].filter(
       (sku) => isGenericPlaceholderSku(sku) && !SUPPORTED_PLACEHOLDER_SKUS.has(sku),
@@ -119,11 +145,44 @@ export async function resolveWooOrder(
   options: ResolveOptions,
 ): Promise<WooResolution> {
   const { specs, issues } = extractWooLineSpecs(order);
+  const aliasCache = new Map<string, string>();
+
+  // Pre-resolve every line SKU (and finish SKUs) through sku_aliases before Hub authority.
+  const aliasNeedles = new Set<string>();
+  for (const spec of specs) {
+    aliasNeedles.add(spec.sku);
+    for (const sku of Object.values(spec.finishes)) if (sku) aliasNeedles.add(sku);
+    for (const addon of spec.addons) if (addon.sku) aliasNeedles.add(addon.sku);
+  }
+  if (deps.resolveAliases && aliasNeedles.size > 0) {
+    const map = await deps.resolveAliases([...aliasNeedles]);
+    for (const [alias, canonical] of map) aliasCache.set(alias, canonical);
+  }
+
+  const rewritten: WooLineSpec[] = specs.map((spec) => {
+    const finishes: WooLineSpec["finishes"] = {};
+    for (const slot of FINISH_SLOTS) {
+      const raw = spec.finishes[slot];
+      if (raw) finishes[slot] = aliasCache.get(raw) ?? raw;
+    }
+    const addons: WooLineAddon[] = spec.addons.map((a) =>
+      a.sku
+        ? { ...a, sku: aliasCache.get(a.sku) ?? a.sku }
+        : a,
+    );
+    return {
+      ...spec,
+      sku: aliasCache.get(spec.sku) ?? spec.sku,
+      finishes,
+      addons,
+    };
+  });
 
   const wanted = new Set<string>();
-  for (const spec of specs) {
+  for (const spec of rewritten) {
     wanted.add(spec.sku);
     for (const sku of Object.values(spec.finishes)) if (sku) wanted.add(sku);
+    for (const addon of spec.addons) if (addon.sku) wanted.add(addon.sku);
   }
   for (const slot of FINISH_SLOTS) {
     const placeholder = FINISH_RULES[slot].placeholderSku;
@@ -132,13 +191,22 @@ export async function resolveWooOrder(
   const records = await deps.lookupSkus([...wanted]);
 
   const recipeCache = new Map<string, RecipeSlots | "empty">();
+  const tpsCache = new Map<string, boolean>();
   const lines: ResolvedWooLine[] = [];
 
-  for (const spec of specs) {
+  const isResale = async (sku: string): Promise<boolean> => {
+    if (tpsCache.has(sku)) return tpsCache.get(sku)!;
+    const flag = deps.isThirdParty ? await deps.isThirdParty(sku) : false;
+    tpsCache.set(sku, flag);
+    return flag;
+  };
+
+  for (const spec of rewritten) {
     const skuPath = `line_items.${spec.index}.sku`;
     const base = records.get(spec.sku);
     const lineIssuesBefore = issues.length;
     let baseOk = false;
+    const skipMo = await isResale(spec.sku);
 
     if (!base) {
       issues.push({ path: skuPath, message: `SKU ${spec.sku} is not in the hub (sku_mappings).` });
@@ -164,7 +232,7 @@ export async function resolveWooOrder(
     }
 
     let slots: RecipeSlots | null = null;
-    if (baseOk) {
+    if (baseOk && !skipMo) {
       let cached = recipeCache.get(spec.sku);
       if (cached === undefined) {
         const recipe = await deps.recipeSkus(spec.sku);
@@ -187,101 +255,161 @@ export async function resolveWooOrder(
     }
 
     const finishes: ResolvedFinish[] = [];
-    for (const slot of FINISH_SLOTS) {
-      const chosen = spec.finishes[slot];
-      const finishPath = `line_items.${spec.index}.finishes.${slot}`;
-      const rule = FINISH_RULES[slot];
+    if (!skipMo) {
+      for (const slot of FINISH_SLOTS) {
+        const chosen = spec.finishes[slot];
+        const finishPath = `line_items.${spec.index}.finishes.${slot}`;
+        const rule = FINISH_RULES[slot];
 
-      if (slots) {
-        const offered = slots[slot];
-        if (!offered && chosen) {
+        if (slots) {
+          const offered = slots[slot];
+          if (!offered && chosen) {
+            issues.push({
+              path: finishPath,
+              message: `SKU ${spec.sku} has no ${slot} slot in its recipe, but ${slot}=${chosen} was sent.`,
+            });
+            continue;
+          }
+          if (offered && !chosen) {
+            issues.push({
+              path: finishPath,
+              message: `SKU ${spec.sku} requires a ${slot} finish. None was sent.`,
+            });
+            continue;
+          }
+        }
+        if (!chosen) continue;
+
+        const finish = records.get(chosen);
+        if (!finish) {
+          issues.push({ path: finishPath, message: `${slot} ${chosen} is not in the hub (sku_mappings).` });
+          continue;
+        }
+        if (!finish.isActive) {
+          issues.push({ path: finishPath, message: `${slot} ${chosen} is inactive in the hub.` });
+          continue;
+        }
+        if (finish.itemType !== "raw_material") {
           issues.push({
             path: finishPath,
-            message: `SKU ${spec.sku} has no ${slot} slot in its recipe, but ${slot}=${chosen} was sent.`,
+            message: `${slot} ${chosen} is item_type "${finish.itemType}", not a raw_material.`,
           });
           continue;
         }
-        if (offered && !chosen) {
+        if (skuPrefix(chosen) !== rule.requiredPrefix) {
           issues.push({
             path: finishPath,
-            message: `SKU ${spec.sku} requires a ${slot} finish. None was sent.`,
+            message: `${slot} must be a ${rule.requiredPrefix}-* SKU. Received ${chosen}.`,
           });
           continue;
         }
-      }
-      if (!chosen) continue;
+        if (!webSellable(finish)) {
+          issues.push({
+            path: finishPath,
+            message: `${slot} ${chosen} is not web_sellable (attributes.web_sellable is not true).`,
+          });
+          continue;
+        }
 
-      const finish = records.get(chosen);
-      if (!finish) {
-        issues.push({ path: finishPath, message: `${slot} ${chosen} is not in the hub (sku_mappings).` });
-        continue;
+        const swappable =
+          slot === "frame" ? Boolean(slots?.frameSwappable) : rule.placeholderSku !== null;
+        const placeholderRecord = rule.placeholderSku
+          ? records.get(rule.placeholderSku)
+          : undefined;
+        const genericVariantId = placeholderRecord?.katanaVariantId ?? null;
+
+        if (options.requireKatanaIds) {
+          if (finish.katanaVariantId === null) {
+            issues.push({
+              path: finishPath,
+              message: `${slot} ${chosen} has no katana_variant_id; it cannot be bound to the MO.`,
+            });
+            continue;
+          }
+          if (swappable && genericVariantId === null) {
+            issues.push({
+              path: finishPath,
+              message: `Placeholder ${rule.placeholderSku} has no katana_variant_id in the hub; ${slot} cannot be swapped.`,
+            });
+            continue;
+          }
+        }
+
+        finishes.push({
+          slot,
+          sku: chosen,
+          variantId: finish.katanaVariantId,
+          placeholderSku: swappable ? rule.placeholderSku : null,
+          genericVariantId: swappable ? genericVariantId : null,
+          mode: swappable ? "swap" : "attribute_only",
+        });
       }
-      if (!finish.isActive) {
-        issues.push({ path: finishPath, message: `${slot} ${chosen} is inactive in the hub.` });
-        continue;
-      }
-      if (finish.itemType !== "raw_material") {
+    }
+
+    const resolvedAddons: ResolvedAddon[] = [];
+    for (const addon of spec.addons) {
+      const addonPath = `line_items.${spec.index}.addons.${addon.key}`;
+      if (!addon.sku) {
         issues.push({
-          path: finishPath,
-          message: `${slot} ${chosen} is item_type "${finish.itemType}", not a raw_material.`,
+          path: addonPath,
+          message: `Add-on "${addon.key}" is selected but has no mapped add-on SKU. Send the add-on SKU in meta_data (not only "1").`,
         });
         continue;
       }
-      if (skuPrefix(chosen) !== rule.requiredPrefix) {
+      const rec = records.get(addon.sku);
+      if (!rec) {
         issues.push({
-          path: finishPath,
-          message: `${slot} must be a ${rule.requiredPrefix}-* SKU. Received ${chosen}.`,
+          path: addonPath,
+          message: `Add-on "${addon.key}" SKU ${addon.sku} is not in the hub (sku_mappings).`,
         });
         continue;
       }
-      if (!webSellable(finish)) {
+      if (!rec.isActive) {
+        issues.push({ path: addonPath, message: `Add-on SKU ${addon.sku} is inactive in the hub.` });
+        continue;
+      }
+      if (rec.itemType !== "finished_good") {
         issues.push({
-          path: finishPath,
-          message: `${slot} ${chosen} is not web_sellable (attributes.web_sellable is not true).`,
+          path: addonPath,
+          message: `Add-on SKU ${addon.sku} is item_type "${rec.itemType}", not a finished_good.`,
         });
         continue;
       }
-
-      const swappable =
-        slot === "frame" ? Boolean(slots?.frameSwappable) : rule.placeholderSku !== null;
-      const placeholderRecord = rule.placeholderSku
-        ? records.get(rule.placeholderSku)
-        : undefined;
-      const genericVariantId = placeholderRecord?.katanaVariantId ?? null;
-
-      if (options.requireKatanaIds) {
-        if (finish.katanaVariantId === null) {
-          issues.push({
-            path: finishPath,
-            message: `${slot} ${chosen} has no katana_variant_id; it cannot be bound to the MO.`,
-          });
-          continue;
-        }
-        if (swappable && genericVariantId === null) {
-          issues.push({
-            path: finishPath,
-            message: `Placeholder ${rule.placeholderSku} has no katana_variant_id in the hub; ${slot} cannot be swapped.`,
-          });
-          continue;
-        }
-      }
-
-      finishes.push({
-        slot,
-        sku: chosen,
-        variantId: finish.katanaVariantId,
-        placeholderSku: swappable ? rule.placeholderSku : null,
-        genericVariantId: swappable ? genericVariantId : null,
-        mode: swappable ? "swap" : "attribute_only",
+      resolvedAddons.push({
+        key: addon.key,
+        sku: addon.sku,
+        variantId: rec.katanaVariantId,
       });
     }
 
     if (issues.length === lineIssuesBefore) {
+      // Parent line (addons cleared — each mapped add-on becomes its own SO row below).
       lines.push({
-        spec,
+        spec: { ...spec, addons: [] },
         baseVariantId: base?.katanaVariantId ?? null,
         finishes,
+        addons: [],
+        skipMo,
       });
+      // Append mapped ACF add-ons as extra resolved lines (Katana SO rows). Unmapped already issued.
+      for (const addon of resolvedAddons) {
+        const addonSkipMo = await isResale(addon.sku);
+        lines.push({
+          spec: {
+            index: spec.index,
+            wooLineItemId: spec.wooLineItemId,
+            sku: addon.sku,
+            quantity: spec.quantity,
+            finishes: {},
+            addons: [],
+            addonKey: addon.key,
+          },
+          baseVariantId: addon.variantId,
+          finishes: [],
+          addons: [{ key: addon.key, sku: addon.sku, variantId: addon.variantId }],
+          skipMo: addonSkipMo,
+        });
+      }
     }
   }
 
@@ -338,6 +466,38 @@ export async function recipeSkusFromHub(finishedGoodSku: string): Promise<string
   return rows.map((row) => row.child_sku);
 }
 
+export async function resolveAliasesFromHub(skus: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (skus.length === 0) return out;
+  const db = getDb();
+  const rows = await db
+    .select({
+      alias: sku_aliases.alias_sku,
+      canonical: sku_aliases.canonical_sku,
+    })
+    .from(sku_aliases)
+    .where(inArray(sku_aliases.alias_sku, skus));
+  for (const row of rows) {
+    out.set(row.alias.toUpperCase(), row.canonical.toUpperCase());
+  }
+  return out;
+}
+
+export async function isThirdPartyFromHub(sku: string): Promise<boolean> {
+  const db = getDb();
+  const [row] = await db
+    .select({ sku: third_party_sources.global_sku })
+    .from(third_party_sources)
+    .where(eq(third_party_sources.global_sku, sku))
+    .limit(1);
+  return Boolean(row);
+}
+
 export function hubResolveDeps(): WooResolveDeps {
-  return { lookupSkus: lookupSkusFromHub, recipeSkus: recipeSkusFromHub };
+  return {
+    lookupSkus: lookupSkusFromHub,
+    recipeSkus: recipeSkusFromHub,
+    resolveAliases: resolveAliasesFromHub,
+    isThirdParty: isThirdPartyFromHub,
+  };
 }

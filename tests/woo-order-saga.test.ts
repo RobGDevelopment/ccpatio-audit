@@ -24,7 +24,16 @@ import {
 } from "@/server/woocommerce/katana-deps";
 import { runWooLedgerLeg } from "@/server/woocommerce/ledger-leg";
 import type { WooResolveDeps } from "@/server/woocommerce/sku-resolver";
-import { BASE_SKU, FAB_SKU, PWD_SKU, VARIANT, makeHub, wooLine, wooOrder as fakeWooOrder } from "./helpers/woo-fakes";
+import {
+  BASE_SKU,
+  FAB_SKU,
+  PWD_SKU,
+  VARIANT,
+  makeHub,
+  skuRecord,
+  wooLine,
+  wooOrder as fakeWooOrder,
+} from "./helpers/woo-fakes";
 
 const DELIVERY = "woo-delivery:d-1";
 
@@ -349,6 +358,41 @@ describe("Woo saga: live path", () => {
     const result = await runWooOrderSaga({ event: { data: wooOrder(1, { number: "ABC-9" }) }, step: memoStep(), deps });
     expect(result).toMatchObject({ orderNo: "WOO-1042" });
     expect(k.state.created[0]).toMatchObject({ orderNo: "WOO-1042" });
+  });
+
+  it("third_party_sources resale creates the SO line but bypasses createMoForRow and finish binding", async () => {
+    const resaleSku = "FIN-TJM-TAB";
+    const hub = makeHub();
+    hub.records.set(
+      resaleSku,
+      skuRecord(resaleSku, {
+        itemType: "finished_good",
+        syncToWoo: true,
+        hasCatalogRow: true,
+        katanaVariantId: 777,
+      }),
+    );
+    hub.thirdParty.add(resaleSku);
+    hub.recipes.delete(resaleSku);
+
+    const { store } = memStore();
+    const k = fakeKatana();
+    const { deps } = makeDeps({ store, katana: k.deps, orderMode: "live", resolve: hub });
+    const result = await runWooOrderSaga({
+      event: {
+        data: wooOrder(1, {
+          line_items: [wooLine({ id: 1, sku: resaleSku, quantity: 1, meta_data: [] })],
+        }),
+      },
+      step: memoStep(),
+      deps,
+    });
+
+    expect(result).toMatchObject({ ok: true, dryRun: false, katanaSalesOrderId: 500 });
+    expect(k.state.created).toHaveLength(1);
+    expect(k.state.moCreates).toEqual([]);
+    expect(k.state.binds).toEqual([]);
+    expect((result as { manufacturingOrderIds: number[] }).manufacturingOrderIds).toEqual([]);
   });
 
   it("binds each swap-mode finish on each row's own MO; the attribute-only frame is never bound", async () => {

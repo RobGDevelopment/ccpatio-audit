@@ -349,6 +349,10 @@ export async function runWooOrderSaga({
     failedLeg = "manufacturing_orders";
     for (const { rowId, lineIndex } of soResult.rowLines) {
       const line = lines[lineIndex];
+      // Resale (`third_party_sources`): create the Katana SO line, bypass MO + finish binding.
+      if (line.skipMo) {
+        continue;
+      }
       const row = await runKatanaStep<MoRowResult>(step, `mto-row-${rowId}`, () =>
         wooKatanaCall(async () => {
           // NOT idempotent at Katana: check for an existing MO on this row BEFORE creating.

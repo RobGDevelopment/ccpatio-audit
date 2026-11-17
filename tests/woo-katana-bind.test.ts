@@ -2,9 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   KatanaApiError,
   bindMtoPlaceholderStrict,
+  findVariantById,
+  findVariantBySku,
+  isLiveKatanaVariant,
   listKatanaManufacturingOrderNodesForSalesOrder,
   mapWooOrderToKatanaSalesOrder,
   pickRootMoNodeForRow,
+  resolveLiveVariantId,
 } from "@/lib/katana";
 import { matchSalesOrderRowsToLines, type KatanaSoRow } from "@/server/woocommerce/katana-deps";
 import { resolveWooOrder } from "@/server/woocommerce/sku-resolver";
@@ -283,6 +287,92 @@ describe("matchSalesOrderRowsToLines", () => {
         l,
       ),
     ).toThrow(/No Katana sales order row carries/);
+  });
+});
+
+describe("soft-delete variant fallback (pipe-hardening)", () => {
+  it("isLiveKatanaVariant treats null/blank deleted_at as live", () => {
+    expect(isLiveKatanaVariant({ deleted_at: null })).toBe(true);
+    expect(isLiveKatanaVariant({ deleted_at: "" })).toBe(true);
+    expect(isLiveKatanaVariant({ deleted_at: "2026-01-01T00:00:00Z" })).toBe(false);
+  });
+
+  it("resolveLiveVariantId falls back to live SKU when hub id is soft-deleted", () => {
+    expect(
+      resolveLiveVariantId({
+        sku: "FIN-X",
+        hubVariantId: 1,
+        byId: null,
+        bySku: {
+          id: 99,
+          sku: "FIN-X",
+          type: "product",
+          product_id: 1,
+          material_id: null,
+          purchase_price: null,
+          sales_price: null,
+          deleted_at: null,
+        },
+      }),
+    ).toBe(99);
+  });
+
+  it("resolveLiveVariantId fails loud when hub id is soft-deleted and no live SKU exists", () => {
+    expect(() =>
+      resolveLiveVariantId({
+        sku: "FIN-X",
+        hubVariantId: 1,
+        byId: null,
+        bySku: null,
+      }),
+    ).toThrow(/soft-deleted or missing/);
+  });
+
+  it("findVariantBySku / findVariantById ignore soft-deleted Katana rows", async () => {
+    vi.stubGlobal("fetch", async (input: unknown) => {
+      const url = new URL(String(input));
+      const path = url.pathname.replace(/^\/v1/, "");
+      if (path === "/variants" && url.searchParams.get("sku") === "FIN-DEL") {
+        return new Response(
+          JSON.stringify({
+            data: [
+              {
+                id: 1,
+                sku: "FIN-DEL",
+                type: "product",
+                deleted_at: "2026-01-01T00:00:00Z",
+              },
+              {
+                id: 2,
+                sku: "FIN-DEL",
+                type: "product",
+                deleted_at: null,
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (path === "/variants/1") {
+        return new Response(
+          JSON.stringify({
+            id: 1,
+            sku: "FIN-DEL",
+            type: "product",
+            deleted_at: "2026-01-01T00:00:00Z",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ error: "unhandled" }), { status: 404 });
+    });
+
+    const bySku = await findVariantBySku("FIN-DEL");
+    expect(bySku?.id).toBe(2);
+    expect(bySku?.deleted_at).toBeNull();
+
+    const byId = await findVariantById(1);
+    expect(byId).toBeNull();
   });
 });
 
