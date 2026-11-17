@@ -1,44 +1,50 @@
 {
-  "phase_id": "launch-c1-workspace-hygiene",
-  "base_ref": "4761f71",
-  "blast_radius": 8,
+  "phase_id": "launch-c2-stale-server-gate",
+  "base_ref": "9053cd1",
+  "blast_radius": 9,
   "counts": {
-    "files": 8,
+    "files": 9,
     "tracked": 4,
-    "untracked": 4,
-    "insertions": 18,
-    "deletions": 30
+    "untracked": 5,
+    "insertions": 45,
+    "deletions": 36
   },
   "files": [
     {
       "status": "??",
-      "path": "data_migration/Primeview/product_export_import_headers.csv",
+      "path": ".cursor/plans/primeview_25_go-live_1cb437b3.plan.md",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "data_migration/Primeview/wc-product-export-30-10-2026.csv",
+      "path": "data_migration/Primeview/E-Commerce - Website Product Info - vividworks_phase1_products.csv",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "scripts/ops/audit-katana-recipes.ts",
+      "path": "data_migration/Primeview/E-Commerce - Website Product Info - vividworks_phase2_products.csv",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/woo-webhook-receiver.test.ts",
+      "path": "scripts/qa/server-freshness.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/server-freshness.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 12,
-      "deletions": 27
+      "insertions": 14,
+      "deletions": 11
     },
     {
       "status": "M",
@@ -48,23 +54,24 @@
     },
     {
       "status": "M",
-      "path": ".gitignore",
-      "insertions": 3,
-      "deletions": 0
+      "path": "playwright.config.ts",
+      "insertions": 7,
+      "deletions": 1
     },
     {
       "status": "M",
-      "path": "package.json",
-      "insertions": 1,
-      "deletions": 1
+      "path": "scripts/qa/proof-of-life.runner.ts",
+      "insertions": 22,
+      "deletions": 22
     }
   ],
   "untracked": [
-    "data_migration/Primeview/product_export_import_headers.csv",
-    "data_migration/Primeview/wc-product-export-30-10-2026.csv",
-    "scripts/ops/audit-katana-recipes.ts",
-    "tests/woo-webhook-receiver.test.ts"
+    ".cursor/plans/primeview_25_go-live_1cb437b3.plan.md",
+    "data_migration/Primeview/E-Commerce - Website Product Info - vividworks_phase1_products.csv",
+    "data_migration/Primeview/E-Commerce - Website Product Info - vividworks_phase2_products.csv",
+    "scripts/qa/server-freshness.ts",
+    "tests/server-freshness.test.ts"
   ],
-  "file_list_sha256": "28d62d5972b2c10f935296c2d803fa2d07dffe0b0b6f76103ed3f49b96ec803c",
+  "file_list_sha256": "67be2e3d2b71414ac112073749890e17664742c119c788a7c1c784094bb78bea",
   "notes": ""
 }

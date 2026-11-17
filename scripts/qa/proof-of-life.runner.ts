@@ -7,6 +7,10 @@ import { sku_mappings as skuMappings } from "../../src/server/db/schema";
 import { eq } from "drizzle-orm";
 import { spawn } from "child_process";
 import net from "net";
+import {
+  probeServerFreshness,
+  readBuildId,
+} from "./server-freshness";
 
 async function isPortInUse(port: number) {
   return new Promise((resolve) => {
@@ -28,24 +32,19 @@ async function run() {
 
   let serverProcess: any = null;
   const targetUrl = "http://localhost:3000";
+  const buildId = readBuildId();
+  console.log(
+    buildId
+      ? `Current .next/BUILD_ID: ${buildId}`
+      : `WARNING: .next/BUILD_ID missing (expected after qa:phase1-build).`,
+  );
 
-  async function waitForHealthyHome(label: string): Promise<boolean> {
+  async function waitForFreshServer(label: string): Promise<boolean> {
     for (let i = 0; i < 30; i++) {
-      try {
-        const r = await fetch(targetUrl);
-        if (r.ok) {
-          const html = await r.text();
-          // Stale `next start` after qa:clean deletes `.next` serves crash HTML.
-          if (
-            !html.includes("This page couldn’t load") &&
-            !html.includes("This page couldn't load")
-          ) {
-            console.log(label);
-            return true;
-          }
-        }
-      } catch {
-        /* still booting */
+      const verdict = await probeServerFreshness(targetUrl, readBuildId());
+      if (verdict.ok) {
+        console.log(`${label} (${verdict.reason})`);
+        return true;
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
@@ -85,23 +84,24 @@ async function run() {
   let isServerStartedByUs = false;
 
   if (portUsed) {
-    const healthy = await waitForHealthyHome(
-      "Server already running on port 3000 and healthy — reusing it...",
-    );
-    if (!healthy) {
+    const freshness = await probeServerFreshness(targetUrl, buildId);
+    if (!freshness.ok) {
       console.warn(
-        "Port 3000 is occupied by an unhealthy server (likely stale after qa:clean). Aborting reuse.",
+        `Port 3000 is occupied by a stale/unhealthy server: ${freshness.reason}`,
       );
       console.error(
         "Free port 3000 (stop the old Next process) and re-run qa:lifecycle.",
       );
       process.exit(1);
     }
+    console.log(
+      `Server already running on port 3000 and fresh — reusing it... (${freshness.reason})`,
+    );
   } else {
     console.log(`Starting Next.js production server on port 3000...`);
     serverProcess = spawnProdServer();
     isServerStartedByUs = true;
-    const booted = await waitForHealthyHome("Server booted successfully.");
+    const booted = await waitForFreshServer("Server booted successfully.");
     if (!booted) {
       console.error("Failed to boot Next.js server. Tests aborted.");
       process.exit(1);

@@ -1,6 +1,7 @@
 import path from "path";
 import * as dotenv from "dotenv";
 import { defineConfig, devices } from "@playwright/test";
+import { readBuildId } from "./scripts/qa/server-freshness";
 
 // .env.test.local must win: seeds and the web server have to share the local Supabase stack, never live.
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
@@ -8,6 +9,11 @@ dotenv.config({
   path: path.resolve(process.cwd(), ".env.test.local"),
   override: true,
 });
+
+// Refuse Playwright reuse when `.next/BUILD_ID` is absent (typical after qa:clean).
+// Authoritative BUILD_ID↔listener freshness is enforced earlier by proof-of-life.runner.ts.
+const nextBuildId = readBuildId();
+const reuseExistingServer = !process.env.CI && Boolean(nextBuildId);
 
 // Ensure Supavisor transaction pooler (port 6543) is used instead of session pooler (5432)
 // to prevent connection exhaustion during concurrent webServer + test execution.
@@ -54,7 +60,7 @@ export default defineConfig({
   webServer: {
     command: "npm run start",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer,
     timeout: 120 * 1000,
     stdout: "pipe",
     stderr: "pipe",

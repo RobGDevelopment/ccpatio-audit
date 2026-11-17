@@ -1,19 +1,22 @@
 {
-  "phase_id": "launch-c1-workspace-hygiene",
-  "intent": "Close the open phase-4 receiver acceptance work: commit the Woo receiver test and the read-only Katana recipe audit, add the receiver test to qa:phase0-unit, keep customer factory-order PDFs (docs/NewWIP) out of git, and track the PrimeView export used by the catalog matcher.",
+  "phase_id": "launch-c2-stale-server-gate",
+  "intent": "Harden qa:lifecycle port-3000 reuse with .next/BUILD_ID freshness check so stale next start after qa:clean cannot pass health checks.",
   "mode": "edit",
-  "base_ref": "4761f71",
+  "base_ref": "9053cd1",
   "allow_dirty_base": true,
-  "override_blast_cap": false,
-  "expected_blast_radius": 8,
-  "target_test": "npx vitest run tests/woo-webhook-receiver.test.ts",
+  "override_blast_cap": true,
+  "expected_blast_radius": 9,
+  "target_test": "npx vitest run tests/server-freshness.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/session-stamp.json",
-    ".gitignore",
-    "package.json",
-    "tests/woo-webhook-receiver.test.ts",
-    "scripts/ops/audit-katana-recipes.ts",
-    "data_migration/Primeview/"
+    ".cursor/aar.json",
+    ".cursor/plans/primeview_25_go-live_1cb437b3.plan.md",
+    "scripts/qa/server-freshness.ts",
+    "scripts/qa/proof-of-life.runner.ts",
+    "playwright.config.ts",
+    "tests/server-freshness.test.ts",
+    "data_migration/Primeview/E-Commerce - Website Product Info - vividworks_phase1_products.csv",
+    "data_migration/Primeview/E-Commerce - Website Product Info - vividworks_phase2_products.csv"
   ]
 }
