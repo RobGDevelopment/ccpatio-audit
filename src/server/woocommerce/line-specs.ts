@@ -26,13 +26,26 @@ export const ACF_ADDON_KEYS: ReadonlySet<string> = new Set([
   "umbrella_cover",
 ]);
 
+/**
+ * Canonical Hub SKUs for ACF checkboxes that send `"1"` / `"yes"` / `"true"` instead of an
+ * explicit FIN-* SKU. Explicit SKU values still win. Keys without a default stay `sku: null`
+ * and quarantine unless the operator later provisions a mapping.
+ */
+export const ACF_ADDON_DEFAULT_SKUS: Readonly<Record<string, string>> = {
+  ironwood: "FIN-ESY-MIS-ADDIRONWOOD",
+  umbrella_cover: "FIN-ESY-MIS-WEATHERPROOFCO",
+  casters: "FIN-ESY-CHS",
+  fly_tables: "FIN-OCN-TAB-34X12",
+  fly_table: "FIN-OCN-TAB-34X12",
+};
+
 export type WooLineAddon = {
   key: string;
   /** Raw meta value after trim (e.g. `"1"`, `"true"`, or an add-on SKU). */
   rawValue: string;
   /**
-   * When the value is a hub-shaped SKU (`XXX-YYY…`), the normalized SKU.
-   * When the value is a bare truthy flag (`1` / `true` / `yes`), `null` — resolver must map or quarantine.
+   * Hub add-on SKU when the meta is an explicit FIN-* value, or when a truthy checkbox maps
+   * through `ACF_ADDON_DEFAULT_SKUS`. `null` only when truthy with no default (quarantine).
    */
   sku: string | null;
 };
@@ -131,7 +144,12 @@ export function extractWooLineSpecs(order: WooOrderWebhook): ExtractedLineSpecs 
           return;
         }
         if (isTruthyAddonFlag(raw)) {
-          addons.push({ key: addonKey, rawValue: raw, sku: null });
+          const defaultSku = ACF_ADDON_DEFAULT_SKUS[addonKey];
+          addons.push({
+            key: addonKey,
+            rawValue: raw,
+            sku: defaultSku ? normalizeSku(defaultSku) : null,
+          });
           return;
         }
         issues.push({

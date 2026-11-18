@@ -193,6 +193,10 @@ export const defaultWooKatanaDeps: WooKatanaDeps = {
   },
 
   async bindPlaceholder({ moId, genericVariantId, specificVariantId, label }) {
+    // Hardcoded Ready-Make powder no-op: customer selected the same PWD-* already on the BOM.
+    if (genericVariantId === specificVariantId) {
+      return { patchedCount: 0, alreadyBound: true };
+    }
     const result = await bindMtoPlaceholderStrict(moId, {
       genericVariantId,
       specificVariantId,

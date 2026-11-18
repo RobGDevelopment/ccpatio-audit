@@ -158,6 +158,7 @@ describe("phase1 csv structural assertions", () => {
 describe("phase1 signed multi-path checkout smoke", () => {
   const hasDb = Boolean(process.env.POSTGRES_URL || process.env.DATABASE_URL);
   const IRONWOOD_ADDON_SKU = "FIN-ESY-MIS-ADDIRONWOOD";
+  const UMBRELLA_COVER_SKU = "FIN-ESY-MIS-WEATHERPROOFCO";
 
   /** Realistic multi-line order covering Make seating/table/pillow + Resale + alias. */
   function phase1SmokeOrder() {
@@ -165,17 +166,16 @@ describe("phase1 signed multi-path checkout smoke", () => {
       id: 910_102,
       number: "910102",
       line_items: [
-        // 1. Upholstered seating Make + mapped ironwood add-on SKU.
-        //    Club chair recipe hardcodes PWD-BLACK (no RM-PWD-GENERIC slot) — omit powder_coat.
-        //    ACF UI may store ironwood "1"; Hub resolve requires the mapped FIN-* add-on SKU.
+        // 1. Club chair Ready-Make: powder swap off hardcoded PWD-BLACK + boolean ironwood.
         wooLine({
           id: 1,
           sku: "FIN-BRV-CLB-CHA-34X34",
           quantity: 1,
           meta_data: [
             { key: "fabric_sku", value: "FAB-ACT-STO" },
+            { key: "powder_coat", value: "PWD-BONE" },
             { key: "frame_material", value: "MET-STEEL" },
-            { key: "ironwood", value: IRONWOOD_ADDON_SKU },
+            { key: "ironwood", value: "1" },
           ],
         }),
         // 2. Restored Make barstool alias (swappable powder via RM-PWD-GENERIC)
@@ -213,12 +213,12 @@ describe("phase1 signed multi-path checkout smoke", () => {
           quantity: 1,
           meta_data: [],
         }),
-        // 5b. Resale Cantilever Umbrella
+        // 5b. Resale Cantilever Umbrella + boolean umbrella_cover checkbox
         wooLine({
           id: 6,
           sku: "FIN-CAN-UMB",
           quantity: 1,
-          meta_data: [],
+          meta_data: [{ key: "umbrella_cover", value: "1" }],
         }),
       ],
     });
@@ -253,7 +253,7 @@ describe("phase1 signed multi-path checkout smoke", () => {
       ).toBe(true);
       if (!resolution.ok) return;
 
-      // Parent Make lines + expanded ironwood add-on line + 2 resale
+      // Parent Make lines + expanded ironwood/cover add-on lines + 2 resale
       const parentSkus = resolution.lines.map((l) => l.spec.sku);
       expect(parentSkus).toContain("FIN-BRV-CLB-CHA-34X34");
       expect(parentSkus).toContain("FIN-WFT-FLY-BST-18X18"); // alias → canonical
@@ -262,6 +262,7 @@ describe("phase1 signed multi-path checkout smoke", () => {
       expect(parentSkus).toContain("FIN-TJM-TAB");
       expect(parentSkus).toContain("FIN-CAN-UMB");
       expect(parentSkus).toContain(IRONWOOD_ADDON_SKU);
+      expect(parentSkus).toContain(UMBRELLA_COVER_SKU);
 
       const bySku = new Map(resolution.lines.map((l) => [l.spec.sku, l]));
       expect(bySku.get("FIN-BRV-CLB-CHA-34X34")!.skipMo).toBe(false);
@@ -270,6 +271,17 @@ describe("phase1 signed multi-path checkout smoke", () => {
       expect(bySku.get("FIN-CAB-MIS-17X17")!.skipMo).toBe(false);
       expect(bySku.get("FIN-TJM-TAB")!.skipMo).toBe(true);
       expect(bySku.get("FIN-CAN-UMB")!.skipMo).toBe(true);
+      expect(bySku.get(IRONWOOD_ADDON_SKU)!.skipMo).toBe(true);
+      expect(bySku.get(UMBRELLA_COVER_SKU)!.skipMo).toBe(true);
+
+      const clubPowder = bySku
+        .get("FIN-BRV-CLB-CHA-34X34")!
+        .finishes.find((f) => f.slot === "powder_coat");
+      expect(clubPowder).toMatchObject({
+        sku: "PWD-BONE",
+        placeholderSku: "PWD-BLACK",
+        mode: "swap",
+      });
 
       // Resale SKUs are the Phase 1 TPS set
       for (const sku of ["FIN-TJM-TAB", "FIN-CAN-UMB"] as const) {

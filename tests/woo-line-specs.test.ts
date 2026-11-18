@@ -76,9 +76,31 @@ describe("extractWooLineSpecs", () => {
     );
     expect(issues).toEqual([]);
     expect(specs[0]!.addons).toEqual([
-      { key: "casters", rawValue: "1", sku: null },
+      { key: "casters", rawValue: "1", sku: "FIN-ESY-CHS" },
       { key: "dekton_sidearm", rawValue: "FIN-ADD-DKT-SIDE", sku: "FIN-ADD-DKT-SIDE" },
-      { key: "fly_tables", rawValue: "true", sku: null },
+      { key: "fly_tables", rawValue: "true", sku: "FIN-OCN-TAB-34X12" },
+    ]);
+  });
+
+  it("maps ironwood/umbrella_cover truthy flags to canonical Hub add-on SKUs", () => {
+    const { specs, issues } = extractWooLineSpecs(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [
+              { key: "ironwood", value: "1" },
+              { key: "umbrella_cover", value: "yes" },
+              { key: "arms", value: "1" },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(issues).toEqual([]);
+    expect(specs[0]!.addons).toEqual([
+      { key: "ironwood", rawValue: "1", sku: "FIN-ESY-MIS-ADDIRONWOOD" },
+      { key: "umbrella_cover", rawValue: "yes", sku: "FIN-ESY-MIS-WEATHERPROOFCO" },
+      { key: "arms", rawValue: "1", sku: null },
     ]);
   });
 

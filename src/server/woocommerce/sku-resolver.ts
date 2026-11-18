@@ -28,12 +28,18 @@ import {
   FINISH_SLOTS,
   FRAME_PLACEHOLDER_SKU,
   isGenericPlaceholderSku,
+  normalizeSku,
   skuPrefix,
   SUPPORTED_PLACEHOLDER_SKUS,
   type FinishSlot,
 } from "./finish-keys";
 import type { SkuIngressIssue, WooOrderWebhook } from "./ingress.schema";
-import { extractWooLineSpecs, type WooLineAddon, type WooLineSpec } from "./line-specs";
+import {
+  ACF_ADDON_DEFAULT_SKUS,
+  extractWooLineSpecs,
+  type WooLineAddon,
+  type WooLineSpec,
+} from "./line-specs";
 
 export type SkuRecord = {
   sku: string;
@@ -117,18 +123,38 @@ export type RecipeSlots = {
   frame: boolean;
   dekton: boolean;
   frameSwappable: boolean;
+  /**
+   * Powder row to swap on the MO tree: prefer `RM-PWD-GENERIC`, else the first hardcoded
+   * `PWD-*` Ready-Make component (66 legacy recipes). `null` when no powder slot.
+   */
+  powderPlaceholderSku: string | null;
   unsupportedPlaceholders: string[];
 };
+
+/** First hardcoded `PWD-*` recipe row (excludes `RM-PWD-GENERIC`). */
+export function findHardcodedPowderSku(recipe: readonly string[]): string | null {
+  for (const raw of recipe) {
+    const sku = raw.trim().toUpperCase();
+    if (/^PWD-/.test(sku)) return sku;
+  }
+  return null;
+}
 
 export function deriveRecipeSlots(recipe: readonly string[]): RecipeSlots {
   const set = new Set(recipe.map((sku) => sku.trim().toUpperCase()));
   const frameSwappable = set.has(FRAME_PLACEHOLDER_SKU);
+  const powderGeneric = FINISH_RULES.powder_coat.placeholderSku ?? "";
+  const hasPowderGeneric = Boolean(powderGeneric && set.has(powderGeneric));
+  const hardcodedPowder = findHardcodedPowderSku([...set]);
   return {
     fabric: set.has(FINISH_RULES.fabric.placeholderSku ?? ""),
-    powder_coat: set.has(FINISH_RULES.powder_coat.placeholderSku ?? ""),
+    powder_coat: hasPowderGeneric || hardcodedPowder !== null,
     frame: frameSwappable || [...set].some((sku) => isFrameBearingSku(sku)),
     dekton: set.has(FINISH_RULES.dekton.placeholderSku ?? ""),
     frameSwappable,
+    powderPlaceholderSku: hasPowderGeneric
+      ? powderGeneric
+      : hardcodedPowder,
     unsupportedPlaceholders: [...set].filter(
       (sku) => isGenericPlaceholderSku(sku) && !SUPPORTED_PLACEHOLDER_SKUS.has(sku),
     ),
@@ -165,11 +191,17 @@ export async function resolveWooOrder(
       const raw = spec.finishes[slot];
       if (raw) finishes[slot] = aliasCache.get(raw) ?? raw;
     }
-    const addons: WooLineAddon[] = spec.addons.map((a) =>
-      a.sku
-        ? { ...a, sku: aliasCache.get(a.sku) ?? a.sku }
-        : a,
-    );
+    const addons: WooLineAddon[] = spec.addons.map((a) => {
+      // Truthy ACF checkboxes may arrive as sku:null; map through defaults before Hub lookup.
+      const mapped =
+        a.sku ??
+        (ACF_ADDON_DEFAULT_SKUS[a.key]
+          ? normalizeSku(ACF_ADDON_DEFAULT_SKUS[a.key]!)
+          : null);
+      if (!mapped) return { ...a, sku: null };
+      const canonical = aliasCache.get(mapped) ?? mapped;
+      return { ...a, sku: canonical };
+    });
     return {
       ...spec,
       sku: aliasCache.get(spec.sku) ?? spec.sku,
@@ -251,6 +283,12 @@ export async function resolveWooOrder(
         });
       } else {
         slots = cached;
+        // Hardcoded Ready-Make powder rows need their katana_variant_id for swaps.
+        const powderPh = slots.powderPlaceholderSku;
+        if (powderPh && !records.has(powderPh)) {
+          const extra = await deps.lookupSkus([powderPh]);
+          for (const [k, v] of extra) records.set(k, v);
+        }
       }
     }
 
@@ -311,10 +349,22 @@ export async function resolveWooOrder(
           continue;
         }
 
-        const swappable =
-          slot === "frame" ? Boolean(slots?.frameSwappable) : rule.placeholderSku !== null;
-        const placeholderRecord = rule.placeholderSku
-          ? records.get(rule.placeholderSku)
+        // Effective placeholder: powder prefers RM-PWD-GENERIC, else hardcoded PWD-* on Ready Makes.
+        const effectivePlaceholderSku =
+          slot === "powder_coat"
+            ? (slots?.powderPlaceholderSku ?? null)
+            : slot === "frame"
+              ? slots?.frameSwappable
+                ? FRAME_PLACEHOLDER_SKU
+                : null
+              : rule.placeholderSku;
+
+        // Identical selection vs hardcoded powder (or generic already bound) → no MO write.
+        const identicalToPlaceholder =
+          effectivePlaceholderSku !== null && chosen === effectivePlaceholderSku;
+        const swappable = effectivePlaceholderSku !== null && !identicalToPlaceholder;
+        const placeholderRecord = effectivePlaceholderSku
+          ? records.get(effectivePlaceholderSku)
           : undefined;
         const genericVariantId = placeholderRecord?.katanaVariantId ?? null;
 
@@ -329,7 +379,7 @@ export async function resolveWooOrder(
           if (swappable && genericVariantId === null) {
             issues.push({
               path: finishPath,
-              message: `Placeholder ${rule.placeholderSku} has no katana_variant_id in the hub; ${slot} cannot be swapped.`,
+              message: `Placeholder ${effectivePlaceholderSku} has no katana_variant_id in the hub; ${slot} cannot be swapped.`,
             });
             continue;
           }
@@ -339,7 +389,7 @@ export async function resolveWooOrder(
           slot,
           sku: chosen,
           variantId: finish.katanaVariantId,
-          placeholderSku: swappable ? rule.placeholderSku : null,
+          placeholderSku: swappable ? effectivePlaceholderSku : null,
           genericVariantId: swappable ? genericVariantId : null,
           mode: swappable ? "swap" : "attribute_only",
         });

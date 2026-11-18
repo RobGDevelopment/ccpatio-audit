@@ -1,17 +1,24 @@
 {
-  "phase_id": "csv-smoke-live",
-  "intent": "Generate PrimeView 169-column Phase 1 import CSV + handoff spec for all 102 SOW items, then certify CSV structure and signed multi-path Woo checkout smoke (Make+Resale+add-ons) under ORDER_PIPELINE_MODE=log.",
+  "phase_id": "ccp-ph1-closeout",
+  "intent": "PrimeView payload bulletproofing (hardcoded PWD-* powder swaps + boolean ACF add-on defaults), CCP-PH1 Phase C SOP/ownership closeout packet, and Phase 2 gate.",
   "mode": "edit",
-  "base_ref": "0cf6a52",
+  "base_ref": "f7d9981",
   "allow_dirty_base": false,
   "override_blast_cap": true,
-  "expected_blast_radius": 4,
-  "target_test": "npx dotenv -e .env.local -- vitest run tests/phase1-csv-and-smoke.test.ts",
+  "expected_blast_radius": 11,
+  "target_test": "npx dotenv -e .env.local -- vitest run tests/phase1-csv-and-smoke.test.ts tests/woo-sku-resolver.test.ts tests/woo-finish-keys.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/session-stamp.json",
     ".cursor/aar.json",
+    "src/server/woocommerce/sku-resolver.ts",
+    "src/server/woocommerce/line-specs.ts",
+    "src/server/woocommerce/katana-deps.ts",
+    "scripts/ops/enable-phase1-hub-data.ts",
     "scripts/ops/generate-primeview-phase1-csv.ts",
-    "tests/phase1-csv-and-smoke.test.ts"
+    "tests/phase1-csv-and-smoke.test.ts",
+    "tests/woo-sku-resolver.test.ts",
+    "tests/woo-line-specs.test.ts",
+    "docs/sop/CCP_PH1_PHASE_C_CLOSEOUT_PACKET.md"
   ]
 }

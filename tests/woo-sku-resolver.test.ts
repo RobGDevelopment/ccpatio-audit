@@ -28,6 +28,7 @@ describe("deriveRecipeSlots", () => {
       frame: true,
       dekton: false,
       frameSwappable: false,
+      powderPlaceholderSku: "RM-PWD-GENERIC",
       unsupportedPlaceholders: [],
     });
   });
@@ -37,6 +38,19 @@ describe("deriveRecipeSlots", () => {
     expect(slots.frame).toBe(true);
     expect(slots.frameSwappable).toBe(true);
     expect(slots.powder_coat).toBe(false);
+    expect(slots.powderPlaceholderSku).toBeNull();
+  });
+
+  it("hardcoded PWD-* Ready-Make recipes expose a swappable powder slot", () => {
+    const slots = deriveRecipeSlots([
+      "ASM-BRV-CLB-CHA-34X34-FRAME",
+      "ASM-BRV-CLB-CHA-34X34-CUSH",
+      "PWD-BLACK",
+      "RM-FAB-GENERIC",
+    ]);
+    expect(slots.powder_coat).toBe(true);
+    expect(slots.powderPlaceholderSku).toBe("PWD-BLACK");
+    expect(slots.fabric).toBe(true);
   });
 
   it("recognizes ^FRM- children as frame-bearing modular recipes", () => {
@@ -231,8 +245,9 @@ describe("resolveWooOrder", () => {
     expect(res.lines[0]!.finishes).toEqual([]);
   });
 
-  it("mapped ACF add-on SKUs append as extra resolved SO lines; bare '1' quarantines", async () => {
+  it("mapped ACF add-on SKUs append as extra resolved SO lines; truthy '1' maps to defaults", async () => {
     const addonSku = "FIN-ADD-CASTERS";
+    const defaultCasters = "FIN-ESY-CHS";
     const records = defaultRecords();
     records.set(
       addonSku,
@@ -243,7 +258,19 @@ describe("resolveWooOrder", () => {
         katanaVariantId: 880,
       }),
     );
-    const hub = makeHub({ records, thirdParty: new Set([addonSku]) });
+    records.set(
+      defaultCasters,
+      skuRecord(defaultCasters, {
+        itemType: "finished_good",
+        syncToWoo: true,
+        hasCatalogRow: true,
+        katanaVariantId: 881,
+      }),
+    );
+    const hub = makeHub({
+      records,
+      thirdParty: new Set([addonSku, defaultCasters]),
+    });
 
     const mapped = await resolveWooOrder(
       wooOrder({
@@ -268,7 +295,7 @@ describe("resolveWooOrder", () => {
     expect(mapped.lines[1]!.spec.sku).toBe(addonSku);
     expect(mapped.lines[1]!.skipMo).toBe(true);
 
-    const unmapped = await resolveWooOrder(
+    const truthy = await resolveWooOrder(
       wooOrder({
         line_items: [
           wooLine({
@@ -284,6 +311,107 @@ describe("resolveWooOrder", () => {
       hub,
       { requireKatanaIds: false },
     );
-    expect(messages(unmapped).some((m) => /Add-on "casters".*no mapped add-on SKU/.test(m))).toBe(true);
+    expect(truthy.ok).toBe(true);
+    if (!truthy.ok) return;
+    expect(truthy.lines).toHaveLength(2);
+    expect(truthy.lines[1]!.spec.sku).toBe(defaultCasters);
+
+    const unmappedKey = await resolveWooOrder(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [
+              { key: "fabric", value: FAB_SKU },
+              { key: "powder_coat", value: PWD_SKU },
+              { key: "frame", value: "MET-ALUM" },
+              { key: "arms", value: "1" },
+            ],
+          }),
+        ],
+      }),
+      hub,
+      { requireKatanaIds: false },
+    );
+    expect(messages(unmappedKey).some((m) => /Add-on "arms".*no mapped add-on SKU/.test(m))).toBe(
+      true,
+    );
+  });
+
+  it("swaps powder against a hardcoded PWD-* Ready-Make row (or no-ops when identical)", async () => {
+    const club = "FIN-BRV-CLB-CHA-34X34";
+    const records = defaultRecords();
+    records.set(
+      club,
+      skuRecord(club, {
+        itemType: "finished_good",
+        syncToWoo: true,
+        hasCatalogRow: true,
+        katanaVariantId: 555,
+      }),
+    );
+    records.set(
+      "PWD-BLACK",
+      skuRecord("PWD-BLACK", { attributes: { web_sellable: true }, katanaVariantId: 310 }),
+    );
+    records.set(
+      "PWD-BONE",
+      skuRecord("PWD-BONE", { attributes: { web_sellable: true }, katanaVariantId: 311 }),
+    );
+    const hub = makeHub({
+      records,
+      recipes: new Map([
+        [club, ["ASM-BRV-CLB-CHA-FRAME", "ASM-BRV-CLB-CHA-CUSH", "PWD-BLACK", "RM-FAB-GENERIC"]],
+      ]),
+    });
+
+    const swap = await resolveWooOrder(
+      wooOrder({
+        line_items: [
+          wooLine({
+            sku: club,
+            meta_data: [
+              { key: "fabric", value: FAB_SKU },
+              { key: "powder_coat", value: "PWD-BONE" },
+              { key: "frame", value: "MET-ALUM" },
+            ],
+          }),
+        ],
+      }),
+      hub,
+      { requireKatanaIds: true },
+    );
+    expect(swap.ok).toBe(true);
+    if (!swap.ok) return;
+    expect(swap.lines[0]!.finishes.find((f) => f.slot === "powder_coat")).toMatchObject({
+      sku: "PWD-BONE",
+      placeholderSku: "PWD-BLACK",
+      genericVariantId: 310,
+      mode: "swap",
+    });
+
+    const identical = await resolveWooOrder(
+      wooOrder({
+        line_items: [
+          wooLine({
+            sku: club,
+            meta_data: [
+              { key: "fabric", value: FAB_SKU },
+              { key: "powder_coat", value: "PWD-BLACK" },
+              { key: "frame", value: "MET-ALUM" },
+            ],
+          }),
+        ],
+      }),
+      hub,
+      { requireKatanaIds: true },
+    );
+    expect(identical.ok).toBe(true);
+    if (!identical.ok) return;
+    expect(identical.lines[0]!.finishes.find((f) => f.slot === "powder_coat")).toMatchObject({
+      sku: "PWD-BLACK",
+      mode: "attribute_only",
+      placeholderSku: null,
+      genericVariantId: null,
+    });
   });
 });

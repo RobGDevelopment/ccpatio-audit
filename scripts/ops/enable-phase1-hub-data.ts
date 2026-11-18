@@ -122,6 +122,71 @@ export const RESALE_VENDOR: Record<
   "FIN-CAN-UMB": { vendor_name: "FIM Shade Systems", vendor_sku: "CANTILEVER", wholesale_cost: "600.0000" },
 };
 
+/**
+ * Canonical Hub SKUs for PrimeView ACF checkbox `"1"` / `"yes"` / `"true"` values.
+ * Empty-BOM / SO-only add-ons also get `third_party_sources` so the Woo saga skips MO.
+ */
+export const PHASE1_ADDON_DEFAULTS: ReadonlyArray<{
+  acfKey: string;
+  sku: string;
+  name: string;
+  /** SO-only add-on (no factory MO). */
+  tps: boolean;
+  vendor_name: string;
+  vendor_sku: string;
+  wholesale_cost: string;
+}> = [
+  {
+    acfKey: "ironwood",
+    sku: "FIN-ESY-MIS-ADDIRONWOOD",
+    name: "ADD IRONWOOD (2 ARMS)",
+    tps: true,
+    vendor_name: "CC Patio Factory Add-On",
+    vendor_sku: "ADDIRONWOOD",
+    wholesale_cost: "100.0000",
+  },
+  {
+    acfKey: "umbrella_cover",
+    sku: "FIN-ESY-MIS-WEATHERPROOFCO",
+    name: "WEATHERPROOF COVERS",
+    tps: true,
+    vendor_name: "CC Patio Cover Add-On",
+    vendor_sku: "WEATHERPROOFCO",
+    wholesale_cost: "50.0000",
+  },
+  {
+    acfKey: "casters",
+    sku: "FIN-ESY-CHS",
+    name: "ADD-ON WHEELS FOR CHAISE LOUNGERS",
+    tps: true,
+    vendor_name: "CC Patio Factory Add-On",
+    vendor_sku: "CHS-WHEELS",
+    wholesale_cost: "100.0000",
+  },
+  {
+    acfKey: "fly_tables",
+    sku: "FIN-OCN-TAB-34X12",
+    name: "FLY TABLE 34X12",
+    tps: false,
+    vendor_name: "CC Patio Factory",
+    vendor_sku: "FLY-34X12",
+    wholesale_cost: "200.0000",
+  },
+  {
+    acfKey: "fly_table",
+    sku: "FIN-OCN-TAB-34X12",
+    name: "FLY TABLE 34X12",
+    tps: false,
+    vendor_name: "CC Patio Factory",
+    vendor_sku: "FLY-34X12",
+    wholesale_cost: "200.0000",
+  },
+];
+
+export const PHASE1_ADDON_SKUS = [
+  ...new Set(PHASE1_ADDON_DEFAULTS.map((a) => a.sku)),
+] as const;
+
 export type SowRow = {
   sowRow: number;
   name: string;
@@ -262,6 +327,14 @@ type PlanAction =
   | { kind: "upsert_frame_finish"; sku: string; name: string }
   | { kind: "relink_variant"; sku: string; from: number | null; to: number }
   | { kind: "upsert_tps"; sku: string }
+  | {
+      kind: "upsert_addon_tps";
+      sku: string;
+      vendor_name: string;
+      vendor_sku: string;
+      wholesale_cost: string;
+    }
+  | { kind: "ensure_addon_active"; sku: string; name: string }
   | { kind: "upsert_alias"; alias_sku: string; canonical_sku: string; reason: string }
   | { kind: "set_sync_to_woo"; sku: string }
   | {
@@ -477,8 +550,25 @@ async function main() {
   const existingTps = await db
     .select({ sku: third_party_sources.global_sku })
     .from(third_party_sources)
-    .where(inArray(third_party_sources.global_sku, [...PHASE1_RESALE_SKUS]));
+    .where(
+      inArray(third_party_sources.global_sku, [
+        ...PHASE1_RESALE_SKUS,
+        ...PHASE1_ADDON_SKUS,
+      ]),
+    );
   const tpsSet = new Set(existingTps.map((t) => t.sku));
+
+  const addonHubRows = await db
+    .select({
+      sku: sku_mappings.global_sku,
+      isActive: sku_mappings.is_active,
+      itemType: sku_mappings.item_type,
+      name: sku_mappings.original_name,
+      vid: sku_mappings.katana_variant_id,
+    })
+    .from(sku_mappings)
+    .where(inArray(sku_mappings.global_sku, [...PHASE1_ADDON_SKUS]));
+  const addonBySku = new Map(addonHubRows.map((r) => [r.sku, r]));
 
   const listings = await db
     .select({
@@ -583,6 +673,26 @@ async function main() {
       throw new Error(`Resale SKU ${sku} not in Phase 1 set`);
     }
     actions.push({ kind: "upsert_tps", sku });
+  }
+
+  // c2) ACF checkbox default add-on SKUs (activate + SO-only TPS where needed)
+  for (const addon of PHASE1_ADDON_DEFAULTS) {
+    const hub = addonBySku.get(addon.sku);
+    if (!hub) {
+      throw new Error(
+        `Missing Hub sku_mappings for ACF default add-on ${addon.acfKey}=${addon.sku}`,
+      );
+    }
+    actions.push({ kind: "ensure_addon_active", sku: addon.sku, name: addon.name });
+    if (addon.tps) {
+      actions.push({
+        kind: "upsert_addon_tps",
+        sku: addon.sku,
+        vendor_name: addon.vendor_name,
+        vendor_sku: addon.vendor_sku,
+        wholesale_cost: addon.wholesale_cost,
+      });
+    }
   }
 
   // d) Aliases
@@ -792,6 +902,48 @@ async function main() {
               wholesale_cost: meta.wholesale_cost,
             });
             tpsSet.add(a.sku);
+          }
+        } else if (a.kind === "upsert_addon_tps") {
+          if (tpsSet.has(a.sku)) {
+            await tx
+              .update(third_party_sources)
+              .set({
+                vendor_name: a.vendor_name,
+                vendor_sku: a.vendor_sku,
+                wholesale_cost: a.wholesale_cost,
+                updated_at: new Date(),
+              })
+              .where(eq(third_party_sources.global_sku, a.sku));
+          } else {
+            await tx.insert(third_party_sources).values({
+              global_sku: a.sku,
+              vendor_name: a.vendor_name,
+              vendor_sku: a.vendor_sku,
+              wholesale_cost: a.wholesale_cost,
+            });
+            tpsSet.add(a.sku);
+          }
+        } else if (a.kind === "ensure_addon_active") {
+          await tx
+            .update(sku_mappings)
+            .set({
+              is_active: true,
+              item_type: "finished_good",
+              original_name: a.name,
+              updated_by: ACTOR,
+              updated_at: new Date(),
+            })
+            .where(eq(sku_mappings.global_sku, a.sku));
+          const fgcExists = await tx
+            .select({ sku: finished_goods_catalog.global_sku })
+            .from(finished_goods_catalog)
+            .where(eq(finished_goods_catalog.global_sku, a.sku))
+            .limit(1);
+          if (!fgcExists.length) {
+            await tx.insert(finished_goods_catalog).values({
+              global_sku: a.sku,
+              updated_by: ACTOR,
+            });
           }
         } else if (a.kind === "upsert_alias") {
           if (aliasSet.has(a.alias_sku)) {

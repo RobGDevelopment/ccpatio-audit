@@ -837,14 +837,22 @@ Body: Woo order JSON. Every purchasable \`line_items[].sku\` must be the **Woo S
 | Meta key accepted | Slot | Example |
 | --- | --- | --- |
 | \`fabric\` **or** \`fabric_sku\` | fabric | \`FAB-ACT-STO\` |
-| \`powder_coat\` | powder | \`PWD-BLACK\` |
+| \`powder_coat\` | powder | \`PWD-BONE\` (required on every powder-eligible Make, including Ready Makes that hardcode \`PWD-BLACK\`) |
 | \`frame\` **or** \`frame_material\` | frame | \`MET-STEEL\` |
-| \`arms\`, \`casters\`, \`dekton_sidearm\`, \`ironwood\`, \`fly_tables\`, \`umbrella_holder\`, \`umbrella_cover\` | add-ons | \`0\`/\`1\` |
+| \`ironwood\` | add-on | \`\"1\"\` / \`\"yes\"\` / \`\"true\"\` **or** \`FIN-ESY-MIS-ADDIRONWOOD\` |
+| \`umbrella_cover\` | add-on | \`\"1\"\` / \`\"yes\"\` / \`\"true\"\` **or** \`FIN-ESY-MIS-WEATHERPROOFCO\` |
+| \`casters\` | add-on | \`\"1\"\` → \`FIN-ESY-CHS\` **or** explicit FIN-* SKU |
+| \`fly_tables\` / \`fly_table\` | add-on | \`\"1\"\` → \`FIN-OCN-TAB-34X12\` **or** explicit FIN-* SKU |
+| \`arms\`, \`arms_8_thick_textile-wrapped\`, \`dekton_sidearm\`, \`umbrella_holder\` | add-ons | send explicit FIN-* SKU (no Hub default yet); \`\"0\"\`/empty ignored |
+
+**Boolean ACF checkboxes:** PrimeView may store \`\"1\"\` / \`\"yes\"\` / \`\"true\"\` when checked. Hub maps those truthy flags to the canonical add-on SKUs above automatically. Explicit FIN-* values still win.
+
+**Powder on Ready Makes:** Recipes that hardcode \`PWD-BLACK\` (no \`RM-PWD-GENERIC\`) still accept \`powder_coat\` — Hub swaps the hardcoded powder row for the selected web_sellable \`PWD-*\` (or no-ops when identical).
 
 Fulfillment routing (Hub authority):
 
 - **Make** (no \`third_party_sources\`): Katana Sales Order **+** Manufacturing Order when \`ORDER_PIPELINE_MODE=live\`
-- **Resale** (\`third_party_sources\` present): Katana Sales Order **only** (MO skipped)
+- **Resale / SO-only add-ons** (\`third_party_sources\` present): Katana Sales Order **only** (MO skipped)
 
 Phase 1 launch gate uses \`ORDER_PIPELINE_MODE=log\` (dry-run saga, zero Katana writes) until smoke passes.
 

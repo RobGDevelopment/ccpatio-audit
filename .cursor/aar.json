@@ -1,44 +1,85 @@
 {
-  "phase_id": "csv-smoke-live",
-  "base_ref": "0cf6a52",
-  "blast_radius": 4,
+  "phase_id": "ccp-ph1-closeout",
+  "base_ref": "f7d9981",
+  "blast_radius": 11,
   "counts": {
-    "files": 4,
-    "tracked": 2,
-    "untracked": 2,
-    "insertions": 8,
-    "deletions": 8
+    "files": 11,
+    "tracked": 10,
+    "untracked": 1,
+    "insertions": 441,
+    "deletions": 40
   },
   "files": [
     {
       "status": "??",
-      "path": "scripts/ops/generate-primeview-phase1-csv.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/phase1-csv-and-smoke.test.ts",
+      "path": "docs/sop/CCP_PH1_PHASE_C_CLOSEOUT_PACKET.md",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 6,
+      "insertions": 13,
       "deletions": 6
     },
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
-      "insertions": 2,
+      "insertions": 1,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "scripts/ops/enable-phase1-hub-data.ts",
+      "insertions": 153,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "scripts/ops/generate-primeview-phase1-csv.ts",
+      "insertions": 11,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/katana-deps.ts",
+      "insertions": 4,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/line-specs.ts",
+      "insertions": 21,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/sku-resolver.ts",
+      "insertions": 63,
+      "deletions": 13
+    },
+    {
+      "status": "M",
+      "path": "tests/phase1-csv-and-smoke.test.ts",
+      "insertions": 19,
+      "deletions": 7
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-line-specs.test.ts",
+      "insertions": 24,
       "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-sku-resolver.test.ts",
+      "insertions": 132,
+      "deletions": 4
     }
   ],
   "untracked": [
-    "scripts/ops/generate-primeview-phase1-csv.ts",
-    "tests/phase1-csv-and-smoke.test.ts"
+    "docs/sop/CCP_PH1_PHASE_C_CLOSEOUT_PACKET.md"
   ],
-  "file_list_sha256": "a3b6a9f7061e0ca64176a59f88f199ccf23b5890828c682602a6206ddb322f12",
+  "file_list_sha256": "9e4cecd4258e5431a239cbb2d2923a254175a47e1610bd4d3212f5bbc5b570bb",
   "notes": ""
 }
