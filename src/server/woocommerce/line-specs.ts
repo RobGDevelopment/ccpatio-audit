@@ -22,14 +22,26 @@ export const ACF_ADDON_KEYS: ReadonlySet<string> = new Set([
   "ironwood",
   "fly_tables",
   "fly_table",
+  "fly_table_13_x_30",
+  "fly_table_12_x_36_welded_on_back",
+  "fly_table_12_x_48_welded_on_back",
   "umbrella_holder",
   "umbrella_cover",
+  "coated_led_weight",
+  "pillow_for_loungers_w_pocket",
+  "base_w_wheels",
+  "base_price",
+  "wheels",
+  "custom_welded_fly_table",
 ]);
 
 /**
  * Canonical Hub SKUs for ACF checkboxes that send `"1"` / `"yes"` / `"true"` instead of an
  * explicit FIN-* SKU. Explicit SKU values still win. Keys without a default stay `sku: null`
  * and quarantine unless the operator later provisions a mapping.
+ *
+ * `custom_welded_fly_table` is intentionally absent — truthy values quarantine with
+ * `custom_quote_addon_requires_sales` (Contact Sales for Pricing).
  */
 export const ACF_ADDON_DEFAULT_SKUS: Readonly<Record<string, string>> = {
   ironwood: "FIN-ESY-MIS-ADDIRONWOOD",
@@ -37,7 +49,22 @@ export const ACF_ADDON_DEFAULT_SKUS: Readonly<Record<string, string>> = {
   casters: "FIN-ESY-CHS",
   fly_tables: "FIN-OCN-TAB-34X12",
   fly_table: "FIN-OCN-TAB-34X12",
+  fly_table_13_x_30: "FIN-OCN-TAB-13X30",
+  fly_table_12_x_36_welded_on_back: "FIN-ESY-MIS-FLYTBL-12X36-WLD",
+  fly_table_12_x_48_welded_on_back: "FIN-ESY-MIS-FLYTBL-12X48-WLD",
+  arms: "FIN-ESY-MIS-ARMS",
+  "arms_8_thick_textile-wrapped": "FIN-ESY-MIS-ARMS-8TEXTILE",
+  dekton_sidearm: "FIN-ESY-MIS-DKT-SIDEARM",
+  umbrella_holder: "FIN-ESY-MIS-UMBHOLDER",
+  coated_led_weight: "FIN-TJM-MIS-ONECOATED",
+  pillow_for_loungers_w_pocket: "FIN-TJM-MIS-PILLOWLOUNGERS",
+  base_w_wheels: "FIN-ESY-MIS-ZENBASE",
+  base_price: "FIN-ESY-MIS-ZENBASE",
+  wheels: "FIN-ESY-CHS",
 };
+
+/** Stable quarantine token for custom-quote welded fly tables. */
+export const CUSTOM_QUOTE_ADDON_REASON = "custom_quote_addon_requires_sales";
 
 export type WooLineAddon = {
   key: string;
@@ -139,6 +166,23 @@ export function extractWooLineSpecs(order: WooOrderWebhook): ExtractedLineSpecs 
       if (ACF_ADDON_KEYS.has(addonKey)) {
         const raw = scalarValue(entry.value);
         if (raw === null || isFalsyAddonFlag(raw)) return;
+
+        // Custom welded fly table is always a sales quote — never a silent SO line.
+        if (addonKey === "custom_welded_fly_table") {
+          if (isTruthyAddonFlag(raw) || looksLikeAddonSku(raw)) {
+            issues.push({
+              path: `${keyPath}.value`,
+              message: `Add-on "custom_welded_fly_table" requires Contact Sales for Pricing (${CUSTOM_QUOTE_ADDON_REASON}).`,
+            });
+          } else {
+            issues.push({
+              path: `${keyPath}.value`,
+              message: `Add-on "${addonKey}" has an unusable value "${raw}". Send "1"/"0" or Contact Sales.`,
+            });
+          }
+          return;
+        }
+
         if (looksLikeAddonSku(raw)) {
           addons.push({ key: addonKey, rawValue: raw, sku: normalizeSku(raw) });
           return;

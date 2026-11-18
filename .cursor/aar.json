@@ -1,85 +1,104 @@
 {
-  "phase_id": "ccp-ph1-closeout",
-  "base_ref": "f7d9981",
-  "blast_radius": 11,
+  "phase_id": "pre-closeout-p0-hardening",
+  "base_ref": "4d4cda1",
+  "blast_radius": 14,
   "counts": {
-    "files": 11,
-    "tracked": 10,
-    "untracked": 1,
-    "insertions": 441,
-    "deletions": 40
+    "files": 14,
+    "tracked": 12,
+    "untracked": 2,
+    "insertions": 835,
+    "deletions": 154
   },
   "files": [
     {
       "status": "??",
-      "path": "docs/sop/CCP_PH1_PHASE_C_CLOSEOUT_PACKET.md",
+      "path": "scripts/ops/remediate-p0-addons-and-asms.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/qa-route-guard.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 13,
-      "deletions": 6
+      "insertions": 16,
+      "deletions": 10
     },
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
-      "insertions": 1,
-      "deletions": 1
+      "insertions": 8,
+      "deletions": 8
+    },
+    {
+      "status": "M",
+      "path": "docs/sop/CCP_PH1_PHASE_C_CLOSEOUT_PACKET.md",
+      "insertions": 59,
+      "deletions": 18
     },
     {
       "status": "M",
       "path": "scripts/ops/enable-phase1-hub-data.ts",
-      "insertions": 153,
-      "deletions": 1
+      "insertions": 108,
+      "deletions": 0
     },
     {
       "status": "M",
       "path": "scripts/ops/generate-primeview-phase1-csv.ts",
-      "insertions": 11,
-      "deletions": 3
+      "insertions": 274,
+      "deletions": 100
     },
     {
       "status": "M",
-      "path": "src/server/woocommerce/katana-deps.ts",
-      "insertions": 4,
+      "path": "scripts/qa/proof-of-life.runner.ts",
+      "insertions": 3,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/app/api/qa-test/route.ts",
+      "insertions": 52,
+      "deletions": 6
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/finish-keys.ts",
+      "insertions": 13,
       "deletions": 0
     },
     {
       "status": "M",
       "path": "src/server/woocommerce/line-specs.ts",
-      "insertions": 21,
-      "deletions": 3
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/sku-resolver.ts",
-      "insertions": 63,
-      "deletions": 13
+      "insertions": 44,
+      "deletions": 0
     },
     {
       "status": "M",
       "path": "tests/phase1-csv-and-smoke.test.ts",
-      "insertions": 19,
-      "deletions": 7
+      "insertions": 200,
+      "deletions": 5
     },
     {
       "status": "M",
       "path": "tests/woo-line-specs.test.ts",
-      "insertions": 24,
+      "insertions": 39,
       "deletions": 2
     },
     {
       "status": "M",
       "path": "tests/woo-sku-resolver.test.ts",
-      "insertions": 132,
-      "deletions": 4
+      "insertions": 19,
+      "deletions": 5
     }
   ],
   "untracked": [
-    "docs/sop/CCP_PH1_PHASE_C_CLOSEOUT_PACKET.md"
+    "scripts/ops/remediate-p0-addons-and-asms.ts",
+    "tests/qa-route-guard.test.ts"
   ],
-  "file_list_sha256": "9e4cecd4258e5431a239cbb2d2923a254175a47e1610bd4d3212f5bbc5b570bb",
+  "file_list_sha256": "4af6ab65b923f28fb3dcea500bf131d929a22151633cc28776ef36e542c3387a",
   "notes": ""
 }

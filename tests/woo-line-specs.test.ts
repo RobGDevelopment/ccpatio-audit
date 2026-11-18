@@ -82,7 +82,7 @@ describe("extractWooLineSpecs", () => {
     ]);
   });
 
-  it("maps ironwood/umbrella_cover truthy flags to canonical Hub add-on SKUs", () => {
+  it("maps ironwood/umbrella_cover/arms truthy flags to canonical Hub add-on SKUs", () => {
     const { specs, issues } = extractWooLineSpecs(
       wooOrder({
         line_items: [
@@ -100,8 +100,45 @@ describe("extractWooLineSpecs", () => {
     expect(specs[0]!.addons).toEqual([
       { key: "ironwood", rawValue: "1", sku: "FIN-ESY-MIS-ADDIRONWOOD" },
       { key: "umbrella_cover", rawValue: "yes", sku: "FIN-ESY-MIS-WEATHERPROOFCO" },
-      { key: "arms", rawValue: "1", sku: null },
+      { key: "arms", rawValue: "1", sku: "FIN-ESY-MIS-ARMS" },
     ]);
+  });
+
+  it("quarantines custom_welded_fly_table with custom_quote_addon_requires_sales", () => {
+    const { specs, issues } = extractWooLineSpecs(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [{ key: "custom_welded_fly_table", value: "1" }],
+          }),
+        ],
+      }),
+    );
+    expect(specs[0]!.addons).toEqual([]);
+    expect(issues.some((i) => i.message.includes("custom_quote_addon_requires_sales"))).toBe(
+      true,
+    );
+  });
+
+  it("ignores facing / select_facing meta without quarantine", () => {
+    const { specs, issues } = extractWooLineSpecs(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [
+              { key: "fabric", value: FAB_SKU },
+              { key: "powder_coat", value: "PWD-BLK" },
+              { key: "frame", value: "MET-STEEL" },
+              { key: "facing", value: "Left-Side Facing" },
+              { key: "pa_select-facing", value: "Right-Side Facing" },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(issues).toEqual([]);
+    expect(specs[0]!.addons).toEqual([]);
+    expect(specs[0]!.finishes.fabric).toBe(FAB_SKU);
   });
 
   it("reports an empty finish value", () => {

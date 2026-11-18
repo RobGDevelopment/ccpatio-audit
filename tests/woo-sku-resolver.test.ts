@@ -316,7 +316,21 @@ describe("resolveWooOrder", () => {
     expect(truthy.lines).toHaveLength(2);
     expect(truthy.lines[1]!.spec.sku).toBe(defaultCasters);
 
-    const unmappedKey = await resolveWooOrder(
+    const armsSku = "FIN-ESY-MIS-ARMS";
+    records.set(
+      armsSku,
+      skuRecord(armsSku, {
+        itemType: "finished_good",
+        syncToWoo: true,
+        hasCatalogRow: true,
+        katanaVariantId: 882,
+      }),
+    );
+    const hubWithArms = makeHub({
+      records,
+      thirdParty: new Set([addonSku, defaultCasters, armsSku]),
+    });
+    const mappedArms = await resolveWooOrder(
       wooOrder({
         line_items: [
           wooLine({
@@ -329,12 +343,12 @@ describe("resolveWooOrder", () => {
           }),
         ],
       }),
-      hub,
+      hubWithArms,
       { requireKatanaIds: false },
     );
-    expect(messages(unmappedKey).some((m) => /Add-on "arms".*no mapped add-on SKU/.test(m))).toBe(
-      true,
-    );
+    expect(mappedArms.ok).toBe(true);
+    if (!mappedArms.ok) return;
+    expect(mappedArms.lines.map((l) => l.spec.sku)).toContain(armsSku);
   });
 
   it("swaps powder against a hardcoded PWD-* Ready-Make row (or no-ops when identical)", async () => {

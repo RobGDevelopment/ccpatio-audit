@@ -60,6 +60,9 @@ async function run() {
       windowsHide: true,
       env: {
         ...process.env,
+        // Local production `next start` must still allow /api/qa-test while
+        // Vercel production (ALLOW_LOCAL_QA_TEST unset) stays hard-blocked.
+        ALLOW_LOCAL_QA_TEST: "true",
         // Same mirror + God Mode contract Playwright webServer uses, so
         // reuseExistingServer during qa:phase3-e2e still hits a correct stack.
         E2E_GODMODE_SECRET:

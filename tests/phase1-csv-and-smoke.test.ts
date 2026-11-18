@@ -67,31 +67,45 @@ describe("phase1 csv structural assertions", () => {
     expect(headers).toContain("Meta: _w3d_enabled");
   });
 
-  it("covers all 102 Phase 1 SOW items with unique non-blank purchasable SKUs", () => {
+  it("covers all 102 Phase 1 SOW items with 107 unique purchasable SKUs (Corner L/R facing)", () => {
     const sow = loadPhase1SowRows();
     expect(sow).toHaveLength(102);
 
     const { rows } = loadGeneratedCsv();
     const purchasable = rows.filter((r) => r.Type === "simple" || r.Type === "variation");
-    expect(purchasable).toHaveLength(102);
+    expect(purchasable).toHaveLength(107);
+    expect(rows.filter((r) => r.Type === "variation")).toHaveLength(100);
+    expect(rows.filter((r) => r.Type === "simple")).toHaveLength(7);
 
     const skus = purchasable.map((r) => r.SKU);
     expect(skus.every((s) => s.trim().length > 0)).toBe(true);
-    expect(new Set(skus).size).toBe(102);
+    expect(new Set(skus).size).toBe(107);
 
     const variableParents = rows.filter((r) => r.Type === "variable");
     expect(variableParents.every((p) => !p.SKU.trim())).toBe(true);
 
-    // Every SOW canonical (or a registered alias of it) appears as a purchasable SKU.
+    // Corner Sofa / Chaise expose Select Facing + both -LS and -RS SKUs.
+    for (const pid of ["27674", "27687"]) {
+      const parent = rows.find((r) => r.ID === pid && r.Type === "variable");
+      expect(parent, `parent ${pid}`).toBeTruthy();
+      expect(parent!["Attribute 2 name"]).toBe("Select Facing");
+      expect(parent!["Attribute 2 value(s)"]).toContain("Left-Side Facing");
+      expect(parent!["Attribute 2 value(s)"]).toContain("Right-Side Facing");
+      expect(parent!["Attribute 2 default"]).toBe("Left-Side Facing");
+    }
+    const facingSkus = skus.filter((s) => /FIN-BRV-COR-(SOF|CHS)-.+-(LS|RS)$/.test(s));
+    expect(facingSkus.length).toBe(10);
+
     const report = JSON.parse(
       readFileSync(join(process.cwd(), "tmp/primeview-phase1-csv-report.json"), "utf8"),
     ) as { handoff: Array<{ sowRow: number; canonicalSku: string; wooSku: string }> };
-    expect(report.handoff).toHaveLength(102);
+    expect(report.handoff).toHaveLength(107);
     const sowRows = new Set(sow.map((s) => s.sowRow));
     for (const h of report.handoff) {
       expect(sowRows.has(h.sowRow)).toBe(true);
       expect(skus).toContain(h.wooSku);
     }
+    expect(new Set(report.handoff.map((h) => h.sowRow)).size).toBe(102);
   });
 
   it("populates fabric swatches on upholstered parents only (24 FAB-*, no example.com)", () => {
@@ -153,6 +167,187 @@ describe("phase1 csv structural assertions", () => {
     expect(club!["Meta: ironwood_price"]).toBeTruthy();
     expect(club!["acf_fabric_swatches_json"]).toBeTruthy();
   });
+});
+
+describe("phase1 P0 live Hub + swatch + qa-test guards", () => {
+  const hasDb = Boolean(process.env.POSTGRES_URL || process.env.DATABASE_URL);
+
+  it("qa-test production guard returns blocked without ALLOW_LOCAL_QA_TEST", async () => {
+    const { isQaTestProductionBlocked } = await import("@/app/api/qa-test/route");
+    expect(
+      isQaTestProductionBlocked({
+        NODE_ENV: "production",
+      } as NodeJS.ProcessEnv),
+    ).toBe(true);
+  });
+
+  it.skipIf(!hasDb)(
+    "all 107 CSV purchasable SKUs resolve cleanly against live Hub (aliases OK)",
+    async () => {
+      const { closeDb } = await import("../src/server/db/client");
+      const { hubResolveDeps, resolveWooOrder } = await import(
+        "../src/server/woocommerce/sku-resolver"
+      );
+      const { rows } = loadGeneratedCsv();
+      const purchasable = rows.filter((r) => r.Type === "simple" || r.Type === "variation");
+      expect(purchasable).toHaveLength(107);
+
+      const deps = hubResolveDeps();
+      const report = JSON.parse(
+        readFileSync(join(process.cwd(), "tmp/primeview-phase1-csv-report.json"), "utf8"),
+      ) as { handoff: Array<{ wooSku: string; canonicalSku: string }> };
+      const byWoo = new Map(report.handoff.map((h) => [h.wooSku.toUpperCase(), h]));
+
+      for (const row of purchasable) {
+        const handoff = byWoo.get(row.SKU.toUpperCase());
+        expect(handoff, `missing handoff for ${row.SKU}`).toBeTruthy();
+        const aliasMap = deps.resolveAliases
+          ? await deps.resolveAliases([row.SKU])
+          : new Map<string, string>();
+        const viaAlias = aliasMap.get(row.SKU.toUpperCase());
+        const canonical = (
+          viaAlias ??
+          handoff!.canonicalSku ??
+          row.SKU
+        ).toUpperCase();
+        const records = await deps.lookupSkus([canonical]);
+        expect(records.has(canonical), `${row.SKU} → ${canonical} missing in Hub`).toBe(true);
+        const rec = records.get(canonical)!;
+        expect(rec.isActive, `${canonical} inactive`).toBe(true);
+        expect(rec.katanaVariantId, `${canonical} null katana_variant_id`).not.toBeNull();
+        void resolveWooOrder;
+      }
+      await closeDb();
+    },
+    180_000,
+  );
+
+  it.skipIf(!hasDb)(
+    "zero Phase 1 ASM-* BOM children have null katana_variant_id",
+    async () => {
+      const { closeDb, getDb } = await import("../src/server/db/client");
+      const { explodeBomTree } = await import("../src/server/db/queries/bom");
+      const { inArray } = await import("drizzle-orm");
+      const { sku_mappings } = await import("../src/server/db/schema");
+      const {
+        PHASE1_RESALE_SKUS,
+        loadPhase1SowRows,
+        uniqueCanonicalSkus,
+      } = await import("../scripts/ops/enable-phase1-hub-data");
+
+      const makeSkus = uniqueCanonicalSkus(loadPhase1SowRows()).filter(
+        (s) => !(PHASE1_RESALE_SKUS as readonly string[]).includes(s),
+      );
+      const asm = new Set<string>();
+      for (const parent of makeSkus) {
+        for (const row of await explodeBomTree(parent)) {
+          const child = row.child_sku?.trim().toUpperCase();
+          if (child?.startsWith("ASM-")) asm.add(child);
+        }
+      }
+      const db = getDb();
+      const vids = await db
+        .select({
+          sku: sku_mappings.global_sku,
+          vid: sku_mappings.katana_variant_id,
+        })
+        .from(sku_mappings)
+        .where(inArray(sku_mappings.global_sku, [...asm]));
+      const nulls = vids.filter((r) => r.vid == null).map((r) => r.sku);
+      expect(nulls, `null ASM vids: ${nulls.join(", ")}`).toEqual([]);
+      await closeDb();
+    },
+    180_000,
+  );
+
+  it.skipIf(!hasDb)(
+    "15 mapped ACF add-ons resolve on '1' with non-null katana ids; custom welded quarantines",
+    async () => {
+      const { closeDb } = await import("../src/server/db/client");
+      const { hubResolveDeps, resolveWooOrder } = await import(
+        "../src/server/woocommerce/sku-resolver"
+      );
+      const { ACF_ADDON_DEFAULT_SKUS } = await import(
+        "../src/server/woocommerce/line-specs"
+      );
+
+      const deps = hubResolveDeps();
+      const mappedKeys = Object.keys(ACF_ADDON_DEFAULT_SKUS);
+      expect(mappedKeys.length).toBeGreaterThanOrEqual(15);
+
+      for (const key of mappedKeys) {
+        const order = wooOrder({
+          line_items: [
+            wooLine({
+              sku: "FIN-BRV-CLB-CHA-34X34",
+              meta_data: [
+                { key: "fabric_sku", value: "FAB-ACT-STO" },
+                { key: "powder_coat", value: "PWD-BONE" },
+                { key: "frame_material", value: "MET-STEEL" },
+                { key: key, value: "1" },
+              ],
+            }),
+          ],
+        });
+        const resolution = await resolveWooOrder(order, deps, { requireKatanaIds: false });
+        expect(
+          resolution.ok,
+          resolution.ok
+            ? ""
+            : `${key}: ${resolution.issues.map((i) => i.message).join("; ")}`,
+        ).toBe(true);
+        if (!resolution.ok) continue;
+        const expected = ACF_ADDON_DEFAULT_SKUS[key]!.toUpperCase();
+        const addonLine = resolution.lines.find((l) => l.spec.sku === expected);
+        expect(addonLine, `${key} → ${expected}`).toBeTruthy();
+        expect(addonLine!.baseVariantId, `${expected} null vid`).not.toBeNull();
+      }
+
+      const custom = await resolveWooOrder(
+        wooOrder({
+          line_items: [
+            wooLine({
+              sku: "FIN-BRV-CLB-CHA-34X34",
+              meta_data: [
+                { key: "fabric_sku", value: "FAB-ACT-STO" },
+                { key: "powder_coat", value: "PWD-BONE" },
+                { key: "frame_material", value: "MET-STEEL" },
+                { key: "custom_welded_fly_table", value: "1" },
+              ],
+            }),
+          ],
+        }),
+        deps,
+        { requireKatanaIds: false },
+      );
+      expect(custom.ok).toBe(false);
+      if (!custom.ok) {
+        expect(
+          custom.issues.some((i) => i.message.includes("custom_quote_addon_requires_sales")),
+        ).toBe(true);
+      }
+      await closeDb();
+    },
+    300_000,
+  );
+
+  it("live fetch against acf_fabric_swatches_json image_url returns HTTP 200", async () => {
+    const { rows } = loadGeneratedCsv();
+    const parent = rows.find(
+      (r) => r.Type === "variable" && r.acf_fabric_swatches_json.trim(),
+    );
+    expect(parent).toBeTruthy();
+    const arr = JSON.parse(parent!.acf_fabric_swatches_json) as Array<{
+      image_url: string;
+      fabric_sku: string;
+    }>;
+    expect(arr).toHaveLength(24);
+    for (const a of arr) {
+      const res = await fetch(a.image_url, { method: "HEAD" });
+      const ok = res.ok ? res : await fetch(a.image_url, { method: "GET" });
+      expect(ok.status, `${a.fabric_sku} ${a.image_url}`).toBe(200);
+    }
+  }, 120_000);
 });
 
 describe("phase1 signed multi-path checkout smoke", () => {

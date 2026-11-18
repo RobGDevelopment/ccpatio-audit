@@ -14,6 +14,7 @@ loadEnvConfig(process.cwd());
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import sharp from "sharp";
 import { inArray, like } from "drizzle-orm";
 import { closeDb, getDb } from "../../src/server/db/client";
 import {
@@ -23,6 +24,8 @@ import {
   sku_mappings,
   third_party_sources,
 } from "../../src/server/db/schema";
+import { getSupabaseAdmin, PRODUCT_IMAGES_BUCKET } from "../../src/lib/supabase-storage";
+import { getSupabaseUrl } from "../../src/lib/supabase-env";
 import {
   PHASE1_FABRICS,
   PHASE1_RESALE_SKUS,
@@ -33,6 +36,7 @@ import {
 } from "./enable-phase1-hub-data";
 
 const TMP = join(process.cwd(), "tmp");
+const SWATCH_DIR = join(TMP, "primeview-fabric-swatches");
 const HEADERS_PATH = join(
   process.cwd(),
   "data_migration/Primeview/product_export_import_headers.csv",
@@ -44,6 +48,13 @@ const WOO_EXPORT_PATH = join(
 const OUT_CSV = join(TMP, "primeview-phase1-102-import.csv");
 const OUT_HANDOFF = join(TMP, "PRIMEVIEW_PHASE1_HANDOFF_SPEC.md");
 const OUT_REPORT = join(TMP, "primeview-phase1-csv-report.json");
+
+/** Parents that require Attribute 2 Select Facing + -LS/-RS variation pairs. */
+export const FACING_PARENT_IDS = new Set(["27674", "27687"]);
+export const FACING_OPTIONS = [
+  { code: "LS", label: "Left-Side Facing" },
+  { code: "RS", label: "Right-Side Facing" },
+] as const;
 
 const LB_TO_KG = 0.45359237;
 const IN_TO_CM = 2.54;
@@ -270,6 +281,14 @@ export function shippingClass(weightLb: number): string {
   return weightLb >= PARCEL_MAX_LB ? "freight-ltl" : "parcel";
 }
 
+export function fabricSwatchPublicUrl(sku: string): string {
+  const base = (getSupabaseUrl() ?? "").replace(/\/$/, "");
+  if (!base) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL is required for fabric swatch hosting");
+  }
+  return `${base}/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/fabrics/${sku.toLowerCase()}.jpg`;
+}
+
 export function buildFabricSwatchesJson(
   fabrics: ReadonlyArray<{ sku: string; name: string }>,
 ): string {
@@ -284,10 +303,72 @@ export function buildFabricSwatchesJson(
             .replace(/\b\w/g, (c) => c.toUpperCase())
         : sku);
     const color = meta?.color ?? "#CCCCCC";
-    const image_url = `https://ccpatiodev2.primeview.com/wp-content/uploads/2026/11/fabrics/${sku.toLowerCase()}.jpg`;
+    const image_url = fabricSwatchPublicUrl(sku);
     return { label, color, image_url, fabric_sku: sku };
   });
   return JSON.stringify(arr);
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const h = hex.replace("#", "");
+  return {
+    r: Number.parseInt(h.slice(0, 2), 16),
+    g: Number.parseInt(h.slice(2, 4), 16),
+    b: Number.parseInt(h.slice(4, 6), 16),
+  };
+}
+
+/** Generate labeled color-tile JPGs, upload to public Supabase Storage, verify HTTP 200. */
+export async function hostFabricSwatches(
+  fabrics: ReadonlyArray<{ sku: string; name: string }>,
+): Promise<{ urls: Record<string, string>; verified: string[] }> {
+  mkdirSync(SWATCH_DIR, { recursive: true });
+  const supabase = getSupabaseAdmin();
+  const urls: Record<string, string> = {};
+  const verified: string[] = [];
+
+  for (const sku of PHASE1_FABRICS) {
+    const meta = FABRIC_SWATCH_META[sku];
+    const hub = fabrics.find((f) => f.sku === sku);
+    const label =
+      meta?.label ??
+      (hub?.name
+        ? hub.name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+        : sku);
+    const color = meta?.color ?? "#CCCCCC";
+    const { r, g, b } = hexToRgb(color);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480">
+  <rect width="480" height="480" fill="rgb(${r},${g},${b})"/>
+  <rect x="24" y="360" width="432" height="96" fill="rgba(0,0,0,0.45)"/>
+  <text x="240" y="400" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" fill="#ffffff">${label.replace(/[<>&]/g, "")}</text>
+  <text x="240" y="435" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#ffffff">${sku}</text>
+</svg>`;
+    const jpg = await sharp(Buffer.from(svg)).jpeg({ quality: 88 }).toBuffer();
+    const localPath = join(SWATCH_DIR, `${sku.toLowerCase()}.jpg`);
+    writeFileSync(localPath, jpg);
+
+    const objectPath = `fabrics/${sku.toLowerCase()}.jpg`;
+    const { error } = await supabase.storage
+      .from(PRODUCT_IMAGES_BUCKET)
+      .upload(objectPath, jpg, {
+        contentType: "image/jpeg",
+        upsert: true,
+      });
+    if (error) {
+      throw new Error(`Swatch upload failed for ${sku}: ${error.message}`);
+    }
+    const url = fabricSwatchPublicUrl(sku);
+    urls[sku] = url;
+
+    const head = await fetch(url, { method: "HEAD" });
+    const get = head.ok ? head : await fetch(url, { method: "GET" });
+    if (!get.ok) {
+      throw new Error(`Swatch HTTP ${get.status} for ${sku} at ${url}`);
+    }
+    verified.push(url);
+  }
+
+  return { urls, verified };
 }
 
 export function isUpholstered(sow: SowRow, parentName: string): boolean {
@@ -563,6 +644,9 @@ async function main() {
     .where(inArray(third_party_sources.global_sku, [...PHASE1_RESALE_SKUS]));
   const tpsSet = new Set(tps.map((t) => t.sku));
 
+  console.log("Hosting 24 fabric swatches to Supabase + tmp/primeview-fabric-swatches/...");
+  const swatchHost = await hostFabricSwatches(fabricRows);
+  console.log(`Swatches verified HTTP 200: ${swatchHost.verified.length}`);
   const swatchesJson = buildFabricSwatchesJson(fabricRows);
 
   const handoff: HandoffLine[] = [];
@@ -620,76 +704,106 @@ async function main() {
       continue;
     }
 
-    // Match existing variation
-    const candidates = (varsByParent.get(resolved.parentId) ?? []).filter(
-      (v) => !usedVarIds.has(v.ID),
-    );
-    let best: CsvRow | null = null;
-    let bestScore = -1;
-    for (const v of candidates) {
-      const s = scoreVariation(row, v);
-      if (s > bestScore) {
-        bestScore = s;
-        best = v;
+    const facingExpand = FACING_PARENT_IDS.has(resolved.parentId);
+    const facingPasses = facingExpand
+      ? FACING_OPTIONS.map((f) => ({
+          wooSku: `${row.sku}-${f.code}`,
+          facingLabel: f.label,
+          reason: `${resolved.reason}+facing-${f.code}`,
+        }))
+      : [
+          {
+            wooSku: resolved.wooSku,
+            facingLabel: null as string | null,
+            reason: resolved.reason,
+          },
+        ];
+
+    for (const pass of facingPasses) {
+      // Match existing variation (size first; facing rows are usually new)
+      const candidates = (varsByParent.get(resolved.parentId) ?? []).filter(
+        (v) => !usedVarIds.has(v.ID),
+      );
+      let best: CsvRow | null = null;
+      let bestScore = -1;
+      for (const v of candidates) {
+        // When expanding facing, only reuse a variation once for the first facing pass.
+        if (facingExpand && pass.facingLabel !== "Left-Side Facing") break;
+        const s = scoreVariation(row, v);
+        if (s > bestScore) {
+          bestScore = s;
+          best = v;
+        }
       }
-    }
-    if (!best || bestScore < 3) {
-      // Create new variation row
-      best = blankRow(woo.headers);
-      best.ID = "";
-      best.Type = "variation";
-      best.Parent = `id:${resolved.parentId}`;
-      best.Name = `${parent.Name} - ${row.name}`;
-      best["Attribute 1 name"] = parent["Attribute 1 name"] || "Select Size";
-      best["Attribute 1 value(s)"] = row.name;
-      best["Attribute 1 visible"] = "1";
-      best["Attribute 1 global"] = "0";
-      best.Published = "1";
-      best["In stock?"] = "1";
-      bestScore = 99;
-    }
+      if (!best || bestScore < 3 || (facingExpand && pass.facingLabel !== "Left-Side Facing")) {
+        best = blankRow(woo.headers);
+        best.ID = "";
+        best.Type = "variation";
+        best.Parent = `id:${resolved.parentId}`;
+        best.Name = pass.facingLabel
+          ? `${parent.Name} - ${row.name} - ${pass.facingLabel}`
+          : `${parent.Name} - ${row.name}`;
+        best["Attribute 1 name"] = parent["Attribute 1 name"] || "Select Size";
+        best["Attribute 1 value(s)"] = row.name;
+        best["Attribute 1 visible"] = "1";
+        best["Attribute 1 global"] = "0";
+        best.Published = "1";
+        best["In stock?"] = "1";
+        bestScore = 99;
+      }
 
-    if (best.ID) usedVarIds.add(best.ID);
-    if (usedSkus.has(resolved.wooSku)) {
-      throw new Error(`Duplicate purchasable SKU ${resolved.wooSku} on ${row.name}`);
-    }
-    usedSkus.add(resolved.wooSku);
+      if (best.ID) usedVarIds.add(best.ID);
+      if (usedSkus.has(pass.wooSku)) {
+        throw new Error(`Duplicate purchasable SKU ${pass.wooSku} on ${row.name}`);
+      }
+      usedSkus.add(pass.wooSku);
 
-    const out = projectToHeaders(best, headers);
-    out.Type = "variation";
-    out.Parent = `id:${resolved.parentId}`;
-    forceBlankW3d(out);
-    out.acf_fabric_swatches_json = "";
-    applyPurchasableMetrics(out, {
-      sku: resolved.wooSku,
-      price,
-      weightLb,
-      lengthIn: dims.length ? Number(dims.length) : null,
-      depthIn: dims.depth ? Number(dims.depth) : null,
-      heightIn: dims.height ? Number(dims.height) : null,
-    });
-    // Keep Attribute 1 value from matched variation when present
-    if (!out["Attribute 1 value(s)"]) {
-      out["Attribute 1 value(s)"] = row.name;
-    }
-    variationRows.push(out);
+      const out = projectToHeaders(best, headers);
+      out.Type = "variation";
+      out.Parent = `id:${resolved.parentId}`;
+      forceBlankW3d(out);
+      out.acf_fabric_swatches_json = "";
+      applyPurchasableMetrics(out, {
+        sku: pass.wooSku,
+        price,
+        weightLb,
+        lengthIn: dims.length ? Number(dims.length) : null,
+        depthIn: dims.depth ? Number(dims.depth) : null,
+        heightIn: dims.height ? Number(dims.height) : null,
+      });
+      if (!out["Attribute 1 value(s)"]) {
+        out["Attribute 1 value(s)"] = row.name;
+      }
+      out["Attribute 1 name"] = out["Attribute 1 name"] || parent["Attribute 1 name"] || "Select Size";
+      out["Attribute 1 visible"] = "1";
+      out["Attribute 1 global"] = out["Attribute 1 global"] || "0";
+      if (pass.facingLabel) {
+        out["Attribute 2 name"] = "Select Facing";
+        out["Attribute 2 value(s)"] = pass.facingLabel;
+        out["Attribute 2 visible"] = "1";
+        out["Attribute 2 global"] = "1";
+      }
+      variationRows.push(out);
 
-    handoff.push({
-      sowRow: row.sowRow,
-      sowName: row.name,
-      canonicalSku: row.sku,
-      wooSku: resolved.wooSku,
-      parentId: resolved.parentId,
-      parentName: parent.Name,
-      variationId: out.ID || "(new)",
-      attr1: out["Attribute 1 value(s)"],
-      price,
-      weightLb: weightLb.toFixed(2),
-      weightKg: lbToKg(weightLb),
-      shipping: shippingClass(weightLb),
-      fulfillment: tpsSet.has(row.sku) ? "Resale" : "Make",
-      reason: resolved.reason,
-    });
+      handoff.push({
+        sowRow: row.sowRow,
+        sowName: pass.facingLabel ? `${row.name} (${pass.facingLabel})` : row.name,
+        canonicalSku: row.sku,
+        wooSku: pass.wooSku,
+        parentId: resolved.parentId,
+        parentName: parent.Name,
+        variationId: out.ID || "(new)",
+        attr1: pass.facingLabel
+          ? `${out["Attribute 1 value(s)"]} / ${pass.facingLabel}`
+          : out["Attribute 1 value(s)"],
+        price,
+        weightLb: weightLb.toFixed(2),
+        weightKg: lbToKg(weightLb),
+        shipping: shippingClass(weightLb),
+        fulfillment: tpsSet.has(row.sku) ? "Resale" : "Make",
+        reason: pass.reason,
+      });
+    }
   }
 
   // Emit parent rows (Phase 1 parents only)
@@ -735,6 +849,13 @@ async function main() {
       if (attrVals.size) {
         out["Attribute 1 value(s)"] = [...attrVals].join(", ");
       }
+      if (FACING_PARENT_IDS.has(pid)) {
+        out["Attribute 2 name"] = "Select Facing";
+        out["Attribute 2 value(s)"] = "Left-Side Facing, Right-Side Facing";
+        out["Attribute 2 visible"] = "1";
+        out["Attribute 2 global"] = "1";
+        out["Attribute 2 default"] = "Left-Side Facing";
+      }
     } else {
       const override = simpleParentOverrides.get(pid);
       if (override) {
@@ -765,39 +886,44 @@ async function main() {
   const makeCount = handoff.filter((h) => h.fulfillment === "Make").length;
   const resaleCount = handoff.filter((h) => h.fulfillment === "Resale").length;
 
-  const handoffMd = `# PrimeView Phase 1 Handoff Spec (102 SOW Items)
+  const simpleParents = parentRows.filter((p) => p.Type === "simple").length;
+  const handoffMd = `# PrimeView Phase 1 Handoff Spec (Yardi / ccpatiodev2.primeview.com)
 
 **Generated:** ${new Date().toISOString()}
 **Import file:** \`tmp/primeview-phase1-102-import.csv\` (169 columns)
-**Scope:** All 102 unique Phase 1 SOW rows (${makeCount} Make + ${resaleCount} Resale)
+**Scope:** All 102 Phase 1 SOW items → **${handoff.length} unique purchasable Woo SKUs** (${variationRows.length} variations + ${simpleParents} simple parents; Corner Sofa/Chaise emit \`-LS\`/\`-RS\` pairs)
+**Make / Resale handoff rows:** ${makeCount} / ${resaleCount}
+**Fabric swatches:** live Supabase HTTP-200 URLs + local pack \`tmp/primeview-fabric-swatches/\`
 
 ---
 
 ## 1. Executive Summary
 
-CC Patio Hub owns catalog authority. This CSV is the turnkey WooCommerce Product CSV Import for PrimeView's WordPress team covering every Phase 1 purchasable SKU with:
+CC Patio Hub owns catalog authority. This CSV is the turnkey WooCommerce Product CSV Import for PrimeView/Yardi on \`ccpatiodev2.primeview.com\`:
 
 - Exact 169 headers from \`product_export_import_headers.csv\` (UTF-8, \`ID\` without BOM corruption)
 - Preserved PrimeView parent IDs and existing variation IDs where present
-- Globally unique purchasable SKUs on every \`simple\` / \`variation\` row (variable parents keep blank SKU)
+- **107 unique purchasable SKUs** on every \`simple\` / \`variation\` row (variable parents keep blank SKU)
+- Corner Sofa (\`27674\`) + Corner Chaise (\`27687\`) Attribute 2 = **Select Facing** (\`Left-Side Facing\`, \`Right-Side Facing\`), default Left
 - Metric weights/dimensions, shipping class (\`parcel\` < 50 lb, \`freight-ltl\` ≥ 50 lb)
-- \`acf_fabric_swatches_json\` on upholstered parents (24 \`web_sellable\` FAB-* swatches, non-placeholder HTTPS URLs)
+- \`acf_fabric_swatches_json\` on upholstered parents (24 FAB-* swatches with **live HTTP-200** Supabase public URLs)
 - Preserved ACF add-on price metas + RankMath/Astra/Brizy from the Oct 30 export
 - All \`Meta: _w3d_*\` columns forced blank (3D excluded from Phase 1)
 
-## 2. Import Instructions (PrimeView WP)
+## 2. Import Instructions (PrimeView WP / Yardi)
 
-1. Backup the staging site (DB + uploads).
+1. Backup the staging site (DB + uploads) on \`ccpatiodev2.primeview.com\`.
 2. WooCommerce → Products → Import → upload \`primeview-phase1-102-import.csv\`.
 3. Map columns 1:1 (header names already match Woo export/import).
 4. Choose **Update existing products** keyed by \`ID\` where ID is present; create when ID blank.
 5. After import, spot-check:
    - Bravada Club Chair (\`9449\`) has fabric swatch JSON and blank \`_w3d_enabled\`
+   - Bravada Corner Sofa (\`27674\`) / Corner Chaise (\`27687\`) show **Select Facing** with Left/Right and both \`-LS\`/\`-RS\` variation SKUs
    - Fly Leg Chair 18×18×18 (\`FIN-WFT-DIN-CHA-18X18\`) exists under Fly Leg Bench (\`28147\`)
    - Ripple Table (\`28335\`) / Cantilever Umbrella (\`28343\`) have unique simple SKUs
    - No duplicate SKU warnings in the import log
-6. Upload the 24 fabric swatch JPGs to the paths referenced in \`acf_fabric_swatches_json\` (or update URLs to the final media library paths).
-7. Configure NMI deposit gateway + webhook (see §4–5) before flipping live traffic.
+6. Fabric swatch images are already hosted (Supabase public URLs in \`acf_fabric_swatches_json\`). Optional: also copy \`tmp/primeview-fabric-swatches/*.jpg\` into WP media if desired for offline backup.
+7. Install the Cart→Order metadata PHP hook in §4, then configure NMI + webhook (§5) before flipping live traffic.
 
 ## 3. Parent → Variation SKU Reference (all 102)
 
@@ -822,9 +948,48 @@ ${handoff
 | \`FIN-TJM-MIS-SHAYZ-5\` / \`-WOOSAH\` | \`FIN-TJM-MIS\` | Shayz / Woosah parents |
 | \`FIN-TJM-CHA-FREELO\` / \`-MOON\` | \`FIN-TJM-CHA\` | Freelo / Moon simples |
 
-## 4. Checkout Webhook Contract
+## 4. Cart → Order Metadata PHP Hook (drop-in for PrimeView)
 
-\`POST /api/webhooks/woocommerce\`
+Paste into the child theme \`functions.php\` (or a small MU-plugin). This persists fabric / powder / frame and every checked ACF add-on onto the order line so WooCommerce webhooks include them in \`line_items[].meta_data\`.
+
+\`\`\`php
+<?php
+/**
+ * CC Patio / Hub — persist configurator meta onto cart + order line items.
+ * Target: ccpatiodev2.primeview.com
+ */
+add_filter('woocommerce_add_cart_item_data', function ($cart_item_data, $product_id, $variation_id) {
+    $keys = [
+        'fabric', 'fabric_sku', 'powder_coat', 'frame', 'frame_material',
+        'ironwood', 'umbrella_cover', 'casters', 'wheels',
+        'fly_tables', 'fly_table', 'fly_table_13_x_30',
+        'fly_table_12_x_36_welded_on_back', 'fly_table_12_x_48_welded_on_back',
+        'arms', 'arms_8_thick_textile-wrapped', 'dekton_sidearm', 'umbrella_holder',
+        'coated_led_weight', 'pillow_for_loungers_w_pocket',
+        'base_w_wheels', 'base_price', 'custom_welded_fly_table',
+        'facing', 'select_facing',
+    ];
+    foreach ($keys as $key) {
+        if (!isset($_REQUEST[$key])) continue;
+        $val = wc_clean(wp_unslash($_REQUEST[$key]));
+        if ($val === '' || $val === null) continue;
+        $cart_item_data['ccp_' . $key] = $val;
+    }
+    return $cart_item_data;
+}, 10, 3);
+
+add_action('woocommerce_checkout_create_order_line_item', function ($item, $cart_item_key, $values, $order) {
+    foreach ($values as $key => $val) {
+        if (strpos($key, 'ccp_') !== 0) continue;
+        $meta_key = substr($key, 4);
+        $item->add_meta_data($meta_key, $val, true);
+    }
+}, 10, 4);
+\`\`\`
+
+## 5. Checkout Webhook Contract + 16-key ACF map
+
+\`POST https://<vercel-app>/api/webhooks/woocommerce\`
 
 Headers:
 
@@ -832,22 +997,29 @@ Headers:
 - \`X-WC-Webhook-Signature\`: base64(HMAC-SHA256(secret, raw body))
 - \`X-WC-Webhook-Delivery-ID\`: unique delivery id
 
-Body: Woo order JSON. Every purchasable \`line_items[].sku\` must be the **Woo SKU** from §3 (canonical or alias).
+Body: Woo order JSON. Every purchasable \`line_items[].sku\` must be the **Woo SKU** from §3 (canonical, facing \`-LS\`/\`-RS\`, or registered alias).
 
-| Meta key accepted | Slot | Example |
-| --- | --- | --- |
-| \`fabric\` **or** \`fabric_sku\` | fabric | \`FAB-ACT-STO\` |
-| \`powder_coat\` | powder | \`PWD-BONE\` (required on every powder-eligible Make, including Ready Makes that hardcode \`PWD-BLACK\`) |
-| \`frame\` **or** \`frame_material\` | frame | \`MET-STEEL\` |
-| \`ironwood\` | add-on | \`\"1\"\` / \`\"yes\"\` / \`\"true\"\` **or** \`FIN-ESY-MIS-ADDIRONWOOD\` |
-| \`umbrella_cover\` | add-on | \`\"1\"\` / \`\"yes\"\` / \`\"true\"\` **or** \`FIN-ESY-MIS-WEATHERPROOFCO\` |
-| \`casters\` | add-on | \`\"1\"\` → \`FIN-ESY-CHS\` **or** explicit FIN-* SKU |
-| \`fly_tables\` / \`fly_table\` | add-on | \`\"1\"\` → \`FIN-OCN-TAB-34X12\` **or** explicit FIN-* SKU |
-| \`arms\`, \`arms_8_thick_textile-wrapped\`, \`dekton_sidearm\`, \`umbrella_holder\` | add-ons | send explicit FIN-* SKU (no Hub default yet); \`\"0\"\`/empty ignored |
-
-**Boolean ACF checkboxes:** PrimeView may store \`\"1\"\` / \`\"yes\"\` / \`\"true\"\` when checked. Hub maps those truthy flags to the canonical add-on SKUs above automatically. Explicit FIN-* values still win.
-
-**Powder on Ready Makes:** Recipes that hardcode \`PWD-BLACK\` (no \`RM-PWD-GENERIC\`) still accept \`powder_coat\` — Hub swaps the hardcoded powder row for the selected web_sellable \`PWD-*\` (or no-ops when identical).
+| Meta key | Hub behavior on \`"1"\` / \`"yes"\` / \`"true"\` |
+| --- | --- |
+| \`fabric\` / \`fabric_sku\` | finish slot → \`FAB-*\` |
+| \`powder_coat\` | finish slot → \`PWD-*\` (Ready-Make hardcoded powder swap supported) |
+| \`frame\` / \`frame_material\` | finish slot → \`MET-STEEL\` / \`MET-ALUM\` |
+| \`facing\` / \`select_facing\` / \`pa_select-facing\` | **ignored** (facing already in variation SKU) |
+| \`ironwood\` | \`FIN-ESY-MIS-ADDIRONWOOD\` (SO-only) |
+| \`umbrella_cover\` | \`FIN-ESY-MIS-WEATHERPROOFCO\` (SO-only) |
+| \`casters\` / \`wheels\` | \`FIN-ESY-CHS\` (SO-only) |
+| \`fly_tables\` / \`fly_table\` | \`FIN-OCN-TAB-34X12\` (Make) |
+| \`fly_table_13_x_30\` | \`FIN-OCN-TAB-13X30\` (Make) |
+| \`fly_table_12_x_36_welded_on_back\` | \`FIN-ESY-MIS-FLYTBL-12X36-WLD\` (SO-only) |
+| \`fly_table_12_x_48_welded_on_back\` | \`FIN-ESY-MIS-FLYTBL-12X48-WLD\` (SO-only) |
+| \`arms\` | \`FIN-ESY-MIS-ARMS\` (SO-only) |
+| \`arms_8_thick_textile-wrapped\` | \`FIN-ESY-MIS-ARMS-8TEXTILE\` (SO-only) |
+| \`dekton_sidearm\` | \`FIN-ESY-MIS-DKT-SIDEARM\` (SO-only) |
+| \`umbrella_holder\` | \`FIN-ESY-MIS-UMBHOLDER\` (SO-only) |
+| \`coated_led_weight\` | \`FIN-TJM-MIS-ONECOATED\` (SO-only / Tenjam) |
+| \`pillow_for_loungers_w_pocket\` | \`FIN-TJM-MIS-PILLOWLOUNGERS\` (SO-only / Tenjam) |
+| \`base_w_wheels\` / \`base_price\` | \`FIN-ESY-MIS-ZENBASE\` (SO-only) |
+| \`custom_welded_fly_table\` | **quarantine** \`custom_quote_addon_requires_sales\` (Contact Sales) |
 
 Fulfillment routing (Hub authority):
 
@@ -856,20 +1028,22 @@ Fulfillment routing (Hub authority):
 
 Phase 1 launch gate uses \`ORDER_PIPELINE_MODE=log\` (dry-run saga, zero Katana writes) until smoke passes.
 
-## 5. Pre-Launch NMI / Deposit / Webhook QA Checklist
+## 6. Joint Test-Order Checklist (\`ccpatiodev2\` → Vercel)
 
+- [ ] WP webhook URL = Vercel \`/api/webhooks/woocommerce\`; secret = Hub \`WOOCOMMERCE_WEBHOOK_SECRET\`
 - [ ] NMI keys present in WP + Hub vault; test-mode charge succeeds
 - [ ] Deposit percentage matches commercial terms; remainder captured on ship
 - [ ] Paid order fires \`order.updated\` with \`date_paid\` set
-- [ ] Webhook secret matches Hub \`WOOCOMMERCE_WEBHOOK_SECRET\`
-- [ ] Signed smoke order (Make seating + barstool alias + table + pillow + 2 resale) returns 202, zero quarantine
-- [ ] \`ORDER_PIPELINE_MODE=log\` dry-run completes; then staged \`live\` flip with Katana SO/MO verification
-- [ ] Resale lines never create MOs; Make lines create SO+MO
+- [ ] Place Corner Sofa with **Right-Side Facing** → line SKU ends in \`-RS\`; Hub resolves (alias → canonical)
+- [ ] Place Club Chair with \`ironwood=1\` + fabric/powder/frame → 202, zero quarantine; add-on expands as SO-only
+- [ ] Place Cantilever with \`umbrella_cover=1\` → cover SO line, no MO
+- [ ] \`custom_welded_fly_table=1\` → quarantine with \`custom_quote_addon_requires_sales\`
+- [ ] \`ORDER_PIPELINE_MODE=log\` dry-run completes; staged \`live\` flip only after Katana SO/MO spot-check
 - [ ] Oh-Crap alert path verified on forced signature failure
 
 ---
 
-*End of Phase 1 handoff. Do not begin Phase 2 CSV until Chunk F gate.*
+*End of Phase 1 handoff for Yardi / PrimeView. Do not begin Phase 2 CSV until the Phase 2 gate in \`docs/sop/CCP_PH1_PHASE_C_CLOSEOUT_PACKET.md\`.*
 `;
 
   writeFileSync(OUT_HANDOFF, handoffMd, "utf8");

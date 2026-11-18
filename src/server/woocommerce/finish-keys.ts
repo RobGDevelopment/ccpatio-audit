@@ -62,6 +62,17 @@ export function isGenericPlaceholderSku(sku: string): boolean {
 }
 
 /**
+ * Corner Sofa / Corner Chaise facing attributes from WooCommerce.
+ * Facing is encoded in the variation SKU (`-LS` / `-RS`); these meta keys must never
+ * quarantine as unknown finish selectors.
+ */
+export const FACING_META_KEYS: ReadonlySet<string> = new Set([
+  "facing",
+  "select_facing",
+  "select-facing",
+]);
+
+/**
  * Keys that SELECT A PHYSICAL MATERIAL under a name B1 does not accept. Silently dropping them
  * would build the wrong item, so an order carrying one is quarantined with the hint below.
  * Keys that are not here and are not a finish slot are ignored (they do not pick a material).
@@ -117,6 +128,8 @@ export function classifyFinishKey(rawKey: string): FinishKeyClass {
   }
   const alias = FINISH_KEY_ALIASES[key];
   if (alias !== undefined) return { kind: "slot", slot: alias };
+  // Facing dropdown meta (attribute_pa_select-facing → select-facing) is informational.
+  if (FACING_META_KEYS.has(key)) return { kind: "ignored" };
   const use = REJECTED_FINISH_KEYS[key];
   if (use !== undefined) return { kind: "rejected", normalizedKey: key, use };
   return { kind: "ignored" };
