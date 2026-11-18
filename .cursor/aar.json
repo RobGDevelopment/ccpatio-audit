@@ -1,24 +1,24 @@
 {
-  "phase_id": "phase1-katana-bom-restore",
-  "base_ref": "0118958",
+  "phase_id": "csv-smoke-live",
+  "base_ref": "0cf6a52",
   "blast_radius": 4,
   "counts": {
     "files": 4,
     "tracked": 2,
     "untracked": 2,
-    "insertions": 7,
-    "deletions": 7
+    "insertions": 8,
+    "deletions": 8
   },
   "files": [
     {
       "status": "??",
-      "path": "scripts/ops/restore-phase1-25-boms.ts",
+      "path": "scripts/ops/generate-primeview-phase1-csv.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/phase1-bom-restore.test.ts",
+      "path": "tests/phase1-csv-and-smoke.test.ts",
       "insertions": 0,
       "deletions": 0
     },
@@ -31,14 +31,14 @@
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
-      "insertions": 1,
-      "deletions": 1
+      "insertions": 2,
+      "deletions": 2
     }
   ],
   "untracked": [
-    "scripts/ops/restore-phase1-25-boms.ts",
-    "tests/phase1-bom-restore.test.ts"
+    "scripts/ops/generate-primeview-phase1-csv.ts",
+    "tests/phase1-csv-and-smoke.test.ts"
   ],
-  "file_list_sha256": "5a635aba4788e0fc530f6552531e1d038b49bb8b0faa40ff86e2863ce307be67",
+  "file_list_sha256": "a3b6a9f7061e0ca64176a59f88f199ccf23b5890828c682602a6206ddb322f12",
   "notes": ""
 }
