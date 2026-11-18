@@ -1,17 +1,17 @@
 {
-  "phase_id": "hub-phase1-data",
-  "intent": "Additive Hub enablement for all 102 unique Phase 1 SOW rows: Katana variant relink, web_sellable finishes, third_party_sources resale, sku_aliases, FGC weight/dims/MSRP + sync_to_woo, and dry-run BOM blueprint for Chunk C2.",
+  "phase_id": "phase1-katana-bom-restore",
+  "intent": "Idempotent Hub+Katana BOM restore for 25 NEEDS_BOM Phase 1 SOW rows (22 unique Canonical SKUs): dimensionally scaled FRAME+CUSH/table trees, pillow-only CAB BOMs with zero frame/powder, Katana variant link + recipe push, then prove zero NEEDS_BOM remain across the 102-row Phase 1 SOW.",
   "mode": "edit",
-  "base_ref": "8f71897",
+  "base_ref": "0118958",
   "allow_dirty_base": false,
   "override_blast_cap": true,
   "expected_blast_radius": 4,
-  "target_test": "npx dotenv -e .env.local -- vitest run tests/phase1-hub-data.test.ts",
+  "target_test": "npx dotenv -e .env.local -- vitest run tests/phase1-bom-restore.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/session-stamp.json",
     ".cursor/aar.json",
-    "scripts/ops/enable-phase1-hub-data.ts",
-    "tests/phase1-hub-data.test.ts"
+    "scripts/ops/restore-phase1-25-boms.ts",
+    "tests/phase1-bom-restore.test.ts"
   ]
 }

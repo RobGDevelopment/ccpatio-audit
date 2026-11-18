@@ -1,32 +1,32 @@
 {
-  "phase_id": "hub-phase1-data",
-  "base_ref": "8f71897",
+  "phase_id": "phase1-katana-bom-restore",
+  "base_ref": "0118958",
   "blast_radius": 4,
   "counts": {
     "files": 4,
     "tracked": 2,
     "untracked": 2,
-    "insertions": 8,
-    "deletions": 18
+    "insertions": 7,
+    "deletions": 7
   },
   "files": [
     {
       "status": "??",
-      "path": "scripts/ops/enable-phase1-hub-data.ts",
+      "path": "scripts/ops/restore-phase1-25-boms.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/phase1-hub-data.test.ts",
+      "path": "tests/phase1-bom-restore.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 7,
-      "deletions": 17
+      "insertions": 6,
+      "deletions": 6
     },
     {
       "status": "M",
@@ -36,9 +36,9 @@
     }
   ],
   "untracked": [
-    "scripts/ops/enable-phase1-hub-data.ts",
-    "tests/phase1-hub-data.test.ts"
+    "scripts/ops/restore-phase1-25-boms.ts",
+    "tests/phase1-bom-restore.test.ts"
   ],
-  "file_list_sha256": "493038f76ea89434c4ac7c41e52a5f62f794ddcf939a62c4d830f3c68ac26360",
+  "file_list_sha256": "5a635aba4788e0fc530f6552531e1d038b49bb8b0faa40ff86e2863ce307be67",
   "notes": ""
 }
