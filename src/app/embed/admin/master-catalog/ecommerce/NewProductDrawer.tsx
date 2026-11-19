@@ -401,10 +401,10 @@ function NewProductDrawerContent({
                     checked={metalFramedMake}
                     onChange={(e) => setMetalFramedMake(e.target.checked)}
                   />
-                  Metal-Framed Make (Aluminum-only +10%)
+                  Metal-Framed Make (Mia nearest-$5 Aluminum website price)
                 </label>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Steel Base MSRP ($)</label>
+                  <label className="text-xs font-semibold text-slate-500 uppercase">Base Cost / MSRP ($)</label>
                   <input
                     type="text"
                     value={steelBaseMsrp}
@@ -414,11 +414,13 @@ function NewProductDrawerContent({
                   />
                 </div>
                 <p className="text-xs text-sky-900">
-                  Woo Aluminum Price:{" "}
-                  <span className="font-bold">
+                  Website Price (Aluminum):{" "}
+                  <span className="font-bold" data-testid="new-product-alu-preview">
                     {aluPreview.wooPrice != null ? `$${aluPreview.wooPrice.toFixed(2)}` : "—"}
                   </span>
-                  {metalFramedMake ? " (= Steel × 1.10)" : " (1.00×)"}
+                  {metalFramedMake
+                    ? " (= Math.round((base × 1.10) / 5) × 5)"
+                    : " (1.00×)"}
                 </p>
               </div>
             ) : null}

@@ -10,8 +10,14 @@ import {
 import {
   classifyFramePolicy,
   framePolicyBadge,
-  hasHalfCent,
 } from "@/server/ecommerce/alu10-pricing";
+import {
+  needsMiaSpotCheck,
+  readPriceReviewFlag,
+  suggestedNearest5,
+  PRICE_REVIEW_MISSING,
+  PRICE_REVIEW_ODD,
+} from "@/server/ecommerce/two-tab-portal";
 import type { EcommerceListing } from "../actions";
 import type { WooSyncStatus } from "@/server/woocommerce/woo-catalog-sync";
 
@@ -99,18 +105,28 @@ export function Phase1FlatGrid({
   onToggleMia,
   onPush,
   onSaveAluPrice,
+  onRoundNearest5,
+  spotCheckOnly = false,
 }: {
   listings: Phase1Listing[];
   onToggleMia: (sku: string, approved: boolean) => void;
   onPush: (sku: string) => void;
   onSaveAluPrice?: (listingId: string, price: string) => void;
+  onRoundNearest5?: (listingId: string) => void;
+  spotCheckOnly?: boolean;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [draftPrices, setDraftPrices] = useState<Record<string, string>>({});
-  const sorted = useMemo(
-    () => [...listings].sort((a, b) => a.sheetOrder - b.sheetOrder || a.globalSku.localeCompare(b.globalSku)),
-    [listings],
-  );
+  const sorted = useMemo(() => {
+    const filtered = spotCheckOnly
+      ? listings.filter((l) =>
+          needsMiaSpotCheck({ globalSku: l.globalSku, attributes: l.attributes }),
+        )
+      : listings;
+    return [...filtered].sort(
+      (a, b) => a.sheetOrder - b.sheetOrder || a.globalSku.localeCompare(b.globalSku),
+    );
+  }, [listings, spotCheckOnly]);
 
   return (
     <div className="overflow-auto rounded-2xl border border-slate-200 bg-white">
@@ -122,8 +138,7 @@ export function Phase1FlatGrid({
             <th className="px-2 py-2">Product & Size</th>
             <th className="px-2 py-2">Woo SKU</th>
             <th className="px-2 py-2">Frame / Pricing Rule</th>
-            <th className="px-2 py-2">Steel Base MSRP</th>
-            <th className="px-2 py-2">Woo Aluminum Price</th>
+            <th className="px-2 py-2">Website Price (Aluminum)</th>
             <th className="px-2 py-2">Sale</th>
             <th className="px-2 py-2">Dims</th>
             <th className="px-2 py-2">Weight</th>
@@ -145,17 +160,26 @@ export function Phase1FlatGrid({
               attributes: row.attributes,
             });
             const aluVal = row.aluminumMsrpValue ?? row.msrpValue;
-            const half = aluVal != null && hasHalfCent(aluVal);
+            const flag = readPriceReviewFlag(row.attributes);
+            const needsCheck = needsMiaSpotCheck({
+              globalSku: row.globalSku,
+              attributes: row.attributes,
+            });
             const draft =
               draftPrices[row.id] ??
               (aluVal != null ? aluVal.toFixed(2) : "");
+            const steelTip =
+              row.msrpValue != null
+                ? `Steel MSRP (reference only): $${row.msrpValue.toFixed(2)} — disregard for website`
+                : "Steel MSRP unavailable";
             return (
               <tr
                 key={row.id}
                 className={`border-t border-slate-100 hover:bg-slate-50/80 ${
-                  half ? "bg-amber-50/60" : ""
+                  needsCheck ? "bg-amber-50/70" : ""
                 }`}
                 data-testid={`live-row-${row.globalSku}`}
+                data-price-review={flag ?? undefined}
               >
                 <td className="px-2 py-2 tabular-nums text-slate-400">{idx + 1}</td>
                 <td className="px-2 py-2 text-slate-600">{row.collectionLabel}</td>
@@ -164,14 +188,28 @@ export function Phase1FlatGrid({
                     type="button"
                     className="text-left hover:underline"
                     onClick={() => setExpanded(expanded === row.id ? null : row.id)}
+                    title={steelTip}
                   >
                     {row.productName}
                   </button>
+                  {flag === PRICE_REVIEW_MISSING ? (
+                    <span className="ml-2 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800">
+                      Missing from Mia PDF
+                    </span>
+                  ) : null}
+                  {flag === PRICE_REVIEW_ODD ? (
+                    <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                      Odd $ in PDF
+                    </span>
+                  ) : null}
                   {expanded === row.id ? (
-                    <p className="mt-1 text-[10px] text-slate-500">
+                    <p className="mt-1 text-[10px] text-slate-500" title={steelTip}>
                       {row.thirdParty ? "Resale" : "Make"} · ship {ship}
                       {row.hubArmHeight ? ` · Arm ${row.hubArmHeight}` : ""}
                       {row.hubSitHeight ? ` · Seat ${row.hubSitHeight}` : ""}
+                      {row.msrpValue != null
+                        ? ` · Steel ref $${row.msrpValue.toFixed(2)}`
+                        : ""}
                     </p>
                   ) : null}
                 </td>
@@ -181,29 +219,46 @@ export function Phase1FlatGrid({
                     {framePolicyBadge(policy)}
                   </span>
                 </td>
-                <td className="px-2 py-2 tabular-nums text-slate-500">{row.msrp}</td>
                 <td className="px-2 py-2">
-                  {onSaveAluPrice ? (
-                    <input
-                      className={`w-24 rounded border px-1.5 py-1 font-mono text-[11px] ${
-                        half ? "border-amber-400 bg-amber-50" : "border-slate-200"
-                      }`}
-                      value={draft}
-                      onChange={(e) =>
-                        setDraftPrices((prev) => ({ ...prev, [row.id]: e.target.value }))
-                      }
-                      onBlur={() => {
-                        if (draft && draft !== (aluVal != null ? aluVal.toFixed(2) : "")) {
-                          onSaveAluPrice(row.id, draft);
+                  <div className="flex items-center gap-1">
+                    {onSaveAluPrice ? (
+                      <input
+                        className={`w-28 rounded border px-1.5 py-1 font-mono text-[12px] font-semibold text-slate-900 ${
+                          needsCheck ? "border-amber-400 bg-amber-50" : "border-slate-300"
+                        }`}
+                        value={draft}
+                        onChange={(e) =>
+                          setDraftPrices((prev) => ({ ...prev, [row.id]: e.target.value }))
                         }
-                      }}
-                      aria-label={`Woo Aluminum Price for ${row.globalSku}`}
-                    />
-                  ) : (
-                    <span className={half ? "font-semibold text-amber-800" : ""}>
-                      {row.aluminumMsrp ?? row.msrp}
-                    </span>
-                  )}
+                        onBlur={() => {
+                          if (draft && draft !== (aluVal != null ? aluVal.toFixed(2) : "")) {
+                            onSaveAluPrice(row.id, draft);
+                          }
+                        }}
+                        aria-label={`Website Price (Aluminum) for ${row.globalSku}`}
+                        title={steelTip}
+                        data-testid={`website-price-${row.globalSku}`}
+                      />
+                    ) : (
+                      <span
+                        className="font-semibold tabular-nums text-slate-900"
+                        title={steelTip}
+                      >
+                        {row.aluminumMsrp ?? row.msrp}
+                      </span>
+                    )}
+                    {flag === PRICE_REVIEW_ODD && onRoundNearest5 && aluVal != null ? (
+                      <button
+                        type="button"
+                        data-testid={`round-nearest5-${row.globalSku}`}
+                        onClick={() => onRoundNearest5(row.id)}
+                        className="rounded border border-amber-400 bg-white px-1.5 py-1 text-[10px] font-semibold text-amber-900 hover:bg-amber-100"
+                        title={`Round to $${suggestedNearest5(aluVal).toFixed(0)}`}
+                      >
+                        Round to Nearest $5
+                      </button>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="px-2 py-2">{row.salePrice ?? "—"}</td>
                 <td className="px-2 py-2">{dims || "—"}</td>

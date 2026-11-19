@@ -1,19 +1,18 @@
-# BUILD_PLAN — alu-10pct-and-two-tab-portal
+# BUILD_PLAN — mia-pdf-aluminum-ground-truth
 
-**Phase ID:** `alu-10pct-and-two-tab-portal`  
-**Base ref:** `8f5f0a5`  
-**Target test:** `npx vitest run tests/alu10-pricing-and-two-tab.test.ts tests/phase1-csv-and-smoke.test.ts`  
-**Expected blast radius:** 23 (set to match final git diff file count before QCA)
+**Phase ID:** `mia-pdf-aluminum-ground-truth`  
+**Base ref:** `a7e6f15`  
+**Target test:** `npx vitest run tests/mia-aluminum-pdf-pricing.test.ts tests/phase1-csv-and-smoke.test.ts`  
+**Expected blast radius:** set to match final git diff file count before QCA
 
 ## Intent
-Site-wide Aluminum-only storefront with **+10%** baked into Woo Regular price (Steel base preserved as `sow_base_steel_msrp` / `steel_msrp`), zero-data-loss Phase 1+2 COALESCE hydration, inbound resolver defaults to `MET-ALUM` (Steel quarantines), Katana SO/MO weld stamp, and Mia's 2-tab E-Commerce command center with recalculate / round-`.50` / exports.
+Mia's Aluminum E-Commerce Price List PDF is the **authoritative website Regular price** (Oct 1, 2026 increased base + manual `$0`/`$5` rounding). Disregard storefront MSRP / formula-only `×1.10`. Commit a deterministic JSON fixture (never the 10 MB PDF), hydrate Phase 1 (`102` SOW / `107` Woo) + Phase 2 (`162`) + Hub library with zero-data-loss COALESCE, flag missing Milan ottomans + odd-dollar PDF rows for Mia spot-check, and align the GHL portal so **Website Price (Aluminum)** is the single prominent editable column.
 
 ## Allowed files
 See `.cursor/phase.lock` `allowed_files`.
 
 ## Acceptance
-1. Metal-framed Phase 1 Woo prices = `round(steel * 1.10, 2)`; Cabana pillows + resale stay `1.00x`.
-2. Missing `frame_material` on metal Make → `MET-ALUM`; explicit Steel → `steel_discontinued_on_ecommerce`.
-3. Pre/post Hub non-null snapshots never regress (`product_bom`, `logistics_profiles`, `finished_goods_catalog`).
-4. Portal shows Aluminum-Only +10% policy banner, Live / Phase 2 tabs, Mia exports.
-5. QCA `verdict: CERTIFIED`, `audit_exit: 0`, `blastRadius.status: PASS`.
+1. Fixture `data_migration/Pricing/mia-aluminum-pricelist-2026-11-19.json` holds ~258 parsed PDF rows; `docs/AluminumUpdate/*.pdf` is gitignored.
+2. Phase 1 Woo Regular prices match Mia PDF (`Bravada Club Chair` = `2530`, etc.); 4 Milan ottomans use nearest-`$5` formula + `missing_from_mia_pdf`; 6 odd-dollar PDF rows keep exact cents + `odd_dollar_in_pdf`.
+3. Portal: Website Price (Aluminum) prominent; Steel MSRP secondary/tooltip; **Needs Mia Spot-Check (7)** filter + 1-click Round to Nearest `$5`; New Product wizard defaults to `Math.round((base * 1.10) / 5) * 5`.
+4. `npm run qa:lifecycle` exit 0; QCA `verdict: CERTIFIED`, `audit_exit: 0`, `blastRadius.status: PASS`.

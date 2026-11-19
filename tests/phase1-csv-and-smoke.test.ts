@@ -160,19 +160,22 @@ describe("phase1 csv structural assertions", () => {
     }
   });
 
-  it("bakes +10% Aluminum into metal Make Regular prices; pillows/resale stay 1.00x", () => {
+  it("bakes Mia PDF Aluminum website prices into Regular price; pillows/resale stay 1.00x", () => {
     const { rows } = loadGeneratedCsv();
     const bySku = new Map(
       rows
         .filter((r) => r.Type === "simple" || r.Type === "variation")
         .map((r) => [r.SKU, r] as const),
     );
-    expect(Number(bySku.get("FIN-BRV-CLB-CHA-34X34")!["Regular price"])).toBe(2288);
-    expect(Number(bySku.get("FIN-BRV-SWV-CHA-34X34")!["Regular price"])).toBe(2838);
-    expect(Number(bySku.get("FIN-BRV-LOV-SOF-60X34")!["Regular price"])).toBe(3025);
+    // Mia PDF Aluminum (Oct 1 base + manual $0/$5) — NOT steel × 1.10
+    expect(Number(bySku.get("FIN-BRV-CLB-CHA-34X34")!["Regular price"])).toBe(2530);
+    expect(Number(bySku.get("FIN-BRV-SWV-CHA-34X34")!["Regular price"])).toBe(2970);
+    expect(Number(bySku.get("FIN-BRV-LOV-SOF-60X34")!["Regular price"])).toBe(3175);
     expect(Number(bySku.get("FIN-CAB-MIS-17X17")!["Regular price"])).toBe(65);
     expect(Number(bySku.get("FIN-CAB-MIS-23X23")!["Regular price"])).toBe(95);
     expect(Number(bySku.get("FIN-CAB-MIS-12X24")!["Regular price"])).toBe(65);
+    expect(Number(bySku.get("FIN-CAN-UMB")!["Regular price"])).toBe(5150);
+    expect(Number(bySku.get("FIN-KIN-MIS-HEATER")!["Regular price"])).toBe(5695);
     // Resale Ripple Table stays vendor retail
     const ripple = [...bySku.values()].find((r) => r.SKU === "FIN-TJM-TAB");
     if (ripple) expect(Number(ripple["Regular price"])).toBe(464.99);

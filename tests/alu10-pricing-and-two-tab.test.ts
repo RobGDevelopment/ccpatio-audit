@@ -97,13 +97,13 @@ describe("alu10 pricing math", () => {
     );
   });
 
-  it("auto-computes Woo Aluminum for metal-framed Make wizard", () => {
+  it("auto-computes Woo Aluminum for metal-framed Make wizard (Mia nearest-$5)", () => {
     const priced = autoWooAluminumPrice({
       origin: "manufactured",
       steelBaseMsrp: 2080,
       metalFramedMake: true,
     });
-    expect(priced.wooPrice).toBe(2288);
+    expect(priced.wooPrice).toBe(2290);
     expect(priced.framePolicy).toBe(FRAME_POLICY_ALU10);
   });
 });
@@ -253,7 +253,8 @@ describe("zero data loss snapshot guard + portal banner", () => {
   });
 
   it("exports Mia Aluminum price list CSV header", () => {
-    expect(STOREFRONT_POLICY_BANNER).toContain("Aluminum Only");
+    expect(STOREFRONT_POLICY_BANNER).toMatch(/Aluminum Only/i);
+    expect(STOREFRONT_POLICY_BANNER).toMatch(/Mia PDF/i);
     const csv = buildMiaAluminumPriceListCsv([
       {
         collection: "Bravada",
@@ -263,12 +264,13 @@ describe("zero data loss snapshot guard + portal banner", () => {
         sku: "FIN-BRV-CLB-CHA-34X34",
         framePolicy: FRAME_POLICY_ALU10,
         steelBase: 2080,
-        aluPrice: 2288,
+        aluPrice: 2530,
         salePrice: null,
         miaApproved: true,
       },
     ]);
     expect(csv).toContain("Steel Base MSRP");
-    expect(csv).toContain("2288.00");
+    expect(csv).toContain("2530.00");
+    expect(csv).toContain("Website Price (Aluminum)");
   });
 });

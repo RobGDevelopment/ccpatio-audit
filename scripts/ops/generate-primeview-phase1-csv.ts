@@ -16,7 +16,7 @@
 import { loadEnvConfig } from "@next/env";
 loadEnvConfig(process.cwd());
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { inArray, like } from "drizzle-orm";
 import { closeDb, getDb } from "../../src/server/db/client";
@@ -42,6 +42,11 @@ import {
   DEFAULT_ALU_UPCHARGE_PCT,
   wooEcommercePrice,
 } from "../../src/server/ecommerce/alu10-pricing";
+import {
+  MIA_PDF_FIXTURE_REL,
+  resolveWebsitePriceFromFixture,
+  type MiaPdfFixture,
+} from "../../src/server/ecommerce/mia-aluminum-pricing";
 
 const TMP = join(process.cwd(), "tmp");
 const SWATCH_DIR = join(TMP, "primeview-fabric-swatches");
@@ -56,6 +61,40 @@ const WOO_EXPORT_PATH = join(
 const OUT_CSV = join(TMP, "primeview-phase1-102-import.csv");
 const OUT_HANDOFF = join(TMP, "PRIMEVIEW_PHASE1_HANDOFF_SPEC.md");
 const OUT_REPORT = join(TMP, "primeview-phase1-csv-report.json");
+const MIA_FIXTURE_PATH = join(process.cwd(), MIA_PDF_FIXTURE_REL);
+
+function loadMiaFixture(): MiaPdfFixture | null {
+  if (!existsSync(MIA_FIXTURE_PATH)) return null;
+  return JSON.parse(readFileSync(MIA_FIXTURE_PATH, "utf8")) as MiaPdfFixture;
+}
+
+function resolveWebsiteRegularPrice(input: {
+  sku: string;
+  wooSku: string;
+  sowName: string;
+  steelNum: number;
+  framePolicy: ReturnType<typeof classifyFramePolicy>;
+  listingAlu: number | null;
+  fixture: MiaPdfFixture | null;
+}): string {
+  const fromFixture = input.fixture
+    ? resolveWebsitePriceFromFixture(input.fixture, {
+        sku: input.sku,
+        wooSku: input.wooSku,
+        sowName: input.sowName,
+      })
+    : null;
+  if (fromFixture != null) return fromFixture.toFixed(2);
+  if (input.listingAlu != null && Number.isFinite(input.listingAlu) && input.listingAlu > 0) {
+    return input.listingAlu.toFixed(2);
+  }
+  const computed = wooEcommercePrice({
+    steelMsrp: input.steelNum,
+    framePolicy: input.framePolicy,
+    upchargePct: DEFAULT_ALU_UPCHARGE_PCT,
+  });
+  return (computed ?? input.steelNum).toFixed(2);
+}
 
 /** Parents that require Attribute 2 Select Facing + -LS/-RS variation pairs. */
 export const FACING_PARENT_IDS = new Set(["27674", "27687"]);
@@ -642,10 +681,17 @@ export async function buildPhase1ImportBundle(opts?: {
     .select({
       sku: ecommerce_listings.global_sku,
       steel: ecommerce_listings.steel_msrp,
+      aluminum: ecommerce_listings.aluminum_msrp,
     })
     .from(ecommerce_listings)
     .where(inArray(ecommerce_listings.global_sku, skus));
   const listingBySku = new Map(listings.map((r) => [r.sku, r]));
+  const miaFixture = loadMiaFixture();
+  if (!miaFixture) {
+    console.warn(
+      `[csv] Missing Mia fixture at ${MIA_PDF_FIXTURE_REL} — falling back to Hub aluminum / ×1.10`,
+    );
+  }
 
   const aliases = await db
     .select({
@@ -715,12 +761,20 @@ export async function buildPhase1ImportBundle(opts?: {
       globalSku: row.sku,
       isThirdParty: tpsSet.has(row.sku),
     });
-    const wooPrice = wooEcommercePrice({
-      steelMsrp: steelNum,
+    const listingAluRaw = listingBySku.get(row.sku)?.aluminum;
+    const listingAlu =
+      listingAluRaw != null && String(listingAluRaw).trim() !== ""
+        ? Number(listingAluRaw)
+        : null;
+    const price = resolveWebsiteRegularPrice({
+      sku: row.sku,
+      wooSku: resolved.wooSku,
+      sowName: row.name,
+      steelNum,
       framePolicy,
-      upchargePct: DEFAULT_ALU_UPCHARGE_PCT,
+      listingAlu: Number.isFinite(listingAlu) ? listingAlu : null,
+      fixture: miaFixture,
     });
-    const price = wooPrice != null ? wooPrice.toFixed(2) : steelRaw;
     if (!price || Number(price) <= 0) {
       throw new Error(`Missing positive price for ${row.sku}`);
     }
@@ -921,12 +975,20 @@ export async function buildPhase1ImportBundle(opts?: {
           globalSku: override.sow.sku,
           isThirdParty: tpsSet.has(override.sow.sku),
         });
-        const wooPrice = wooEcommercePrice({
-          steelMsrp: steelNum,
+        const listingAluRaw = listingBySku.get(override.sow.sku)?.aluminum;
+        const listingAlu =
+          listingAluRaw != null && String(listingAluRaw).trim() !== ""
+            ? Number(listingAluRaw)
+            : null;
+        const price = resolveWebsiteRegularPrice({
+          sku: override.sow.sku,
+          wooSku: override.sku,
+          sowName: override.sow.name,
+          steelNum,
           framePolicy: policy,
-          upchargePct: DEFAULT_ALU_UPCHARGE_PCT,
+          listingAlu: Number.isFinite(listingAlu) ? listingAlu : null,
+          fixture: miaFixture,
         });
-        const price = wooPrice != null ? wooPrice.toFixed(2) : steelRaw;
         const weightLb = Number(hub?.weight ?? override.sow.baseWeight ?? "0");
         applyPurchasableMetrics(out, {
           sku: override.sku,
@@ -961,7 +1023,7 @@ export async function buildPhase1ImportBundle(opts?: {
 
 CC Patio Hub owns catalog authority. This CSV is the turnkey WooCommerce Product CSV Import for PrimeView/Yardi on \`ccpatiodev2.primeview.com\`:
 
-- **Aluminum-Only storefront (+10% baked into every metal-framed \`Regular price\`):** \`Woo Price = round(Steel Base MSRP × 1.10, 2)\`. **DO NOT** add separate APF/ACF frame upcharges (Steel is removed from storefront options). Cabana pillows + 3P resale stay \`1.00×\`.
+- **Aluminum Website Price (Mia PDF ground truth):** \`Regular price\` = Mia's authoritative Aluminum column from the Oct 1, 2026 price list (increased base + manual \`$0\`/\`$5\` rounding). **Disregard Steel MSRP on the storefront.** Example: Bravada Club Chair = \`2530\` (not \`2080 × 1.10 = 2288\`). **DO NOT** add separate APF/ACF frame upcharges. Cabana pillows + 3P resale use Mia's non-metal column 1:1.
 - Exact 169 headers from \`product_export_import_headers.csv\` (UTF-8, \`ID\` without BOM corruption)
 - Preserved PrimeView parent IDs and existing variation IDs where present
 - **107 unique purchasable SKUs** on every \`simple\` / \`variation\` row (variable parents keep blank SKU)

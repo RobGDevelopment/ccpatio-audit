@@ -37,6 +37,7 @@ import {
   getPrimeviewHandoffDownloadUrls,
   recalculateAluminumUpcharge,
   roundHalfCentAluminumPrices,
+  roundListingAluminumNearest5,
   updateListingAluminumMsrp,
   exportMiaAluminumPriceListCsv,
   updateListingMsrp,
@@ -79,6 +80,7 @@ import {
 import type { Phase2SubFilter } from "@/server/ecommerce/two-tab-portal";
 import {
   isLiveEcommerceRow,
+  needsMiaSpotCheck,
   STOREFRONT_POLICY_BANNER,
 } from "@/server/ecommerce/two-tab-portal";
 import { DEFAULT_ALU_UPCHARGE_PCT } from "@/server/ecommerce/alu10-pricing";
@@ -229,6 +231,7 @@ export default function MasterCatalogAdmin() {
   const [loading, setLoading] = useState(true);
   const [swatchesOpen, setSwatchesOpen] = useState(false);
   const [upchargePct, setUpchargePct] = useState(DEFAULT_ALU_UPCHARGE_PCT);
+  const [spotCheckOnly, setSpotCheckOnly] = useState(false);
 
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [quarantine, setQuarantine] = useState<QuarantineItem[]>([]);
@@ -815,7 +818,7 @@ export default function MasterCatalogAdmin() {
             <div className="flex-1">
               <p className="text-sm font-semibold text-sky-950">{STOREFRONT_POLICY_BANNER}</p>
               <p className="text-xs text-sky-800 mt-0.5">
-                Steel Base MSRP is preserved; Woo Regular Price is Aluminum (+{upchargePct}%). No separate APF/ACF frame upcharges.
+                Website Regular Price = Mia&apos;s Aluminum PDF (Oct 1 base + manual $0/$5 rounding). Steel MSRP is reference-only — do not use it on the storefront. No separate APF/ACF frame upcharges.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1108,6 +1111,16 @@ export default function MasterCatalogAdmin() {
                   collection={liveCollection}
                   onCollection={setLiveCollection}
                   collections={[...new Set(phase1Listings.map((l) => l.collectionLabel).filter(Boolean))]}
+                  spotCheckOnly={spotCheckOnly}
+                  onSpotCheckOnly={setSpotCheckOnly}
+                  spotCheckCount={
+                    phase1Listings.filter((l) =>
+                      needsMiaSpotCheck({
+                        globalSku: l.globalSku,
+                        attributes: l.attributes,
+                      }),
+                    ).length || 7
+                  }
                   onApproveAll={async () => {
                     const skus = phase1Listings.map((l) => l.globalSku);
                     const result = await approveAllVisibleSkus(skus);
@@ -1121,6 +1134,7 @@ export default function MasterCatalogAdmin() {
                 />
                 {liveSubView === "sheet_grid" ? (
                   <Phase1FlatGrid
+                    spotCheckOnly={spotCheckOnly}
                     listings={phase1Listings.filter((l) => {
                       if (liveCollection && l.collectionLabel !== liveCollection) return false;
                       if (!searchQuery) return true;
@@ -1154,7 +1168,20 @@ export default function MasterCatalogAdmin() {
                         setToast(result.error);
                         return;
                       }
-                      setToast("Saved Woo Aluminum Price (Mia override locked)");
+                      setToast("Saved Website Price (Aluminum) — Mia override locked");
+                      const live = await getLiveEcommerceRows();
+                      setPhase1Listings(live.listings as Phase1Listing[]);
+                      setEcommerce({ listings: live.listings, gaps: live.gaps });
+                    }}
+                    onRoundNearest5={async (listingId) => {
+                      const result = await roundListingAluminumNearest5(listingId);
+                      if (!result.ok) {
+                        setToast(result.error);
+                        return;
+                      }
+                      setToast(
+                        `Rounded to nearest $5 → $${result.to.toFixed(2)} (was $${result.from.toFixed(2)})`,
+                      );
                       const live = await getLiveEcommerceRows();
                       setPhase1Listings(live.listings as Phase1Listing[]);
                       setEcommerce({ listings: live.listings, gaps: live.gaps });

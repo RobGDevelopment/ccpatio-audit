@@ -2761,6 +2761,72 @@ export async function roundHalfCentAluminumPrices(): Promise<
   return { ok: true, rounded };
 }
 
+/** 1-click Round to Nearest $5 for Mia odd-dollar PDF rows. Clears odd flag. */
+export async function roundListingAluminumNearest5(
+  listingId: string,
+): Promise<
+  | { ok: true; from: number; to: number }
+  | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const db = getDb();
+  const [listing] = await db
+    .select({
+      id: ecommerce_listings.id,
+      sku: ecommerce_listings.global_sku,
+      alum: ecommerce_listings.aluminum_msrp,
+      version: ecommerce_listings.version,
+      attributes: sku_mappings.attributes,
+      mapVersion: sku_mappings.version,
+    })
+    .from(ecommerce_listings)
+    .innerJoin(sku_mappings, eq(sku_mappings.global_sku, ecommerce_listings.global_sku))
+    .where(eq(ecommerce_listings.id, listingId))
+    .limit(1);
+  if (!listing) return { ok: false, error: "Listing not found." };
+  const from = listing.alum != null ? Number(listing.alum) : NaN;
+  if (!Number.isFinite(from) || from <= 0) {
+    return { ok: false, error: "No aluminum price to round." };
+  }
+  const { suggestedNearest5 } = await import("@/server/ecommerce/mia-aluminum-pricing");
+  const to = suggestedNearest5(from);
+  const attrs: Record<string, unknown> = {
+    ...((listing.attributes as Record<string, unknown>) ?? {}),
+    mia_price_locked: true,
+    woo_alu_msrp: to,
+    mia_pdf_price_before_round: from,
+  };
+  delete attrs.price_review_flag;
+  await db
+    .update(ecommerce_listings)
+    .set({
+      aluminum_msrp: to.toFixed(2),
+      version: listing.version + 1,
+      updated_at: new Date(),
+    })
+    .where(eq(ecommerce_listings.id, listingId));
+  await db
+    .update(sku_mappings)
+    .set({
+      attributes: attrs,
+      version: listing.mapVersion + 1,
+      updated_at: new Date(),
+      updated_by: session.email,
+    })
+    .where(eq(sku_mappings.global_sku, listing.sku));
+  await logPimAudit({
+    operatorEmail: session.email,
+    globalSku: listing.sku,
+    action: "round_nearest_5_alu",
+    field: "aluminum_msrp",
+    oldValue: String(from),
+    newValue: String(to),
+  });
+  revalidatePath("/embed/admin/master-catalog");
+  return { ok: true, from, to };
+}
+
 export async function updateListingAluminumMsrp(
   listingId: string,
   aluminumMsrp: string,

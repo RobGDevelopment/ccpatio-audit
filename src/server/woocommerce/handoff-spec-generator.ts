@@ -174,7 +174,7 @@ function renderAcfMatrix(): string {
 | --- | --- |
 | \`fabric\` / \`fabric_sku\` | finish slot → \`FAB-*\` |
 | \`powder_coat\` | finish slot → \`PWD-*\` (Ready-Make hardcoded powder swap supported) |
-| \`frame\` / \`frame_material\` | **Aluminum-only:** omit or \`Aluminum\` / \`MET-ALUM\` → \`MET-ALUM\`; \`Steel\` / \`MET-STEEL\` → quarantine \`steel_discontinued_on_ecommerce\`. **+10% Aluminum price is baked into variation Regular Price — DO NOT add separate APF/ACF frame upcharges.** |
+| \`frame\` / \`frame_material\` | **Aluminum-only:** omit or \`Aluminum\` / \`MET-ALUM\` → \`MET-ALUM\`; \`Steel\` / \`MET-STEEL\` → quarantine \`steel_discontinued_on_ecommerce\`. **Website Regular Price = Mia Aluminum PDF (not Steel MSRP × 1.10) — DO NOT add separate APF/ACF frame upcharges.** |
 | \`facing\` / \`select_facing\` / \`pa_select-facing\` | **ignored** (facing already in variation SKU) |
 | \`ironwood\` | \`FIN-ESY-MIS-ADDIRONWOOD\` (SO-only) |
 | \`umbrella_cover\` | \`FIN-ESY-MIS-WEATHERPROOFCO\` (SO-only) |
@@ -256,7 +256,7 @@ export function renderLiveHandoffMarkdown(input: {
 
 CC Patio Hub owns catalog authority. This live CSV is the turnkey WooCommerce Product CSV Import for PrimeView/Yardi on \`ccpatiodev2.primeview.com\`:
 
-- **Aluminum-Only (+10% baked into variation Regular Price):** \`Woo Price = round(Steel Base MSRP × 1.10, 2)\`. Steel is removed from storefront options. **DO NOT add separate APF/ACF frame upcharges.** Cabana pillows + 3P resale stay \`1.00×\`.
+- **Aluminum Website Price (Mia PDF):** \`Regular price\` comes from Mia's Aluminum column (Oct 1 base + manual \`$0\`/\`$5\` rounding). Disregard Steel MSRP on the storefront. Steel is removed from storefront options. **DO NOT add separate APF/ACF frame upcharges.** Cabana pillows + 3P resale use Mia's non-metal prices 1:1.
 - Exact 169 headers from \`product_export_import_headers.csv\` (UTF-8, \`ID\` without BOM corruption)
 - Preserved PrimeView parent IDs and existing variation IDs where present
 - **${input.uniquePurchasableSkus} unique purchasable SKUs** on every \`simple\` / \`variation\` row (variable parents keep blank SKU)

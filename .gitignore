@@ -51,6 +51,10 @@ _ARCHIVE_TO_REMOVE_/
 # Customer factory orders (names, addresses) — local working copies only
 docs/NewWIP/
 
+# Mia Aluminum PDF binary (10MB+) — parse into committed JSON fixture instead
+docs/AluminumUpdate/*.pdf
+
+
 .vercel
 
 # Isolated 3D WebGL Sandbox

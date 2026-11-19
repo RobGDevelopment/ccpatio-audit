@@ -85,8 +85,8 @@ export function Phase2StagingGrid({
           <tr>
             <th className="px-3 py-2">Product</th>
             <th className="px-3 py-2">SKU</th>
-            <th className="px-3 py-2">Steel Base</th>
-            <th className="px-3 py-2">Woo Aluminum (+10%)</th>
+            <th className="px-3 py-2">Website Price (Aluminum)</th>
+            <th className="px-3 py-2">Steel (ref)</th>
             <th className="px-3 py-2">Readiness</th>
             <th className="px-3 py-2 text-right">Actions</th>
           </tr>
@@ -119,11 +119,18 @@ export function Phase2StagingGrid({
               <tr key={row.id} className="border-t border-slate-100" data-testid={`phase2-row-${row.globalSku}`}>
                 <td className="px-3 py-2 font-medium text-slate-800">{row.productName}</td>
                 <td className="px-3 py-2 font-mono text-xs text-slate-600">{row.globalSku}</td>
-                <td className="px-3 py-2">
-                  {row.msrpValue != null ? `$${row.msrpValue.toFixed(2)}` : "—"}
-                </td>
-                <td className="px-3 py-2 font-semibold text-slate-800">
+                <td
+                  className="px-3 py-2 font-semibold text-slate-900"
+                  title={
+                    row.msrpValue != null
+                      ? `Steel MSRP (reference only): $${row.msrpValue.toFixed(2)}`
+                      : undefined
+                  }
+                >
                   {alu != null ? `$${alu.toFixed(2)}` : "—"}
+                </td>
+                <td className="px-3 py-2 text-slate-400 text-xs" title="Disregard — not website price">
+                  {row.msrpValue != null ? `$${row.msrpValue.toFixed(2)}` : "—"}
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-1">
@@ -183,6 +190,9 @@ export function LiveToolbar({
   collection,
   onCollection,
   collections,
+  spotCheckOnly = false,
+  onSpotCheckOnly,
+  spotCheckCount = 7,
 }: {
   subView: "grouped_parents" | "sheet_grid";
   onSubView: (v: "grouped_parents" | "sheet_grid") => void;
@@ -194,6 +204,9 @@ export function LiveToolbar({
   collection: string;
   onCollection: (v: string) => void;
   collections: string[];
+  spotCheckOnly?: boolean;
+  onSpotCheckOnly?: (v: boolean) => void;
+  spotCheckCount?: number;
 }) {
   return (
     <div className="flex flex-col gap-3" data-testid="live-ecommerce-toolbar">
@@ -218,6 +231,20 @@ export function LiveToolbar({
         >
           Sheet Grid
         </button>
+        {onSpotCheckOnly ? (
+          <button
+            type="button"
+            data-testid="needs-mia-spot-check"
+            onClick={() => onSpotCheckOnly(!spotCheckOnly)}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+              spotCheckOnly
+                ? "border border-amber-600 bg-amber-500 text-white"
+                : "border border-amber-300 bg-amber-50 text-amber-950"
+            }`}
+          >
+            Needs Mia Spot-Check ({spotCheckCount})
+          </button>
+        ) : null}
         <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800" data-testid="mia-approved-count">
           Mia Approved: {approvedCount} / {totalVisible}
         </span>

@@ -8,6 +8,7 @@ import {
   DEFAULT_ALU_UPCHARGE_PCT,
   FRAME_POLICY_ALU10,
   FRAME_POLICY_RESALE,
+  roundNearest5AluFromBase,
   wooEcommercePrice,
   type FramePolicy,
 } from "./alu10-pricing";
@@ -16,12 +17,17 @@ export type FacingMode = "standard" | "LS" | "RS";
 export type HeightMode = "standard" | "BAR" | "CNT" | "DIN";
 export type ProductOriginKind = "manufactured" | "third_party";
 
-/** When Metal-Framed Make is selected, Woo Aluminum = Steel × 1.10. */
+/**
+ * When Metal-Framed Make is selected, default Woo Aluminum uses Mia's
+ * nearest-$5 rule: Math.round((base * 1.10) / 5) * 5.
+ */
 export function autoWooAluminumPrice(input: {
   origin: ProductOriginKind;
   steelBaseMsrp: number | null | undefined;
   metalFramedMake?: boolean;
   upchargePct?: number;
+  /** When false, use raw ×1.10 without nearest-$5 (tests / legacy). Default true. */
+  nearest5?: boolean;
 }): { framePolicy: FramePolicy; wooPrice: number | null } {
   if (input.origin === "third_party") {
     return {
@@ -37,20 +43,27 @@ export function autoWooAluminumPrice(input: {
   }
   const metal = input.metalFramedMake !== false;
   const policy = metal ? FRAME_POLICY_ALU10 : FRAME_POLICY_RESALE;
+  if (input.steelBaseMsrp == null) {
+    return { framePolicy: policy, wooPrice: null };
+  }
+  const base = Number(input.steelBaseMsrp);
+  if (policy === FRAME_POLICY_ALU10 && input.nearest5 !== false) {
+    return {
+      framePolicy: policy,
+      wooPrice: roundNearest5AluFromBase(base),
+    };
+  }
   return {
     framePolicy: policy,
-    wooPrice:
-      input.steelBaseMsrp == null
-        ? null
-        : wooEcommercePrice({
-            steelMsrp: Number(input.steelBaseMsrp),
-            framePolicy: policy,
-            upchargePct: input.upchargePct ?? DEFAULT_ALU_UPCHARGE_PCT,
-          }),
+    wooPrice: wooEcommercePrice({
+      steelMsrp: base,
+      framePolicy: policy,
+      upchargePct: input.upchargePct ?? DEFAULT_ALU_UPCHARGE_PCT,
+    }),
   };
 }
 
-export { computeAluMsrp, DEFAULT_ALU_UPCHARGE_PCT };
+export { computeAluMsrp, DEFAULT_ALU_UPCHARGE_PCT, roundNearest5AluFromBase };
 
 export type AutoSkuInput = {
   origin: ProductOriginKind;

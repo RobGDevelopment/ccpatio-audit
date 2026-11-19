@@ -10,10 +10,28 @@ import {
   STOREFRONT_POLICY_BANNER,
   type FramePolicy,
 } from "./alu10-pricing";
+import {
+  phase1SpotCheckSkus,
+  readPriceReviewFlag,
+  suggestedNearest5,
+  PRICE_REVIEW_MISSING,
+  PRICE_REVIEW_ODD,
+  type PriceReviewFlag,
+} from "./mia-aluminum-pricing";
 import { isFinishOrAddonSku, isPhase1StorefrontRow } from "./phase1-portal";
 
-export { STOREFRONT_POLICY_BANNER, framePolicyBadge, classifyFramePolicy, hasHalfCent };
-export type { FramePolicy };
+export {
+  STOREFRONT_POLICY_BANNER,
+  framePolicyBadge,
+  classifyFramePolicy,
+  hasHalfCent,
+  phase1SpotCheckSkus,
+  readPriceReviewFlag,
+  suggestedNearest5,
+  PRICE_REVIEW_MISSING,
+  PRICE_REVIEW_ODD,
+};
+export type { FramePolicy, PriceReviewFlag };
 import {
   evaluateFieldBadges,
   isReadyToPromote,
@@ -150,8 +168,8 @@ export function buildMiaAluminumPriceListCsv(
     "Facing",
     "SKU",
     "Frame Policy",
-    "Steel Base MSRP",
-    "+10% Aluminum Website Price",
+    "Steel Base MSRP (reference)",
+    "Website Price (Aluminum)",
     "Sale Price",
     "Mia Approved",
   ];
@@ -175,6 +193,19 @@ export function buildMiaAluminumPriceListCsv(
     ),
   ];
   return lines.join("\n");
+}
+
+/** Phase 1 rows needing Mia spot-check (4 missing Milan + 3 odd-dollar). */
+export function needsMiaSpotCheck(input: {
+  globalSku: string;
+  attributes?: Record<string, unknown> | null;
+}): boolean {
+  const flag = readPriceReviewFlag(input.attributes);
+  if (flag === PRICE_REVIEW_MISSING || flag === PRICE_REVIEW_ODD) return true;
+  const base = input.globalSku.replace(/-(LS|RS)$/i, "").toUpperCase();
+  return phase1SpotCheckSkus().some(
+    (s) => s === input.globalSku.toUpperCase() || s === base,
+  );
 }
 
 export function matchesPhase2SubFilter(

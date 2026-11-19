@@ -21,7 +21,19 @@ export const WEB_ALUMINUM_ONLY_STAMP =
   "FRAME MATERIAL: ALUMINUM (WEB ALUMINUM-ONLY)" as const;
 
 export const STOREFRONT_POLICY_BANNER =
+  "Storefront Policy: Aluminum Only — Website Price from Mia PDF • Disregard Steel MSRP";
+
+/** @deprecated Prefer STOREFRONT_POLICY_BANNER — kept for older imports. */
+export const STOREFRONT_POLICY_BANNER_ALU10 =
   "Storefront Policy: Aluminum Only • +10% Over Steel Base MSRP";
+
+/** Mia nearest-$5 rule used by New Product wizard + missing-PDF fallbacks. */
+export function roundNearest5AluFromBase(baseCostOrMsrp: number): number {
+  if (!Number.isFinite(baseCostOrMsrp) || baseCostOrMsrp < 0) {
+    throw new Error(`Invalid base for nearest-$5: ${baseCostOrMsrp}`);
+  }
+  return Math.round((baseCostOrMsrp * 1.1) / 5) * 5;
+}
 
 export const CABANA_PILLOW_SKUS = [
   "FIN-CAB-MIS-17X17",
