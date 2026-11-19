@@ -31,6 +31,7 @@ import { coerceHubItemType } from "@/lib/raw-material-sku";
 import type { WooOrderWebhook } from "@/server/woocommerce/ingress.schema";
 import { extractWooLineSpecs, wooLineKey } from "@/server/woocommerce/line-specs";
 import type { ResolvedWooLine } from "@/server/woocommerce/sku-resolver";
+import { buildProvisionalFactoryBomNote } from "@/server/ecommerce/provisional-shell";
 import { katanaOrderNo } from "@/server/sre/idempotency";
 import {
   katanaIsSellableProduct,
@@ -1637,13 +1638,16 @@ export function mapWooOrderToKatanaSalesOrder(
   order: WooOrderWebhook,
   lines?: ResolvedWooLine[],
 ): KatanaSalesOrderPayload {
-  const resolved: Array<Pick<ResolvedWooLine, "spec" | "finishes" | "addons" | "skipMo">> =
+  const resolved: Array<
+    Pick<ResolvedWooLine, "spec" | "finishes" | "addons" | "skipMo" | "provisionalShell">
+  > =
     lines ??
     extractWooLineSpecs(order).specs.map((spec) => ({
       spec,
       finishes: [],
       addons: [],
       skipMo: false,
+      provisionalShell: false,
     }));
 
   const billing = order.billing;
@@ -1669,6 +1673,22 @@ export function mapWooOrderToKatanaSalesOrder(
     return `L${i + 1} ${spec.sku} x${spec.quantity}${parts.length ? ` ${parts.join(" ")}` : ""}${addonParts.length ? ` ${addonParts.join(" ")}` : ""}`;
   });
 
+  const provisionalNotes = resolved
+    .filter((line) => line.provisionalShell)
+    .map((line) =>
+      buildProvisionalFactoryBomNote({
+        sku: line.spec.sku,
+        productName: line.spec.sku,
+        lengthIn: null,
+        depthIn: null,
+        heightIn: null,
+        fabricSku: line.finishes.find((f) => f.slot === "fabric")?.sku ?? null,
+        powderSku: line.finishes.find((f) => f.slot === "powder_coat")?.sku ?? null,
+        frameMetalSku: line.finishes.find((f) => f.slot === "frame")?.sku ?? null,
+        addons: (line.addons ?? []).map((a) => ({ key: a.key, sku: a.sku })),
+      }),
+    );
+
   return {
     orderNo: katanaOrderNo("woo", order.id),
     source: "woocommerce",
@@ -1691,7 +1711,11 @@ export function mapWooOrderToKatanaSalesOrder(
         ...finishes.map((f) => ({ key: `finish_${f.slot}`, value: f.sku })),
       ],
     })),
-    additionalInfo: [`source=woocommerce | woo_order=${order.id}`, ...lineSummaries].join(" | "),
+    additionalInfo: [
+      `source=woocommerce | woo_order=${order.id}`,
+      ...lineSummaries,
+      ...provisionalNotes,
+    ].join(" | "),
     customerRef: `woo:${order.id}`,
     ecommerceOrderType: "woocommerce",
     ecommerceOrderId: String(order.id),

@@ -22,6 +22,10 @@ import {
   getQuarantineQueue,
   getEcommerceRoster,
   getPhase1PortalRows,
+  getLiveEcommerceRows,
+  getPhase2PortalRows,
+  promoteToLiveEcommerce,
+  healAndLinkKatana,
   getWooConnectionBadge,
   testWooConnectionAction,
   dryRunWooPushForSku,
@@ -58,11 +62,18 @@ import EcommerceGrid from "./ecommerce/EcommerceGrid";
 import NewProductDrawer from "./ecommerce/NewProductDrawer";
 import {
   Phase1FlatGrid,
-  Phase1ViewSwitcher,
   wooDotClass,
   wooTitle,
   type Phase1Listing,
 } from "./ecommerce/Phase1PortalViews";
+import {
+  LiveToolbar,
+  Phase2StagingGrid,
+  Phase2SubFilterBar,
+  type Phase2Listing,
+} from "./ecommerce/Phase2PortalViews";
+import type { Phase2SubFilter } from "@/server/ecommerce/two-tab-portal";
+import { isLiveEcommerceRow } from "@/server/ecommerce/two-tab-portal";
 
 function DrawerLoadingShell() {
   return (
@@ -197,11 +208,18 @@ function StatusPill({
 
 export default function MasterCatalogAdmin() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"active" | "quarantine">("active");
+  /** 2-tab command center: Live storefront vs Phase 2 staging. */
+  const [activeTab, setActiveTab] = useState<"live" | "phase2" | "quarantine">("live");
   const [view, setView] = useState<ViewMode>("ecommerce");
+  const [liveSubView, setLiveSubView] = useState<"grouped_parents" | "sheet_grid">(
+    "grouped_parents",
+  );
+  const [phase2Filter, setPhase2Filter] = useState<Phase2SubFilter>("phase2_sow");
   const [phase1View, setPhase1View] = useState<Phase1PortalView>("phase1_parents");
   const [searchQuery, setSearchQuery] = useState("");
+  const [liveCollection, setLiveCollection] = useState("");
   const [loading, setLoading] = useState(true);
+  const [swatchesOpen, setSwatchesOpen] = useState(false);
 
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [quarantine, setQuarantine] = useState<QuarantineItem[]>([]);
@@ -209,6 +227,7 @@ export default function MasterCatalogAdmin() {
   // E-Commerce roster: loaded once, on first visit to the view
   const [ecommerce, setEcommerce] = useState<EcommerceRoster | null>(null);
   const [phase1Listings, setPhase1Listings] = useState<Phase1Listing[]>([]);
+  const [phase2Listings, setPhase2Listings] = useState<Phase2Listing[]>([]);
   const [ecommerceLoading, setEcommerceLoading] = useState(false);
   const [ecommerceError, setEcommerceError] = useState<string | null>(null);
   const [wooBadge, setWooBadge] = useState<{ configured: boolean; label: string } | null>(null);
@@ -261,15 +280,16 @@ export default function MasterCatalogAdmin() {
     loadData();
   }, []);
 
-  // Lazy-load the roster the first time the E-Commerce view opens
+  // Lazy-load Live + Phase 2 rosters for the 2-tab command center
   useEffect(() => {
-    if (view !== "ecommerce" || ecommerceLoading || ecommerceError) return;
+    if (ecommerceLoading || ecommerceError) return;
     if (ecommerce && phase1Listings.length > 0) return;
     setEcommerceLoading(true);
-    Promise.all([getEcommerceRoster(), getPhase1PortalRows(phase1View)])
-      .then(([roster, phase1]) => {
+    Promise.all([getEcommerceRoster(), getLiveEcommerceRows(), getPhase2PortalRows(phase2Filter)])
+      .then(([roster, live, phase2]) => {
         setEcommerce(roster);
-        setPhase1Listings(phase1.listings as Phase1Listing[]);
+        setPhase1Listings(live.listings as Phase1Listing[]);
+        setPhase2Listings(phase2.listings as Phase2Listing[]);
       })
       .catch((err) => {
         console.error("Failed to load E-Commerce roster:", err);
@@ -278,14 +298,25 @@ export default function MasterCatalogAdmin() {
         );
       })
       .finally(() => setEcommerceLoading(false));
-  }, [view, ecommerce, ecommerceLoading, ecommerceError, phase1View, phase1Listings.length]);
+  }, [ecommerce, ecommerceLoading, ecommerceError, phase1Listings.length, phase2Filter]);
 
   useEffect(() => {
-    if (view !== "ecommerce") return;
-    void getPhase1PortalRows(phase1View).then((phase1) => {
-      setPhase1Listings(phase1.listings as Phase1Listing[]);
+    if (activeTab !== "live") return;
+    void getLiveEcommerceRows().then((live) => {
+      setPhase1Listings(live.listings as Phase1Listing[]);
     });
-  }, [phase1View, view]);
+  }, [activeTab, liveSubView]);
+
+  useEffect(() => {
+    if (activeTab !== "phase2") return;
+    void getPhase2PortalRows(phase2Filter).then((phase2) => {
+      setPhase2Listings(phase2.listings as Phase2Listing[]);
+    });
+  }, [activeTab, phase2Filter]);
+
+  useEffect(() => {
+    setPhase1View(liveSubView === "sheet_grid" ? "phase1_flat" : "phase1_parents");
+  }, [liveSubView]);
 
   // Close the Actions menu on outside click
   useEffect(() => {
@@ -612,7 +643,7 @@ export default function MasterCatalogAdmin() {
   function handlePrint() {
     setMenuOpen(false);
     setPrintMode(true);
-    setActiveTab("active");
+    setActiveTab("live");
     // Let the print styles apply before opening the dialog.
     setTimeout(() => {
       window.print();
@@ -769,58 +800,57 @@ export default function MasterCatalogAdmin() {
             </div>
           </div>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-testid="ecommerce-tabs">
               <button
-                onClick={() => setActiveTab("active")}
+                data-testid="tab-live-ecommerce"
+                onClick={() => setActiveTab("live")}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                  activeTab === "active"
+                  activeTab === "live"
                     ? "bg-sky-600 text-white shadow-sm ring-1 ring-sky-700/20"
                     : "bg-transparent text-slate-600 hover:bg-slate-100/80"
                 }`}
               >
-                Active Catalog{" "}
-                <span className="ml-1 text-xs opacity-80">({catalog.length})</span>
+                Live E-Commerce
+                <span className="ml-1 text-xs opacity-80">({phase1Listings.length})</span>
               </button>
               <button
-                onClick={() => setActiveTab("quarantine")}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
-                  activeTab === "quarantine"
-                    ? "bg-sky-600 text-white shadow-sm ring-1 ring-sky-700/20"
+                data-testid="tab-phase2"
+                onClick={() => setActiveTab("phase2")}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  activeTab === "phase2"
+                    ? "bg-violet-700 text-white shadow-sm ring-1 ring-violet-800/20"
                     : "bg-transparent text-slate-600 hover:bg-slate-100/80"
                 }`}
               >
-                Quarantine Queue
-                {quarantine.length > 0 && (
-                  <span className="bg-rose-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
-                    {quarantine.length}
-                  </span>
-                )}
+                Phase 2 & New Products
               </button>
             </div>
 
             <div className="flex items-center gap-3">
               <button
+                type="button"
+                data-testid="held-quarantine-btn"
+                onClick={() => setActiveTab("quarantine")}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+              >
+                Held / Quarantined Orders ({quarantine.length})
+              </button>
+              <button
+                type="button"
+                data-testid="global-swatches-btn"
+                onClick={() => setSwatchesOpen((o) => !o)}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+              >
+                Global Swatches & Add-Ons (24 Fabrics • 6 Powders • 16 Add-Ons)
+              </button>
+              <button
                 onClick={() => setCreatingNewProduct(true)}
+                data-testid="create-new-product"
                 className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-sm"
               >
                 <PlusCircle className="h-4 w-4" />
-                Add New Product
+                Create New Product
               </button>
-
-              <div
-                className={`relative min-w-[260px] md:min-w-[340px] ${
-                  activeTab === "active" && view === "ecommerce" ? "hidden" : ""
-                }`}
-              >
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search SKUs or Products..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 transition-all placeholder:text-slate-400"
-                />
-              </div>
 
               {/* Actions dropdown */}
               <div className="relative" ref={menuRef}>
@@ -996,34 +1026,16 @@ export default function MasterCatalogAdmin() {
             </div>
           </div>
 
-          {/* View pills */}
-          {activeTab === "active" && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 -mb-1">
-              {VIEWS.map((v) => (
-                <button
-                  key={v.key}
-                  onClick={() => setView(v.key)}
-                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                    view === v.key
-                      ? "bg-sky-600 text-white border-sky-600 shadow-sm"
-                      : "bg-white text-slate-600 border-slate-200 hover:border-sky-300 hover:text-sky-700"
-                  }`}
-                >
-                  {v.label}
-                </button>
-              ))}
-              <span className="ml-auto shrink-0 text-xs text-slate-400 pl-4">
-                {view === "ecommerce"
-                  ? `${ecommerce?.listings.length ?? 0} roster listings`
-                  : `${visibleItems.length} of ${catalog.length} items`}
-              </span>
+          {swatchesOpen && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600" data-testid="swatches-drawer">
+              Global finishes stay in a compact drawer — fabrics, powders, and ACF add-ons are not mixed into the Live catalog grid.
             </div>
           )}
         </div>
 
-        {/* E-Commerce roster view */}
-        {activeTab === "active" && view === "ecommerce" ? (
-          <div className="flex-1 min-h-0 flex flex-col gap-3">
+        {/* Tab 1: Live E-Commerce */}
+        {activeTab === "live" ? (
+          <div className="flex-1 min-h-0 flex flex-col gap-3" data-testid="live-ecommerce-panel">
             {ecommerceError ? (
               <div className="rounded-2xl border border-rose-100 bg-white/90 p-8 text-sm text-rose-600">
                 {ecommerceError}
@@ -1031,55 +1043,42 @@ export default function MasterCatalogAdmin() {
             ) : !ecommerce ? (
               <div className="flex-1 flex items-center justify-center text-slate-400 gap-2">
                 <Loader2 className="h-5 w-5 animate-spin text-sky-600" />
-                <span>Loading E-Commerce roster...</span>
+                <span>Loading Live E-Commerce…</span>
               </div>
             ) : (
               <>
-                <Phase1ViewSwitcher
-                  view={phase1View}
-                  onChange={setPhase1View}
+                <LiveToolbar
+                  subView={liveSubView}
+                  onSubView={setLiveSubView}
                   approvedCount={phase1Listings.filter((l) => l.miaApproved).length}
-                  totalSow={
-                    phase1Listings.filter((l) =>
-                      isPhase1StorefrontRow({
-                        globalSku: l.globalSku,
-                        msrpValue: l.msrpValue,
-                      }),
-                    ).length || 102
-                  }
-                />
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="rounded-xl bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white"
-                    onClick={async () => {
-                      const skus = phase1Listings.map((l) => l.globalSku);
-                      const result = await approveAllVisibleSkus(skus);
-                      if (!result.ok) {
-                        setToast(result.error);
-                        return;
-                      }
-                      setPhase1Listings((prev) =>
-                        prev.map((l) => ({ ...l, miaApproved: true })),
-                      );
-                      setToast(`Approved ${result.count} visible SKU(s)`);
-                    }}
-                  >
-                    Approve All Visible
-                  </button>
-                </div>
-                {phase1View === "phase1_flat" || phase1View === "finishes_addons" ? (
-                  <Phase1FlatGrid
-                    listings={
-                      phase1View === "finishes_addons"
-                        ? phase1Listings
-                        : phase1Listings.filter((l) =>
-                            isPhase1StorefrontRow({
-                              globalSku: l.globalSku,
-                              msrpValue: l.msrpValue,
-                            }),
-                          )
+                  totalVisible={phase1Listings.length || 102}
+                  search={searchQuery}
+                  onSearch={setSearchQuery}
+                  collection={liveCollection}
+                  onCollection={setLiveCollection}
+                  collections={[...new Set(phase1Listings.map((l) => l.collectionLabel).filter(Boolean))]}
+                  onApproveAll={async () => {
+                    const skus = phase1Listings.map((l) => l.globalSku);
+                    const result = await approveAllVisibleSkus(skus);
+                    if (!result.ok) {
+                      setToast(result.error);
+                      return;
                     }
+                    setPhase1Listings((prev) => prev.map((l) => ({ ...l, miaApproved: true })));
+                    setToast(`Approved ${result.count} visible SKU(s)`);
+                  }}
+                />
+                {liveSubView === "sheet_grid" ? (
+                  <Phase1FlatGrid
+                    listings={phase1Listings.filter((l) => {
+                      if (liveCollection && l.collectionLabel !== liveCollection) return false;
+                      if (!searchQuery) return true;
+                      const q = searchQuery.toLowerCase();
+                      return (
+                        l.productName.toLowerCase().includes(q) ||
+                        l.globalSku.toLowerCase().includes(q)
+                      );
+                    })}
                     onToggleMia={async (sku, approved) => {
                       const result = await toggleMiaApproval(sku, approved);
                       if (!result.ok) {
@@ -1102,16 +1101,25 @@ export default function MasterCatalogAdmin() {
                 ) : (
                   <Suspense fallback={<DrawerLoadingShell />}>
                     <EcommerceGrid
-                      listings={
-                        phase1View === "all_hub"
-                          ? ecommerce.listings
-                          : ecommerce.listings.filter((l) =>
-                              isPhase1StorefrontRow({
-                                globalSku: l.globalSku,
-                                msrpValue: l.msrpValue,
-                              }),
-                            )
-                      }
+                      listings={ecommerce.listings.filter((l) => {
+                        if (
+                          !isLiveEcommerceRow({
+                            globalSku: l.globalSku,
+                            syncToWoo: Boolean(l.syncToWoo),
+                            productName: l.productName,
+                            msrpValue: l.msrpValue,
+                          })
+                        ) {
+                          return false;
+                        }
+                        if (liveCollection && l.collectionLabel !== liveCollection) return false;
+                        if (!searchQuery) return true;
+                        const q = searchQuery.toLowerCase();
+                        return (
+                          l.productName.toLowerCase().includes(q) ||
+                          l.globalSku.toLowerCase().includes(q)
+                        );
+                      })}
                       gaps={ecommerce.gaps}
                       onSaveMsrp={handleEcommerceMsrp}
                       onSaveUrl={handleEcommerceUrl}
@@ -1126,257 +1134,91 @@ export default function MasterCatalogAdmin() {
               </>
             )}
           </div>
+        ) : activeTab === "phase2" ? (
+          <div className="flex-1 min-h-0 flex flex-col gap-3" data-testid="phase2-panel">
+            <Phase2SubFilterBar
+              filter={phase2Filter}
+              onChange={setPhase2Filter}
+              counts={{ phase2_sow: phase2Listings.length }}
+            />
+            <Phase2StagingGrid
+              listings={phase2Listings}
+              onPromote={async (sku) => {
+                const result = await promoteToLiveEcommerce(sku);
+                setToast(result.ok ? `Promoted ${sku}` : result.error);
+                if (result.ok) {
+                  const phase2 = await getPhase2PortalRows(phase2Filter);
+                  setPhase2Listings(phase2.listings as Phase2Listing[]);
+                }
+              }}
+              onHeal={async (sku) => {
+                const result = await healAndLinkKatana(sku);
+                setToast(
+                  result.ok
+                    ? `${sku}: ${result.bomReadiness}${result.provisional ? " (provisional shell)" : ""}`
+                    : result.error,
+                );
+                if (result.ok) {
+                  const phase2 = await getPhase2PortalRows(phase2Filter);
+                  setPhase2Listings(phase2.listings as Phase2Listing[]);
+                }
+              }}
+            />
+          </div>
         ) : (
-        <div className="mc-panel bg-white/80 backdrop-blur-md rounded-2xl border border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex-1 overflow-hidden flex flex-col">
-          {loading ? (
-            <div className="flex-1 flex items-center justify-center text-slate-400 gap-2">
-              <Loader2 className="h-5 w-5 animate-spin text-sky-600" />
-              <span>Loading Catalog Master...</span>
-            </div>
-          ) : activeTab === "active" ? (
-            <div className="mc-scroll flex-1 overflow-y-auto px-4">
-              <table className="table border-separate border-spacing-y-3 w-full text-left">
-                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm text-slate-400 uppercase text-[11px] font-semibold tracking-wider">
-                  <tr>
-                    <th className="py-3 px-4 w-16">Image</th>
-                    <th className="py-3 px-4">Product Name</th>
-                    <th className="py-3 px-4">Global SKU</th>
-                    <th className="py-3 px-4 w-36">MSRP</th>
-                    <th className="py-3 px-4 w-28 text-center print:hidden">
-                      Web Visible
-                    </th>
-                    <th className="py-3 px-4 w-40 text-center">Sync Status</th>
-                  </tr>
-                </thead>
-                <tbody className="text-sm">
-                  {visibleItems.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={colCount}
-                        className="py-16 text-center text-slate-400"
-                      >
-                        No items match this view.
-                      </td>
-                    </tr>
-                  )}
-                  {groups.map((group) => (
-                    <React.Fragment key={group.label ?? "__all"}>
-                      {group.label && (
-                        <tr className="bg-transparent">
-                          <td
-                            colSpan={colCount}
-                            className="text-slate-500 font-bold uppercase text-xs pt-4 pb-2 px-2"
-                          >
-                            {group.label}{" "}
-                            <span className="font-medium text-slate-400">
-                              · {group.items.length}
-                            </span>
-                          </td>
-                        </tr>
-                      )}
-                      {group.items.map((item) => {
-                        // Card styling lives on the <td>s: with border-separate,
-                        // <tr> can't render borders/radius/shadow.
-                        const flash = justSavedId === item.id;
-                        const cellColor = flash ? "bg-emerald-50" : "bg-white";
-                        const ringClass = item.status === "red" ? "border-l-[4px] border-l-red-500" :
-                                          item.status === "amber" ? "border-l-[4px] border-l-amber-500" :
-                                          item.status === "green" ? "border-l-[4px] border-l-emerald-500" : "border-l";
-                        const toggleRing = item.status === "red" ? "ring-2 ring-red-500 ring-offset-1" :
-                                           item.status === "amber" ? "ring-2 ring-amber-500 ring-offset-1" :
-                                           item.status === "green" ? "ring-2 ring-emerald-500 ring-offset-1" : "";
-                        const cell = `mc-card-cell py-3 px-4 border-y border-slate-200/70 shadow-sm transition-all group-hover/row:shadow-md group-hover/row:border-sky-200 ${cellColor}`;
-                        return (
-                          <tr
-                            key={item.id}
-                            tabIndex={0}
-                            className="group/row break-inside-avoid cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500"
-                            onClick={() => openCatalogDrawer(item.globalSku)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") openCatalogDrawer(item.globalSku);
-                            }}
-                          >
-                            <td
-                              className={`${cell} ${ringClass} rounded-l-xl`}
-                            >
-                              {item.imageUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={item.imageUrl}
-                                  alt=""
-                                  className="w-10 h-10 rounded-lg object-cover border border-slate-200"
-                                />
-                              ) : (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveUploadId(item.id);
-                                    fileInputRef.current?.click();
-                                  }}
-                                  className="w-10 h-10 rounded-lg border border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:text-sky-600 hover:border-sky-500 hover:bg-sky-50/50 transition-all print:hidden"
-                                  title="Upload Photo or Snap Camera"
-                                >
-                                  <ImagePlus className="h-4 w-4" />
-                                </button>
-                              )}
-                            </td>
-
-                            <td className={`${cell} font-medium text-slate-800`}>
-                              {item.productName}
-                            </td>
-
-                            <td
-                              className={`${cell} font-mono text-xs text-slate-500`}
-                            >
-                              {item.globalSku}
-                            </td>
-
-                            <td className={cell}>
-                              {editingId === item.id ? (
-                                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                  <input
-                                    autoFocus
-                                    type="text"
-                                    value={editPrice}
-                                    onChange={(e) => setEditPrice(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter")
-                                        handlePriceSave(item.id);
-                                      if (e.key === "Escape") setEditingId(null);
-                                    }}
-                                    className="w-24 px-2 py-1 bg-white border border-sky-400 rounded-md text-sm font-semibold text-slate-800 focus:outline-none ring-2 ring-sky-500/20"
-                                  />
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handlePriceSave(item.id); }}
-                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
-                                  >
-                                    <Check className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingId(item.id);
-                                    setEditPrice(item.msrp);
-                                  }}
-                                  className="cursor-pointer hover:underline font-semibold text-slate-700 hover:text-sky-700"
-                                  title="Click to edit MSRP"
-                                >
-                                  {savingId === item.id ? "Saving..." : item.msrp}
-                                </span>
-                              )}
-                            </td>
-
-                            <td className={`${cell} text-center print:hidden`}>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleWeb(item.id, item.isWebVisible);
-                                }}
-                                className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors mx-auto ${toggleRing} ${
-                                  item.isWebVisible ? "bg-sky-600" : "bg-slate-200"
-                                }`}
-                                aria-label="Toggle web visibility"
-                              >
-                                <div
-                                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                                    item.isWebVisible
-                                      ? "translate-x-5"
-                                      : "translate-x-0"
-                                  }`}
-                                />
-                              </button>
-                            </td>
-
-                            <td className={`${cell} border-r rounded-r-xl`}>
-                              <div className="flex items-center justify-center gap-2">
-                                <StatusPill
-                                  active={item.dbSynced}
-                                  title="Supabase DB"
-                                >
-                                  <Database className="h-4 w-4" />
-                                </StatusPill>
-                                <StatusPill
-                                  active={item.katanaSynced}
-                                  title="Katana MRP"
-                                >
-                                  <Cloud className="h-4 w-4" />
-                                </StatusPill>
-                                <StatusPill
-                                  active={item.wooSynced}
-                                  title="WooCommerce"
-                                  tone={
-                                    item.wooSynced
-                                      ? "synced"
-                                      : item.globalSku
-                                        ? "never"
-                                        : "never"
-                                  }
-                                >
-                                  <span className="relative">
-                                    <ShoppingCart className="h-4 w-4" />
-                                    <span
-                                      className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ${wooDotClass(
-                                        item.wooSynced ? "synced" : "never",
-                                      )}`}
-                                    />
-                                  </span>
-                                </StatusPill>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {filteredQuarantine.length === 0 ? (
-                <div className="h-64 flex flex-col items-center justify-center text-slate-400">
-                  <Check className="h-8 w-8 text-emerald-500 mb-2" />
-                  <p className="text-sm font-medium">
-                    All items mapped! Quarantine queue is clean.
-                  </p>
-                </div>
-              ) : (
-                filteredQuarantine.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border border-slate-200/70 shadow-sm hover:shadow-md hover:border-sky-200 transition-all gap-4"
-                  >
-                    <div>
-                      <p className="font-semibold text-slate-800 text-sm">
-                        {item.sheetDescription}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Target MSRP:{" "}
-                        <span className="font-bold text-slate-700">
-                          {item.targetMsrp}
-                        </span>
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setSelectedQuarantine(item);
-                        setBaseName(item.sheetDescription.split(/\d+/)[0].trim());
-                        setMintPrice(item.targetMsrp);
-                        setModalOpen(true);
-                      }}
-                      className="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5"
-                    >
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Mint Product
-                    </button>
+          <div
+            className="mc-panel bg-white/80 backdrop-blur-md rounded-2xl border border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex-1 overflow-hidden flex flex-col"
+            data-testid="quarantine-panel"
+          >
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center text-slate-400 gap-2">
+                <Loader2 className="h-5 w-5 animate-spin text-sky-600" />
+                <span>Loading Quarantine...</span>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {filteredQuarantine.length === 0 ? (
+                  <div className="h-64 flex flex-col items-center justify-center text-slate-400">
+                    <Check className="h-8 w-8 text-emerald-500 mb-2" />
+                    <p className="text-sm font-medium">
+                      All items mapped! Quarantine queue is clean.
+                    </p>
                   </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
+                ) : (
+                  filteredQuarantine.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border border-slate-200/70 shadow-sm hover:shadow-md hover:border-sky-200 transition-all gap-4"
+                    >
+                      <div>
+                        <p className="font-semibold text-slate-800 text-sm">
+                          {item.sheetDescription}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Target MSRP:{" "}
+                          <span className="font-bold text-slate-700">
+                            {item.targetMsrp}
+                          </span>
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedQuarantine(item);
+                          setBaseName(item.sheetDescription.split(/\d+/)[0].trim());
+                          setMintPrice(item.targetMsrp);
+                          setModalOpen(true);
+                        }}
+                        className="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5"
+                      >
+                        <PlusCircle className="h-3.5 w-3.5" />
+                        Mint Product
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

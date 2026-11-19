@@ -1,56 +1,68 @@
 {
-  "phase_id": "primeview-live-handoff-portal",
-  "base_ref": "4165cce",
-  "blast_radius": 11,
+  "phase_id": "ecommerce-two-tab-and-sku-engine",
+  "base_ref": "c3627b3",
+  "blast_radius": 15,
   "counts": {
-    "files": 11,
-    "tracked": 5,
-    "untracked": 6,
-    "insertions": 191,
-    "deletions": 61
+    "files": 15,
+    "tracked": 7,
+    "untracked": 8,
+    "insertions": 513,
+    "deletions": 776
   },
   "files": [
     {
       "status": "??",
-      "path": "src/app/api/partner/primeview-handoff/download/route.ts",
+      "path": "scripts/ops/hydrate-phase2-catalog.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase2PortalViews.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/app/partner/primeview-handoff/page.tsx",
+      "path": "src/server/ecommerce/auto-sku-engine.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/lib/primeview-handoff-auth.ts",
+      "path": "src/server/ecommerce/phase2-hydration.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/woocommerce/handoff-spec-generator.ts",
+      "path": "src/server/ecommerce/provisional-shell.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/primeview-handoff-portal.test.ts",
+      "path": "src/server/ecommerce/two-tab-portal.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/e2e/ecommerce-two-tab.spec.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/phase2-hydration-and-sku-engine.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 12,
-      "deletions": 27
+      "insertions": 16,
+      "deletions": 12
     },
     {
       "status": "M",
@@ -60,31 +72,45 @@
     },
     {
       "status": "M",
-      "path": "scripts/ops/generate-primeview-phase1-csv.ts",
-      "insertions": 69,
-      "deletions": 23
+      "path": "BUILD_PLAN.md",
+      "insertions": 15,
+      "deletions": 391
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 60,
+      "insertions": 223,
       "deletions": 0
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/page.tsx",
-      "insertions": 48,
-      "deletions": 9
+      "insertions": 211,
+      "deletions": 369
+    },
+    {
+      "status": "M",
+      "path": "src/lib/katana.ts",
+      "insertions": 26,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/sku-resolver.ts",
+      "insertions": 20,
+      "deletions": 0
     }
   ],
   "untracked": [
-    "src/app/api/partner/primeview-handoff/download/route.ts",
-    "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx",
-    "src/app/partner/primeview-handoff/page.tsx",
-    "src/lib/primeview-handoff-auth.ts",
-    "src/server/woocommerce/handoff-spec-generator.ts",
-    "tests/primeview-handoff-portal.test.ts"
+    "scripts/ops/hydrate-phase2-catalog.ts",
+    "src/app/embed/admin/master-catalog/ecommerce/Phase2PortalViews.tsx",
+    "src/server/ecommerce/auto-sku-engine.ts",
+    "src/server/ecommerce/phase2-hydration.ts",
+    "src/server/ecommerce/provisional-shell.ts",
+    "src/server/ecommerce/two-tab-portal.ts",
+    "tests/e2e/ecommerce-two-tab.spec.ts",
+    "tests/phase2-hydration-and-sku-engine.test.ts"
   ],
-  "file_list_sha256": "f3dcd116162815a21db598187ae2d9ae8f27df7326270699832280b065f2f1d6",
+  "file_list_sha256": "0c35fd4b93057f318edbb0e92a51aa12856e645fe0fed138866f25662a50f9ee",
   "notes": ""
 }

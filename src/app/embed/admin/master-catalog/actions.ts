@@ -2391,3 +2391,226 @@ export async function getPrimeviewHandoffDownloadUrls(): Promise<
     partnerPath: buildPrimeviewHandoffPath(token),
   };
 }
+
+/** Live E-Commerce tab: sync_to_woo storefront rows only (no QBO $0 noise / add-ons). */
+export async function getLiveEcommerceRows() {
+  const roster = await getPhase1PortalRows("phase1_flat");
+  const { isLiveEcommerceRow } = await import("@/server/ecommerce/two-tab-portal");
+  const listings = roster.listings.filter((l) =>
+    isLiveEcommerceRow({
+      globalSku: l.globalSku,
+      syncToWoo: Boolean(l.syncToWoo),
+      productName: l.productName,
+      msrpValue: l.msrpValue,
+    }),
+  );
+  return { listings, gaps: roster.gaps };
+}
+
+/** Phase 2 staging library with sub-filter. */
+export async function getPhase2PortalRows(
+  filter: "phase2_sow" | "hub_library" | "ready_to_promote" | "needs_fields" = "phase2_sow",
+) {
+  const roster = await getEcommerceRoster();
+  const db = getDb();
+  const attrRows = await db
+    .select({
+      sku: sku_mappings.global_sku,
+      attributes: sku_mappings.attributes,
+      syncToWoo: sku_mappings.sync_to_woo,
+    })
+    .from(sku_mappings);
+  const attrsBySku = new Map(attrRows.map((r) => [r.sku, r]));
+  const { matchesPhase2SubFilter } = await import("@/server/ecommerce/two-tab-portal");
+
+  const enriched = roster.listings.map((listing) => {
+    const attr = attrsBySku.get(listing.globalSku);
+    return {
+      ...listing,
+      syncToWoo: attr?.syncToWoo ?? listing.syncToWoo,
+      attributes: (attr?.attributes as Record<string, unknown>) ?? {},
+    };
+  });
+
+  const listings = enriched.filter((row) =>
+    matchesPhase2SubFilter(
+      {
+        globalSku: row.globalSku,
+        productName: row.productName,
+        syncToWoo: Boolean(row.syncToWoo),
+        msrpValue: row.msrpValue,
+        hubLength: row.hubLength,
+        hubDepth: row.hubDepth,
+        hubHeight: row.hubHeight,
+        hubWeight: row.hubWeight,
+        attributes: row.attributes,
+      },
+      filter,
+    ),
+  );
+  return { filter, listings };
+}
+
+/** Promote a staging FIN/3P into Live E-Commerce (sync_to_woo=true, draft Woo until web visible). */
+export async function promoteToLiveEcommerce(
+  globalSku: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const sku = globalSku.trim().toUpperCase();
+  const db = getDb();
+  const [row] = await db
+    .select({
+      version: sku_mappings.version,
+      attributes: sku_mappings.attributes,
+      itemType: sku_mappings.item_type,
+    })
+    .from(sku_mappings)
+    .where(eq(sku_mappings.global_sku, sku))
+    .limit(1);
+  if (!row) return { ok: false, error: "SKU not found." };
+  if (row.itemType !== "finished_good") {
+    return { ok: false, error: "Only finished goods can be promoted." };
+  }
+  await db
+    .update(sku_mappings)
+    .set({
+      sync_to_woo: true,
+      updated_at: new Date(),
+      updated_by: session.email,
+      version: row.version + 1,
+    })
+    .where(eq(sku_mappings.global_sku, sku));
+  await db
+    .update(finished_goods_catalog)
+    .set({ is_web_visible: false, updated_at: new Date(), updated_by: session.email })
+    .where(eq(finished_goods_catalog.global_sku, sku));
+  await logPimAudit({
+    operatorEmail: session.email,
+    globalSku: sku,
+    action: "promote_to_live_ecommerce",
+    field: "sync_to_woo",
+    newValue: "true",
+  });
+  revalidatePath("/embed/admin/master-catalog");
+  return { ok: true };
+}
+
+/**
+ * Heal missing katana_variant_id on the parent (and children when possible) without
+ * mutating product_bom edges. Seeds provisional shell ONLY when BOM edge count is 0.
+ */
+export async function healAndLinkKatana(
+  globalSku: string,
+): Promise<{ ok: true; bomReadiness: string; provisional: boolean } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const sku = globalSku.trim().toUpperCase();
+  const db = getDb();
+  const edges = await db
+    .select({ id: product_bom.id, child: product_bom.child_sku })
+    .from(product_bom)
+    .where(eq(product_bom.parent_sku, sku));
+  const [mapping] = await db
+    .select()
+    .from(sku_mappings)
+    .where(eq(sku_mappings.global_sku, sku))
+    .limit(1);
+  if (!mapping) return { ok: false, error: "SKU not found." };
+
+  const {
+    buildProvisionalBomEdges,
+    markProvisionalAttributes,
+  } = await import("@/server/ecommerce/provisional-shell");
+  const { deriveBomReadiness } = await import("@/server/ecommerce/phase2-hydration");
+
+  let provisional = false;
+  if (edges.length === 0 && mapping.product_origin !== "third_party") {
+    provisional = true;
+    const starter = buildProvisionalBomEdges(sku);
+    for (const edge of starter) {
+      await db
+        .insert(product_bom)
+        .values({
+          parent_sku: edge.parent_sku,
+          child_sku: edge.child_sku,
+          quantity: edge.quantity,
+          unit_of_measure: edge.unit_of_measure,
+          notes: edge.notes,
+        })
+        .onConflictDoNothing({
+          target: [product_bom.parent_sku, product_bom.child_sku],
+        });
+    }
+    await db
+      .update(sku_mappings)
+      .set({
+        attributes: markProvisionalAttributes(mapping.attributes as Record<string, unknown>),
+        updated_at: new Date(),
+        updated_by: session.email,
+        version: mapping.version + 1,
+      })
+      .where(eq(sku_mappings.global_sku, sku));
+  }
+
+  // Best-effort: resolve live Katana variant by SKU when hub id is null (no BOM rewrite).
+  if (mapping.katana_variant_id == null) {
+    try {
+      const { resolveKatanaVariantId } = await import("@/lib/katana");
+      const vid = await resolveKatanaVariantId(sku);
+      if (vid > 0) {
+        await db
+          .update(sku_mappings)
+          .set({
+            katana_variant_id: vid,
+            updated_at: new Date(),
+            updated_by: session.email,
+          })
+          .where(and(eq(sku_mappings.global_sku, sku), isNull(sku_mappings.katana_variant_id)));
+      }
+    } catch {
+      // Leave readiness as needs_variant_heal when Katana cannot resolve.
+    }
+  }
+
+  const [fresh] = await db
+    .select({
+      vid: sku_mappings.katana_variant_id,
+      attributes: sku_mappings.attributes,
+      version: sku_mappings.version,
+    })
+    .from(sku_mappings)
+    .where(eq(sku_mappings.global_sku, sku))
+    .limit(1);
+  const edgeCount = (
+    await db.select({ id: product_bom.id }).from(product_bom).where(eq(product_bom.parent_sku, sku))
+  ).length;
+  const readiness = deriveBomReadiness({
+    bomEdgeCount: edgeCount,
+    parentKatanaVariantId: fresh?.vid ?? null,
+    childMissingVariantCount: 0,
+  });
+  const attrs = {
+    ...((fresh?.attributes as Record<string, unknown>) ?? {}),
+    bom_readiness: readiness,
+  };
+  await db
+    .update(sku_mappings)
+    .set({
+      attributes: attrs,
+      updated_at: new Date(),
+      updated_by: session.email,
+      version: (fresh?.version ?? mapping.version) + 1,
+    })
+    .where(eq(sku_mappings.global_sku, sku));
+
+  await logPimAudit({
+    operatorEmail: session.email,
+    globalSku: sku,
+    action: provisional ? "seed_provisional_shell" : "heal_link_katana",
+    field: "attributes.bom_readiness",
+    newValue: readiness,
+  });
+  revalidatePath("/embed/admin/master-catalog");
+  return { ok: true, bomReadiness: readiness, provisional };
+}

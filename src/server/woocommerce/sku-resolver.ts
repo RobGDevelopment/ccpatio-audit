@@ -40,6 +40,10 @@ import {
   type WooLineAddon,
   type WooLineSpec,
 } from "./line-specs";
+import {
+  isProvisionalShell,
+  PROVISIONAL_RECIPE,
+} from "@/server/ecommerce/provisional-shell";
 
 export type SkuRecord = {
   sku: string;
@@ -91,6 +95,12 @@ export type ResolvedWooLine = {
   addons: ResolvedAddon[];
   /** Resale: `third_party_sources` present — create SO, skip MO + finish binding. */
   skipMo: boolean;
+  /**
+   * Make SKU with `attributes.bom_status = provisional_shell` and an empty
+   * `product_bom` tree — resolves against RM-FAB-GENERIC / RM-PWD-GENERIC
+   * instead of quarantining.
+   */
+  provisionalShell: boolean;
 };
 
 export type WooResolution =
@@ -264,12 +274,20 @@ export async function resolveWooOrder(
     }
 
     let slots: RecipeSlots | null = null;
+    let provisionalShell = false;
     if (baseOk && !skipMo) {
       let cached = recipeCache.get(spec.sku);
       if (cached === undefined) {
         const recipe = await deps.recipeSkus(spec.sku);
         cached = recipe.length === 0 ? "empty" : deriveRecipeSlots(recipe);
         recipeCache.set(spec.sku, cached);
+      }
+      if (cached === "empty" && base && isProvisionalShell(base.attributes)) {
+        provisionalShell = true;
+        cached = deriveRecipeSlots([...PROVISIONAL_RECIPE]);
+        recipeCache.set(spec.sku, cached);
+        const extra = await deps.lookupSkus([...PROVISIONAL_RECIPE]);
+        for (const [k, v] of extra) records.set(k, v);
       }
       if (cached === "empty") {
         issues.push({
@@ -440,6 +458,7 @@ export async function resolveWooOrder(
         finishes,
         addons: [],
         skipMo,
+        provisionalShell,
       });
       // Append mapped ACF add-ons as extra resolved lines (Katana SO rows). Unmapped already issued.
       for (const addon of resolvedAddons) {
@@ -458,6 +477,7 @@ export async function resolveWooOrder(
           finishes: [],
           addons: [{ key: addon.key, sku: addon.sku, variantId: addon.variantId }],
           skipMo: addonSkipMo,
+          provisionalShell: false,
         });
       }
     }
