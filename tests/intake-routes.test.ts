@@ -23,8 +23,11 @@ vi.mock("@/lib/embed-auth", () => ({
   EMBED_AUTH_COOKIE: "ccpatio-embed-auth",
   EMBED_KEY_HEADER: "x-ccpatio-embed-key",
   EMBED_CONTEXT_HEADER: "x-ccpatio-embed",
+  EMBED_TOKEN_HEADER: "x-ccpatio-embed-token",
   getGhlEmbedSecret: () => "secret",
   embedKeyIsValid: (key: string | null) => key === "good-key",
+  embedCookieIsValid: async (token: string | undefined) => token === "good-key",
+  verifyEmbedSessionToken: async () => null,
 }));
 
 vi.mock("@/lib/e2e-god-mode", () => ({

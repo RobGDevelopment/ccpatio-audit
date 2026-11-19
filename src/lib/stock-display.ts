@@ -6,10 +6,17 @@ export type StockRow = {
   variantLabel: string | null;
   inStock: number;
   committed: number;
+  /** Katana `quantity_expected` when present. */
+  expected?: number;
   available: number;
   /** Consume unit shown on the hold form, such as `yd` or `ea`. */
   uom: string;
   imageUrl: string | null;
+  /** Katana warehouse / location display name (ops inventory mode). */
+  locationName?: string | null;
+  /** Katana item classification for ops filter pills. */
+  itemType?: string | null;
+  category?: string | null;
 };
 
 export function roundQty(value: number): number {

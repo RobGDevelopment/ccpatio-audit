@@ -24,20 +24,33 @@ import {
 
 export type { ShowroomStockFilter };
 
-export async function listShowroomCategoryItems() {
-  return loadShowroomCategoryItems();
+export async function listShowroomCategoryItems(embedToken?: string | null) {
+  return loadShowroomCategoryItems(embedToken);
 }
 
-export async function listShowroomCollections(filter: ShowroomStockFilter) {
-  return loadShowroomCollections(filter);
+export async function listShowroomCollections(
+  filter: ShowroomStockFilter,
+  embedToken?: string | null,
+) {
+  return loadShowroomCollections(filter, embedToken);
 }
 
 export async function searchShowroomStock(input: {
   query?: string;
   filter?: ShowroomStockFilter;
   collection?: string;
+  embedToken?: string | null;
 }) {
   return loadShowroomStock(input);
+}
+
+export async function loadOpsKatanaInventoryAction(input?: {
+  force?: boolean;
+  embedToken?: string | null;
+  typeFilter?: "all" | "finished" | "fabrics_powders" | "subassemblies_materials";
+}) {
+  const { loadOpsKatanaInventory } = await import("@/server/showroom/stock");
+  return loadOpsKatanaInventory(input);
 }
 
 export type { HoldSearchHit };

@@ -2,6 +2,10 @@
  * Chunk D (`csv-smoke-live`): build the PrimeView 169-column Phase 1 import CSV
  * and handoff spec from live Hub + SOW + Oct 30 Woo export.
  *
+ * CSV ↔ REST parity: Hub fields read here (steel_msrp, dims, weight, ACF add-on
+ * prices, fabric swatches, Select Facing) must match
+ * `src/server/woocommerce/woo-catalog-sync.ts` surgical PUT / variation batch payloads.
+ *
  *   npx dotenv -e .env.local -- tsx scripts/ops/generate-primeview-phase1-csv.ts
  *
  * Writes (gitignored):

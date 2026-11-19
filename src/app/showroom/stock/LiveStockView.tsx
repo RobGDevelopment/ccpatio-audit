@@ -7,10 +7,12 @@ import { readActorFromHref } from "@/lib/embed-actor-params";
 import { sellableCategoryTabs } from "@/lib/stock-categories";
 import { stockFacet, type StockCollection } from "@/lib/stock-facets";
 import type { StockRow } from "@/lib/stock-display";
+import { useEmbedSession } from "@/components/embed/EmbedSessionProvider";
 import {
   listActiveShowroomHolds,
   listShowroomCategoryItems,
   listShowroomCollections,
+  loadOpsKatanaInventoryAction,
   resolveShowroomHoldActor,
   searchShowroomStock,
   type ActiveShowroomHold,
@@ -24,12 +26,20 @@ import { ViewModeToggle } from "./ViewModeToggle";
 const VIEW_MODE_KEY = "ccpatio.showroom.viewMode";
 
 type StockSort = "alpha" | "stock";
+type TypeFilter = "all" | "finished" | "fabrics_powders" | "subassemblies_materials";
 
 const softControl =
   "border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]";
 
 const tactileIdle = "border-b-2 border-slate-200 bg-white text-slate-600";
 const tactileActive = "translate-y-0.5 bg-slate-50 text-slate-900 shadow-inner";
+
+const TYPE_FILTERS: { key: TypeFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "finished", label: "Finished Goods" },
+  { key: "fabrics_powders", label: "Fabrics & Powders" },
+  { key: "subassemblies_materials", label: "Subassemblies & Materials" },
+];
 
 function fuzzyIncludes(value: string, needle: string): boolean {
   const haystack = value.toLowerCase();
@@ -55,17 +65,35 @@ function readViewMode(value: string | null): ViewMode | null {
   return null;
 }
 
+function formatSyncedAt(iso: string | null): string {
+  if (!iso) return "Never";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
+}
+
 export function LiveStockView({
   defaultViewMode = "dropdown",
   persistViewMode = true,
   ghlUserId,
   ghlUserEmail,
+  inventoryMode = "showroom",
+  initialRows,
+  initialSyncedAt,
 }: {
   defaultViewMode?: ViewMode;
   persistViewMode?: boolean;
   ghlUserId?: string;
   ghlUserEmail?: string;
+  /** `katana-ops` = full ground-truth inventory for GHL Current Inventory. */
+  inventoryMode?: "showroom" | "katana-ops";
+  initialRows?: StockRow[];
+  initialSyncedAt?: string | null;
 } = {}) {
+  const { embedToken, embedFetch } = useEmbedSession();
+  const isOps = inventoryMode === "katana-ops";
   const [categoryItems, setCategoryItems] = useState<{ category: string }[]>([]);
   const [category, setCategory] = useState<string | null>(null);
   const [collection, setCollection] = useState<string | null>(null);
@@ -73,9 +101,13 @@ export function LiveStockView({
   const [query, setQuery] = useState("");
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState<StockSort>("alpha");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [collections, setCollections] = useState<StockCollection[]>([]);
-  const [rows, setRows] = useState<StockRow[]>([]);
+  const [rows, setRows] = useState<StockRow[]>(initialRows ?? []);
   const [message, setMessage] = useState<string | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [syncedAt, setSyncedAt] = useState<string | null>(initialSyncedAt ?? null);
+  const [stale, setStale] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
   const [viewModeHydrated, setViewModeHydrated] = useState(false);
   const [salesperson, setSalesperson] = useState<string | null>(null);
@@ -116,6 +148,39 @@ export function LiveStockView({
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const filtered = rows.filter((row) => {
+      if (isOps && typeFilter !== "all") {
+        const t = (row.itemType ?? "").toLowerCase();
+        if (typeFilter === "finished" && !t.includes("finished") && !t.includes("product")) {
+          return false;
+        }
+        if (typeFilter === "fabrics_powders") {
+          const sku = row.sku.toUpperCase();
+          if (
+            !t.includes("fabric") &&
+            !t.includes("powder") &&
+            !t.includes("material") &&
+            !sku.startsWith("FAB-") &&
+            !sku.startsWith("PWD-") &&
+            !sku.startsWith("MET-")
+          ) {
+            return false;
+          }
+        }
+        if (typeFilter === "subassemblies_materials") {
+          const sku = row.sku.toUpperCase();
+          if (
+            !t.includes("subassembl") &&
+            !t.includes("material") &&
+            !sku.startsWith("SA-") &&
+            !sku.startsWith("ASM-") &&
+            !sku.startsWith("FAB-") &&
+            !sku.startsWith("PWD-") &&
+            !sku.startsWith("MET-")
+          ) {
+            return false;
+          }
+        }
+      }
       const facet = stockFacet(row.name);
       if (collection && facet.collection.toLowerCase() !== collection.toLowerCase()) {
         return false;
@@ -128,7 +193,9 @@ export function LiveStockView({
       return (
         fuzzyIncludes(row.sku, needle) ||
         fuzzyIncludes(row.name, needle) ||
-        fuzzyIncludes(row.variantLabel ?? "", needle)
+        fuzzyIncludes(row.variantLabel ?? "", needle) ||
+        fuzzyIncludes(row.locationName ?? "", needle) ||
+        fuzzyIncludes(row.itemType ?? "", needle)
       );
     });
     return [...filtered].sort((left, right) => {
@@ -141,50 +208,118 @@ export function LiveStockView({
         left.sku.localeCompare(right.sku)
       );
     });
-  }, [rows, collection, variant, query, inStockOnly, sortBy]);
-  const showGrid = Boolean(category);
+  }, [rows, collection, variant, query, inStockOnly, sortBy, isOps, typeFilter]);
+  const showGrid = isOps ? true : Boolean(category);
 
-  const chooseCategory = useCallback((next: string) => {
-    const id = ++request.current;
-    setCategory(next);
-    setCollection(null);
-    setVariant(null);
-    setQuery("");
-    setRows([]);
-    setCollections([]);
-    setMessage(null);
-    startTransition(async () => {
+  const syncOpsInventory = useCallback(
+    async (force = false) => {
+      const id = ++request.current;
+      setErrorBanner(null);
       try {
-        const [listed, stock] = await Promise.all([
-          listShowroomCollections(next),
-          searchShowroomStock({ filter: next }),
-        ]);
-        if (id !== request.current) return;
-        if (!listed.ok) {
-          setCollections([]);
-          setMessage(listed.error);
-        } else {
-          setCollections(listed.collections);
+        let result = await loadOpsKatanaInventoryAction({
+          force,
+          embedToken,
+          typeFilter: "all",
+        });
+        if (!result.ok && embedToken) {
+          const res = await embedFetch(
+            `/api/embed/katana-inventory?force=${force ? "1" : "0"}`,
+          );
+          const json = (await res.json()) as {
+            ok: boolean;
+            rows?: StockRow[];
+            syncedAt?: string;
+            stale?: boolean;
+            error?: string;
+            warning?: string;
+          };
+          if (!res.ok || !json.ok) {
+            result = { ok: false, error: json.error ?? "Could not read Katana inventory." };
+          } else {
+            result = {
+              ok: true,
+              rows: json.rows ?? [],
+              syncedAt: json.syncedAt ?? new Date().toISOString(),
+              stale: Boolean(json.stale),
+              warning: json.error ?? json.warning ?? null,
+            };
+          }
         }
-        if (!stock.ok) {
-          setRows([]);
-          setMessage(stock.error);
+        if (id !== request.current) return;
+        if (!result.ok) {
+          setErrorBanner(result.error);
+          if (!rows.length) setMessage(result.error);
           return;
         }
-        setRows(stock.rows);
-        if (stock.rows.length === 0) {
-          setMessage("Nothing in this category.");
-        } else if (listed.ok) {
-          setMessage(null);
-        }
+        setRows(result.rows);
+        setSyncedAt(result.syncedAt);
+        setStale(result.stale);
+        setMessage(
+          result.rows.length === 0
+            ? "Nothing in Katana inventory for this filter."
+            : result.warning,
+        );
+        setErrorBanner(result.warning && result.stale ? result.warning : null);
       } catch (error: unknown) {
         if (id !== request.current) return;
-        setCollections([]);
-        setRows([]);
-        setMessage(error instanceof Error ? error.message : "Could not read Katana.");
+        const msg = error instanceof Error ? error.message : "Could not read Katana.";
+        setErrorBanner(msg);
+        setMessage(msg);
       }
-    });
-  }, []);
+    },
+    [embedToken, embedFetch, rows.length],
+  );
+
+  const chooseCategory = useCallback(
+    (next: string) => {
+      const id = ++request.current;
+      setCategory(next);
+      setCollection(null);
+      setVariant(null);
+      setQuery("");
+      setRows([]);
+      setCollections([]);
+      setMessage(null);
+      setErrorBanner(null);
+      startTransition(async () => {
+        try {
+          const [listed, stock] = await Promise.all([
+            listShowroomCollections(next, embedToken),
+            searchShowroomStock({ filter: next, embedToken }),
+          ]);
+          if (id !== request.current) return;
+          if (!listed.ok) {
+            setCollections([]);
+            setMessage(listed.error);
+            setErrorBanner(listed.error);
+          } else {
+            setCollections(listed.collections);
+          }
+          if (!stock.ok) {
+            setRows([]);
+            setMessage(stock.error);
+            setErrorBanner(stock.error);
+            return;
+          }
+          setRows(stock.rows);
+          if (stock.rows.length === 0) {
+            setMessage("Nothing in this category.");
+          } else if (listed.ok) {
+            setMessage(null);
+            setErrorBanner(null);
+          }
+        } catch (error: unknown) {
+          if (id !== request.current) return;
+          setCollections([]);
+          setRows([]);
+          const msg = error instanceof Error ? error.message : "Could not read Katana.";
+          setMessage(msg);
+          setErrorBanner(msg);
+        }
+      });
+    },
+    [embedToken],
+  );
 
   useEffect(() => {
     let active = true;
@@ -206,24 +341,32 @@ export function LiveStockView({
   }, [ghlUserId, ghlUserEmail]);
 
   const reloadRows = useCallback(async () => {
+    if (isOps) {
+      await syncOpsInventory(false);
+      return;
+    }
     if (!category) return;
     const id = ++request.current;
     try {
-      const stock = await searchShowroomStock({ filter: category });
+      const stock = await searchShowroomStock({ filter: category, embedToken });
       if (id !== request.current) return;
       if (!stock.ok) {
         setRows([]);
         setMessage(stock.error);
+        setErrorBanner(stock.error);
         return;
       }
       setRows(stock.rows);
       setMessage(stock.rows.length === 0 ? "Nothing in this category." : null);
+      setErrorBanner(null);
     } catch (error: unknown) {
       if (id !== request.current) return;
       setRows([]);
-      setMessage(error instanceof Error ? error.message : "Could not read Katana.");
+      const msg = error instanceof Error ? error.message : "Could not read Katana.";
+      setMessage(msg);
+      setErrorBanner(msg);
     }
-  }, [category]);
+  }, [category, embedToken, isOps, syncOpsInventory]);
 
   useEffect(() => {
     const ids = [...new Set(rows.map((row) => row.variantId))].filter((id) => id > 0);
@@ -242,14 +385,22 @@ export function LiveStockView({
   }, [rows]);
 
   useEffect(() => {
+    if (isOps) {
+      if (initialRows && initialRows.length > 0) return;
+      startTransition(() => {
+        void syncOpsInventory(false);
+      });
+      return;
+    }
     let active = true;
     startTransition(async () => {
       try {
-        const listed = await listShowroomCategoryItems();
+        const listed = await listShowroomCategoryItems(embedToken);
         if (!active) return;
         if (!listed.ok) {
           setCategoryItems([]);
           setMessage(listed.error);
+          setErrorBanner(listed.error);
           return;
         }
         setCategoryItems(listed.items);
@@ -259,18 +410,22 @@ export function LiveStockView({
       } catch (error: unknown) {
         if (!active) return;
         setCategoryItems([]);
-        setMessage(error instanceof Error ? error.message : "Could not read Katana categories.");
+        const msg =
+          error instanceof Error ? error.message : "Could not read Katana categories.";
+        setMessage(msg);
+        setErrorBanner(msg);
       }
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [isOps, embedToken, initialRows, syncOpsInventory]);
 
   useEffect(() => {
+    if (isOps) return;
     if (category !== null || categories.length === 0) return;
     chooseCategory(categories[0]);
-  }, [category, categories, chooseCategory]);
+  }, [category, categories, chooseCategory, isOps]);
 
   function clearCollection() {
     setCollection(null);
@@ -286,10 +441,36 @@ export function LiveStockView({
     <section
       className="rounded-3xl bg-[#F8F9FA]"
       data-stock-view={viewMode}
+      data-inventory-mode={inventoryMode}
     >
       <div className="sticky top-0 z-30 space-y-4 border-b border-slate-100 bg-[#F8F9FA]/90 px-6 py-4 backdrop-blur-md sm:px-8">
         <div className="space-y-3">
-          <p className={eyebrow}>Live stock</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className={eyebrow}>{isOps ? "Current Inventory · Katana" : "Live stock"}</p>
+            {isOps ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
+                    stale ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"
+                  }`}
+                  title={stale ? "Serving stale-while-revalidate cache" : "Fresh from Katana"}
+                >
+                  Last synced from Katana: {formatSyncedAt(syncedAt)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    startTransition(() => {
+                      void syncOpsInventory(true);
+                    })
+                  }
+                  className={`${softControl} rounded-full px-3 py-2 text-xs font-semibold text-slate-800`}
+                >
+                  Sync Live from Katana
+                </button>
+              </div>
+            ) : null}
+          </div>
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <input
@@ -330,38 +511,85 @@ export function LiveStockView({
               </select>
             </label>
           </div>
+          {isOps ? (
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Item type">
+              {TYPE_FILTERS.map((pill) => {
+                const selected = typeFilter === pill.key;
+                return (
+                  <button
+                    key={pill.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    className={`relative shrink-0 overflow-hidden rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                      selected ? tactileActive : tactileIdle
+                    }`}
+                    onClick={() => setTypeFilter(pill.key)}
+                  >
+                    {selected ? <GoldBeam /> : null}
+                    {pill.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-1 flex-wrap gap-2" role="tablist" aria-label="Category">
-            {categories.map((name) => {
-              const selected = category === name;
-              return (
-                <button
-                  key={name}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  className={`relative shrink-0 overflow-hidden rounded-lg px-4 py-2 text-sm transition-all duration-150 ease-out ${
-                    selected ? tactileActive : tactileIdle
-                  }`}
-                  onClick={() => chooseCategory(name)}
-                >
-                  {selected ? <GoldBeam /> : null}
-                  {name}
-                </button>
-              );
-            })}
+        {!isOps ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-1 flex-wrap gap-2" role="tablist" aria-label="Category">
+              {categories.map((name) => {
+                const selected = category === name;
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    className={`relative shrink-0 overflow-hidden rounded-lg px-4 py-2 text-sm transition-all duration-150 ease-out ${
+                      selected ? tactileActive : tactileIdle
+                    }`}
+                    onClick={() => chooseCategory(name)}
+                  >
+                    {selected ? <GoldBeam /> : null}
+                    {name}
+                  </button>
+                );
+              })}
+            </div>
+            <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
           </div>
-          <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
-        </div>
+        ) : (
+          <div className="flex justify-end">
+            <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+          </div>
+        )}
       </div>
 
       <div className="space-y-8 p-6 sm:p-8">
+        {errorBanner ? (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+          >
+            <span>{errorBanner}</span>
+            <button
+              type="button"
+              className="rounded-full bg-rose-700 px-3 py-1.5 text-xs font-semibold text-white"
+              onClick={() =>
+                startTransition(() => {
+                  void (isOps ? syncOpsInventory(true) : reloadRows());
+                })
+              }
+            >
+              Retry Live Sync
+            </button>
+          </div>
+        ) : null}
 
       <LayoutGroup id="showroom-live-stock">
         <AnimatePresence>
-          {category ? (
+          {!isOps && category ? (
             <motion.div
               key={category}
               layout
@@ -385,7 +613,7 @@ export function LiveStockView({
         </AnimatePresence>
 
         <AnimatePresence>
-          {collection && activeCollection ? (
+          {!isOps && collection && activeCollection ? (
             <motion.div
               key={`${category}-${collection}`}
               layout
@@ -410,10 +638,10 @@ export function LiveStockView({
         </AnimatePresence>
 
         {pending ? <p className="text-sm text-slate-500">Reading Katana…</p> : null}
-        {holdActorError ? (
+        {holdActorError && !isOps ? (
           <p className="text-sm text-rose-700">Place Hold is unavailable. {holdActorError}</p>
         ) : null}
-        {message ? <p className="text-sm text-slate-500">{message}</p> : null}
+        {message && !errorBanner ? <p className="text-sm text-slate-500">{message}</p> : null}
         {showGrid && !pending && rows.length > 0 && visible.length === 0 ? (
           <p className="text-sm text-slate-500">No variants match these filters.</p>
         ) : null}
@@ -431,11 +659,12 @@ export function LiveStockView({
             >
               {visible.map((row) => (
                 <InventoryCard
-                  key={row.sku}
+                  key={`${row.sku}-${row.locationName ?? "all"}`}
                   row={row}
+                  opsMode={isOps}
                   salesperson={salesperson}
-                  canHold={Boolean(salesperson) && !holdActorError}
-                  holdDisabledReason={holdActorError}
+                  canHold={Boolean(salesperson) && !holdActorError && !isOps}
+                  holdDisabledReason={isOps ? "Holds use the showroom floor view." : holdActorError}
                   ghlUserId={actorUserId}
                   ghlUserEmail={actorUserEmail}
                   holds={holds.filter((hold) => hold.variantId === row.variantId)}

@@ -29,8 +29,12 @@ vi.mock("@/lib/embed-auth", () => ({
   EMBED_AUTH_COOKIE: "ccpatio-embed-auth",
   EMBED_KEY_HEADER: "x-ccpatio-embed-key",
   EMBED_CONTEXT_HEADER: "x-ccpatio-embed",
+  EMBED_TOKEN_HEADER: "x-ccpatio-embed-token",
   getGhlEmbedSecret: () => "secret",
   embedKeyIsValid: (key: string | null) => key === "good-key",
+  embedCookieIsValid: async (token: string | undefined) => token === "good-key",
+  verifyEmbedSessionToken: async (token: string | null | undefined) =>
+    token === "signed-ok" ? { iat: 1, exp: 9_999_999_999 } : null,
 }));
 
 vi.mock("@/lib/e2e-god-mode", () => ({
@@ -85,5 +89,12 @@ describe("getPimSession: a human Supabase session outranks the GHL embed princip
   it("returns null with no human and no embed context", async () => {
     req.headers = new Map();
     expect(await getPimSession()).toBeNull();
+  });
+
+  it("accepts the cookie-independent x-ccpatio-embed-token HMAC header", async () => {
+    req.headers = new Map([["x-ccpatio-embed-token", "signed-ok"]]);
+    const s = await getPimSession();
+    expect(s?.email).toBe(GHL_EMBED_PRINCIPAL_EMAIL);
+    expect(isEmbedPrincipal(s)).toBe(true);
   });
 });

@@ -1,32 +1,62 @@
 {
-  "phase_id": "pre-closeout-p0-hardening",
-  "base_ref": "4d4cda1",
-  "blast_radius": 14,
+  "phase_id": "ghl-portal-inventory-and-woo-sync",
+  "base_ref": "77a1777",
+  "blast_radius": 25,
   "counts": {
-    "files": 14,
-    "tracked": 12,
-    "untracked": 2,
-    "insertions": 835,
-    "deletions": 154
+    "files": 25,
+    "tracked": 18,
+    "untracked": 7,
+    "insertions": 2534,
+    "deletions": 1366
   },
   "files": [
     {
       "status": "??",
-      "path": "scripts/ops/remediate-p0-addons-and-asms.ts",
+      "path": "src/app/api/embed/katana-inventory/route.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/qa-route-guard.test.ts",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase1PortalViews.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/components/embed/EmbedSessionProvider.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/ecommerce/phase1-portal.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/stock/katana-inventory.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/woocommerce/woo-catalog-sync.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/ghl-inventory-and-woo-sync.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 16,
-      "deletions": 10
+      "insertions": 28,
+      "deletions": 19
     },
     {
       "status": "M",
@@ -36,69 +66,110 @@
     },
     {
       "status": "M",
-      "path": "docs/sop/CCP_PH1_PHASE_C_CLOSEOUT_PACKET.md",
-      "insertions": 59,
-      "deletions": 18
-    },
-    {
-      "status": "M",
-      "path": "scripts/ops/enable-phase1-hub-data.ts",
-      "insertions": 108,
+      "path": "scripts/ops/generate-primeview-phase1-csv.ts",
+      "insertions": 4,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": "scripts/ops/generate-primeview-phase1-csv.ts",
-      "insertions": 274,
-      "deletions": 100
+      "path": "src/app/embed/admin/master-catalog/actions.ts",
+      "insertions": 277,
+      "deletions": 0
     },
     {
       "status": "M",
-      "path": "scripts/qa/proof-of-life.runner.ts",
+      "path": "src/app/embed/admin/master-catalog/page.tsx",
+      "insertions": 1498,
+      "deletions": 1200
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/layout.tsx",
+      "insertions": 25,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/showroom/page.tsx",
+      "insertions": 17,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/app/showroom/actions.ts",
+      "insertions": 17,
+      "deletions": 4
+    },
+    {
+      "status": "M",
+      "path": "src/app/showroom/stock/InventoryCard.tsx",
+      "insertions": 41,
+      "deletions": 17
+    },
+    {
+      "status": "M",
+      "path": "src/app/showroom/stock/LiveStockView.tsx",
+      "insertions": 304,
+      "deletions": 75
+    },
+    {
+      "status": "M",
+      "path": "src/lib/embed-auth.ts",
+      "insertions": 99,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/lib/pim-audit.ts",
+      "insertions": 17,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/lib/stock-display.ts",
+      "insertions": 7,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/proxy.ts",
+      "insertions": 34,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "src/server/showroom/stock.ts",
+      "insertions": 82,
+      "deletions": 5
+    },
+    {
+      "status": "M",
+      "path": "src/server/stock/search-katana-stock.ts",
+      "insertions": 62,
+      "deletions": 30
+    },
+    {
+      "status": "M",
+      "path": "tests/intake-routes.test.ts",
       "insertions": 3,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": "src/app/api/qa-test/route.ts",
-      "insertions": 52,
-      "deletions": 6
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/finish-keys.ts",
-      "insertions": 13,
+      "path": "tests/pim-session.test.ts",
+      "insertions": 11,
       "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/line-specs.ts",
-      "insertions": 44,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "tests/phase1-csv-and-smoke.test.ts",
-      "insertions": 200,
-      "deletions": 5
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-line-specs.test.ts",
-      "insertions": 39,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-sku-resolver.test.ts",
-      "insertions": 19,
-      "deletions": 5
     }
   ],
   "untracked": [
-    "scripts/ops/remediate-p0-addons-and-asms.ts",
-    "tests/qa-route-guard.test.ts"
+    "src/app/api/embed/katana-inventory/route.ts",
+    "src/app/embed/admin/master-catalog/ecommerce/Phase1PortalViews.tsx",
+    "src/components/embed/EmbedSessionProvider.tsx",
+    "src/server/ecommerce/phase1-portal.ts",
+    "src/server/stock/katana-inventory.ts",
+    "src/server/woocommerce/woo-catalog-sync.ts",
+    "tests/ghl-inventory-and-woo-sync.test.ts"
   ],
-  "file_list_sha256": "4af6ab65b923f28fb3dcea500bf131d929a22151633cc28776ef36e542c3387a",
+  "file_list_sha256": "49da7510fc65018e714931e9f6eb8803be992d9d7fe804b3e43804dae992c6a7",
   "notes": ""
 }

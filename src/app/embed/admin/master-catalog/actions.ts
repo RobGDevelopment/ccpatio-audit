@@ -63,6 +63,23 @@ import {
 } from "@/server/pim/seo-assistant";
 import { SEO_LIMITS, SLUG_RE, normalizeTags } from "@/lib/seo-limits";
 import { deriveDfmFreight } from "@/lib/freight-utils";
+import {
+  deriveWooSyncStatus,
+  pushParentToWoo,
+  resolveWooConnection,
+  testWooConnection,
+  type WooSyncStatus,
+  type HubParentInput,
+} from "@/server/woocommerce/woo-catalog-sync";
+import {
+  isFinishOrAddonSku,
+  isPhase1StorefrontRow,
+  readMiaApproval,
+  writeMiaApproval,
+  type Phase1PortalView,
+} from "@/server/ecommerce/phase1-portal";
+
+export type { WooSyncStatus, Phase1PortalView };
 
 /** The AI action needs a real @ccpatio.com person; a human session outranks the embed principal. */
 function aiOperatorEligible(session: PimSession): boolean {
@@ -2053,4 +2070,264 @@ export async function updateLogisticsProfile(globalSku: string, weightLb: string
   }
 
   return true;
+}
+
+/* ───────────────────── GHL E-Commerce Woo sync portal ───────────────────── */
+
+export async function getWooConnectionBadge(): Promise<{
+  configured: boolean;
+  label: string;
+  host: string | null;
+}> {
+  const conn = resolveWooConnection();
+  if (!conn.configured) {
+    return { configured: false, label: conn.reason, host: null };
+  }
+  return { configured: true, label: `Connected to ${conn.host}`, host: conn.host };
+}
+
+export async function testWooConnectionAction(): Promise<
+  { ok: true; host: string } | { ok: false; reason: string }
+> {
+  return testWooConnection();
+}
+
+export async function getPhase1PortalRows(view: Phase1PortalView = "phase1_parents") {
+  const roster = await getEcommerceRoster();
+  const db = getDb();
+  const attrRows = await db
+    .select({
+      sku: sku_mappings.global_sku,
+      attributes: sku_mappings.attributes,
+      updatedAt: sku_mappings.updated_at,
+      wooProductId: sku_mappings.woo_product_id,
+    })
+    .from(sku_mappings);
+
+  const syncRows = await db
+    .select({
+      sku: channel_sync.global_sku,
+      status: channel_sync.status,
+      lastError: channel_sync.last_error,
+      updatedAt: channel_sync.updated_at,
+    })
+    .from(channel_sync)
+    .where(eq(channel_sync.channel, "woocommerce"));
+
+  const attrsBySku = new Map(attrRows.map((r) => [r.sku, r]));
+  const syncBySku = new Map(syncRows.map((r) => [r.sku, r]));
+
+  const enriched = roster.listings.map((listing) => {
+    const attr = attrsBySku.get(listing.globalSku);
+    const sync = syncBySku.get(listing.globalSku);
+    const mia = readMiaApproval(attr?.attributes as Record<string, unknown> | undefined);
+    const wooStatus = deriveWooSyncStatus({
+      wooProductId: listing.wooProductId,
+      hubUpdatedAt: attr?.updatedAt?.toISOString?.() ?? null,
+      lastSyncedAt: sync?.updatedAt?.toISOString?.() ?? null,
+      lastError: sync?.lastError ?? null,
+    });
+    return {
+      ...listing,
+      miaApproved: mia.approved,
+      miaApprovedAt: mia.approvedAt,
+      wooSyncStatus: wooStatus as WooSyncStatus,
+      attributes: (attr?.attributes as Record<string, unknown>) ?? {},
+    };
+  });
+
+  if (view === "all_hub") return { view, listings: enriched, gaps: roster.gaps };
+  if (view === "finishes_addons") {
+    return {
+      view,
+      listings: enriched.filter((l) => isFinishOrAddonSku(l.globalSku)),
+      gaps: roster.gaps,
+    };
+  }
+  const phase1 = enriched.filter((l) =>
+    isPhase1StorefrontRow({ globalSku: l.globalSku, msrpValue: l.msrpValue }),
+  );
+  return { view, listings: phase1, gaps: roster.gaps };
+}
+
+export async function toggleMiaApproval(
+  globalSku: string,
+  approved: boolean,
+): Promise<{ ok: true; approvedAt: string | null } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const db = getDb();
+  const [row] = await db
+    .select({ attributes: sku_mappings.attributes, version: sku_mappings.version })
+    .from(sku_mappings)
+    .where(eq(sku_mappings.global_sku, globalSku))
+    .limit(1);
+  if (!row) return { ok: false, error: "SKU not found." };
+  const next = writeMiaApproval(row.attributes as Record<string, unknown>, approved);
+  await db
+    .update(sku_mappings)
+    .set({
+      attributes: next,
+      updated_at: new Date(),
+      updated_by: session.email,
+      version: row.version + 1,
+    })
+    .where(eq(sku_mappings.global_sku, globalSku));
+  await logPimAudit({
+    operatorEmail: session.email,
+    globalSku,
+    action: approved ? "mia_phase1_approved" : "mia_phase1_unapproved",
+    field: "attributes.mia_phase1_approved",
+    newValue: String(approved),
+  });
+  return { ok: true, approvedAt: approved ? String(next.mia_approved_at) : null };
+}
+
+export async function approveAllVisibleSkus(
+  skus: string[],
+): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  let count = 0;
+  for (const sku of [...new Set(skus.map((s) => s.trim()).filter(Boolean))]) {
+    const result = await toggleMiaApproval(sku, true);
+    if (result.ok) count += 1;
+  }
+  return { ok: true, count };
+}
+
+export async function dryRunWooPushForSku(globalSku: string) {
+  const session = await getPimSession();
+  if (!session) return { ok: false as const, error: "Unauthorized embed session." };
+  const roster = await getEcommerceRoster();
+  const listing = roster.listings.find((l) => l.globalSku === globalSku);
+  if (!listing) return { ok: false as const, error: "Listing not found." };
+  const siblings = roster.listings.filter(
+    (l) =>
+      (listing.wooProductId && l.wooProductId === listing.wooProductId) ||
+      l.globalSku === globalSku,
+  );
+  const parent: HubParentInput = {
+    wooProductId: listing.wooProductId,
+    sku: listing.globalSku,
+    name: listing.productName,
+    shortDescription: listing.marketingDescription,
+    description: listing.constructionDetails,
+    status: listing.isWebVisible ? "publish" : "draft",
+    heroImageUrl: listing.imageUrl,
+    preserveExistingImages: true,
+    variations: siblings.map((s) => ({
+      sku: s.globalSku,
+      regularPrice: s.msrpValue,
+      salePrice: s.salePrice,
+      weightLb: s.hubWeight ? Number(s.hubWeight) : null,
+      lengthIn: s.hubLength ? Number(s.hubLength) : null,
+      widthIn: s.hubDepth ? Number(s.hubDepth) : null,
+      heightIn: s.hubHeight ? Number(s.hubHeight) : null,
+      sizeLabel: s.productName,
+      katanaSku: s.globalSku,
+      makeOrResale: s.thirdParty ? "Resale" : "Make",
+    })),
+  };
+  const result = await pushParentToWoo(parent, { dryRun: true });
+  return { ok: true as const, ...result };
+}
+
+export async function pushSkuToWoo(globalSku: string) {
+  const session = await getPimSession();
+  if (!session) return { ok: false as const, error: "Unauthorized embed session." };
+  const dry = await dryRunWooPushForSku(globalSku);
+  if (!dry.ok) return dry;
+  const roster = await getEcommerceRoster();
+  const listing = roster.listings.find((l) => l.globalSku === globalSku);
+  if (!listing) return { ok: false as const, error: "Listing not found." };
+  const siblings = roster.listings.filter(
+    (l) =>
+      (listing.wooProductId && l.wooProductId === listing.wooProductId) ||
+      l.globalSku === globalSku,
+  );
+  const parent: HubParentInput = {
+    wooProductId: listing.wooProductId,
+    sku: listing.globalSku,
+    name: listing.productName,
+    shortDescription: listing.marketingDescription,
+    description: listing.constructionDetails,
+    status: listing.isWebVisible ? "publish" : "draft",
+    heroImageUrl: null,
+    preserveExistingImages: true,
+    variations: siblings.map((s) => ({
+      sku: s.globalSku,
+      regularPrice: s.msrpValue,
+      salePrice: s.salePrice,
+      weightLb: s.hubWeight ? Number(s.hubWeight) : null,
+      lengthIn: s.hubLength ? Number(s.hubLength) : null,
+      widthIn: s.hubDepth ? Number(s.hubDepth) : null,
+      heightIn: s.hubHeight ? Number(s.hubHeight) : null,
+      sizeLabel: s.productName,
+      katanaSku: s.globalSku,
+      makeOrResale: s.thirdParty ? "Resale" : "Make",
+    })),
+  };
+  try {
+    const result = await pushParentToWoo(parent, { dryRun: false });
+    const db = getDb();
+    if (result.productId) {
+      await db
+        .update(sku_mappings)
+        .set({ woo_product_id: result.productId, updated_at: new Date() })
+        .where(eq(sku_mappings.global_sku, globalSku));
+    }
+    await db
+      .insert(channel_sync)
+      .values({
+        global_sku: globalSku,
+        channel: "woocommerce",
+        status: "success",
+        external_id: result.productId,
+        last_error: null,
+        updated_at: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [channel_sync.global_sku, channel_sync.channel],
+        set: {
+          status: "success",
+          external_id: result.productId,
+          last_error: null,
+          updated_at: new Date(),
+        },
+      });
+    return { ok: true as const, ...result };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Woo push failed";
+    const db = getDb();
+    await db
+      .insert(channel_sync)
+      .values({
+        global_sku: globalSku,
+        channel: "woocommerce",
+        status: "failed",
+        last_error: message,
+        updated_at: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [channel_sync.global_sku, channel_sync.channel],
+        set: { status: "failed", last_error: message, updated_at: new Date() },
+      });
+    return { ok: false as const, error: message };
+  }
+}
+
+export async function syncApprovedToWoo(skus: string[]) {
+  const session = await getPimSession();
+  if (!session) return { ok: false as const, error: "Unauthorized embed session." };
+  const results: Array<{ sku: string; ok: boolean; error?: string }> = [];
+  for (const sku of skus) {
+    const pushed = await pushSkuToWoo(sku);
+    results.push({
+      sku,
+      ok: pushed.ok,
+      error: pushed.ok ? undefined : pushed.error,
+    });
+  }
+  return { ok: true as const, results };
 }

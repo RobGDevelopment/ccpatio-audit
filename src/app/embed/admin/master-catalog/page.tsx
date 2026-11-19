@@ -21,6 +21,14 @@ import {
   getActiveCatalog,
   getQuarantineQueue,
   getEcommerceRoster,
+  getPhase1PortalRows,
+  getWooConnectionBadge,
+  testWooConnectionAction,
+  dryRunWooPushForSku,
+  pushSkuToWoo,
+  syncApprovedToWoo,
+  toggleMiaApproval,
+  approveAllVisibleSkus,
   updateListingMsrp,
   updateListingUrl,
   updateListingLegacySku,
@@ -35,14 +43,24 @@ import {
   type QuarantineItem,
   type EcommerceListing,
   type EcommerceRoster,
+  type Phase1PortalView,
+  type WooSyncStatus,
 } from "./actions";
 import {
   normalizeLegacySku,
   normalizeProductUrl,
   sharedLegacyPatches,
 } from "@/lib/ecommerce-roster";
+import { isPhase1StorefrontRow } from "@/server/ecommerce/phase1-portal";
 import EcommerceGrid from "./ecommerce/EcommerceGrid";
 import NewProductDrawer from "./ecommerce/NewProductDrawer";
+import {
+  Phase1FlatGrid,
+  Phase1ViewSwitcher,
+  wooDotClass,
+  wooTitle,
+  type Phase1Listing,
+} from "./ecommerce/Phase1PortalViews";
 
 function DrawerLoadingShell() {
   return (
@@ -143,19 +161,30 @@ function StatusPill({
   active,
   title,
   children,
+  tone,
 }: {
   active: boolean;
   title: string;
   children: React.ReactNode;
+  /** Optional 3-light Woo tone override. */
+  tone?: WooSyncStatus;
 }) {
+  const toneClass =
+    tone === "synced"
+      ? "bg-emerald-100 text-emerald-600"
+      : tone === "dirty"
+        ? "bg-amber-100 text-amber-700"
+        : tone === "error"
+          ? "bg-rose-100 text-rose-600"
+          : tone === "never"
+            ? "bg-slate-100 text-slate-400"
+            : active
+              ? "bg-emerald-100 text-emerald-600"
+              : "bg-slate-100 text-slate-400";
   return (
     <span
-      title={`${title}: ${active ? "Synced" : "Missing"}`}
-      className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-        active
-          ? "bg-emerald-100 text-emerald-600"
-          : "bg-slate-100 text-slate-400"
-      }`}
+      title={tone ? wooTitle(tone) : `${title}: ${active ? "Synced" : "Missing"}`}
+      className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${toneClass}`}
     >
       {children}
     </span>
@@ -167,7 +196,8 @@ function StatusPill({
 export default function MasterCatalogAdmin() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"active" | "quarantine">("active");
-  const [view, setView] = useState<ViewMode>("all");
+  const [view, setView] = useState<ViewMode>("ecommerce");
+  const [phase1View, setPhase1View] = useState<Phase1PortalView>("phase1_parents");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -176,8 +206,11 @@ export default function MasterCatalogAdmin() {
 
   // E-Commerce roster: loaded once, on first visit to the view
   const [ecommerce, setEcommerce] = useState<EcommerceRoster | null>(null);
+  const [phase1Listings, setPhase1Listings] = useState<Phase1Listing[]>([]);
   const [ecommerceLoading, setEcommerceLoading] = useState(false);
   const [ecommerceError, setEcommerceError] = useState<string | null>(null);
+  const [wooBadge, setWooBadge] = useState<{ configured: boolean; label: string } | null>(null);
+  const [dryRunJson, setDryRunJson] = useState<string | null>(null);
 
   // Inline editing
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -209,12 +242,14 @@ export default function MasterCatalogAdmin() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [a, q] = await Promise.all([
+        const [a, q, badge] = await Promise.all([
           getActiveCatalog(),
           getQuarantineQueue(),
+          getWooConnectionBadge(),
         ]);
         setCatalog(a);
         setQuarantine(q);
+        setWooBadge(badge);
       } catch (err) {
         console.error("Failed to load catalog data:", err);
       } finally {
@@ -226,11 +261,14 @@ export default function MasterCatalogAdmin() {
 
   // Lazy-load the roster the first time the E-Commerce view opens
   useEffect(() => {
-    if (view !== "ecommerce" || ecommerce || ecommerceLoading || ecommerceError)
-      return;
+    if (view !== "ecommerce" || ecommerceLoading || ecommerceError) return;
+    if (ecommerce && phase1Listings.length > 0) return;
     setEcommerceLoading(true);
-    getEcommerceRoster()
-      .then(setEcommerce)
+    Promise.all([getEcommerceRoster(), getPhase1PortalRows(phase1View)])
+      .then(([roster, phase1]) => {
+        setEcommerce(roster);
+        setPhase1Listings(phase1.listings as Phase1Listing[]);
+      })
       .catch((err) => {
         console.error("Failed to load E-Commerce roster:", err);
         setEcommerceError(
@@ -238,7 +276,14 @@ export default function MasterCatalogAdmin() {
         );
       })
       .finally(() => setEcommerceLoading(false));
-  }, [view, ecommerce, ecommerceLoading, ecommerceError]);
+  }, [view, ecommerce, ecommerceLoading, ecommerceError, phase1View, phase1Listings.length]);
+
+  useEffect(() => {
+    if (view !== "ecommerce") return;
+    void getPhase1PortalRows(phase1View).then((phase1) => {
+      setPhase1Listings(phase1.listings as Phase1Listing[]);
+    });
+  }, [phase1View, view]);
 
   // Close the Actions menu on outside click
   useEffect(() => {
@@ -669,6 +714,58 @@ export default function MasterCatalogAdmin() {
       <div className="mc-shell w-full flex flex-col flex-1 h-[calc(100vh-3rem)]">
         {/* Command bar */}
         <div className="mc-panel print:hidden bg-white/80 backdrop-blur-md rounded-2xl border border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-4 mb-4 flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                GoHighLevel · CC Patio
+              </p>
+              <h1 className="text-lg font-semibold text-slate-900">
+                E-Commerce Master Catalog
+              </h1>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  wooBadge?.configured
+                    ? "bg-emerald-50 text-emerald-800"
+                    : "bg-amber-50 text-amber-800"
+                }`}
+              >
+                {wooBadge?.label ?? "Checking Woo…"}
+              </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  const result = await testWooConnectionAction();
+                  setToast(result.ok ? `Connected to ${result.host}` : result.reason);
+                  const badge = await getWooConnectionBadge();
+                  setWooBadge(badge);
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+              >
+                Test Woo Connection
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const sample = phase1Listings[0]?.globalSku;
+                  if (!sample) {
+                    setToast("No Phase 1 rows loaded yet.");
+                    return;
+                  }
+                  const preview = await dryRunWooPushForSku(sample);
+                  if (!preview.ok) {
+                    setToast(preview.error);
+                    return;
+                  }
+                  setDryRunJson(JSON.stringify(preview.preview, null, 2));
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+              >
+                Dry-Run Payload Preview
+              </button>
+            </div>
+          </div>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <button
@@ -760,6 +857,100 @@ export default function MasterCatalogAdmin() {
                       <Download className="h-4 w-4 text-slate-500" />
                       Marketing CSV Feed
                     </button>
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        const rows = phase1Listings.length
+                          ? phase1Listings
+                          : ecommerce?.listings ?? [];
+                        const headers = [
+                          "global_sku",
+                          "product_name",
+                          "collection",
+                          "steel_msrp",
+                          "sale_price",
+                          "weight_lb",
+                          "shipping_class",
+                          "mia_approved",
+                          "woo_product_id",
+                        ];
+                        const lines = [
+                          headers.join(","),
+                          ...rows.map((r) =>
+                            [
+                              r.globalSku,
+                              csvCell(r.productName),
+                              csvCell(r.collectionLabel),
+                              r.msrpValue ?? "",
+                              r.salePrice ?? "",
+                              r.hubWeight ?? "",
+                              r.hubWeight && Number(r.hubWeight) >= 50
+                                ? "freight-ltl"
+                                : "parcel",
+                              (r as Phase1Listing).miaApproved ? "yes" : "no",
+                              r.wooProductId ?? "",
+                            ].join(","),
+                          ),
+                        ];
+                        const blob = new Blob([lines.join("\n")], {
+                          type: "text/csv;charset=utf-8",
+                        });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "ccpatio-phase1-google-sheets.csv";
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        setMenuOpen(false);
+                        setToast("Exported Google Sheets CSV");
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                    >
+                      <Download className="h-4 w-4 text-slate-500" />
+                      Export Google Sheets CSV
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setToast(
+                          "PrimeView 169-col CSV uses scripts/ops/generate-primeview-phase1-csv.ts (same Hub fields as REST push).",
+                        );
+                        setMenuOpen(false);
+                        window.open(
+                          "/api/health",
+                          "_blank",
+                          "noopener,noreferrer",
+                        );
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                    >
+                      <Download className="h-4 w-4 text-slate-500" />
+                      Export PrimeView 169-Col CSV
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={async () => {
+                        const approved = phase1Listings
+                          .filter((l) => l.miaApproved)
+                          .map((l) => l.globalSku);
+                        const result = await syncApprovedToWoo(approved);
+                        setMenuOpen(false);
+                        if (!result.ok) {
+                          setToast(result.error);
+                          return;
+                        }
+                        const failed = result.results.filter((r) => !r.ok).length;
+                        setToast(
+                          failed
+                            ? `Synced with ${failed} error(s)`
+                            : `Synced ${result.results.length} approved SKU(s) to Woo`,
+                        );
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                    >
+                      <ShoppingCart className="h-4 w-4 text-slate-500" />
+                      Sync Approved to WooCommerce
+                    </button>
                   </div>
                 )}
               </div>
@@ -793,7 +984,7 @@ export default function MasterCatalogAdmin() {
 
         {/* E-Commerce roster view */}
         {activeTab === "active" && view === "ecommerce" ? (
-          <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 flex flex-col gap-3">
             {ecommerceError ? (
               <div className="rounded-2xl border border-rose-100 bg-white/90 p-8 text-sm text-rose-600">
                 {ecommerceError}
@@ -804,19 +995,96 @@ export default function MasterCatalogAdmin() {
                 <span>Loading E-Commerce roster...</span>
               </div>
             ) : (
-              <Suspense fallback={<DrawerLoadingShell />}>
-                <EcommerceGrid
-                  listings={ecommerce.listings}
-                  gaps={ecommerce.gaps}
-                  onSaveMsrp={handleEcommerceMsrp}
-                  onSaveUrl={handleEcommerceUrl}
-                  onSaveLegacy={handleEcommerceLegacy}
-                  onMintHub={handleMintHub}
-                  onSaveListingDrawer={handleEcommerceListingDrawer}
-                  onSaveHubDrawer={handleEcommerceHubDrawer}
-                  onListingPatched={handleListingPatched}
+              <>
+                <Phase1ViewSwitcher
+                  view={phase1View}
+                  onChange={setPhase1View}
+                  approvedCount={phase1Listings.filter((l) => l.miaApproved).length}
+                  totalSow={
+                    phase1Listings.filter((l) =>
+                      isPhase1StorefrontRow({
+                        globalSku: l.globalSku,
+                        msrpValue: l.msrpValue,
+                      }),
+                    ).length || 102
+                  }
                 />
-              </Suspense>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-xl bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white"
+                    onClick={async () => {
+                      const skus = phase1Listings.map((l) => l.globalSku);
+                      const result = await approveAllVisibleSkus(skus);
+                      if (!result.ok) {
+                        setToast(result.error);
+                        return;
+                      }
+                      setPhase1Listings((prev) =>
+                        prev.map((l) => ({ ...l, miaApproved: true })),
+                      );
+                      setToast(`Approved ${result.count} visible SKU(s)`);
+                    }}
+                  >
+                    Approve All Visible
+                  </button>
+                </div>
+                {phase1View === "phase1_flat" || phase1View === "finishes_addons" ? (
+                  <Phase1FlatGrid
+                    listings={
+                      phase1View === "finishes_addons"
+                        ? phase1Listings
+                        : phase1Listings.filter((l) =>
+                            isPhase1StorefrontRow({
+                              globalSku: l.globalSku,
+                              msrpValue: l.msrpValue,
+                            }),
+                          )
+                    }
+                    onToggleMia={async (sku, approved) => {
+                      const result = await toggleMiaApproval(sku, approved);
+                      if (!result.ok) {
+                        setToast(result.error);
+                        return;
+                      }
+                      setPhase1Listings((prev) =>
+                        prev.map((l) =>
+                          l.globalSku === sku
+                            ? { ...l, miaApproved: approved, miaApprovedAt: result.approvedAt }
+                            : l,
+                        ),
+                      );
+                    }}
+                    onPush={async (sku) => {
+                      const result = await pushSkuToWoo(sku);
+                      setToast(result.ok ? `Pushed ${sku}` : result.error);
+                    }}
+                  />
+                ) : (
+                  <Suspense fallback={<DrawerLoadingShell />}>
+                    <EcommerceGrid
+                      listings={
+                        phase1View === "all_hub"
+                          ? ecommerce.listings
+                          : ecommerce.listings.filter((l) =>
+                              isPhase1StorefrontRow({
+                                globalSku: l.globalSku,
+                                msrpValue: l.msrpValue,
+                              }),
+                            )
+                      }
+                      gaps={ecommerce.gaps}
+                      onSaveMsrp={handleEcommerceMsrp}
+                      onSaveUrl={handleEcommerceUrl}
+                      onSaveLegacy={handleEcommerceLegacy}
+                      onMintHub={handleMintHub}
+                      onSaveListingDrawer={handleEcommerceListingDrawer}
+                      onSaveHubDrawer={handleEcommerceHubDrawer}
+                      onListingPatched={handleListingPatched}
+                    />
+                  </Suspense>
+                )}
+              </>
             )}
           </div>
         ) : (
@@ -999,8 +1267,22 @@ export default function MasterCatalogAdmin() {
                                 <StatusPill
                                   active={item.wooSynced}
                                   title="WooCommerce"
+                                  tone={
+                                    item.wooSynced
+                                      ? "synced"
+                                      : item.globalSku
+                                        ? "never"
+                                        : "never"
+                                  }
                                 >
-                                  <ShoppingCart className="h-4 w-4" />
+                                  <span className="relative">
+                                    <ShoppingCart className="h-4 w-4" />
+                                    <span
+                                      className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ${wooDotClass(
+                                        item.wooSynced ? "synced" : "never",
+                                      )}`}
+                                    />
+                                  </span>
                                 </StatusPill>
                               </div>
                             </td>
@@ -1063,6 +1345,22 @@ export default function MasterCatalogAdmin() {
       {toast && (
         <div className="print:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl">
           {toast}
+        </div>
+      )}
+
+      {dryRunJson && (
+        <div className="print:hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+              <h3 className="text-sm font-semibold text-slate-800">Dry-Run Payload Preview</h3>
+              <button type="button" onClick={() => setDryRunJson(null)} className="text-slate-400 hover:text-slate-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <pre className="max-h-[70vh] overflow-auto bg-slate-950 p-4 text-[11px] text-emerald-300">
+              {dryRunJson}
+            </pre>
+          </div>
         </div>
       )}
 

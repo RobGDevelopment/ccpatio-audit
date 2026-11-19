@@ -12,8 +12,11 @@ import {
   EMBED_AUTH_COOKIE,
   EMBED_CONTEXT_HEADER,
   EMBED_KEY_HEADER,
+  EMBED_TOKEN_HEADER,
+  embedCookieIsValid,
   embedKeyIsValid,
   getGhlEmbedSecret,
+  verifyEmbedSessionToken,
 } from "@/lib/embed-auth";
 
 /** Synthetic principal for a valid GHL iframe. It is not a salesperson name. */
@@ -68,10 +71,23 @@ export async function getPimSession(): Promise<PimSession | null> {
   }
 
   try {
+    const secret = getGhlEmbedSecret();
+    // Cookie-independent HMAC token works even when third-party cookies are blocked.
+    const embedToken =
+      hdrs?.get(EMBED_TOKEN_HEADER) ??
+      jar?.get(EMBED_TOKEN_HEADER)?.value ??
+      null;
+    if (await verifyEmbedSessionToken(embedToken, secret)) {
+      return { email: GHL_EMBED_PRINCIPAL_EMAIL, name: "GHL Embed" };
+    }
+
     if (jar && hdrs && hdrs.get(EMBED_CONTEXT_HEADER) === "1") {
       const presented =
         hdrs.get(EMBED_KEY_HEADER) ?? jar.get(EMBED_AUTH_COOKIE)?.value ?? null;
-      if (embedKeyIsValid(presented, getGhlEmbedSecret())) {
+      if (
+        embedKeyIsValid(presented, secret) ||
+        (await embedCookieIsValid(presented ?? undefined, secret))
+      ) {
         return { email: GHL_EMBED_PRINCIPAL_EMAIL, name: "GHL Embed" };
       }
     }

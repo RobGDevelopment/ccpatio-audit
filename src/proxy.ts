@@ -19,7 +19,12 @@ import {
   EMBED_AUTH_HEADER,
   EMBED_CONTEXT_HEADER,
   EMBED_KEY_HEADER,
+  EMBED_TOKEN_HEADER,
   embedAuthCookieOptions,
+  embedAuthCookieValue,
+  embedKeyIsValid,
+  getGhlEmbedSecret,
+  mintEmbedSessionToken,
 } from "@/lib/embed-auth";
 import {
   MissionControlUnauthorizedError,
@@ -138,10 +143,18 @@ function embedKeyFromRequest(request: NextRequest): string | null {
   return key;
 }
 
+function embedTokenFromRequest(request: NextRequest): string | null {
+  const fromHeader = request.headers.get(EMBED_TOKEN_HEADER)?.trim() ?? "";
+  if (fromHeader) return fromHeader;
+  const fromCookie = request.cookies.get(EMBED_TOKEN_HEADER)?.value?.trim() ?? "";
+  return fromCookie || null;
+}
+
 function requestHeadersFor(
   request: NextRequest,
   pathname: string,
   embedKey: string | null,
+  embedToken: string | null = null,
 ): Headers {
   const headers = new Headers(request.headers);
   headers.delete(EMBED_AUTH_HEADER);
@@ -149,6 +162,8 @@ function requestHeadersFor(
   if (isEmbedPath(pathname)) headers.set(EMBED_CONTEXT_HEADER, "1");
   else headers.delete(EMBED_CONTEXT_HEADER);
   if (embedKey) headers.set(EMBED_KEY_HEADER, embedKey);
+  if (embedToken) headers.set(EMBED_TOKEN_HEADER, embedToken);
+  else headers.delete(EMBED_TOKEN_HEADER);
   return headers;
 }
 
@@ -193,11 +208,27 @@ export async function proxy(request: NextRequest) {
     isEmbedPath(pathname) && !isMissionControlPath(pathname)
       ? embedKeyFromRequest(request)
       : null;
-  const requestHeaders = requestHeadersFor(request, pathname, embedKey);
+  const existingToken = embedTokenFromRequest(request);
+  const secret = getGhlEmbedSecret();
+  const keyOk = embedKeyIsValid(embedKey, secret);
+  let mintedToken: string | null = null;
+  if (isEmbedPath(pathname) && keyOk) {
+    mintedToken = await mintEmbedSessionToken(secret);
+  }
+  const embedToken = mintedToken ?? existingToken;
+  const requestHeaders = requestHeadersFor(request, pathname, embedKey, embedToken);
   if (isEmbedPath(pathname)) {
     const response = continueWithRequest(requestHeaders);
-    if (embedKey) {
-      response.cookies.set(EMBED_AUTH_COOKIE, embedKey, embedAuthCookieOptions());
+    if (embedKey && keyOk) {
+      // Store HMAC cookie value (not the raw secret) with CHIPS attributes.
+      const cookieValue = await embedAuthCookieValue(secret);
+      response.cookies.set(EMBED_AUTH_COOKIE, cookieValue, embedAuthCookieOptions());
+      if (mintedToken) {
+        response.cookies.set(EMBED_TOKEN_HEADER, mintedToken, {
+          ...embedAuthCookieOptions(),
+          httpOnly: false, // client fetch / Server Action fallback header
+        });
+      }
     }
     return applyFramePolicy(response, pathname, request);
   }

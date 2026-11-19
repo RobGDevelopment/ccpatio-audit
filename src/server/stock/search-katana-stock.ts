@@ -23,7 +23,9 @@ const FACTORY_LOCATION_ID = 98179;
 const PAGE_SIZE = 250;
 const MAX_PAGES = 40;
 const INVENTORY_BATCH = 40;
-const CATALOG_TTL_MS = 5 * 60 * 1000;
+const CATALOG_TTL_MS = 60 * 1000; // align with ops inventory fresh TTL
+const CATALOG_STALE_TTL_MS = 15 * 60 * 1000;
+
 
 export type StockSearchResult =
   | { ok: true; rows: StockRow[] }
@@ -134,62 +136,90 @@ function itemsFromParents(parents: Record<string, unknown>[]): StockCatalogItem[
   return items;
 }
 
+let catalogInflight: Promise<StockCatalogItem[]> | null = null;
+
 async function loadCatalog(): Promise<StockCatalogItem[]> {
-  if (catalogCache && Date.now() - catalogCache.at < CATALOG_TTL_MS) {
+  const now = Date.now();
+  if (catalogCache && now - catalogCache.at < CATALOG_TTL_MS) {
     return catalogCache.items;
   }
-  const materials = await listResource("/materials");
-  let products: Record<string, unknown>[] = [];
-  try {
-    products = await listResource("/products");
-  } catch (error) {
-    console.error("[showroom-stock] products fetch failed", error);
-  }
-  const byId = new Map<number, StockCatalogItem>();
-  for (const item of itemsFromParents([...materials, ...products])) {
-    byId.set(item.variantId, item);
-  }
-  const items = [...byId.values()];
-  console.log("[showroom-stock] raw catalog", {
-    materials: materials.length,
-    products: products.length,
-    variants: items.length,
-    fabrics: items.filter((item) => matchesStockFamily(item.sku, "fabrics")).length,
-    dekton: items.filter((item) => matchesStockFamily(item.sku, "dekton")).length,
-    frames: items.filter((item) => matchesStockFamily(item.sku, "frames")).length,
-  });
-  catalogCache = { at: Date.now(), items };
-  return items;
+  if (catalogInflight) return catalogInflight;
+
+  const run = async (): Promise<StockCatalogItem[]> => {
+    try {
+      const materials = await listResource("/materials");
+      let products: Record<string, unknown>[] = [];
+      try {
+        products = await listResource("/products");
+      } catch (error) {
+        console.error("[showroom-stock] products fetch failed", error);
+      }
+      const byId = new Map<number, StockCatalogItem>();
+      for (const item of itemsFromParents([...materials, ...products])) {
+        byId.set(item.variantId, item);
+      }
+      const items = [...byId.values()];
+      console.log("[showroom-stock] raw catalog", {
+        materials: materials.length,
+        products: products.length,
+        variants: items.length,
+        fabrics: items.filter((item) => matchesStockFamily(item.sku, "fabrics")).length,
+        dekton: items.filter((item) => matchesStockFamily(item.sku, "dekton")).length,
+        frames: items.filter((item) => matchesStockFamily(item.sku, "frames")).length,
+      });
+      catalogCache = { at: Date.now(), items };
+      return items;
+    } catch (error) {
+      if (catalogCache && Date.now() - catalogCache.at < CATALOG_STALE_TTL_MS) {
+        return catalogCache.items;
+      }
+      throw error;
+    } finally {
+      catalogInflight = null;
+    }
+  };
+
+  catalogInflight = run();
+  return catalogInflight;
 }
 
-function foldInventory(rows: Record<string, unknown>[]): Map<number, { inStock: number; committed: number }> {
+function foldInventory(
+  rows: Record<string, unknown>[],
+): Map<number, { inStock: number; committed: number; expected: number }> {
   const grouped = new Map<number, Record<string, unknown>[]>();
   for (const row of rows) {
+    if (row.deleted_at != null && String(row.deleted_at).trim() !== "") continue;
     const variantId = Number(row.variant_id);
     if (!Number.isFinite(variantId) || variantId <= 0) continue;
     const list = grouped.get(variantId) ?? [];
     list.push(row);
     grouped.set(variantId, list);
   }
-  const totals = new Map<number, { inStock: number; committed: number }>();
+  const totals = new Map<number, { inStock: number; committed: number; expected: number }>();
   for (const [variantId, list] of grouped) {
     const atFactory = list.filter((row) => Number(row.location_id) === FACTORY_LOCATION_ID);
     const used = atFactory.length > 0 ? atFactory : list;
     let inStock = 0;
     let committed = 0;
+    let expected = 0;
     for (const row of used) {
       inStock += Number(row.quantity_in_stock ?? 0);
       committed += Number(row.quantity_committed ?? 0);
+      expected += Number(row.quantity_expected ?? 0);
     }
-    totals.set(variantId, { inStock: roundQty(inStock), committed: roundQty(committed) });
+    totals.set(variantId, {
+      inStock: roundQty(inStock),
+      committed: roundQty(committed),
+      expected: roundQty(expected),
+    });
   }
   return totals;
 }
 
 async function inventoryForVariants(
   ids: number[],
-): Promise<Map<number, { inStock: number; committed: number }>> {
-  const totals = new Map<number, { inStock: number; committed: number }>();
+): Promise<Map<number, { inStock: number; committed: number; expected: number }>> {
+  const totals = new Map<number, { inStock: number; committed: number; expected: number }>();
   for (let index = 0; index < ids.length; index += INVENTORY_BATCH) {
     const chunk = ids.slice(index, index + INVENTORY_BATCH);
     const params = new URLSearchParams();
@@ -329,7 +359,7 @@ export async function searchKatanaStock(input: {
 
   const quantities = await inventoryForVariants(matches.map((item) => item.variantId));
   const rows: StockRow[] = matches.map((item) => {
-    const qty = quantities.get(item.variantId) ?? { inStock: 0, committed: 0 };
+    const qty = quantities.get(item.variantId) ?? { inStock: 0, committed: 0, expected: 0 };
     return {
       variantId: item.variantId,
       sku: item.sku,
@@ -338,8 +368,10 @@ export async function searchKatanaStock(input: {
       imageUrl: item.imageUrl ?? null,
       inStock: qty.inStock,
       committed: qty.committed,
+      expected: qty.expected,
       available: roundQty(qty.inStock - qty.committed),
       uom: item.uom?.trim() || displayStockUom(item.sku),
+      category: item.category ?? null,
     };
   });
   return { ok: true, rows };

@@ -34,6 +34,7 @@ function Swatch({ name }: { name: string }) {
 
 export function InventoryCard({
   row,
+  opsMode = false,
   salesperson,
   canHold,
   holdDisabledReason,
@@ -47,6 +48,7 @@ export function InventoryCard({
   onHoldExtended,
 }: {
   row: StockRow;
+  opsMode?: boolean;
   salesperson: string | null;
   canHold: boolean;
   holdDisabledReason: string | null;
@@ -117,8 +119,16 @@ export function InventoryCard({
             <p className="break-words line-clamp-3 text-xs text-slate-600">{row.variantLabel}</p>
           ) : null}
           <p className="mt-0.5 font-mono text-xs text-slate-500">{row.sku}</p>
+          {opsMode ? (
+            <div className="mt-1 space-y-0.5 text-[11px] text-slate-500">
+              {row.itemType ? <p>{row.itemType}</p> : null}
+              {row.category ? <p>Category: {row.category}</p> : null}
+              {row.locationName ? <p>Warehouse: {row.locationName}</p> : null}
+              {row.uom ? <p>UOM: {row.uom}</p> : null}
+            </div>
+          ) : null}
         </div>
-        <dl className="grid grid-cols-3 gap-4 text-center">
+        <dl className={`grid gap-4 text-center ${opsMode ? "grid-cols-4" : "grid-cols-3"}`}>
           <div className="min-w-0">
             <dt className="whitespace-nowrap text-xs font-medium uppercase leading-none tracking-normal text-slate-500">
               In stock
@@ -135,6 +145,16 @@ export function InventoryCard({
               {formatQty(row.committed)}
             </dd>
           </div>
+          {opsMode ? (
+            <div className="min-w-0">
+              <dt className="whitespace-nowrap text-xs font-medium uppercase leading-none tracking-normal text-slate-500">
+                Expected
+              </dt>
+              <dd className="mt-1 flex min-h-6 items-center justify-center text-sm tabular-nums text-slate-900">
+                {formatQty(row.expected ?? 0)}
+              </dd>
+            </div>
+          ) : null}
           <div className="min-w-0">
             <dt className="whitespace-nowrap text-xs font-medium uppercase leading-none tracking-normal text-slate-500">
               Available
@@ -148,6 +168,7 @@ export function InventoryCard({
             </dd>
           </div>
         </dl>
+        {!opsMode ? (
         <button
           type="button"
           disabled={holdDisabled}
@@ -160,7 +181,8 @@ export function InventoryCard({
         >
           Place Hold
         </button>
-        {holds.length > 0 ? (
+        ) : null}
+        {!opsMode && holds.length > 0 ? (
           <ul className="space-y-2">
             {holds.map((hold) => (
               <li key={hold.id} className="rounded-xl border border-slate-200 p-2">
@@ -182,7 +204,7 @@ export function InventoryCard({
             ))}
           </ul>
         ) : null}
-        {holds.length > 0 ? (
+        {!opsMode && holds.length > 0 ? (
           <button
             type="button"
             onClick={() => setReleaseOpen(true)}
@@ -192,7 +214,7 @@ export function InventoryCard({
           </button>
         ) : null}
       </div>
-      {salesperson ? (
+      {!opsMode && salesperson ? (
         <PlaceHoldModal
           isOpen={holdOpen}
           onClose={() => setHoldOpen(false)}
@@ -203,19 +225,21 @@ export function InventoryCard({
           onPlaced={onHoldPlaced}
         />
       ) : null}
-      <ReleaseHoldModal
-        isOpen={releaseOpen}
-        onClose={() => setReleaseOpen(false)}
-        row={row}
-        holds={holds}
-        ghlUserId={ghlUserId}
-        ghlUserEmail={ghlUserEmail}
-        disabled={!canHold || !salesperson}
-        onOptimisticRelease={onOptimisticRelease}
-        onReleaseFailed={onReleaseFailed}
-        onReleased={onHoldReleased}
-        onExtended={onHoldExtended}
-      />
+      {!opsMode ? (
+        <ReleaseHoldModal
+          isOpen={releaseOpen}
+          onClose={() => setReleaseOpen(false)}
+          row={row}
+          holds={holds}
+          ghlUserId={ghlUserId}
+          ghlUserEmail={ghlUserEmail}
+          disabled={!canHold || !salesperson}
+          onOptimisticRelease={onOptimisticRelease}
+          onReleaseFailed={onReleaseFailed}
+          onReleased={onHoldReleased}
+          onExtended={onHoldExtended}
+        />
+      ) : null}
       <ImageUploadModal
         isOpen={uploadOpen}
         onClose={() => setUploadOpen(false)}
