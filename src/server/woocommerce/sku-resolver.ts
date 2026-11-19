@@ -24,10 +24,19 @@ import {
   third_party_sources,
 } from "@/server/db/schema";
 import {
+  classifyFramePolicy,
+  FRAME_POLICY_ALU10,
+  FRAME_POLICY_NOT_APPLICABLE,
+  STEEL_DISCONTINUED_REASON,
+} from "@/server/ecommerce/alu10-pricing";
+import {
   FINISH_RULES,
   FINISH_SLOTS,
   FRAME_PLACEHOLDER_SKU,
   isGenericPlaceholderSku,
+  isSteelFrameMaterial,
+  MET_ALUM_SKU,
+  normalizeFrameMaterialValue,
   normalizeSku,
   skuPrefix,
   SUPPORTED_PLACEHOLDER_SKUS,
@@ -199,7 +208,10 @@ export async function resolveWooOrder(
     const finishes: WooLineSpec["finishes"] = {};
     for (const slot of FINISH_SLOTS) {
       const raw = spec.finishes[slot];
-      if (raw) finishes[slot] = aliasCache.get(raw) ?? raw;
+      if (!raw) continue;
+      const aliased = aliasCache.get(raw) ?? raw;
+      finishes[slot] =
+        slot === "frame" ? normalizeFrameMaterialValue(aliased) : aliased;
     }
     const addons: WooLineAddon[] = spec.addons.map((a) => {
       // Truthy ACF checkboxes may arrive as sku:null; map through defaults before Hub lookup.
@@ -230,6 +242,8 @@ export async function resolveWooOrder(
     const placeholder = FINISH_RULES[slot].placeholderSku;
     if (placeholder) wanted.add(placeholder);
   }
+  // Aluminum-only storefront may default missing frame meta to MET-ALUM.
+  wanted.add(MET_ALUM_SKU);
   const records = await deps.lookupSkus([...wanted]);
 
   const recipeCache = new Map<string, RecipeSlots | "empty">();
@@ -312,10 +326,44 @@ export async function resolveWooOrder(
 
     const finishes: ResolvedFinish[] = [];
     if (!skipMo) {
+      const framePolicy = classifyFramePolicy({
+        globalSku: spec.sku,
+        isThirdParty: skipMo,
+        attributes: base?.attributes ?? null,
+      });
+
       for (const slot of FINISH_SLOTS) {
-        const chosen = spec.finishes[slot];
+        let chosen = spec.finishes[slot];
         const finishPath = `line_items.${spec.index}.finishes.${slot}`;
         const rule = FINISH_RULES[slot];
+
+        // Aluminum-only web Make: omit frame → MET-ALUM; explicit Steel → quarantine.
+        if (slot === "frame" && slots?.frame) {
+          if (framePolicy === FRAME_POLICY_NOT_APPLICABLE) {
+            // Cabana pillows / non-metal Make — frame meta is ignored.
+            continue;
+          }
+          if (chosen && isSteelFrameMaterial(chosen)) {
+            if (
+              framePolicy === FRAME_POLICY_ALU10 ||
+              base?.attributes?.frame_policy === FRAME_POLICY_ALU10 ||
+              slots.frame
+            ) {
+              issues.push({
+                path: finishPath,
+                message: `${STEEL_DISCONTINUED_REASON}: SKU ${spec.sku} is Aluminum-only on the storefront; received frame=${chosen}.`,
+              });
+              continue;
+            }
+          }
+          if (!chosen) {
+            chosen = MET_ALUM_SKU;
+            if (!records.has(MET_ALUM_SKU)) {
+              const extra = await deps.lookupSkus([MET_ALUM_SKU]);
+              for (const [k, v] of extra) records.set(k, v);
+            }
+          }
+        }
 
         if (slots) {
           const offered = slots[slot];

@@ -19,6 +19,8 @@ export const PHASE1_VIEW_LABELS: Record<Phase1PortalView, string> = {
 export const PHASE1_LAUNCH_BANNER =
   "Phase 1 Launch (47 Products • 102 SOW Items • 107 Variations)";
 
+export { STOREFRONT_POLICY_BANNER } from "./alu10-pricing";
+
 export const PHASE1_FABRICS = [
   "FAB-ACT-ASH", "FAB-ACT-STO", "FAB-ADA-IND", "FAB-ADA-STO", "FAB-AGR-IND",
   "FAB-ARI-DEW", "FAB-ARR-CAR", "FAB-ARR-DUN", "FAB-ASC-SPA", "FAB-ASC-TRO",
@@ -32,7 +34,9 @@ export const PHASE1_POWDERS = [
   "PWD-OIL-RUB-BRONZE", "PWD-WILD-RICE",
 ] as const;
 
-export const PHASE1_FRAME_FINISHES = ["MET-STEEL", "MET-ALUM"] as const;
+/** Storefront is Aluminum-only; Steel remains a factory material but is hidden on web. */
+export const PHASE1_FRAME_FINISHES = ["MET-ALUM"] as const;
+export const PHASE1_FRAME_FINISHES_FACTORY = ["MET-STEEL", "MET-ALUM"] as const;
 
 /** Woo parent IDs that require Select Facing L/R variation pairs. */
 export const FACING_PARENT_IDS = new Set(["27674", "27687"]);

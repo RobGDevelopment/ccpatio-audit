@@ -5,12 +5,15 @@
  *
  *   fabric       FAB-*   upholstered items
  *   powder_coat  PWD-*   powder-coated frames
- *   frame        MET-*   MET-ALUM or MET-STEEL
+ *   frame        MET-*   MET-ALUM (storefront Aluminum-only; MET-STEEL quarantined on web Make)
  *   dekton       DKT-*   table/daybed/swing Dekton tops (swaps RM-DKT-GENERIC-SLAB)
  *
  * Aliases (accepted as the slot): `fabric_sku` → fabric, `frame_material` → frame.
  * Pure module: no I/O, no DB. Hub checks live in `sku-resolver.ts`.
  */
+
+export const MET_ALUM_SKU = "MET-ALUM";
+export const MET_STEEL_SKU = "MET-STEEL";
 
 export const FINISH_SLOTS = ["fabric", "powder_coat", "frame", "dekton"] as const;
 export type FinishSlot = (typeof FINISH_SLOTS)[number];
@@ -142,4 +145,34 @@ export function normalizeSku(value: string): string {
 export function skuPrefix(sku: string): string {
   const dash = sku.indexOf("-");
   return dash === -1 ? sku : sku.slice(0, dash);
+}
+
+/**
+ * Map human / ACF frame labels onto Hub MET-* SKUs.
+ * "Aluminum" / "Aluminium" → MET-ALUM; "Steel" → MET-STEEL.
+ */
+export function normalizeFrameMaterialValue(raw: string): string {
+  const n = normalizeSku(raw).replace(/\s+/g, "-");
+  if (
+    n === "ALUMINUM" ||
+    n === "ALUMINIUM" ||
+    n === "ALU" ||
+    n === "MET-ALUM" ||
+    n === "MET-ALUMINUM" ||
+    n === "MET-ALUMINIUM"
+  ) {
+    return MET_ALUM_SKU;
+  }
+  if (n === "STEEL" || n === "MET-STEEL" || n === "MET-STEEL-FRAME") {
+    return MET_STEEL_SKU;
+  }
+  return n;
+}
+
+export function isSteelFrameMaterial(raw: string): boolean {
+  return normalizeFrameMaterialValue(raw) === MET_STEEL_SKU;
+}
+
+export function isAluminumFrameMaterial(raw: string): boolean {
+  return normalizeFrameMaterialValue(raw) === MET_ALUM_SKU;
 }

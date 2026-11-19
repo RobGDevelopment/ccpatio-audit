@@ -3,7 +3,17 @@
  * Tab 1 = Live storefront (sync_to_woo). Tab 2 = Phase 2 staging library.
  */
 
+import {
+  framePolicyBadge,
+  classifyFramePolicy,
+  hasHalfCent,
+  STOREFRONT_POLICY_BANNER,
+  type FramePolicy,
+} from "./alu10-pricing";
 import { isFinishOrAddonSku, isPhase1StorefrontRow } from "./phase1-portal";
+
+export { STOREFRONT_POLICY_BANNER, framePolicyBadge, classifyFramePolicy, hasHalfCent };
+export type { FramePolicy };
 import {
   evaluateFieldBadges,
   isReadyToPromote,
@@ -116,6 +126,55 @@ export function phase2BadgesForRow(row: Phase2RowLike): FieldBadges {
     optionCategories: readOptionCategories(row.attributes),
     bomReadiness: readBomReadiness(row.attributes),
   });
+}
+
+/** Mia Aluminum Price List CSV (human-readable). */
+export function buildMiaAluminumPriceListCsv(
+  rows: Array<{
+    collection: string;
+    product: string;
+    size?: string;
+    facing?: string;
+    sku: string;
+    framePolicy: FramePolicy;
+    steelBase: number | null;
+    aluPrice: number | null;
+    salePrice: number | null;
+    miaApproved: boolean;
+  }>,
+): string {
+  const headers = [
+    "Collection",
+    "Product",
+    "Size",
+    "Facing",
+    "SKU",
+    "Frame Policy",
+    "Steel Base MSRP",
+    "+10% Aluminum Website Price",
+    "Sale Price",
+    "Mia Approved",
+  ];
+  const esc = (v: string) =>
+    /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const lines = [
+    headers.join(","),
+    ...rows.map((r) =>
+      [
+        esc(r.collection),
+        esc(r.product),
+        esc(r.size ?? ""),
+        esc(r.facing ?? ""),
+        esc(r.sku),
+        esc(framePolicyBadge(r.framePolicy)),
+        r.steelBase != null ? r.steelBase.toFixed(2) : "",
+        r.aluPrice != null ? r.aluPrice.toFixed(2) : "",
+        r.salePrice != null ? r.salePrice.toFixed(2) : "",
+        r.miaApproved ? "yes" : "no",
+      ].join(","),
+    ),
+  ];
+  return lines.join("\n");
 }
 
 export function matchesPhase2SubFilter(

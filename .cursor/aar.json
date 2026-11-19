@@ -1,68 +1,38 @@
 {
-  "phase_id": "ecommerce-two-tab-and-sku-engine",
-  "base_ref": "c3627b3",
-  "blast_radius": 15,
+  "phase_id": "alu-10pct-and-two-tab-portal",
+  "base_ref": "8f5f0a5",
+  "blast_radius": 23,
   "counts": {
-    "files": 15,
-    "tracked": 7,
-    "untracked": 8,
-    "insertions": 513,
-    "deletions": 776
+    "files": 23,
+    "tracked": 20,
+    "untracked": 3,
+    "insertions": 1543,
+    "deletions": 813
   },
   "files": [
     {
       "status": "??",
-      "path": "scripts/ops/hydrate-phase2-catalog.ts",
+      "path": "scripts/ops/apply-alu10-and-hydrate-phase2.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase2PortalViews.tsx",
+      "path": "src/server/ecommerce/alu10-pricing.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/ecommerce/auto-sku-engine.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/ecommerce/phase2-hydration.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/ecommerce/provisional-shell.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/ecommerce/two-tab-portal.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/e2e/ecommerce-two-tab.spec.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/phase2-hydration-and-sku-engine.test.ts",
+      "path": "tests/alu10-pricing-and-two-tab.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 16,
-      "deletions": 12
+      "insertions": 22,
+      "deletions": 14
     },
     {
       "status": "M",
@@ -73,44 +43,117 @@
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 15,
-      "deletions": 391
+      "insertions": 10,
+      "deletions": 10
+    },
+    {
+      "status": "M",
+      "path": "scripts/ops/generate-primeview-phase1-csv.ts",
+      "insertions": 34,
+      "deletions": 3
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 223,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/page.tsx",
-      "insertions": 211,
-      "deletions": 369
-    },
-    {
-      "status": "M",
-      "path": "src/lib/katana.ts",
-      "insertions": 26,
+      "insertions": 225,
       "deletions": 2
     },
     {
       "status": "M",
-      "path": "src/server/woocommerce/sku-resolver.ts",
-      "insertions": 20,
+      "path": "src/app/embed/admin/master-catalog/ecommerce/NewProductDrawer.tsx",
+      "insertions": 741,
+      "deletions": 703
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase1PortalViews.tsx",
+      "insertions": 62,
+      "deletions": 9
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase2PortalViews.tsx",
+      "insertions": 22,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/page.tsx",
+      "insertions": 107,
+      "deletions": 45
+    },
+    {
+      "status": "M",
+      "path": "src/inngest/woo-order.ts",
+      "insertions": 15,
       "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/lib/katana.ts",
+      "insertions": 56,
+      "deletions": 11
+    },
+    {
+      "status": "M",
+      "path": "src/server/ecommerce/auto-sku-engine.ts",
+      "insertions": 45,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/ecommerce/phase1-portal.ts",
+      "insertions": 5,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/ecommerce/two-tab-portal.ts",
+      "insertions": 59,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/finish-keys.ts",
+      "insertions": 34,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/handoff-spec-generator.ts",
+      "insertions": 2,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/sku-resolver.ts",
+      "insertions": 50,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "tests/e2e/ecommerce-two-tab.spec.ts",
+      "insertions": 4,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/phase1-csv-and-smoke.test.ts",
+      "insertions": 23,
+      "deletions": 5
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-webhook-receiver.test.ts",
+      "insertions": 25,
+      "deletions": 2
     }
   ],
   "untracked": [
-    "scripts/ops/hydrate-phase2-catalog.ts",
-    "src/app/embed/admin/master-catalog/ecommerce/Phase2PortalViews.tsx",
-    "src/server/ecommerce/auto-sku-engine.ts",
-    "src/server/ecommerce/phase2-hydration.ts",
-    "src/server/ecommerce/provisional-shell.ts",
-    "src/server/ecommerce/two-tab-portal.ts",
-    "tests/e2e/ecommerce-two-tab.spec.ts",
-    "tests/phase2-hydration-and-sku-engine.test.ts"
+    "scripts/ops/apply-alu10-and-hydrate-phase2.ts",
+    "src/server/ecommerce/alu10-pricing.ts",
+    "tests/alu10-pricing-and-two-tab.test.ts"
   ],
-  "file_list_sha256": "0c35fd4b93057f318edbb0e92a51aa12856e645fe0fed138866f25662a50f9ee",
-  "notes": ""
+  "file_list_sha256": "ca4f4f6273cdd14217bba4e1d798a1c8be90cd3907565586b0bba550c4ba540f",
+  "notes": "Aluminum-only +10% pricing engine, zero-data-loss Phase1/2 hydrate, MET-ALUM resolver default + steel quarantine, Katana weld stamp, Mia 2-tab portal controls. QCA CERTIFIED. qa:lifecycle exit 0. qa:phase14-ledger-live passed (no QBO sandbox token refresh needed)."
 }

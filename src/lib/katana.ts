@@ -31,7 +31,13 @@ import { coerceHubItemType } from "@/lib/raw-material-sku";
 import type { WooOrderWebhook } from "@/server/woocommerce/ingress.schema";
 import { extractWooLineSpecs, wooLineKey } from "@/server/woocommerce/line-specs";
 import type { ResolvedWooLine } from "@/server/woocommerce/sku-resolver";
+import {
+  FRAME_POLICY_ALU10,
+  WEB_ALUMINUM_ONLY_STAMP,
+  classifyFramePolicy,
+} from "@/server/ecommerce/alu10-pricing";
 import { buildProvisionalFactoryBomNote } from "@/server/ecommerce/provisional-shell";
+import { MET_ALUM_SKU } from "@/server/woocommerce/finish-keys";
 import { katanaOrderNo } from "@/server/sre/idempotency";
 import {
   katanaIsSellableProduct,
@@ -1684,10 +1690,54 @@ export function mapWooOrderToKatanaSalesOrder(
         heightIn: null,
         fabricSku: line.finishes.find((f) => f.slot === "fabric")?.sku ?? null,
         powderSku: line.finishes.find((f) => f.slot === "powder_coat")?.sku ?? null,
-        frameMetalSku: line.finishes.find((f) => f.slot === "frame")?.sku ?? null,
+        frameMetalSku:
+          line.finishes.find((f) => f.slot === "frame")?.sku ?? MET_ALUM_SKU,
         addons: (line.addons ?? []).map((a) => ({ key: a.key, sku: a.sku })),
       }),
     );
+
+  // Bind every metal-framed Woo Make line to Aluminum and stamp shop-floor notes.
+  const needsAluminumWeldStamp = resolved.some((line) => {
+    if (line.skipMo) return false;
+    const frameSku = line.finishes.find((f) => f.slot === "frame")?.sku;
+    if (frameSku === MET_ALUM_SKU) return true;
+    const policy = classifyFramePolicy({
+      globalSku: line.spec.sku,
+      isThirdParty: line.skipMo,
+    });
+    return policy === FRAME_POLICY_ALU10;
+  });
+
+  const aluminumBoundRows = resolved.map(({ spec, finishes }) => {
+    const hasFrame = finishes.some((f) => f.slot === "frame");
+    const policy = classifyFramePolicy({
+      globalSku: spec.sku,
+      isThirdParty: false,
+    });
+    const nextFinishes =
+      policy === FRAME_POLICY_ALU10 && !hasFrame
+        ? [...finishes, { slot: "frame" as const, sku: MET_ALUM_SKU }]
+        : finishes.map((f) =>
+            f.slot === "frame" ? { ...f, sku: MET_ALUM_SKU } : f,
+          );
+    // Only rewrite frame → MET-ALUM for aluminum-only Make lines.
+    const attrsFinishes =
+      policy === FRAME_POLICY_ALU10
+        ? nextFinishes
+        : finishes;
+    return {
+      sku: spec.sku,
+      quantity: spec.quantity,
+      pricePerUnit: 0,
+      attributes: [
+        { key: WOO_LINE_KEY_ATTRIBUTE, value: wooLineKey(spec) },
+        ...attrsFinishes.map((f) => ({
+          key: `finish_${f.slot}`,
+          value: f.sku,
+        })),
+      ],
+    };
+  });
 
   return {
     orderNo: katanaOrderNo("woo", order.id),
@@ -1702,20 +1752,15 @@ export function mapWooOrderToKatanaSalesOrder(
       currency: order.currency ?? "USD",
       referenceId: order.customer_id ? `woo-customer-${order.customer_id}` : null,
     },
-    salesOrderRows: resolved.map(({ spec, finishes }) => ({
-      sku: spec.sku,
-      quantity: spec.quantity,
-      pricePerUnit: 0,
-      attributes: [
-        { key: WOO_LINE_KEY_ATTRIBUTE, value: wooLineKey(spec) },
-        ...finishes.map((f) => ({ key: `finish_${f.slot}`, value: f.sku })),
-      ],
-    })),
+    salesOrderRows: aluminumBoundRows,
     additionalInfo: [
       `source=woocommerce | woo_order=${order.id}`,
       ...lineSummaries,
       ...provisionalNotes,
-    ].join(" | "),
+      needsAluminumWeldStamp ? WEB_ALUMINUM_ONLY_STAMP : null,
+    ]
+      .filter(Boolean)
+      .join(" | "),
     customerRef: `woo:${order.id}`,
     ecommerceOrderType: "woocommerce",
     ecommerceOrderId: String(order.id),

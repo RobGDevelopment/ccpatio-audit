@@ -160,6 +160,24 @@ describe("phase1 csv structural assertions", () => {
     }
   });
 
+  it("bakes +10% Aluminum into metal Make Regular prices; pillows/resale stay 1.00x", () => {
+    const { rows } = loadGeneratedCsv();
+    const bySku = new Map(
+      rows
+        .filter((r) => r.Type === "simple" || r.Type === "variation")
+        .map((r) => [r.SKU, r] as const),
+    );
+    expect(Number(bySku.get("FIN-BRV-CLB-CHA-34X34")!["Regular price"])).toBe(2288);
+    expect(Number(bySku.get("FIN-BRV-SWV-CHA-34X34")!["Regular price"])).toBe(2838);
+    expect(Number(bySku.get("FIN-BRV-LOV-SOF-60X34")!["Regular price"])).toBe(3025);
+    expect(Number(bySku.get("FIN-CAB-MIS-17X17")!["Regular price"])).toBe(65);
+    expect(Number(bySku.get("FIN-CAB-MIS-23X23")!["Regular price"])).toBe(95);
+    expect(Number(bySku.get("FIN-CAB-MIS-12X24")!["Regular price"])).toBe(65);
+    // Resale Ripple Table stays vendor retail
+    const ripple = [...bySku.values()].find((r) => r.SKU === "FIN-TJM-TAB");
+    if (ripple) expect(Number(ripple["Regular price"])).toBe(464.99);
+  });
+
   it("preserves parent ACF add-on price metas on Bravada Club Chair", () => {
     const { rows } = loadGeneratedCsv();
     const club = rows.find((r) => r.ID === "9449" && r.Type === "variable");
@@ -283,7 +301,7 @@ describe("phase1 P0 live Hub + swatch + qa-test guards", () => {
               meta_data: [
                 { key: "fabric_sku", value: "FAB-ACT-STO" },
                 { key: "powder_coat", value: "PWD-BONE" },
-                { key: "frame_material", value: "MET-STEEL" },
+                { key: "frame_material", value: "MET-ALUM" },
                 { key: key, value: "1" },
               ],
             }),
@@ -311,7 +329,7 @@ describe("phase1 P0 live Hub + swatch + qa-test guards", () => {
               meta_data: [
                 { key: "fabric_sku", value: "FAB-ACT-STO" },
                 { key: "powder_coat", value: "PWD-BONE" },
-                { key: "frame_material", value: "MET-STEEL" },
+                { key: "frame_material", value: "MET-ALUM" },
                 { key: "custom_welded_fly_table", value: "1" },
               ],
             }),
@@ -369,7 +387,7 @@ describe("phase1 signed multi-path checkout smoke", () => {
           meta_data: [
             { key: "fabric_sku", value: "FAB-ACT-STO" },
             { key: "powder_coat", value: "PWD-BONE" },
-            { key: "frame_material", value: "MET-STEEL" },
+            { key: "frame_material", value: "MET-ALUM" },
             { key: "ironwood", value: "1" },
           ],
         }),
@@ -381,7 +399,7 @@ describe("phase1 signed multi-path checkout smoke", () => {
           meta_data: [
             { key: "fabric", value: "FAB-BER-TUX" },
             { key: "powder_coat", value: "PWD-BLACK" },
-            { key: "frame", value: "MET-STEEL" },
+            { key: "frame", value: "MET-ALUM" },
           ],
         }),
         // 3. Restored table Make (no fabric; frame + powder required)
@@ -391,7 +409,7 @@ describe("phase1 signed multi-path checkout smoke", () => {
           quantity: 1,
           meta_data: [
             { key: "powder_coat", value: "PWD-BLACK" },
-            { key: "frame", value: "MET-STEEL" },
+            { key: "frame", value: "MET-ALUM" },
           ],
         }),
         // 4. Restored pillow Make (fabric only)

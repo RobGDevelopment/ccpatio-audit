@@ -204,14 +204,37 @@ describe("Phase 4 acceptance: malformed or missing metadata is handled gracefull
     expect(h.send).toHaveBeenCalledTimes(1);
   });
 
-  it("a recipe with a FRAME component requires a frame key: fabric + powder_coat alone is quarantined", async () => {
+  it("a recipe with a FRAME component defaults omitted frame_material to MET-ALUM (Aluminum-only storefront)", async () => {
     h.hub = makeHub({ recipes: new Map([[BASE_SKU, ["SA-TST-CHA-FRAME", ...CONTRACT_RECIPE]]]) });
 
     const res = await deliverOrder(wooOrder({ line_items: [wooLine({ meta_data: contractMeta() })] }));
 
     expect(res.status).toBe(202);
+    expect(await res.json()).toMatchObject({ accepted: true, pipelineMode: "log" });
+    expect(h.quarantineOnce).not.toHaveBeenCalled();
+    expect(h.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("explicit Steel / MET-STEEL on a framed Make recipe is quarantined as steel_discontinued_on_ecommerce", async () => {
+    h.hub = makeHub({ recipes: new Map([[BASE_SKU, ["SA-TST-CHA-FRAME", ...CONTRACT_RECIPE]]]) });
+
+    const res = await deliverOrder(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [
+              ...contractMeta(),
+              { key: "frame_material", value: "MET-STEEL" },
+            ],
+          }),
+        ],
+      }),
+    );
+
+    expect(res.status).toBe(202);
+    expect(await res.json()).toEqual({ accepted: true, quarantined: true });
     const issues = h.quarantineOnce.mock.calls[0]![0].issues as Array<{ message: string }>;
-    expect(issues.map((i) => i.message)).toContain(`SKU ${BASE_SKU} requires a frame finish. None was sent.`);
+    expect(issues.some((i) => i.message.includes("steel_discontinued_on_ecommerce"))).toBe(true);
     expect(h.send).not.toHaveBeenCalled();
   });
 

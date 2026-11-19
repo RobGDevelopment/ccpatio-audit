@@ -3,9 +3,54 @@
  * Auto-SKU wizard. Collision checks are injected so unit tests stay pure.
  */
 
+import {
+  computeAluMsrp,
+  DEFAULT_ALU_UPCHARGE_PCT,
+  FRAME_POLICY_ALU10,
+  FRAME_POLICY_RESALE,
+  wooEcommercePrice,
+  type FramePolicy,
+} from "./alu10-pricing";
+
 export type FacingMode = "standard" | "LS" | "RS";
 export type HeightMode = "standard" | "BAR" | "CNT" | "DIN";
 export type ProductOriginKind = "manufactured" | "third_party";
+
+/** When Metal-Framed Make is selected, Woo Aluminum = Steel × 1.10. */
+export function autoWooAluminumPrice(input: {
+  origin: ProductOriginKind;
+  steelBaseMsrp: number | null | undefined;
+  metalFramedMake?: boolean;
+  upchargePct?: number;
+}): { framePolicy: FramePolicy; wooPrice: number | null } {
+  if (input.origin === "third_party") {
+    return {
+      framePolicy: FRAME_POLICY_RESALE,
+      wooPrice:
+        input.steelBaseMsrp == null
+          ? null
+          : wooEcommercePrice({
+              steelMsrp: Number(input.steelBaseMsrp),
+              framePolicy: FRAME_POLICY_RESALE,
+            }),
+    };
+  }
+  const metal = input.metalFramedMake !== false;
+  const policy = metal ? FRAME_POLICY_ALU10 : FRAME_POLICY_RESALE;
+  return {
+    framePolicy: policy,
+    wooPrice:
+      input.steelBaseMsrp == null
+        ? null
+        : wooEcommercePrice({
+            steelMsrp: Number(input.steelBaseMsrp),
+            framePolicy: policy,
+            upchargePct: input.upchargePct ?? DEFAULT_ALU_UPCHARGE_PCT,
+          }),
+  };
+}
+
+export { computeAluMsrp, DEFAULT_ALU_UPCHARGE_PCT };
 
 export type AutoSkuInput = {
   origin: ProductOriginKind;

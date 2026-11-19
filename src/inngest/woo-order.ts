@@ -19,6 +19,8 @@ import { NonRetriableError } from "inngest";
 import { inngest } from "@/inngest/client";
 import { runKatanaStep } from "@/inngest/katana-step";
 import { KatanaApiError, mapWooOrderToKatanaSalesOrder } from "@/lib/katana";
+import { WEB_ALUMINUM_ONLY_STAMP } from "@/server/ecommerce/alu10-pricing";
+import { MET_ALUM_SKU } from "@/server/woocommerce/finish-keys";
 import { getLedgerPipelineMode, type LedgerPipelineMode } from "@/server/pipeline/ledger-mode";
 import {
   canMutateKatanaOrders,
@@ -147,6 +149,19 @@ type SalesOrderResult = {
   rowLines: Array<{ rowId: number; lineIndex: number }>;
   created: boolean;
 };
+
+/**
+ * Shop-floor weld stamp carried on Katana SO `additional_info` (and echoed in MO notes
+ * via the SO→MO inheritance). Metal-framed web Make orders always bind MET-ALUM.
+ */
+export function wooAluminumWeldStamp(lines: ResolvedWooLine[]): string | null {
+  const needs = lines.some(
+    (line) =>
+      !line.skipMo &&
+      line.finishes.some((f) => f.slot === "frame" && f.sku === MET_ALUM_SKU),
+  );
+  return needs ? WEB_ALUMINUM_ONLY_STAMP : null;
+}
 
 async function ensureSalesOrder(
   order: WooOrderWebhook,

@@ -37,6 +37,11 @@ import {
   parseMoney,
   type SowRow,
 } from "./enable-phase1-hub-data";
+import {
+  classifyFramePolicy,
+  DEFAULT_ALU_UPCHARGE_PCT,
+  wooEcommercePrice,
+} from "../../src/server/ecommerce/alu10-pricing";
 
 const TMP = join(process.cwd(), "tmp");
 const SWATCH_DIR = join(TMP, "primeview-fabric-swatches");
@@ -697,11 +702,25 @@ export async function buildPhase1ImportBundle(opts?: {
 
     const hub = fgcBySku.get(row.sku);
     const dims = correctedDims(row.sku, row);
-    const price =
+    const steelRaw =
       parseMoney(row.msrp) ??
       listingBySku.get(row.sku)?.steel ??
       hub?.msrp ??
       "";
+    const steelNum = Number(steelRaw);
+    if (!steelRaw || !Number.isFinite(steelNum) || steelNum <= 0) {
+      throw new Error(`Missing positive steel base price for ${row.sku}`);
+    }
+    const framePolicy = classifyFramePolicy({
+      globalSku: row.sku,
+      isThirdParty: tpsSet.has(row.sku),
+    });
+    const wooPrice = wooEcommercePrice({
+      steelMsrp: steelNum,
+      framePolicy,
+      upchargePct: DEFAULT_ALU_UPCHARGE_PCT,
+    });
+    const price = wooPrice != null ? wooPrice.toFixed(2) : steelRaw;
     if (!price || Number(price) <= 0) {
       throw new Error(`Missing positive price for ${row.sku}`);
     }
@@ -892,11 +911,22 @@ export async function buildPhase1ImportBundle(opts?: {
       if (override) {
         const dims = correctedDims(override.sow.sku, override.sow);
         const hub = fgcBySku.get(override.sow.sku);
-        const price =
+        const steelRaw =
           parseMoney(override.sow.msrp) ??
           listingBySku.get(override.sow.sku)?.steel ??
           hub?.msrp ??
           "";
+        const steelNum = Number(steelRaw);
+        const policy = classifyFramePolicy({
+          globalSku: override.sow.sku,
+          isThirdParty: tpsSet.has(override.sow.sku),
+        });
+        const wooPrice = wooEcommercePrice({
+          steelMsrp: steelNum,
+          framePolicy: policy,
+          upchargePct: DEFAULT_ALU_UPCHARGE_PCT,
+        });
+        const price = wooPrice != null ? wooPrice.toFixed(2) : steelRaw;
         const weightLb = Number(hub?.weight ?? override.sow.baseWeight ?? "0");
         applyPurchasableMetrics(out, {
           sku: override.sku,
@@ -931,6 +961,7 @@ export async function buildPhase1ImportBundle(opts?: {
 
 CC Patio Hub owns catalog authority. This CSV is the turnkey WooCommerce Product CSV Import for PrimeView/Yardi on \`ccpatiodev2.primeview.com\`:
 
+- **Aluminum-Only storefront (+10% baked into every metal-framed \`Regular price\`):** \`Woo Price = round(Steel Base MSRP × 1.10, 2)\`. **DO NOT** add separate APF/ACF frame upcharges (Steel is removed from storefront options). Cabana pillows + 3P resale stay \`1.00×\`.
 - Exact 169 headers from \`product_export_import_headers.csv\` (UTF-8, \`ID\` without BOM corruption)
 - Preserved PrimeView parent IDs and existing variation IDs where present
 - **107 unique purchasable SKUs** on every \`simple\` / \`variation\` row (variable parents keep blank SKU)
@@ -1033,7 +1064,7 @@ Body: Woo order JSON. Every purchasable \`line_items[].sku\` must be the **Woo S
 | --- | --- |
 | \`fabric\` / \`fabric_sku\` | finish slot → \`FAB-*\` |
 | \`powder_coat\` | finish slot → \`PWD-*\` (Ready-Make hardcoded powder swap supported) |
-| \`frame\` / \`frame_material\` | finish slot → \`MET-STEEL\` / \`MET-ALUM\` |
+| \`frame\` / \`frame_material\` | **Aluminum-only:** omit or \`Aluminum\` / \`MET-ALUM\` → \`MET-ALUM\`; \`Steel\` / \`MET-STEEL\` → quarantine \`steel_discontinued_on_ecommerce\` |
 | \`facing\` / \`select_facing\` / \`pa_select-facing\` | **ignored** (facing already in variation SKU) |
 | \`ironwood\` | \`FIN-ESY-MIS-ADDIRONWOOD\` (SO-only) |
 | \`umbrella_cover\` | \`FIN-ESY-MIS-WEATHERPROOFCO\` (SO-only) |

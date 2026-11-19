@@ -78,6 +78,22 @@ import {
   writeMiaApproval,
   type Phase1PortalView,
 } from "@/server/ecommerce/phase1-portal";
+import {
+  classifyFramePolicy,
+  DEFAULT_ALU_UPCHARGE_PCT,
+  hasHalfCent,
+  isMiaPriceLocked,
+  roundAluToWholeDollar,
+  wooEcommercePrice,
+  buildAluAttributePatch,
+} from "@/server/ecommerce/alu10-pricing";
+import { buildMiaAluminumPriceListCsv } from "@/server/ecommerce/two-tab-portal";
+
+/** Woo Regular price prefers aluminum_msrp (baked +10%); falls back to steel. */
+function wooRegularFromListing(s: EcommerceListing): number | null {
+  if (s.aluminumMsrpValue != null && s.aluminumMsrpValue > 0) return s.aluminumMsrpValue;
+  return s.msrpValue;
+}
 
 export type { WooSyncStatus, Phase1PortalView };
 
@@ -308,6 +324,8 @@ export interface EcommerceListing {
   /** Numeric steel MSRP for sorting; null sorts last. */
   msrpValue: number | null;
   aluminumMsrp: string | null;
+  /** Numeric Woo Aluminum / Regular price; null when unset. */
+  aluminumMsrpValue: number | null;
   marketingDescription: string | null;
   constructionDetails: string | null;
   sheetOrder: number;
@@ -420,6 +438,7 @@ function toListing(r: ListingFields, factory: FactoryReadiness): EcommerceListin
     msrp: r.msrp === null ? "—" : formatMoney(r.msrp),
     msrpValue: r.msrp === null ? null : parsePrice(r.msrp) || 0,
     aluminumMsrp: r.aluminumMsrp ? formatMoney(r.aluminumMsrp) : null,
+    aluminumMsrpValue: r.aluminumMsrp === null ? null : parsePrice(r.aluminumMsrp) || 0,
     // Defence in depth: legacy rows may hold plain text or unsanitized HTML.
     marketingDescription: normalizeStoryInput(r.marketingDescription),
     constructionDetails: normalizeStoryInput(r.constructionDetails),
@@ -515,6 +534,7 @@ export async function getHubProductForDrawer(globalSku: string): Promise<Ecommer
     msrp: "—",
     msrpValue: null,
     aluminumMsrp: null,
+    aluminumMsrpValue: null,
     marketingDescription: null,
     constructionDetails: null,
     sheetOrder: 0,
@@ -2218,7 +2238,7 @@ export async function dryRunWooPushForSku(globalSku: string) {
     preserveExistingImages: true,
     variations: siblings.map((s) => ({
       sku: s.globalSku,
-      regularPrice: s.msrpValue,
+      regularPrice: wooRegularFromListing(s),
       salePrice: s.salePrice,
       weightLb: s.hubWeight ? Number(s.hubWeight) : null,
       lengthIn: s.hubLength ? Number(s.hubLength) : null,
@@ -2257,7 +2277,7 @@ export async function pushSkuToWoo(globalSku: string) {
     preserveExistingImages: true,
     variations: siblings.map((s) => ({
       sku: s.globalSku,
-      regularPrice: s.msrpValue,
+      regularPrice: wooRegularFromListing(s),
       salePrice: s.salePrice,
       weightLb: s.hubWeight ? Number(s.hubWeight) : null,
       lengthIn: s.hubLength ? Number(s.hubLength) : null,
@@ -2613,4 +2633,207 @@ export async function healAndLinkKatana(
   });
   revalidatePath("/embed/admin/master-catalog");
   return { ok: true, bomReadiness: readiness, provisional };
+}
+
+/** Recalculate Aluminum Woo prices from Steel base × upcharge% (respects Mia locks). */
+export async function recalculateAluminumUpcharge(upchargePct = DEFAULT_ALU_UPCHARGE_PCT): Promise<
+  | { ok: true; updated: number; skippedLocked: number; pct: number }
+  | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const pct = Number.isFinite(upchargePct) && upchargePct >= 0 ? upchargePct : DEFAULT_ALU_UPCHARGE_PCT;
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: ecommerce_listings.id,
+      sku: ecommerce_listings.global_sku,
+      steel: ecommerce_listings.steel_msrp,
+      version: ecommerce_listings.version,
+      thirdParty: third_party_sources.global_sku,
+      attributes: sku_mappings.attributes,
+      mapVersion: sku_mappings.version,
+    })
+    .from(ecommerce_listings)
+    .innerJoin(sku_mappings, eq(sku_mappings.global_sku, ecommerce_listings.global_sku))
+    .leftJoin(third_party_sources, eq(third_party_sources.global_sku, ecommerce_listings.global_sku))
+    .where(and(isNull(ecommerce_listings.archived_at), eq(sku_mappings.sync_to_woo, true)));
+
+  let updated = 0;
+  let skippedLocked = 0;
+  for (const row of rows) {
+    const attrs = (row.attributes as Record<string, unknown>) ?? {};
+    if (isMiaPriceLocked(attrs)) {
+      skippedLocked += 1;
+      continue;
+    }
+    const steel = row.steel != null ? Number(row.steel) : NaN;
+    if (!Number.isFinite(steel) || steel <= 0) continue;
+    const policy = classifyFramePolicy({
+      globalSku: row.sku,
+      isThirdParty: Boolean(row.thirdParty),
+      attributes: attrs,
+    });
+    const alu =
+      wooEcommercePrice({
+        steelMsrp: steel,
+        framePolicy: policy,
+        upchargePct: pct,
+      }) ?? steel;
+    const nextAttrs = buildAluAttributePatch(attrs, {
+      sowBaseSteelMsrp: steel,
+      framePolicy: policy,
+      upchargePct: pct,
+      wooAluMsrp: alu,
+    });
+    await db
+      .update(ecommerce_listings)
+      .set({
+        aluminum_msrp: alu.toFixed(2),
+        version: row.version + 1,
+        updated_at: new Date(),
+      })
+      .where(eq(ecommerce_listings.id, row.id));
+    await db
+      .update(sku_mappings)
+      .set({
+        attributes: nextAttrs,
+        version: row.mapVersion + 1,
+        updated_at: new Date(),
+        updated_by: session.email,
+      })
+      .where(eq(sku_mappings.global_sku, row.sku));
+    updated += 1;
+  }
+  await logPimAudit({
+    operatorEmail: session.email,
+    globalSku: "*",
+    action: "recalculate_alu_upcharge",
+    field: "aluminum_msrp",
+    newValue: String(pct),
+  });
+  revalidatePath("/embed/admin/master-catalog");
+  return { ok: true, updated, skippedLocked, pct };
+}
+
+/** Round .50 cent Aluminum prices to nearest whole dollar (Taylor 4 SKUs etc.). */
+export async function roundHalfCentAluminumPrices(): Promise<
+  | { ok: true; rounded: Array<{ sku: string; from: number; to: number }> }
+  | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: ecommerce_listings.id,
+      sku: ecommerce_listings.global_sku,
+      alum: ecommerce_listings.aluminum_msrp,
+      version: ecommerce_listings.version,
+    })
+    .from(ecommerce_listings)
+    .where(isNull(ecommerce_listings.archived_at));
+
+  const rounded: Array<{ sku: string; from: number; to: number }> = [];
+  for (const row of rows) {
+    if (row.alum == null) continue;
+    const from = Number(row.alum);
+    if (!Number.isFinite(from) || !hasHalfCent(from)) continue;
+    const to = roundAluToWholeDollar(from);
+    await db
+      .update(ecommerce_listings)
+      .set({
+        aluminum_msrp: to.toFixed(2),
+        version: row.version + 1,
+        updated_at: new Date(),
+      })
+      .where(eq(ecommerce_listings.id, row.id));
+    rounded.push({ sku: row.sku, from, to });
+  }
+  await logPimAudit({
+    operatorEmail: session.email,
+    globalSku: "*",
+    action: "round_half_cent_alu",
+    field: "aluminum_msrp",
+    newValue: String(rounded.length),
+  });
+  revalidatePath("/embed/admin/master-catalog");
+  return { ok: true, rounded };
+}
+
+export async function updateListingAluminumMsrp(
+  listingId: string,
+  aluminumMsrp: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const parsed = parsePrice(aluminumMsrp);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return { ok: false, error: "Invalid aluminum price." };
+  }
+  const db = getDb();
+  const [listing] = await db
+    .select({
+      id: ecommerce_listings.id,
+      sku: ecommerce_listings.global_sku,
+      version: ecommerce_listings.version,
+      attributes: sku_mappings.attributes,
+      mapVersion: sku_mappings.version,
+    })
+    .from(ecommerce_listings)
+    .innerJoin(sku_mappings, eq(sku_mappings.global_sku, ecommerce_listings.global_sku))
+    .where(eq(ecommerce_listings.id, listingId))
+    .limit(1);
+  if (!listing) return { ok: false, error: "Listing not found." };
+  const attrs = {
+    ...((listing.attributes as Record<string, unknown>) ?? {}),
+    mia_price_locked: true,
+    woo_alu_msrp: parsed,
+  };
+  await db
+    .update(ecommerce_listings)
+    .set({
+      aluminum_msrp: parsed.toFixed(2),
+      version: listing.version + 1,
+      updated_at: new Date(),
+    })
+    .where(eq(ecommerce_listings.id, listingId));
+  await db
+    .update(sku_mappings)
+    .set({
+      attributes: attrs,
+      version: listing.mapVersion + 1,
+      updated_at: new Date(),
+      updated_by: session.email,
+    })
+    .where(eq(sku_mappings.global_sku, listing.sku));
+  revalidatePath("/embed/admin/master-catalog");
+  return { ok: true };
+}
+
+export async function exportMiaAluminumPriceListCsv(): Promise<
+  { ok: true; csv: string } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const roster = await getPhase1PortalRows("phase1_flat");
+  const csv = buildMiaAluminumPriceListCsv(
+    roster.listings.map((l) => {
+      const policy = classifyFramePolicy({
+        globalSku: l.globalSku,
+        isThirdParty: Boolean(l.thirdParty),
+      });
+      return {
+        collection: l.collectionLabel,
+        product: l.productName,
+        sku: l.globalSku,
+        framePolicy: policy,
+        steelBase: l.msrpValue,
+        aluPrice: l.aluminumMsrpValue ?? l.msrpValue,
+        salePrice: l.salePrice ? parsePrice(l.salePrice) : null,
+        miaApproved: Boolean((l as { miaApproved?: boolean }).miaApproved),
+      };
+    }),
+  );
+  return { ok: true, csv };
 }

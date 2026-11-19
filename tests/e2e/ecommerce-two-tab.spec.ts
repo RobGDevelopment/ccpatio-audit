@@ -13,6 +13,10 @@ test.describe("ecommerce two-tab command center", () => {
     test.skip(!visible, "Embed master-catalog requires authenticated GHL session");
 
     await expect(liveTab).toBeVisible();
+    await expect(page.getByTestId("storefront-policy-banner")).toBeVisible();
+    await expect(page.getByText(/Aluminum Only/i)).toBeVisible();
+    await expect(page.getByTestId("recalculate-upcharge-btn")).toBeVisible();
+    await expect(page.getByTestId("round-half-cent-btn")).toBeVisible();
     await expect(page.getByTestId("live-ecommerce-panel")).toBeVisible();
     await expect(page.getByTestId("live-ecommerce-toolbar")).toBeVisible();
     await expect(page.getByText("Active Catalog")).toHaveCount(0);

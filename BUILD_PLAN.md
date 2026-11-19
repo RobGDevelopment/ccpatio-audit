@@ -1,19 +1,19 @@
-# BUILD_PLAN — ecommerce-two-tab-and-sku-engine
+# BUILD_PLAN — alu-10pct-and-two-tab-portal
 
-**Phase ID:** `ecommerce-two-tab-and-sku-engine`  
-**Base ref:** `c3627b3`  
-**Target test:** `npx vitest run tests/phase2-hydration-and-sku-engine.test.ts`  
-**Expected blast radius:** 15
+**Phase ID:** `alu-10pct-and-two-tab-portal`  
+**Base ref:** `8f5f0a5`  
+**Target test:** `npx vitest run tests/alu10-pricing-and-two-tab.test.ts tests/phase1-csv-and-smoke.test.ts`  
+**Expected blast radius:** 23 (set to match final git diff file count before QCA)
 
 ## Intent
-Zero-data-loss Phase 2 catalog hydration + clean 2-tab E-Commerce portal + Auto-SKU wizard + provisional Katana shell order path.
+Site-wide Aluminum-only storefront with **+10%** baked into Woo Regular price (Steel base preserved as `sow_base_steel_msrp` / `steel_msrp`), zero-data-loss Phase 1+2 COALESCE hydration, inbound resolver defaults to `MET-ALUM` (Steel quarantines), Katana SO/MO weld stamp, and Mia's 2-tab E-Commerce command center with recalculate / round-`.50` / exports.
 
 ## Allowed files
 See `.cursor/phase.lock` `allowed_files`.
 
 ## Acceptance
-1. `hydrate-phase2-catalog.ts --apply` proves non-null column counts never regress.
-2. Live tab defaults to `sync_to_woo` storefront rows (no Active Catalog All / $0 QBO noise).
-3. Phase 2 tab surfaces SOW backlog + hub library with 5-badge readiness.
-4. `provisional_shell` resolves without quarantine; full BOM unchanged.
+1. Metal-framed Phase 1 Woo prices = `round(steel * 1.10, 2)`; Cabana pillows + resale stay `1.00x`.
+2. Missing `frame_material` on metal Make → `MET-ALUM`; explicit Steel → `steel_discontinued_on_ecommerce`.
+3. Pre/post Hub non-null snapshots never regress (`product_bom`, `logistics_profiles`, `finished_goods_catalog`).
+4. Portal shows Aluminum-Only +10% policy banner, Live / Phase 2 tabs, Mia exports.
 5. QCA `verdict: CERTIFIED`, `audit_exit: 0`, `blastRadius.status: PASS`.

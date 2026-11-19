@@ -35,6 +35,10 @@ import {
   approveAllVisibleSkus,
   getPrimeviewPartnerHandoffLink,
   getPrimeviewHandoffDownloadUrls,
+  recalculateAluminumUpcharge,
+  roundHalfCentAluminumPrices,
+  updateListingAluminumMsrp,
+  exportMiaAluminumPriceListCsv,
   updateListingMsrp,
   updateListingUrl,
   updateListingLegacySku,
@@ -73,7 +77,11 @@ import {
   type Phase2Listing,
 } from "./ecommerce/Phase2PortalViews";
 import type { Phase2SubFilter } from "@/server/ecommerce/two-tab-portal";
-import { isLiveEcommerceRow } from "@/server/ecommerce/two-tab-portal";
+import {
+  isLiveEcommerceRow,
+  STOREFRONT_POLICY_BANNER,
+} from "@/server/ecommerce/two-tab-portal";
+import { DEFAULT_ALU_UPCHARGE_PCT } from "@/server/ecommerce/alu10-pricing";
 
 function DrawerLoadingShell() {
   return (
@@ -220,6 +228,7 @@ export default function MasterCatalogAdmin() {
   const [liveCollection, setLiveCollection] = useState("");
   const [loading, setLoading] = useState(true);
   const [swatchesOpen, setSwatchesOpen] = useState(false);
+  const [upchargePct, setUpchargePct] = useState(DEFAULT_ALU_UPCHARGE_PCT);
 
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [quarantine, setQuarantine] = useState<QuarantineItem[]>([]);
@@ -799,6 +808,75 @@ export default function MasterCatalogAdmin() {
               </button>
             </div>
           </div>
+          <div
+            className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 flex flex-col lg:flex-row lg:items-center gap-3"
+            data-testid="storefront-policy-banner"
+          >
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-sky-950">{STOREFRONT_POLICY_BANNER}</p>
+              <p className="text-xs text-sky-800 mt-0.5">
+                Steel Base MSRP is preserved; Woo Regular Price is Aluminum (+{upchargePct}%). No separate APF/ACF frame upcharges.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs font-semibold text-sky-900 flex items-center gap-1">
+                Upcharge %
+                <input
+                  type="number"
+                  min={0}
+                  max={50}
+                  step={1}
+                  value={upchargePct}
+                  onChange={(e) => setUpchargePct(Number(e.target.value) || 0)}
+                  className="w-14 rounded border border-sky-200 px-1.5 py-1 text-xs"
+                  data-testid="upcharge-pct-input"
+                />
+              </label>
+              <button
+                type="button"
+                data-testid="recalculate-upcharge-btn"
+                onClick={async () => {
+                  const result = await recalculateAluminumUpcharge(upchargePct);
+                  if (!result.ok) {
+                    setToast(result.error);
+                    return;
+                  }
+                  setToast(
+                    `Recalculated ${result.updated} row(s) at +${result.pct}% (skipped ${result.skippedLocked} locked)`,
+                  );
+                  const live = await getLiveEcommerceRows();
+                  setPhase1Listings(live.listings as Phase1Listing[]);
+                  setEcommerce({ listings: live.listings, gaps: live.gaps });
+                }}
+                className="rounded-xl bg-sky-700 px-3 py-1.5 text-xs font-semibold text-white"
+              >
+                Recalculate Upcharge %
+              </button>
+              <button
+                type="button"
+                data-testid="round-half-cent-btn"
+                onClick={async () => {
+                  const result = await roundHalfCentAluminumPrices();
+                  if (!result.ok) {
+                    setToast(result.error);
+                    return;
+                  }
+                  setToast(
+                    result.rounded.length
+                      ? `Rounded ${result.rounded.length} .50¢ item(s) to whole dollars`
+                      : "No .50¢ Aluminum prices found",
+                  );
+                  const live = await getLiveEcommerceRows();
+                  setPhase1Listings(live.listings as Phase1Listing[]);
+                  setEcommerce({ listings: live.listings, gaps: live.gaps });
+                }}
+                className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900"
+              >
+                Round .50 Cents Items (4 Taylor SKUs)
+              </button>
+            </div>
+          </div>
+
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-2" data-testid="ecommerce-tabs">
               <button
@@ -833,7 +911,7 @@ export default function MasterCatalogAdmin() {
                 onClick={() => setActiveTab("quarantine")}
                 className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
               >
-                Held / Quarantined Orders ({quarantine.length})
+                Held Orders ({quarantine.length})
               </button>
               <button
                 type="button"
@@ -841,7 +919,7 @@ export default function MasterCatalogAdmin() {
                 onClick={() => setSwatchesOpen((o) => !o)}
                 className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
               >
-                Global Swatches & Add-Ons (24 Fabrics • 6 Powders • 16 Add-Ons)
+                Global Swatches & Add-Ons (24 Fabrics • 6 Powders • 16 Add-Ons, Steel Hidden)
               </button>
               <button
                 onClick={() => setCreatingNewProduct(true)}
@@ -891,55 +969,28 @@ export default function MasterCatalogAdmin() {
                     </button>
                     <button
                       role="menuitem"
-                      onClick={() => {
-                        const rows = phase1Listings.length
-                          ? phase1Listings
-                          : ecommerce?.listings ?? [];
-                        const headers = [
-                          "global_sku",
-                          "product_name",
-                          "collection",
-                          "steel_msrp",
-                          "sale_price",
-                          "weight_lb",
-                          "shipping_class",
-                          "mia_approved",
-                          "woo_product_id",
-                        ];
-                        const lines = [
-                          headers.join(","),
-                          ...rows.map((r) =>
-                            [
-                              r.globalSku,
-                              csvCell(r.productName),
-                              csvCell(r.collectionLabel),
-                              r.msrpValue ?? "",
-                              r.salePrice ?? "",
-                              r.hubWeight ?? "",
-                              r.hubWeight && Number(r.hubWeight) >= 50
-                                ? "freight-ltl"
-                                : "parcel",
-                              (r as Phase1Listing).miaApproved ? "yes" : "no",
-                              r.wooProductId ?? "",
-                            ].join(","),
-                          ),
-                        ];
-                        const blob = new Blob([lines.join("\n")], {
+                      onClick={async () => {
+                        const result = await exportMiaAluminumPriceListCsv();
+                        setMenuOpen(false);
+                        if (!result.ok) {
+                          setToast(result.error);
+                          return;
+                        }
+                        const blob = new Blob([result.csv], {
                           type: "text/csv;charset=utf-8",
                         });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement("a");
                         a.href = url;
-                        a.download = "ccpatio-phase1-google-sheets.csv";
+                        a.download = "mia-aluminum-price-list.csv";
                         a.click();
                         URL.revokeObjectURL(url);
-                        setMenuOpen(false);
-                        setToast("Exported Google Sheets CSV");
+                        setToast("Exported Mia's Aluminum Price List");
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
                     >
                       <Download className="h-4 w-4 text-slate-500" />
-                      Export Google Sheets CSV
+                      Export Mia&apos;s Aluminum Price List (.csv)
                     </button>
                     <button
                       role="menuitem"
@@ -956,7 +1007,7 @@ export default function MasterCatalogAdmin() {
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
                     >
                       <Download className="h-4 w-4 text-slate-500" />
-                      Export PrimeView 169-Col CSV
+                      Export PrimeView 169-Col Woo CSV
                     </button>
                     <button
                       role="menuitem"
@@ -973,7 +1024,7 @@ export default function MasterCatalogAdmin() {
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
                     >
                       <Download className="h-4 w-4 text-slate-500" />
-                      Download Technical Handoff Spec (.md)
+                      Download Live Technical Handoff Spec (.md)
                     </button>
                     <button
                       role="menuitem"
@@ -986,7 +1037,7 @@ export default function MasterCatalogAdmin() {
                         }
                         try {
                           await navigator.clipboard.writeText(link.url);
-                          setToast("Copied PrimeView read-only link");
+                          setToast("Copied PrimeView Partner Link");
                         } catch {
                           setToast(link.url);
                         }
@@ -994,7 +1045,7 @@ export default function MasterCatalogAdmin() {
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
                     >
                       <Download className="h-4 w-4 text-slate-500" />
-                      Copy PrimeView Read-Only Link
+                      Copy PrimeView Partner Link
                     </button>
                     <button
                       role="menuitem"
@@ -1096,6 +1147,17 @@ export default function MasterCatalogAdmin() {
                     onPush={async (sku) => {
                       const result = await pushSkuToWoo(sku);
                       setToast(result.ok ? `Pushed ${sku}` : result.error);
+                    }}
+                    onSaveAluPrice={async (listingId, price) => {
+                      const result = await updateListingAluminumMsrp(listingId, price);
+                      if (!result.ok) {
+                        setToast(result.error);
+                        return;
+                      }
+                      setToast("Saved Woo Aluminum Price (Mia override locked)");
+                      const live = await getLiveEcommerceRows();
+                      setPhase1Listings(live.listings as Phase1Listing[]);
+                      setEcommerce({ listings: live.listings, gaps: live.gaps });
                     }}
                   />
                 ) : (

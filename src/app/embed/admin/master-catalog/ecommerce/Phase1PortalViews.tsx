@@ -7,6 +7,11 @@ import {
   shippingClassFromLb,
   type Phase1PortalView,
 } from "@/server/ecommerce/phase1-portal";
+import {
+  classifyFramePolicy,
+  framePolicyBadge,
+  hasHalfCent,
+} from "@/server/ecommerce/alu10-pricing";
 import type { EcommerceListing } from "../actions";
 import type { WooSyncStatus } from "@/server/woocommerce/woo-catalog-sync";
 
@@ -14,6 +19,7 @@ export type Phase1Listing = EcommerceListing & {
   miaApproved?: boolean;
   miaApprovedAt?: string | null;
   wooSyncStatus?: WooSyncStatus;
+  attributes?: Record<string, unknown> | null;
 };
 
 const VIEW_KEYS: Phase1PortalView[] = [
@@ -92,12 +98,15 @@ export function Phase1FlatGrid({
   listings,
   onToggleMia,
   onPush,
+  onSaveAluPrice,
 }: {
   listings: Phase1Listing[];
   onToggleMia: (sku: string, approved: boolean) => void;
   onPush: (sku: string) => void;
+  onSaveAluPrice?: (listingId: string, price: string) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [draftPrices, setDraftPrices] = useState<Record<string, string>>({});
   const sorted = useMemo(
     () => [...listings].sort((a, b) => a.sheetOrder - b.sheetOrder || a.globalSku.localeCompare(b.globalSku)),
     [listings],
@@ -109,14 +118,15 @@ export function Phase1FlatGrid({
         <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
           <tr>
             <th className="px-2 py-2">#</th>
-            <th className="px-2 py-2">Product</th>
+            <th className="px-2 py-2">Collection</th>
+            <th className="px-2 py-2">Product & Size</th>
             <th className="px-2 py-2">Woo SKU</th>
-            <th className="px-2 py-2">SOW Base</th>
-            <th className="px-2 py-2">Woo Regular</th>
+            <th className="px-2 py-2">Frame / Pricing Rule</th>
+            <th className="px-2 py-2">Steel Base MSRP</th>
+            <th className="px-2 py-2">Woo Aluminum Price</th>
             <th className="px-2 py-2">Sale</th>
             <th className="px-2 py-2">Dims</th>
             <th className="px-2 py-2">Weight</th>
-            <th className="px-2 py-2">Ship Class</th>
             <th className="px-2 py-2">Mia</th>
             <th className="px-2 py-2">Woo</th>
             <th className="px-2 py-2" />
@@ -129,9 +139,26 @@ export function Phase1FlatGrid({
             const dims = [row.hubLength, row.hubDepth, row.hubHeight]
               .filter(Boolean)
               .join(" × ");
+            const policy = classifyFramePolicy({
+              globalSku: row.globalSku,
+              isThirdParty: Boolean(row.thirdParty),
+              attributes: row.attributes,
+            });
+            const aluVal = row.aluminumMsrpValue ?? row.msrpValue;
+            const half = aluVal != null && hasHalfCent(aluVal);
+            const draft =
+              draftPrices[row.id] ??
+              (aluVal != null ? aluVal.toFixed(2) : "");
             return (
-              <tr key={row.id} className="border-t border-slate-100 hover:bg-slate-50/80">
+              <tr
+                key={row.id}
+                className={`border-t border-slate-100 hover:bg-slate-50/80 ${
+                  half ? "bg-amber-50/60" : ""
+                }`}
+                data-testid={`live-row-${row.globalSku}`}
+              >
                 <td className="px-2 py-2 tabular-nums text-slate-400">{idx + 1}</td>
+                <td className="px-2 py-2 text-slate-600">{row.collectionLabel}</td>
                 <td className="px-2 py-2 font-medium text-slate-800">
                   <button
                     type="button"
@@ -142,19 +169,45 @@ export function Phase1FlatGrid({
                   </button>
                   {expanded === row.id ? (
                     <p className="mt-1 text-[10px] text-slate-500">
-                      {row.collectionLabel} · {row.thirdParty ? "Resale" : "Make"}
+                      {row.thirdParty ? "Resale" : "Make"} · ship {ship}
                       {row.hubArmHeight ? ` · Arm ${row.hubArmHeight}` : ""}
                       {row.hubSitHeight ? ` · Seat ${row.hubSitHeight}` : ""}
                     </p>
                   ) : null}
                 </td>
                 <td className="px-2 py-2 font-mono text-[11px]">{row.globalSku}</td>
-                <td className="px-2 py-2">{row.msrp}</td>
-                <td className="px-2 py-2">{row.msrp}</td>
+                <td className="px-2 py-2">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                    {framePolicyBadge(policy)}
+                  </span>
+                </td>
+                <td className="px-2 py-2 tabular-nums text-slate-500">{row.msrp}</td>
+                <td className="px-2 py-2">
+                  {onSaveAluPrice ? (
+                    <input
+                      className={`w-24 rounded border px-1.5 py-1 font-mono text-[11px] ${
+                        half ? "border-amber-400 bg-amber-50" : "border-slate-200"
+                      }`}
+                      value={draft}
+                      onChange={(e) =>
+                        setDraftPrices((prev) => ({ ...prev, [row.id]: e.target.value }))
+                      }
+                      onBlur={() => {
+                        if (draft && draft !== (aluVal != null ? aluVal.toFixed(2) : "")) {
+                          onSaveAluPrice(row.id, draft);
+                        }
+                      }}
+                      aria-label={`Woo Aluminum Price for ${row.globalSku}`}
+                    />
+                  ) : (
+                    <span className={half ? "font-semibold text-amber-800" : ""}>
+                      {row.aluminumMsrp ?? row.msrp}
+                    </span>
+                  )}
+                </td>
                 <td className="px-2 py-2">{row.salePrice ?? "—"}</td>
                 <td className="px-2 py-2">{dims || "—"}</td>
                 <td className="px-2 py-2">{row.hubWeight ? `${row.hubWeight} lb` : "—"}</td>
-                <td className="px-2 py-2 font-mono">{ship}</td>
                 <td className="px-2 py-2">
                   <button
                     type="button"

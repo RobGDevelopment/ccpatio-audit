@@ -7,6 +7,12 @@ import {
 } from "@/server/ecommerce/two-tab-portal";
 import { bomBadgeLabel, isReadyToPromote } from "@/server/ecommerce/phase2-hydration";
 import { isProvisionalShell } from "@/server/ecommerce/provisional-shell";
+import {
+  classifyFramePolicy,
+  computeAluMsrp,
+  DEFAULT_ALU_UPCHARGE_PCT,
+  FRAME_POLICY_ALU10,
+} from "@/server/ecommerce/alu10-pricing";
 import type { EcommerceListing } from "../actions";
 
 export type Phase2Listing = EcommerceListing & {
@@ -79,7 +85,8 @@ export function Phase2StagingGrid({
           <tr>
             <th className="px-3 py-2">Product</th>
             <th className="px-3 py-2">SKU</th>
-            <th className="px-3 py-2">MSRP</th>
+            <th className="px-3 py-2">Steel Base</th>
+            <th className="px-3 py-2">Woo Aluminum (+10%)</th>
             <th className="px-3 py-2">Readiness</th>
             <th className="px-3 py-2 text-right">Actions</th>
           </tr>
@@ -98,12 +105,25 @@ export function Phase2StagingGrid({
               attributes: row.attributes,
             });
             const provisional = isProvisionalShell(row.attributes);
+            const policy = classifyFramePolicy({
+              globalSku: row.globalSku,
+              isThirdParty: Boolean(row.thirdParty),
+              attributes: row.attributes,
+            });
+            const alu =
+              row.aluminumMsrpValue ??
+              (row.msrpValue != null && policy === FRAME_POLICY_ALU10
+                ? computeAluMsrp(row.msrpValue, DEFAULT_ALU_UPCHARGE_PCT)
+                : row.msrpValue);
             return (
               <tr key={row.id} className="border-t border-slate-100" data-testid={`phase2-row-${row.globalSku}`}>
                 <td className="px-3 py-2 font-medium text-slate-800">{row.productName}</td>
                 <td className="px-3 py-2 font-mono text-xs text-slate-600">{row.globalSku}</td>
                 <td className="px-3 py-2">
                   {row.msrpValue != null ? `$${row.msrpValue.toFixed(2)}` : "—"}
+                </td>
+                <td className="px-3 py-2 font-semibold text-slate-800">
+                  {alu != null ? `$${alu.toFixed(2)}` : "—"}
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-1">
@@ -141,7 +161,7 @@ export function Phase2StagingGrid({
           })}
           {listings.length === 0 && (
             <tr>
-              <td colSpan={5} className="px-3 py-8 text-center text-slate-400">
+              <td colSpan={6} className="px-3 py-8 text-center text-slate-400">
                 No staging rows for this filter.
               </td>
             </tr>

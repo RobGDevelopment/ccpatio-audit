@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { ListingContentPanels } from "./ListingContentPanels";
 import { FreightPanel } from "./FreightPanel";
 import { TokenCombobox } from "./TokenCombobox";
+import { autoWooAluminumPrice } from "@/server/ecommerce/auto-sku-engine";
 
 type DictRow = { code: string; label: string; aliases?: string[] | null };
 type DictOption = { key: string; code: string; label: string; display: string };
@@ -63,6 +64,8 @@ function NewProductDrawerContent({
   const [vendorName, setVendorName] = useState("");
   const [vendorSku, setVendorSku] = useState("");
   const [wholesaleCost, setWholesaleCost] = useState("");
+  const [steelBaseMsrp, setSteelBaseMsrp] = useState("");
+  const [metalFramedMake, setMetalFramedMake] = useState(true);
 
   const [preview, setPreview] = useState<SkuPreviewResult | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -75,6 +78,11 @@ function NewProductDrawerContent({
   const [categoryOptKey, setCategoryOptKey] = useState("");
   const collectionOptions = flattenDictOptions(collections);
   const categoryOptions = flattenDictOptions(categories);
+  const aluPreview = autoWooAluminumPrice({
+    origin,
+    steelBaseMsrp: steelBaseMsrp ? Number(steelBaseMsrp.replace(/[$,]/g, "")) : null,
+    metalFramedMake: origin === "manufactured" ? metalFramedMake : false,
+  });
 
   // Add Dictionary State
   const [addingDict, setAddingDict] = useState<"collection" | "category" | null>(null);
@@ -384,6 +392,36 @@ function NewProductDrawerContent({
               />
               <p className="text-[10px] text-slate-500 mt-1">Customer-facing Display Name used on the website and tear sheets (e.g., &apos;Bravada Armless Sofa 34&quot;&apos;).</p>
             </div>
+
+            {origin === "manufactured" ? (
+              <div className="space-y-3 rounded-lg border border-sky-100 bg-sky-50/60 p-3" data-testid="new-product-alu-pricing">
+                <label className="flex items-center gap-2 text-xs font-semibold text-sky-900">
+                  <input
+                    type="checkbox"
+                    checked={metalFramedMake}
+                    onChange={(e) => setMetalFramedMake(e.target.checked)}
+                  />
+                  Metal-Framed Make (Aluminum-only +10%)
+                </label>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase">Steel Base MSRP ($)</label>
+                  <input
+                    type="text"
+                    value={steelBaseMsrp}
+                    onChange={(e) => setSteelBaseMsrp(e.target.value)}
+                    placeholder="2080.00"
+                    className="w-full mt-1.5 p-2 bg-white border border-slate-200 rounded-lg text-sm font-mono"
+                  />
+                </div>
+                <p className="text-xs text-sky-900">
+                  Woo Aluminum Price:{" "}
+                  <span className="font-bold">
+                    {aluPreview.wooPrice != null ? `$${aluPreview.wooPrice.toFixed(2)}` : "—"}
+                  </span>
+                  {metalFramedMake ? " (= Steel × 1.10)" : " (1.00×)"}
+                </p>
+              </div>
+            ) : null}
 
             {origin === "third_party" ? (
               <div className="space-y-4 p-4 bg-amber-50 rounded-lg border border-amber-100">
