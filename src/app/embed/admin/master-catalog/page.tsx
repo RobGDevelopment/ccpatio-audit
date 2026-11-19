@@ -29,6 +29,8 @@ import {
   syncApprovedToWoo,
   toggleMiaApproval,
   approveAllVisibleSkus,
+  getPrimeviewPartnerHandoffLink,
+  getPrimeviewHandoffDownloadUrls,
   updateListingMsrp,
   updateListingUrl,
   updateListingLegacySku,
@@ -911,21 +913,58 @@ export default function MasterCatalogAdmin() {
                     </button>
                     <button
                       role="menuitem"
-                      onClick={() => {
-                        setToast(
-                          "PrimeView 169-col CSV uses scripts/ops/generate-primeview-phase1-csv.ts (same Hub fields as REST push).",
-                        );
+                      onClick={async () => {
+                        const urls = await getPrimeviewHandoffDownloadUrls();
                         setMenuOpen(false);
-                        window.open(
-                          "/api/health",
-                          "_blank",
-                          "noopener,noreferrer",
-                        );
+                        if (!urls.ok) {
+                          setToast(urls.error);
+                          return;
+                        }
+                        window.open(urls.csv, "_blank", "noopener,noreferrer");
+                        setToast("Downloading live 169-col PrimeView CSV");
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
                     >
                       <Download className="h-4 w-4 text-slate-500" />
                       Export PrimeView 169-Col CSV
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={async () => {
+                        const urls = await getPrimeviewHandoffDownloadUrls();
+                        setMenuOpen(false);
+                        if (!urls.ok) {
+                          setToast(urls.error);
+                          return;
+                        }
+                        window.open(urls.spec, "_blank", "noopener,noreferrer");
+                        setToast("Downloading live Technical Handoff Spec");
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                    >
+                      <Download className="h-4 w-4 text-slate-500" />
+                      Download Technical Handoff Spec (.md)
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={async () => {
+                        const link = await getPrimeviewPartnerHandoffLink();
+                        setMenuOpen(false);
+                        if (!link.ok) {
+                          setToast(link.error);
+                          return;
+                        }
+                        try {
+                          await navigator.clipboard.writeText(link.url);
+                          setToast("Copied PrimeView read-only link");
+                        } catch {
+                          setToast(link.url);
+                        }
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                    >
+                      <Download className="h-4 w-4 text-slate-500" />
+                      Copy PrimeView Read-Only Link
                     </button>
                     <button
                       role="menuitem"

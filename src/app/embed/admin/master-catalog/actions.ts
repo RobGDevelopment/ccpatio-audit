@@ -2331,3 +2331,63 @@ export async function syncApprovedToWoo(skus: string[]) {
   }
   return { ok: true as const, results };
 }
+
+/** Absolute tokenized PrimeView read-only handoff URL for clipboard copy. */
+export async function getPrimeviewPartnerHandoffLink(): Promise<
+  { ok: true; url: string; path: string } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const {
+    buildPrimeviewHandoffPath,
+    resolveExpectedPrimeviewHandoffToken,
+  } = await import("@/lib/primeview-handoff-auth");
+  const token = resolveExpectedPrimeviewHandoffToken();
+  if (!token) {
+    return {
+      ok: false,
+      error: "PRIMEVIEW_HANDOFF_TOKEN / GHL_EMBED_SECRET not configured.",
+    };
+  }
+  const path = buildPrimeviewHandoffPath(token);
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+    process.env.VERCEL_URL?.replace(/\/$/, "") ||
+    "https://hub.ccpatio.com";
+  const origin = base.startsWith("http") ? base : `https://${base}`;
+  return { ok: true, url: `${origin}${path}`, path };
+}
+
+/** Authenticated (embed session) download URLs for live handoff artifacts. */
+export async function getPrimeviewHandoffDownloadUrls(): Promise<
+  | {
+      ok: true;
+      csv: string;
+      spec: string;
+      swatches: string;
+      partnerPath: string;
+    }
+  | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const {
+    buildPrimeviewHandoffPath,
+    downloadUrlForArtifact,
+    resolveExpectedPrimeviewHandoffToken,
+  } = await import("@/lib/primeview-handoff-auth");
+  const token = resolveExpectedPrimeviewHandoffToken();
+  if (!token) {
+    return {
+      ok: false,
+      error: "PRIMEVIEW_HANDOFF_TOKEN / GHL_EMBED_SECRET not configured.",
+    };
+  }
+  return {
+    ok: true,
+    csv: downloadUrlForArtifact("csv", token),
+    spec: downloadUrlForArtifact("spec", token),
+    swatches: downloadUrlForArtifact("swatches", token),
+    partnerPath: buildPrimeviewHandoffPath(token),
+  };
+}

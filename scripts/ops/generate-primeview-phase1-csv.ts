@@ -18,7 +18,6 @@ loadEnvConfig(process.cwd());
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import sharp from "sharp";
 import { inArray, like } from "drizzle-orm";
 import { closeDb, getDb } from "../../src/server/db/client";
 import {
@@ -347,6 +346,7 @@ export async function hostFabricSwatches(
   <text x="240" y="400" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" fill="#ffffff">${label.replace(/[<>&]/g, "")}</text>
   <text x="240" y="435" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" fill="#ffffff">${sku}</text>
 </svg>`;
+    const sharp = (await import("sharp")).default;
     const jpg = await sharp(Buffer.from(svg)).jpeg({ quality: 88 }).toBuffer();
     const localPath = join(SWATCH_DIR, `${sku.toLowerCase()}.jpg`);
     writeFileSync(localPath, jpg);
@@ -567,8 +567,32 @@ export type HandoffLine = {
   reason: string;
 };
 
-async function main() {
-  mkdirSync(TMP, { recursive: true });
+export type Phase1ImportBundle = {
+  headers: string[];
+  parentRows: CsvRow[];
+  variationRows: CsvRow[];
+  allRows: CsvRow[];
+  handoff: HandoffLine[];
+  csvText: string;
+  handoffMarkdown: string;
+  swatchesJson: string;
+  makeCount: number;
+  resaleCount: number;
+  uniqueSkus: number;
+};
+
+export function rowsToCsvText(headers: string[], rows: CsvRow[]): string {
+  const lines = [
+    headers.map(csvEscape).join(","),
+    ...rows.map((r) => headers.map((h) => csvEscape(r[h] ?? "")).join(",")),
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+export async function buildPhase1ImportBundle(opts?: {
+  hostSwatches?: boolean;
+}): Promise<Phase1ImportBundle> {
+  const hostSwatches = opts?.hostSwatches !== false;
   const headers = loadHeaders();
   if (headers.length !== 169) {
     throw new Error(`Expected 169 headers, got ${headers.length}`);
@@ -648,10 +672,13 @@ async function main() {
     .where(inArray(third_party_sources.global_sku, [...PHASE1_RESALE_SKUS]));
   const tpsSet = new Set(tps.map((t) => t.sku));
 
-  console.log("Hosting 24 fabric swatches to Supabase + tmp/primeview-fabric-swatches/...");
-  const swatchHost = await hostFabricSwatches(fabricRows);
-  console.log(`Swatches verified HTTP 200: ${swatchHost.verified.length}`);
-  const swatchesJson = buildFabricSwatchesJson(fabricRows);
+  let swatchesJson = buildFabricSwatchesJson(fabricRows);
+  if (hostSwatches) {
+    console.log("Hosting 24 fabric swatches to Supabase + tmp/primeview-fabric-swatches/...");
+    const swatchHost = await hostFabricSwatches(fabricRows);
+    console.log(`Swatches verified HTTP 200: ${swatchHost.verified.length}`);
+    swatchesJson = buildFabricSwatchesJson(fabricRows);
+  }
 
   const handoff: HandoffLine[] = [];
   const usedVarIds = new Set<string>();
@@ -885,7 +912,6 @@ async function main() {
   }
 
   const allRows = [...parentRows, ...variationRows];
-  writeCsv(OUT_CSV, headers, allRows);
 
   const makeCount = handoff.filter((h) => h.fulfillment === "Make").length;
   const resaleCount = handoff.filter((h) => h.fulfillment === "Resale").length;
@@ -1050,19 +1076,39 @@ Phase 1 launch gate uses \`ORDER_PIPELINE_MODE=log\` (dry-run saga, zero Katana 
 *End of Phase 1 handoff for Yardi / PrimeView. Do not begin Phase 2 CSV until the Phase 2 gate in \`docs/sop/CCP_PH1_PHASE_C_CLOSEOUT_PACKET.md\`.*
 `;
 
-  writeFileSync(OUT_HANDOFF, handoffMd, "utf8");
-
-  const report = {
-    headers: headers.length,
-    parentRows: parentRows.length,
-    variationRows: variationRows.length,
-    totalRows: allRows.length,
-    sowCovered: handoff.length,
-    uniqueSkus: usedSkus.size,
+  return {
+    headers,
+    parentRows,
+    variationRows,
+    allRows,
+    handoff,
+    csvText: rowsToCsvText(headers, allRows),
+    handoffMarkdown: handoffMd,
+    swatchesJson,
     makeCount,
     resaleCount,
-    upholsteredParents: parentRows.filter((p) => p.acf_fabric_swatches_json).length,
-    handoff,
+    uniqueSkus: usedSkus.size,
+  };
+}
+
+async function main() {
+  mkdirSync(TMP, { recursive: true });
+  const bundle = await buildPhase1ImportBundle({ hostSwatches: true });
+  writeFileSync(OUT_CSV, bundle.csvText, "utf8");
+  writeFileSync(OUT_HANDOFF, bundle.handoffMarkdown, "utf8");
+
+  const report = {
+    headers: bundle.headers.length,
+    parentRows: bundle.parentRows.length,
+    variationRows: bundle.variationRows.length,
+    totalRows: bundle.allRows.length,
+    sowCovered: bundle.handoff.length,
+    uniqueSkus: bundle.uniqueSkus,
+    makeCount: bundle.makeCount,
+    resaleCount: bundle.resaleCount,
+    upholsteredParents: bundle.parentRows.filter((p) => p.acf_fabric_swatches_json)
+      .length,
+    handoff: bundle.handoff,
   };
   writeFileSync(OUT_REPORT, JSON.stringify(report, null, 2), "utf8");
 
@@ -1072,10 +1118,10 @@ Phase 1 launch gate uses \`ORDER_PIPELINE_MODE=log\` (dry-run saga, zero Katana 
         ok: true,
         csv: OUT_CSV,
         handoff: OUT_HANDOFF,
-        parents: parentRows.length,
-        variations: variationRows.length,
-        sow: handoff.length,
-        uniqueSkus: usedSkus.size,
+        parents: bundle.parentRows.length,
+        variations: bundle.variationRows.length,
+        sow: bundle.handoff.length,
+        uniqueSkus: bundle.uniqueSkus,
       },
       null,
       2,

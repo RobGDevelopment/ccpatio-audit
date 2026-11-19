@@ -1,175 +1,90 @@
 {
-  "phase_id": "ghl-portal-inventory-and-woo-sync",
-  "base_ref": "77a1777",
-  "blast_radius": 25,
+  "phase_id": "primeview-live-handoff-portal",
+  "base_ref": "4165cce",
+  "blast_radius": 11,
   "counts": {
-    "files": 25,
-    "tracked": 18,
-    "untracked": 7,
-    "insertions": 2534,
-    "deletions": 1366
+    "files": 11,
+    "tracked": 5,
+    "untracked": 6,
+    "insertions": 191,
+    "deletions": 61
   },
   "files": [
     {
       "status": "??",
-      "path": "src/app/api/embed/katana-inventory/route.ts",
+      "path": "src/app/api/partner/primeview-handoff/download/route.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase1PortalViews.tsx",
+      "path": "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/components/embed/EmbedSessionProvider.tsx",
+      "path": "src/app/partner/primeview-handoff/page.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/ecommerce/phase1-portal.ts",
+      "path": "src/lib/primeview-handoff-auth.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/stock/katana-inventory.ts",
+      "path": "src/server/woocommerce/handoff-spec-generator.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/woocommerce/woo-catalog-sync.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/ghl-inventory-and-woo-sync.test.ts",
+      "path": "tests/primeview-handoff-portal.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 28,
-      "deletions": 19
+      "insertions": 12,
+      "deletions": 27
     },
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
-      "insertions": 8,
-      "deletions": 8
+      "insertions": 2,
+      "deletions": 2
     },
     {
       "status": "M",
       "path": "scripts/ops/generate-primeview-phase1-csv.ts",
-      "insertions": 4,
-      "deletions": 0
+      "insertions": 69,
+      "deletions": 23
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 277,
+      "insertions": 60,
       "deletions": 0
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/page.tsx",
-      "insertions": 1498,
-      "deletions": 1200
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/layout.tsx",
-      "insertions": 25,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/showroom/page.tsx",
-      "insertions": 17,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/app/showroom/actions.ts",
-      "insertions": 17,
-      "deletions": 4
-    },
-    {
-      "status": "M",
-      "path": "src/app/showroom/stock/InventoryCard.tsx",
-      "insertions": 41,
-      "deletions": 17
-    },
-    {
-      "status": "M",
-      "path": "src/app/showroom/stock/LiveStockView.tsx",
-      "insertions": 304,
-      "deletions": 75
-    },
-    {
-      "status": "M",
-      "path": "src/lib/embed-auth.ts",
-      "insertions": 99,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/lib/pim-audit.ts",
-      "insertions": 17,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/lib/stock-display.ts",
-      "insertions": 7,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/proxy.ts",
-      "insertions": 34,
-      "deletions": 3
-    },
-    {
-      "status": "M",
-      "path": "src/server/showroom/stock.ts",
-      "insertions": 82,
-      "deletions": 5
-    },
-    {
-      "status": "M",
-      "path": "src/server/stock/search-katana-stock.ts",
-      "insertions": 62,
-      "deletions": 30
-    },
-    {
-      "status": "M",
-      "path": "tests/intake-routes.test.ts",
-      "insertions": 3,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "tests/pim-session.test.ts",
-      "insertions": 11,
-      "deletions": 0
+      "insertions": 48,
+      "deletions": 9
     }
   ],
   "untracked": [
-    "src/app/api/embed/katana-inventory/route.ts",
-    "src/app/embed/admin/master-catalog/ecommerce/Phase1PortalViews.tsx",
-    "src/components/embed/EmbedSessionProvider.tsx",
-    "src/server/ecommerce/phase1-portal.ts",
-    "src/server/stock/katana-inventory.ts",
-    "src/server/woocommerce/woo-catalog-sync.ts",
-    "tests/ghl-inventory-and-woo-sync.test.ts"
+    "src/app/api/partner/primeview-handoff/download/route.ts",
+    "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx",
+    "src/app/partner/primeview-handoff/page.tsx",
+    "src/lib/primeview-handoff-auth.ts",
+    "src/server/woocommerce/handoff-spec-generator.ts",
+    "tests/primeview-handoff-portal.test.ts"
   ],
-  "file_list_sha256": "49da7510fc65018e714931e9f6eb8803be992d9d7fe804b3e43804dae992c6a7",
+  "file_list_sha256": "f3dcd116162815a21db598187ae2d9ae8f27df7326270699832280b065f2f1d6",
   "notes": ""
 }
