@@ -41,6 +41,7 @@ import {
   phase1SpotCheckSkus,
   PRICE_REVIEW_MISSING,
   PRICE_REVIEW_ODD,
+  suggestedNearest5,
   type MiaPdfFixture,
   type MiaPdfRow,
 } from "../../src/server/ecommerce/mia-aluminum-pricing";
@@ -389,6 +390,7 @@ async function applyFixtureToHub(fixture: MiaPdfFixture): Promise<{
           mia_price_locked: true,
           woo_alu_msrp: meta.price,
           mia_pdf_price: meta.price,
+          mia_pdf_raw_price: meta.price,
           mia_pdf_source: meta.source,
           frame_material:
             classifyFramePolicy({ globalSku: sku }).startsWith("aluminum")
@@ -398,8 +400,14 @@ async function applyFixtureToHub(fixture: MiaPdfFixture): Promise<{
         if (meta.flag) {
           attrs.price_review_flag = meta.flag;
           spotChecks += 1;
+          if (meta.flag === PRICE_REVIEW_ODD) {
+            const odd = ODD_DOLLAR_PDF_ROWS.find((r) => r.skuHint === sku);
+            attrs.mia_pdf_suggested_price =
+              odd?.suggested ?? suggestedNearest5(meta.price);
+          }
         } else if (attrs.price_review_flag) {
           delete attrs.price_review_flag;
+          delete attrs.mia_pdf_suggested_price;
         }
         if (meta.oct1_msrp != null) {
           attrs.mia_oct1_msrp = meta.oct1_msrp;

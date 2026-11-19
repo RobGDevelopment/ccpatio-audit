@@ -69,8 +69,21 @@ export function wooDeliveryKey(
 
 /**
  * The form-encoded ping WooCommerce POSTs when a webhook is saved: `webhook_id=<n>`.
- * Only meaningful AFTER the signature check passed.
+ * Strict: trimmed body must be ONLY `webhook_id=<digits>` (no JSON / order fields).
+ * Checked BEFORE HMAC so unsigned save-pings return 200 without DB/Inngest work.
  */
 export function isWooPingBody(rawBody: string): boolean {
-  return /^webhook_id=\d+$/.test(rawBody.trim());
+  const trimmed = rawBody.trim();
+  if (/^webhook_id=\d+$/.test(trimmed)) return true;
+  // URL-encoded equivalent with ONLY webhook_id present
+  try {
+    const params = new URLSearchParams(trimmed);
+    const keys = [...params.keys()];
+    if (keys.length === 1 && keys[0] === "webhook_id") {
+      return /^\d+$/.test(params.get("webhook_id") ?? "");
+    }
+  } catch {
+    /* not form-encoded */
+  }
+  return false;
 }

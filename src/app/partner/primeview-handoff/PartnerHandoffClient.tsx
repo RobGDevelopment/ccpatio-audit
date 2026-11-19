@@ -2,6 +2,11 @@
 
 import { Download } from "lucide-react";
 import type { LiveStorefrontRow } from "@/server/woocommerce/handoff-spec-generator";
+import { PHASE1_FABRICS, PHASE1_POWDERS } from "@/server/ecommerce/phase1-portal";
+import {
+  PHASE1_FABRIC_DISPLAY_NAMES,
+  PHASE1_POWDER_DISPLAY_NAMES,
+} from "@/server/woocommerce/finish-keys";
 
 type Props = {
   token: string;
@@ -104,6 +109,64 @@ export default function PartnerHandoffClient(props: Props) {
               {props.webhookUrl}
             </code>
           </p>
+        </section>
+
+        <section className="mt-10 grid gap-6 lg:grid-cols-2">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+              24 Fabric Swatches (Hub SKUs)
+            </h2>
+            <div className="mt-3 max-h-64 overflow-auto rounded-xl border border-white/10">
+              <table className="min-w-full text-left text-xs">
+                <thead className="sticky top-0 bg-[#0f1419] text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">SKU</th>
+                    <th className="px-3 py-2 font-medium">Display Name</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PHASE1_FABRICS.map((sku) => (
+                    <tr key={sku} className="border-t border-white/5">
+                      <td className="px-3 py-1.5 font-mono text-amber-200/90">{sku}</td>
+                      <td className="px-3 py-1.5 text-slate-300">
+                        {PHASE1_FABRIC_DISPLAY_NAMES[sku] ?? sku}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+              6 Powder-Coat Finishes (Hub SKUs)
+            </h2>
+            <div className="mt-3 overflow-auto rounded-xl border border-white/10">
+              <table className="min-w-full text-left text-xs">
+                <thead className="bg-white/5 text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">SKU</th>
+                    <th className="px-3 py-2 font-medium">Display Name</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PHASE1_POWDERS.map((sku) => (
+                    <tr key={sku} className="border-t border-white/5">
+                      <td className="px-3 py-1.5 font-mono text-amber-200/90">{sku}</td>
+                      <td className="px-3 py-1.5 text-slate-300">
+                        {PHASE1_POWDER_DISPLAY_NAMES[sku] ?? sku}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500">
+              Map every APF dropdown to these Hub SKUs — never fictional{" "}
+              <code className="text-slate-400">FAB-SUN-5453-CAN</code> /{" "}
+              <code className="text-slate-400">PWD-BLK-MAT</code>.
+            </p>
+          </div>
         </section>
 
         <section className="mt-10">

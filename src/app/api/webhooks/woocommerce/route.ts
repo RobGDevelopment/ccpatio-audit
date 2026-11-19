@@ -156,15 +156,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "webhook_not_configured" }, { status: 503 });
   }
 
+  // WooCommerce WC_Webhook::deliver_ping() POSTs an UNSIGNED form body
+  // `webhook_id=<digits>` when an admin saves a webhook. Accept ONLY that exact
+  // ping shape BEFORE HMAC — zero DB writes, zero Inngest events.
+  if (isWooPingBody(rawBody)) {
+    return NextResponse.json({ ok: true, ping: true }, { status: 200 });
+  }
+
   if (!verifyWooWebhookSignature(rawBody, req.headers.get("x-wc-webhook-signature"), secret)) {
     logRoute("error", "woo-webhook-invalid-signature", {
       deliveryId: req.headers.get("x-wc-webhook-delivery-id") ?? null,
     });
     return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
-  }
-
-  if (isWooPingBody(rawBody)) {
-    return NextResponse.json({ pong: true }, { status: 200 });
   }
 
   let parsedJson: unknown;

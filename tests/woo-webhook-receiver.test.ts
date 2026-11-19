@@ -182,7 +182,7 @@ describe("Phase 4 acceptance: malformed or missing metadata is handled gracefull
     ["fabric value is empty", { meta_data: [{ key: "fabric", value: "" }, { key: "powder_coat", value: PWD_SKU }] }],
     ["fabric value is a powder-coat SKU", { meta_data: [{ key: "fabric", value: PWD_SKU }, { key: "powder_coat", value: PWD_SKU }] }],
     ["fabric SKU unknown to the hub", { meta_data: [{ key: "fabric", value: "FAB-DOES-NOT-EXIST" }, { key: "powder_coat", value: PWD_SKU }] }],
-    ["near-miss key powder-coat", { meta_data: [{ key: "fabric", value: FAB_SKU }, { key: "powder-coat", value: PWD_SKU }] }],
+    ["near-miss key pillow", { meta_data: [{ key: "fabric", value: FAB_SKU }, { key: "powder_coat", value: PWD_SKU }, { key: "pillow", value: "X" }] }],
   ])("%s: 202 quarantined for review, never a 4xx/5xx, nothing enqueued", async (_label, lineOverrides) => {
     const res = await deliverOrder(wooOrder({ line_items: [wooLine(lineOverrides)] }));
 
@@ -191,6 +191,26 @@ describe("Phase 4 acceptance: malformed or missing metadata is handled gracefull
     expect(h.quarantineOnce).toHaveBeenCalledTimes(1);
     expect(h.quarantineOnce.mock.calls[0]![0]).toMatchObject({ externalId: "1042", status: "pending_review" });
     expect(h.send).not.toHaveBeenCalled();
+  });
+
+  it("human APF alias powder-coat is accepted as powder_coat (not quarantined)", async () => {
+    const res = await deliverOrder(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [
+              { key: "fabric", value: FAB_SKU },
+              { key: "powder-coat", value: PWD_SKU },
+            ],
+          }),
+        ],
+      }),
+      { delivery: "d-apf-powder-alias" },
+    );
+    expect(res.status).toBe(202);
+    expect(await res.json()).toMatchObject({ accepted: true, pipelineMode: "log" });
+    expect(h.quarantineOnce).not.toHaveBeenCalled();
+    expect(h.send).toHaveBeenCalledTimes(1);
   });
 
   it("a product whose recipe needs no finish is accepted without fabric / powder_coat keys", async () => {

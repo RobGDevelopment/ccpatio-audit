@@ -12,9 +12,14 @@ import {
 import {
   PHASE1_ADDON_ACF_KEYS,
   PHASE1_FABRICS,
+  PHASE1_POWDERS,
   readMiaApproval,
   shippingClassFromLb,
 } from "@/server/ecommerce/phase1-portal";
+import {
+  PHASE1_FABRIC_DISPLAY_NAMES,
+  PHASE1_POWDER_DISPLAY_NAMES,
+} from "@/server/woocommerce/finish-keys";
 import {
   PRODUCTION_WOO_WEBHOOK_URL,
 } from "@/lib/primeview-handoff-auth";
@@ -325,6 +330,25 @@ ${swatchLines || "- (swatches resolve from Supabase public \`fabrics/fab-*.jpg\`
 
 Full 24-entry manifest is available as \`Download 24 Fabric Swatches Manifest (.json)\` from the partner portal.
 
+### 24 Fabric Swatches (real Hub SKUs — map every APF dropdown here)
+
+| Hub SKU | Display Name |
+| --- | --- |
+${PHASE1_FABRICS.map(
+  (sku) => `| \`${sku}\` | ${PHASE1_FABRIC_DISPLAY_NAMES[sku] ?? sku} |`,
+).join("\n")}
+
+### 6 Powder-Coat Finishes (real Hub SKUs — never use fictional \`PWD-BLK-MAT\`)
+
+| Hub SKU | Display Name | Finish |
+| --- | --- | --- |
+${PHASE1_POWDERS.map((sku) => {
+  const label = PHASE1_POWDER_DISPLAY_NAMES[sku] ?? sku;
+  return `| \`${sku}\` | ${label} | Powder coat / ${label} |`;
+}).join("\n")}
+
+> Example APF values PrimeView may send: \`Ash (FAB-ACT-ASH)\`, \`Black (PWD-BLACK)\`, bare \`FAB-ACT-ASH\` / \`PWD-BLACK\`. Hub resolves all three forms. **Do not** send fictional SKUs like \`FAB-SUN-5453-CAN\` or \`PWD-BLK-MAT\`.
+
 Fulfillment routing (Hub authority):
 
 - **Make** (no \`third_party_sources\`): Katana Sales Order **+** Manufacturing Order when \`ORDER_PIPELINE_MODE=live\`
@@ -372,7 +396,7 @@ async function loadLivePortalOverlay(): Promise<{
         sku: ecommerce_listings.global_sku,
         productName: ecommerce_listings.product_name,
         collection: ecommerce_listings.collection_label,
-        steel: ecommerce_listings.steel_msrp,
+        aluminum: ecommerce_listings.aluminum_msrp,
         sale: ecommerce_listings.sale_price,
         construction: ecommerce_listings.construction_details,
       })
@@ -409,7 +433,8 @@ async function loadLivePortalOverlay(): Promise<{
   for (const row of listings) {
     const hub = fgcBySku.get(row.sku);
     liveBySku.set(row.sku, {
-      regularPrice: row.steel != null ? String(row.steel) : null,
+      // Mia Aluminum PDF is the storefront Regular price authority — never steel_msrp.
+      regularPrice: row.aluminum != null ? String(row.aluminum) : null,
       salePrice: row.sale != null ? String(row.sale) : null,
       weightLb: hub?.weight != null ? String(hub.weight) : null,
       isWebVisible: Boolean(hub?.isWebVisible ?? true),

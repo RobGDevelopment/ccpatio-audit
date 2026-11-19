@@ -143,13 +143,54 @@ describe("resolveWooOrder", () => {
     expect(messages(res).some((m) => /no powder_coat slot/.test(m))).toBe(true);
   });
 
-  it("the frame is required whenever the recipe has a frame", async () => {
+  it("omitted frame on an Aluminum-only Make recipe defaults to MET-ALUM (attribute-only OK)", async () => {
+    const hub = makeHub();
+    hub.records.set("MET-ALUM", skuRecord("MET-ALUM", { attributes: { web_sellable: true } }));
     const res = await resolveWooOrder(
       wooOrder({ line_items: [wooLine({ meta_data: [{ key: "fabric", value: FAB_SKU }, { key: "powder_coat", value: PWD_SKU }] })] }),
-      makeHub(),
+      hub,
       { requireKatanaIds: false },
     );
-    expect(messages(res).some((m) => /requires a frame finish/.test(m))).toBe(true);
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      const frame = res.lines[0]!.finishes.find((f) => f.slot === "frame");
+      expect(frame?.sku).toBe("MET-ALUM");
+      expect(frame?.mode).toBe("attribute_only");
+    }
+  });
+
+  it("requireKatanaIds does not fail attribute-only MET-ALUM without katana_variant_id", async () => {
+    const hub = makeHub();
+    hub.records.set(
+      "MET-ALUM",
+      skuRecord("MET-ALUM", { attributes: { web_sellable: true }, katanaVariantId: null }),
+    );
+    // Ensure fabric/powder have katana ids so only frame would have failed under old rules
+    hub.records.set(FAB_SKU, skuRecord(FAB_SKU, { attributes: { web_sellable: true }, katanaVariantId: 101 }));
+    hub.records.set(PWD_SKU, skuRecord(PWD_SKU, { attributes: { web_sellable: true }, katanaVariantId: 102 }));
+    hub.records.set("RM-FAB-GENERIC", skuRecord("RM-FAB-GENERIC", { attributes: { web_sellable: true }, katanaVariantId: 201 }));
+    hub.records.set("RM-PWD-GENERIC", skuRecord("RM-PWD-GENERIC", { attributes: { web_sellable: true }, katanaVariantId: 202 }));
+    const res = await resolveWooOrder(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [
+              { key: "fabric", value: FAB_SKU },
+              { key: "powder_coat", value: PWD_SKU },
+              { key: "frame", value: "MET-ALUM" },
+            ],
+          }),
+        ],
+      }),
+      hub,
+      { requireKatanaIds: true },
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      const frame = res.lines[0]!.finishes.find((f) => f.slot === "frame");
+      expect(frame?.mode).toBe("attribute_only");
+      expect(frame?.variantId).toBeNull();
+    }
   });
 
   it("reports every problem of every line, not just the first", async () => {

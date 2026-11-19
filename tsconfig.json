@@ -32,6 +32,7 @@
   "exclude": [
     "node_modules",
     "_ARCHIVE_TO_REMOVE_",
-    "3d-sandbox"
+    "3d-sandbox",
+    "tmp"
   ]
 }

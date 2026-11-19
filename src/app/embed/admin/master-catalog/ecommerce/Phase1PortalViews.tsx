@@ -198,8 +198,31 @@ export function Phase1FlatGrid({
                     </span>
                   ) : null}
                   {flag === PRICE_REVIEW_ODD ? (
-                    <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
-                      Odd $ in PDF
+                    <span
+                      className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900"
+                      title="Mia PDF raw price vs rounded $0/$5 website figure"
+                    >
+                      {(() => {
+                        const raw =
+                          typeof row.attributes?.mia_pdf_raw_price === "number"
+                            ? row.attributes.mia_pdf_raw_price
+                            : typeof row.attributes?.mia_pdf_price === "number"
+                              ? row.attributes.mia_pdf_price
+                              : null;
+                        // Prefer Mia's manual $0/$5 target when stamped; else nearest-$5 of raw.
+                        const stamped =
+                          typeof row.attributes?.mia_pdf_suggested_price === "number"
+                            ? row.attributes.mia_pdf_suggested_price
+                            : null;
+                        const rounded =
+                          stamped ??
+                          (raw != null ? suggestedNearest5(Number(raw)) : null) ??
+                          (aluVal != null ? suggestedNearest5(aluVal) : null);
+                        if (raw != null && rounded != null) {
+                          return `Odd $ in PDF — raw $${Number(raw).toLocaleString("en-US")} → round $${Number(rounded).toLocaleString("en-US")}`;
+                        }
+                        return "Odd $ in PDF — Needs Mia Spot-Check";
+                      })()}
                     </span>
                   ) : null}
                   {expanded === row.id ? (

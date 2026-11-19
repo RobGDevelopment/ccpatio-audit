@@ -45,12 +45,34 @@ export const FINISH_RULES: Readonly<Record<FinishSlot, FinishRule>> = {
 };
 
 /**
- * Accepted aliases for finish slots. These SELECT a physical material under a PrimeView ACF
- * name that is not the canonical slot key — accept them, do not quarantine.
+ * Accepted aliases for finish slots — canonical ACF keys PLUS human APF
+ * (`wc-product-fields`) labels PrimeView may send in `line_items[].meta_data`.
  */
 export const FINISH_KEY_ALIASES: Readonly<Record<string, FinishSlot>> = {
   fabric_sku: "fabric",
   frame_material: "frame",
+  // Human APF fabric labels
+  select_fabric: "fabric",
+  choose_fabric: "fabric",
+  fabric_swatch: "fabric",
+  cushion_fabric: "fabric",
+  "cushion-fabric": "fabric",
+  // Human APF powder labels
+  select_powder_coat: "powder_coat",
+  choose_powder_coat: "powder_coat",
+  powder_coat_finish: "powder_coat",
+  powder_finish: "powder_coat",
+  select_finish: "powder_coat",
+  powder: "powder_coat",
+  "powder-coat": "powder_coat",
+  powdercoat: "powder_coat",
+  // Human APF frame labels
+  select_frame: "frame",
+  select_frame_type: "frame",
+  choose_frame: "frame",
+  frame_type: "frame",
+  "frame-type": "frame",
+  metal: "frame",
 };
 
 /** Placeholder SKUs B1 knows how to bind. Any other `RM-*-GENERIC` in a recipe is unsupported. */
@@ -79,16 +101,10 @@ export const FACING_META_KEYS: ReadonlySet<string> = new Set([
  * Keys that SELECT A PHYSICAL MATERIAL under a name B1 does not accept. Silently dropping them
  * would build the wrong item, so an order carrying one is quarantined with the hint below.
  * Keys that are not here and are not a finish slot are ignored (they do not pick a material).
+ *
+ * Human APF fabric/powder/frame labels live in FINISH_KEY_ALIASES (accepted), not here.
  */
 const REJECTED_FINISH_KEYS: Readonly<Record<string, string>> = {
-  cushion_fabric: "fabric",
-  "cushion-fabric": "fabric",
-  powder: "powder_coat",
-  "powder-coat": "powder_coat",
-  powdercoat: "powder_coat",
-  frame_type: "frame",
-  "frame-type": "frame",
-  metal: "frame",
   stone: "(not supported)",
   shade: "(not supported)",
   umbrella: "(not supported)",
@@ -103,10 +119,126 @@ const REJECTED_FINISH_KEYS: Readonly<Record<string, string>> = {
   "pillow-fabric": "(pillow fabrics are deferred)",
 };
 
+/** Embedded Hub finish SKU inside a human display string. */
+export const EMBEDDED_FINISH_SKU_RE =
+  /\b(FAB-[A-Z0-9-]+|PWD-[A-Z0-9-]+|DEC-[A-Z0-9-]+|MET-[A-Z0-9-]+|DKT-[A-Z0-9-]+)\b/i;
+
+/**
+ * Phase 1 fabric display-name → Hub SKU (case-insensitive). Includes short
+ * color nicknames ("Ash") and full curated labels ("Action Ash").
+ */
+export const PHASE1_FABRIC_DISPLAY_NAMES: Readonly<Record<string, string>> = {
+  "FAB-ACT-ASH": "Action Ash",
+  "FAB-ACT-STO": "Action Stone",
+  "FAB-ADA-IND": "Adaptation Indigo",
+  "FAB-ADA-STO": "Adaptation Stone",
+  "FAB-AGR-IND": "Agra Indigo",
+  "FAB-ARI-DEW": "Ariana Dew",
+  "FAB-ARR-CAR": "Array Caribbean",
+  "FAB-ARR-DUN": "Array Dune",
+  "FAB-ARR-CAL": "Array Calypso",
+  "FAB-ASC-SPA": "Ascend Spa",
+  "FAB-ASC-TRO": "Ascend Tropical",
+  "FAB-ASS-SAN": "Assemble Sand",
+  "FAB-ASS-IITEA": "Assemble II Teak",
+  "FAB-AUT-PEB": "Authentic Pebble",
+  "FAB-BER-TUX": "Berenson Tuxedo",
+  "FAB-BEA-ULT": "Beacon Ultraleather",
+  "FAB-BLE-IND": "Blend Indigo",
+  "FAB-BLE-LIN": "Blend Linen",
+  "FAB-BLE-SAN": "Blend Sand",
+  "FAB-BLI-ALO": "Bliss Aloe",
+  "FAB-BLI-DEW": "Bliss Dew",
+  "FAB-BLI-GUA": "Bliss Guava",
+  "FAB-BLI-LIN": "Bliss Linen",
+  "FAB-BLI-SAN": "Bliss Sand",
+};
+
+/** Phase 1 powder-coat display-name → Hub SKU. */
+export const PHASE1_POWDER_DISPLAY_NAMES: Readonly<Record<string, string>> = {
+  "PWD-BLACK": "Black",
+  "PWD-BONE": "Bone",
+  "PWD-FANUC-GRAY": "Fanuc Gray",
+  "PWD-LITE-BEIGE": "Lite Beige",
+  "PWD-OIL-RUB-BRONZE": "Oil Rubbed Bronze",
+  "PWD-WILD-RICE": "Wild Rice",
+};
+
+const FABRIC_NAME_INDEX: ReadonlyMap<string, string> = (() => {
+  const m = new Map<string, string>();
+  for (const [sku, label] of Object.entries(PHASE1_FABRIC_DISPLAY_NAMES)) {
+    m.set(label.toLowerCase(), sku);
+    const short = label.split(/\s+/).pop();
+    if (short && short.length >= 3) m.set(short.toLowerCase(), sku);
+    // Also index "Ash" style from SKU tail for common APF values
+    const tail = sku.split("-").pop();
+    if (tail && tail.length >= 3) {
+      const pretty =
+        tail === "ASH"
+          ? "ash"
+          : tail === "STO"
+            ? "stone"
+            : tail.toLowerCase();
+      if (!m.has(pretty)) m.set(pretty, sku);
+    }
+  }
+  // Explicit short nicknames used in APF tests / storefront
+  m.set("ash", "FAB-ACT-ASH");
+  m.set("canvas", "FAB-ACT-ASH");
+  return m;
+})();
+
+const POWDER_NAME_INDEX: ReadonlyMap<string, string> = (() => {
+  const m = new Map<string, string>();
+  for (const [sku, label] of Object.entries(PHASE1_POWDER_DISPLAY_NAMES)) {
+    m.set(label.toLowerCase(), sku);
+    m.set(`matte ${label.toLowerCase()}`, sku);
+  }
+  m.set("matte black", "PWD-BLACK");
+  m.set("black", "PWD-BLACK");
+  return m;
+})();
+
+/**
+ * Resolve a finish meta value to a Hub SKU:
+ * 1. bare Hub SKU (`FAB-ACT-ASH`)
+ * 2. embedded parenthetical/hyphenated (`Canvas (FAB-ACT-ASH)`, `Matte Black - PWD-BLACK`)
+ * 3. exact case-insensitive Phase 1 display name
+ */
+export function resolveFinishValueToSku(
+  raw: string,
+  slotHint?: FinishSlot,
+): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const embedded = trimmed.match(EMBEDDED_FINISH_SKU_RE);
+  if (embedded?.[1]) return normalizeSku(embedded[1]);
+
+  const upper = normalizeSku(trimmed);
+  if (/^(FAB|PWD|MET|DKT|DEC)-[A-Z0-9-]+$/.test(upper)) return upper;
+
+  // Frame human labels (Aluminum / Steel)
+  if (!slotHint || slotHint === "frame") {
+    const frame = normalizeFrameMaterialValue(trimmed);
+    if (frame === MET_ALUM_SKU || frame === MET_STEEL_SKU) return frame;
+  }
+
+  const lower = trimmed.toLowerCase().replace(/\s+/g, " ").trim();
+  if (!slotHint || slotHint === "fabric") {
+    const fab = FABRIC_NAME_INDEX.get(lower);
+    if (fab) return fab;
+  }
+  if (!slotHint || slotHint === "powder_coat") {
+    const pwd = POWDER_NAME_INDEX.get(lower);
+    if (pwd) return pwd;
+  }
+  return upper;
+}
+
 /**
  * Lowercase, trim, strip WooCommerce attribute prefixes (`attribute_`, `pa_`) repeatedly and a
- * leading underscore. Hyphens are NOT rewritten: `powder-coat` must stay distinguishable from
- * `powder_coat` so a near-miss is rejected rather than silently accepted.
+ * leading underscore. Spaces become underscores so human APF labels (`Select Fabric`) normalize
+ * cleanly; hyphens are preserved and aliased explicitly (`powder-coat` → powder_coat slot).
  */
 export function normalizeFinishKey(raw: string): string {
   let key = raw.trim().toLowerCase().replace(/\s+/g, "_");

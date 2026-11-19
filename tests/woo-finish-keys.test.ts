@@ -48,13 +48,26 @@ describe("finish keys (Phase B1 / pipe-hardening)", () => {
   });
 
   it.each([
-    "cushion_fabric",
-    "cushion-fabric",
-    "powder",
-    "powder-coat",
-    "frame_type",
-    "frame-type",
-    "pa_frame-type",
+    ["Select Fabric", "fabric"],
+    ["Choose Fabric", "fabric"],
+    ["Fabric Swatch", "fabric"],
+    ["Cushion Fabric", "fabric"],
+    ["cushion_fabric", "fabric"],
+    ["Select Powder Coat", "powder_coat"],
+    ["Choose Powder Coat", "powder_coat"],
+    ["Powder Coat", "powder_coat"],
+    ["Powder Finish", "powder_coat"],
+    ["Select Finish", "powder_coat"],
+    ["powder-coat", "powder_coat"],
+    ["Select Frame Type", "frame"],
+    ["Frame Material", "frame"],
+    ["frame_type", "frame"],
+    ["frame-type", "frame"],
+  ])("accepts human APF label %j as slot %s", (raw, slot) => {
+    expect(classifyFinishKey(raw)).toEqual({ kind: "slot", slot });
+  });
+
+  it.each([
     "stone",
     "shade",
     "umbrella",
@@ -65,11 +78,6 @@ describe("finish keys (Phase B1 / pipe-hardening)", () => {
     "pillow_fabric",
   ])("rejects the near-miss material key %s", (key) => {
     expect(classifyFinishKey(key).kind).toBe("rejected");
-  });
-
-  it("a hyphenated powder-coat is NOT silently accepted as powder_coat", () => {
-    expect(normalizeFinishKey("powder-coat")).toBe("powder-coat");
-    expect(classifyFinishKey("powder-coat").kind).toBe("rejected");
   });
 
   it.each(["size", "pa_size", "fabric_grade", "color", "note", "_reduced_stock", "config_id"])(

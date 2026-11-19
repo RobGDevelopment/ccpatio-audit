@@ -435,19 +435,24 @@ export async function resolveWooOrder(
         const genericVariantId = placeholderRecord?.katanaVariantId ?? null;
 
         if (options.requireKatanaIds) {
-          if (finish.katanaVariantId === null) {
-            issues.push({
-              path: finishPath,
-              message: `${slot} ${chosen} has no katana_variant_id; it cannot be bound to the MO.`,
-            });
-            continue;
-          }
-          if (swappable && genericVariantId === null) {
-            issues.push({
-              path: finishPath,
-              message: `Placeholder ${effectivePlaceholderSku} has no katana_variant_id in the hub; ${slot} cannot be swapped.`,
-            });
-            continue;
+          // Attribute-only finishes (e.g. MET-ALUM frame directive when the BOM has
+          // no RM-FRAME-GENERIC / metal swap slot) stamp SO notes only — never fail
+          // strict mode for missing katana_variant_id on non-substituting slots.
+          if (swappable) {
+            if (finish.katanaVariantId === null) {
+              issues.push({
+                path: finishPath,
+                message: `${slot} ${chosen} has no katana_variant_id; it cannot be bound to the MO.`,
+              });
+              continue;
+            }
+            if (genericVariantId === null) {
+              issues.push({
+                path: finishPath,
+                message: `Placeholder ${effectivePlaceholderSku} has no katana_variant_id in the hub; ${slot} cannot be swapped.`,
+              });
+              continue;
+            }
           }
         }
 

@@ -183,7 +183,7 @@ export const ODD_DOLLAR_PDF_ROWS: ReadonlyArray<{
   {
     pdfDescription: 'DINING BENCH w/NO ARMS 96" x 22" x 18" SH',
     price: 2772,
-    suggested: 2770,
+    suggested: 2775,
     phase: 1,
     skuHint: "FIN-WFT-DIN-BCH-96X22",
   },

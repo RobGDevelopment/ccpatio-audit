@@ -74,6 +74,7 @@ export const PHASE1_SHARED_ALIASES: ReadonlyArray<{
   { alias_sku: "FIN-WFT-FLY-BST-17X21-CNT", canonical_sku: "FIN-WFT-FLY-BST-17X21", reason: "half-back counter height" },
   { alias_sku: "FIN-TAY-BST-19X23-BAR", canonical_sku: "FIN-TAY-BST-19X23", reason: "taylor bar height" },
   { alias_sku: "FIN-TAY-BST-19X23-CNT", canonical_sku: "FIN-TAY-BST-19X23", reason: "taylor counter height" },
+  { alias_sku: "FIN-TAY-BST-24X23-BAR", canonical_sku: "FIN-TAY-BST-24X23", reason: "taylor arms bar height" },
   { alias_sku: "FIN-KIN-MIS-HEATER", canonical_sku: "FIN-KIN-MIS", reason: "kindle heater variation" },
   { alias_sku: "FIN-KIN-MIS-LAMP", canonical_sku: "FIN-KIN-MIS", reason: "kindle lamp variation" },
   { alias_sku: "FIN-TJM-CHA-FREELO", canonical_sku: "FIN-TJM-CHA", reason: "freelo chair variation" },
@@ -328,14 +329,48 @@ export function normalizeDim(raw: string | null | undefined): string | null {
   return String(Number(num));
 }
 
+/**
+ * Phase 1 purchasable SKUs missing L/W/H in Hub/SOW — authoritative inches
+ * (CSV emits cm via inToCm). Includes pillows, Tenjam, Kindle, umbrellas, round daybed height.
+ */
+export const PHASE1_DIM_OVERRIDES_IN: Readonly<
+  Record<string, { length: number; depth: number; height: number }>
+> = {
+  "FIN-BRV-DYB-84X84-RND": { length: 84, depth: 84, height: 27 },
+  "FIN-CAB-MIS-17X17": { length: 17, depth: 17, height: 6 },
+  "FIN-CAB-MIS-23X23": { length: 23, depth: 23, height: 7 },
+  "FIN-CAB-MIS-12X24": { length: 12, depth: 24, height: 6 },
+  // Tenjam Laylo lounger ~74×28×12 / 16 with risers
+  "FIN-TJM-MIS-LAYLO-NORISER": { length: 74, depth: 28, height: 12 },
+  "FIN-TJM-MIS-LAYLO-4RISER": { length: 74, depth: 28, height: 16 },
+  "FIN-TJM-MIS-SHAYZ-5": { length: 74, depth: 28, height: 12 },
+  "FIN-TJM-MIS-WOOSAH": { length: 30, depth: 30, height: 30 },
+  "FIN-TJM-CHA-FREELO": { length: 30, depth: 30, height: 30 },
+  "FIN-TJM-CHA-MOON": { length: 35, depth: 35, height: 35 },
+  "FIN-TJM-TAB": { length: 18, depth: 18, height: 16 },
+  // Kindle Living Allison heater / lamp
+  "FIN-KIN-MIS-HEATER": { length: 18, depth: 18, height: 60 },
+  "FIN-KIN-MIS-LAMP": { length: 18, depth: 18, height: 60 },
+  // Lido / Cantilever umbrellas (canopy diameter × closed height)
+  "FIN-MLN-UMB": { length: 108, depth: 108, height: 96 },
+  "FIN-CAN-UMB": { length: 120, depth: 120, height: 102 },
+};
+
 /** SOW typo corrections applied when writing FGC dims. */
-export function correctedDims(sku: string, row: SowRow): {
+export function correctedDims(
+  sku: string,
+  row: SowRow,
+  /** Woo purchasable SKU (alias) — preferred for PHASE1_DIM_OVERRIDES_IN lookup. */
+  wooSku?: string,
+): {
   length: string | null;
   depth: string | null;
   height: string | null;
   arm_height: string | null;
   sit_height: string | null;
 } {
+  let length = normalizeDim(row.length);
+  let depth = normalizeDim(row.depth);
   let height = normalizeDim(row.height);
   let arm = normalizeDim(row.armHeight);
   if (sku === "FIN-OCN-TAB-34X12") {
@@ -347,9 +382,17 @@ export function correctedDims(sku: string, row: SowRow): {
     height = "60";
     arm = null;
   }
+  const override =
+    (wooSku ? PHASE1_DIM_OVERRIDES_IN[wooSku] : undefined) ??
+    PHASE1_DIM_OVERRIDES_IN[sku];
+  if (override) {
+    length = String(override.length);
+    depth = String(override.depth);
+    height = String(override.height);
+  }
   return {
-    length: normalizeDim(row.length) ?? null,
-    depth: normalizeDim(row.depth) ?? null,
+    length: length ?? null,
+    depth: depth ?? null,
     height,
     arm_height: arm,
     sit_height: normalizeDim(row.sitHeight),
@@ -1317,7 +1360,7 @@ async function main() {
     { sku: "FIN-WFT-FLY-BST-17X21", variation: "halfback-counter", wooAlias: "FIN-WFT-FLY-BST-17X21-CNT" },
     { sku: "FIN-TAY-BST-19X23", variation: "taylor-bar", wooAlias: "FIN-TAY-BST-19X23-BAR" },
     { sku: "FIN-TAY-BST-19X23", variation: "taylor-counter", wooAlias: "FIN-TAY-BST-19X23-CNT" },
-    { sku: "FIN-TAY-BST-24X23", variation: "taylor-arms-bar", wooAlias: null },
+    { sku: "FIN-TAY-BST-24X23", variation: "taylor-arms-bar", wooAlias: "FIN-TAY-BST-24X23-BAR" },
     { sku: "FIN-CAB-MIS-17X17", variation: "pillow-17", wooAlias: null },
     { sku: "FIN-CAB-MIS-23X23", variation: "pillow-23", wooAlias: null },
     { sku: "FIN-CAB-MIS-12X24", variation: "pillow-lumbar-12x24", wooAlias: null },

@@ -135,12 +135,22 @@ describe("POST /api/webhooks/woocommerce", () => {
     expect(h.log.rows.size).toBe(0);
   });
 
-  it("200 pong for the form-encoded ping (only after the signature passed)", async () => {
-    const res = await POST(request("webhook_id=12", { topic: null, delivery: null }));
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ pong: true });
-    const unsigned = await POST(request("webhook_id=12", { signature: "bogus" }));
-    expect(unsigned.status).toBe(401);
+  it("200 ok/ping for unsigned WooCommerce save-ping (webhook_id=<digits>) before HMAC", async () => {
+    const signed = await POST(request("webhook_id=12", { topic: null, delivery: null }));
+    expect(signed.status).toBe(200);
+    expect(await signed.json()).toEqual({ ok: true, ping: true });
+    const unsigned = await POST(request("webhook_id=999", { signature: "bogus" }));
+    expect(unsigned.status).toBe(200);
+    expect(await unsigned.json()).toEqual({ ok: true, ping: true });
+    expect(h.send).not.toHaveBeenCalled();
+    expect(h.log.rows.size).toBe(0);
+  });
+
+  it("401 invalid_signature for unsigned JSON order payloads (ping allowlist does not apply)", async () => {
+    const body = JSON.stringify(wooOrder({ id: 42 }));
+    const res = await POST(request(body, { signature: null }));
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "invalid_signature" });
   });
 
   it("400 for a validly signed body that is not JSON", async () => {
@@ -265,7 +275,7 @@ describe("POST /api/webhooks/woocommerce", () => {
   });
 
   describe("finish keys", () => {
-    it.each(["cushion_fabric", "powder-coat", "frame_type", "pillow"])(
+    it.each(["pillow", "stone", "shade"])(
       "the near-miss key %s quarantines the order instead of being dropped",
       async (key) => {
         const res = await post(
@@ -279,6 +289,25 @@ describe("POST /api/webhooks/woocommerce", () => {
         expect(h.send).not.toHaveBeenCalled();
       },
     );
+
+    it("human APF aliases (cushion_fabric / powder-coat / frame_type) are accepted finish slots", async () => {
+      const res = await post(
+        wooOrder({
+          line_items: [
+            wooLine({
+              meta_data: [
+                { key: "cushion_fabric", value: FAB_SKU },
+                { key: "powder-coat", value: "PWD-BLK" },
+                { key: "frame_type", value: "MET-ALUM" },
+              ],
+            }),
+          ],
+        }),
+      );
+      expect(res.status).toBe(202);
+      expect(h.quarantineOnce).not.toHaveBeenCalled();
+      expect(h.send).toHaveBeenCalledTimes(1);
+    });
 
     it("a missing required fabric quarantines; a pricing-only key like fabric_grade is ignored", async () => {
       const noFabric = await post(

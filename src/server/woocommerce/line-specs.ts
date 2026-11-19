@@ -9,6 +9,7 @@ import {
   classifyFinishKey,
   FINISH_SLOTS,
   normalizeSku,
+  resolveFinishValueToSku,
   type FinishSlot,
 } from "./finish-keys";
 import type { SkuIngressIssue, WooOrderWebhook } from "./ingress.schema";
@@ -223,7 +224,15 @@ export function extractWooLineSpecs(order: WooOrderWebhook): ExtractedLineSpecs 
         return;
       }
 
-      const sku = normalizeSku(raw);
+      // Accept bare Hub SKUs, embedded `(FAB-*)` / `- PWD-*`, or Phase 1 display names.
+      const sku = resolveFinishValueToSku(raw, keyClass.slot);
+      if (!sku) {
+        issues.push({
+          path: `${keyPath}.value`,
+          message: `Finish "${keyClass.slot}" is empty. A finish value must be a hub SKU.`,
+        });
+        return;
+      }
       const existing = finishes[keyClass.slot];
       if (existing !== undefined && existing !== sku) {
         issues.push({

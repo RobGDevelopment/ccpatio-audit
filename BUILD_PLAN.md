@@ -1,18 +1,18 @@
-# BUILD_PLAN — mia-pdf-aluminum-ground-truth
+# BUILD_PLAN — phase1-handoff-p0-remediation
 
-**Phase ID:** `mia-pdf-aluminum-ground-truth`  
-**Base ref:** `a7e6f15`  
-**Target test:** `npx vitest run tests/mia-aluminum-pdf-pricing.test.ts tests/phase1-csv-and-smoke.test.ts`  
-**Expected blast radius:** set to match final git diff file count before QCA
-
-## Intent
-Mia's Aluminum E-Commerce Price List PDF is the **authoritative website Regular price** (Oct 1, 2026 increased base + manual `$0`/`$5` rounding). Disregard storefront MSRP / formula-only `×1.10`. Commit a deterministic JSON fixture (never the 10 MB PDF), hydrate Phase 1 (`102` SOW / `107` Woo) + Phase 2 (`162`) + Hub library with zero-data-loss COALESCE, flag missing Milan ottomans + odd-dollar PDF rows for Mia spot-check, and align the GHL portal so **Website Price (Aluminum)** is the single prominent editable column.
+**Phase ID:** `phase1-handoff-p0-remediation`  
+**Intent:** Flip every pre-handoff Gate 1–7 to PASS/GO via surgical P0/P1 fixes (aluminum Regular price, unsigned Woo ping, APF parser, Steel scrub + ACF prices + dims, strict 107/107 Katana-bind, real Hub FAB/PWD contract).
 
 ## Allowed files
+
 See `.cursor/phase.lock` `allowed_files`.
 
 ## Acceptance
-1. Fixture `data_migration/Pricing/mia-aluminum-pricelist-2026-11-19.json` holds ~258 parsed PDF rows; `docs/AluminumUpdate/*.pdf` is gitignored.
-2. Phase 1 Woo Regular prices match Mia PDF (`Bravada Club Chair` = `2530`, etc.); 4 Milan ottomans use nearest-`$5` formula + `missing_from_mia_pdf`; 6 odd-dollar PDF rows keep exact cents + `odd_dollar_in_pdf`.
-3. Portal: Website Price (Aluminum) prominent; Steel MSRP secondary/tooltip; **Needs Mia Spot-Check (7)** filter + 1-click Round to Nearest `$5`; New Product wizard defaults to `Math.round((base * 1.10) / 5) * 5`.
-4. `npm run qa:lifecycle` exit 0; QCA `verdict: CERTIFIED`, `audit_exit: 0`, `blastRadius.status: PASS`.
+
+1. Live CSV / Handoff / overlay emit `aluminum_msrp` Regular price (`FIN-BRV-CLB-CHA-34X34` = 2530).
+2. Unsigned `POST webhook_id=999` → 200 `{ok:true,ping:true}`; unsigned JSON → 401.
+3. Human APF keys/values resolve to Hub `FAB-*` / `PWD-*`.
+4. Zero `Steel Frame` on storefront CSV; ACF prices corrected; 107/107 L×W×H.
+5. Strict `requireKatanaIds: true` → **107 / 107 PASS**.
+6. Handoff + partner portal show real 24 fabrics + 6 powders.
+7. `npm run qa:lifecycle` exit 0 + QCA `CERTIFIED`.

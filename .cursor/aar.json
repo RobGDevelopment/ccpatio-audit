@@ -1,44 +1,32 @@
 {
-  "phase_id": "mia-pdf-aluminum-ground-truth",
-  "base_ref": "a7e6f15",
-  "blast_radius": 20,
+  "phase_id": "phase1-handoff-p0-remediation",
+  "base_ref": "823a324",
+  "blast_radius": 23,
   "counts": {
-    "files": 20,
-    "tracked": 16,
-    "untracked": 4,
-    "insertions": 407,
-    "deletions": 107
+    "files": 23,
+    "tracked": 21,
+    "untracked": 2,
+    "insertions": 710,
+    "deletions": 139
   },
   "files": [
     {
       "status": "??",
-      "path": "data_migration/Pricing/mia-aluminum-pricelist-2026-11-19.json",
+      "path": "scripts/ops/remediate-phase1-handoff-p0.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "scripts/ops/ingest-mia-aluminum-pdf.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/ecommerce/mia-aluminum-pricing.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/mia-aluminum-pdf-pricing.test.ts",
+      "path": "tests/phase1-p0-remediation.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 12,
-      "deletions": 15
+      "insertions": 33,
+      "deletions": 16
     },
     {
       "status": "M",
@@ -48,95 +36,123 @@
     },
     {
       "status": "M",
-      "path": ".gitignore",
-      "insertions": 4,
-      "deletions": 0
+      "path": "BUILD_PLAN.md",
+      "insertions": 12,
+      "deletions": 12
     },
     {
       "status": "M",
-      "path": "BUILD_PLAN.md",
-      "insertions": 10,
-      "deletions": 11
+      "path": "scripts/ops/enable-phase1-hub-data.ts",
+      "insertions": 47,
+      "deletions": 4
     },
     {
       "status": "M",
       "path": "scripts/ops/generate-primeview-phase1-csv.ts",
-      "insertions": 72,
-      "deletions": 10
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 66,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/NewProductDrawer.tsx",
-      "insertions": 7,
-      "deletions": 5
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase1PortalViews.tsx",
-      "insertions": 86,
-      "deletions": 31
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase2PortalViews.tsx",
-      "insertions": 33,
+      "insertions": 119,
       "deletions": 6
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/page.tsx",
-      "insertions": 29,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/server/ecommerce/alu10-pricing.ts",
-      "insertions": 12,
+      "path": "scripts/ops/ingest-mia-aluminum-pdf.ts",
+      "insertions": 8,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": "src/server/ecommerce/auto-sku-engine.ts",
-      "insertions": 23,
-      "deletions": 10
-    },
-    {
-      "status": "M",
-      "path": "src/server/ecommerce/two-tab-portal.ts",
-      "insertions": 35,
+      "path": "src/app/api/webhooks/woocommerce/route.ts",
+      "insertions": 7,
       "deletions": 4
     },
     {
       "status": "M",
-      "path": "src/server/woocommerce/handoff-spec-generator.ts",
-      "insertions": 2,
+      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase1PortalViews.tsx",
+      "insertions": 25,
       "deletions": 2
     },
     {
       "status": "M",
-      "path": "tests/alu10-pricing-and-two-tab.test.ts",
-      "insertions": 7,
-      "deletions": 5
+      "path": "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx",
+      "insertions": 63,
+      "deletions": 0
     },
     {
       "status": "M",
-      "path": "tests/phase1-csv-and-smoke.test.ts",
-      "insertions": 7,
-      "deletions": 4
+      "path": "src/server/ecommerce/mia-aluminum-pricing.ts",
+      "insertions": 1,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/finish-keys.ts",
+      "insertions": 144,
+      "deletions": 12
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/handoff-spec-generator.ts",
+      "insertions": 27,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/ingress.ts",
+      "insertions": 15,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/line-specs.ts",
+      "insertions": 10,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/sku-resolver.ts",
+      "insertions": 18,
+      "deletions": 13
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-finish-keys.test.ts",
+      "insertions": 20,
+      "deletions": 12
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-line-specs.test.ts",
+      "insertions": 20,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-sku-resolver.test.ts",
+      "insertions": 44,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-webhook-receiver.test.ts",
+      "insertions": 21,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-webhook-route.test.ts",
+      "insertions": 36,
+      "deletions": 7
+    },
+    {
+      "status": "M",
+      "path": "tsconfig.json",
+      "insertions": 38,
+      "deletions": 37
     }
   ],
   "untracked": [
-    "data_migration/Pricing/mia-aluminum-pricelist-2026-11-19.json",
-    "scripts/ops/ingest-mia-aluminum-pdf.ts",
-    "src/server/ecommerce/mia-aluminum-pricing.ts",
-    "tests/mia-aluminum-pdf-pricing.test.ts"
+    "scripts/ops/remediate-phase1-handoff-p0.ts",
+    "tests/phase1-p0-remediation.test.ts"
   ],
-  "file_list_sha256": "1a2c3ca29656a02c9e70fd6e8117ae1e692c3233aacfa01b7eb76daad0ba7c08",
+  "file_list_sha256": "4230ee74d9ab4221a8806f910bffb7475db9c2b8c1bcc8800fb8e2a7a06eb59f",
   "notes": "Aluminum-only +10% pricing engine, zero-data-loss Phase1/2 hydrate, MET-ALUM resolver default + steel quarantine, Katana weld stamp, Mia 2-tab portal controls. QCA CERTIFIED. qa:lifecycle exit 0. qa:phase14-ledger-live passed (no QBO sandbox token refresh needed)."
 }

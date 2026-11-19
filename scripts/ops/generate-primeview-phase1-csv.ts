@@ -30,6 +30,7 @@ import {
 import { getSupabaseAdmin, PRODUCT_IMAGES_BUCKET } from "../../src/lib/supabase-storage";
 import { getSupabaseUrl } from "../../src/lib/supabase-env";
 import {
+  PHASE1_DIM_OVERRIDES_IN,
   PHASE1_FABRICS,
   PHASE1_RESALE_SKUS,
   correctedDims,
@@ -61,7 +62,7 @@ const WOO_EXPORT_PATH = join(
 const OUT_CSV = join(TMP, "primeview-phase1-102-import.csv");
 const OUT_HANDOFF = join(TMP, "PRIMEVIEW_PHASE1_HANDOFF_SPEC.md");
 const OUT_REPORT = join(TMP, "primeview-phase1-csv-report.json");
-const MIA_FIXTURE_PATH = join(process.cwd(), MIA_PDF_FIXTURE_REL);
+const MIA_FIXTURE_PATH = join(/*turbopackIgnore: true*/ process.cwd(), MIA_PDF_FIXTURE_REL);
 
 function loadMiaFixture(): MiaPdfFixture | null {
   if (!existsSync(MIA_FIXTURE_PATH)) return null;
@@ -572,6 +573,103 @@ function forceBlankW3d(row: CsvRow): void {
   }
 }
 
+/** Authoritative ACF add-on retail prices (Mia PDF accessories). */
+export const PHASE1_ACF_ADDON_PRICES = {
+  coated_led_weight_price: "59.99",
+  pillow_for_loungers_w_pocket_price: "154.99",
+  umbrella_cover_lido: "100",
+  umbrella_cover_cantilever: "150",
+} as const;
+
+const STEEL_COPY_RE = /steel\s+or\s+aluminum/gi;
+const STEEL_FRAME_RE = /\bSteel Frame\b/gi;
+const AMERICAN_STEEL_ALU_RE = /American steel\s*\/\s*aluminum/gi;
+const AMERICAN_STEEL_OR_ALU_RE = /American steel or aluminum/gi;
+const STREAMLINED_STEEL_FRAME_RE = /streamlined steel frame/gi;
+
+/** Strip every storefront Steel Frame option / default and scrub copy. */
+export function scrubSteelFromCsvRow(row: CsvRow): void {
+  for (let i = 1; i <= 6; i++) {
+    const nameKey = `Attribute ${i} name`;
+    const valsKey = `Attribute ${i} value(s)`;
+    const defKey = `Attribute ${i} default`;
+    const name = row[nameKey] ?? "";
+    if (/frame/i.test(name)) {
+      row[valsKey] = "Aluminum Frame";
+      row[defKey] = "Aluminum Frame";
+      continue;
+    }
+    // Non-frame attributes: still drop any stray "Steel Frame" tokens
+    for (const key of [valsKey, defKey]) {
+      const val = row[key] ?? "";
+      if (!val || !/Steel/i.test(val)) continue;
+      const parts = val
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s && !/^Steel Frame$/i.test(s) && !/^Steel$/i.test(s));
+      row[key] = parts.join(", ");
+    }
+  }
+  for (const key of Object.keys(row)) {
+    const val = row[key] ?? "";
+    if (!val) continue;
+    if (
+      /Description|Short description|Meta: product_details|Meta: additional_details|Meta: details_/i.test(
+        key,
+      )
+    ) {
+      row[key] = val
+        .replace(STEEL_COPY_RE, "powder-coated aluminum")
+        .replace(AMERICAN_STEEL_OR_ALU_RE, "powder-coated aluminum")
+        .replace(AMERICAN_STEEL_ALU_RE, "powder-coated aluminum")
+        .replace(STREAMLINED_STEEL_FRAME_RE, "streamlined powder-coated aluminum frame")
+        .replace(STEEL_FRAME_RE, "Aluminum Frame");
+    }
+  }
+}
+
+/** Correct swapped / collapsed ACF add-on price metas on parent rows. */
+export function applyAcfAddonPriceFixes(row: CsvRow, parentId: string): void {
+  const setMeta = (key: string, value: string) => {
+    if (`Meta: ${key}` in row || true) {
+      row[`Meta: ${key}`] = value;
+    }
+  };
+  // Global Tenjam accessory prices (correct swap)
+  if (row["Meta: coated_led_weight_price"] || row["Meta: pillow_for_loungers_w_pocket_price"]) {
+    setMeta("coated_led_weight_price", PHASE1_ACF_ADDON_PRICES.coated_led_weight_price);
+    setMeta(
+      "pillow_for_loungers_w_pocket_price",
+      PHASE1_ACF_ADDON_PRICES.pillow_for_loungers_w_pocket_price,
+    );
+  }
+  // Always stamp correct values when either key exists OR product is umbrella/tenjam
+  const sku = (row.SKU || "").toUpperCase();
+  const name = `${row.Name || ""} ${sku}`;
+  if (/tenjam|laylo|shayz|woosah|freelo|moon|ripple/i.test(name) || /TJM/i.test(sku)) {
+    setMeta("coated_led_weight_price", PHASE1_ACF_ADDON_PRICES.coated_led_weight_price);
+    setMeta(
+      "pillow_for_loungers_w_pocket_price",
+      PHASE1_ACF_ADDON_PRICES.pillow_for_loungers_w_pocket_price,
+    );
+  }
+  if (parentId === "28337" || sku === "FIN-MLN-UMB" || /lido umbrella/i.test(name)) {
+    setMeta("umbrella_cover_price", PHASE1_ACF_ADDON_PRICES.umbrella_cover_lido);
+  }
+  if (parentId === "28343" || sku === "FIN-CAN-UMB" || /cantilever/i.test(name)) {
+    setMeta("umbrella_cover_price", PHASE1_ACF_ADDON_PRICES.umbrella_cover_cantilever);
+  }
+}
+
+/** Preserve Woo Short description; synthesize a clean aluminum summary when blank. */
+export function ensureShortDescription(row: CsvRow): void {
+  const existing = (row["Short description"] || "").trim();
+  if (existing) return;
+  const name = (row.Name || "CC Patio piece").trim();
+  row["Short description"] =
+    `${name} — powder-coated aluminum outdoor furniture from CC Patio's Phoenix collection, built for desert sun and year-round entertaining.`;
+}
+
 function applyPurchasableMetrics(
   row: CsvRow,
   opts: {
@@ -663,7 +761,9 @@ export async function buildPhase1ImportBundle(opts?: {
   if (sow.length !== 102) throw new Error(`Expected 102 SOW rows, got ${sow.length}`);
 
   const db = getDb();
-  const skus = [...new Set(sow.map((s) => s.sku))];
+  const skus = [
+    ...new Set([...sow.map((s) => s.sku), ...Object.keys(PHASE1_DIM_OVERRIDES_IN)]),
+  ];
   const fgc = await db
     .select({
       sku: finished_goods_catalog.global_sku,
@@ -746,8 +846,8 @@ export async function buildPhase1ImportBundle(opts?: {
     }
     parentIdsNeeded.add(resolved.parentId);
 
-    const hub = fgcBySku.get(row.sku);
-    const dims = correctedDims(row.sku, row);
+    const hub = fgcBySku.get(row.sku) ?? fgcBySku.get(resolved.wooSku);
+    const dims = correctedDims(row.sku, row, resolved.wooSku);
     const steelRaw =
       parseMoney(row.msrp) ??
       listingBySku.get(row.sku)?.steel ??
@@ -963,8 +1063,8 @@ export async function buildPhase1ImportBundle(opts?: {
     } else {
       const override = simpleParentOverrides.get(pid);
       if (override) {
-        const dims = correctedDims(override.sow.sku, override.sow);
-        const hub = fgcBySku.get(override.sow.sku);
+        const dims = correctedDims(override.sow.sku, override.sow, override.sku);
+        const hub = fgcBySku.get(override.sku) ?? fgcBySku.get(override.sow.sku);
         const steelRaw =
           parseMoney(override.sow.msrp) ??
           listingBySku.get(override.sow.sku)?.steel ??
@@ -1001,6 +1101,19 @@ export async function buildPhase1ImportBundle(opts?: {
       }
     }
     parentRows.push(out);
+  }
+
+  // Aluminum-only storefront scrub + ACF price fixes + short descriptions on every row
+  for (const row of parentRows) {
+    scrubSteelFromCsvRow(row);
+    const pid = row.ID || "";
+    applyAcfAddonPriceFixes(row, pid);
+    ensureShortDescription(row);
+  }
+  for (const row of variationRows) {
+    scrubSteelFromCsvRow(row);
+    const parentRef = (row.Parent || "").replace(/^id:/i, "");
+    applyAcfAddonPriceFixes(row, parentRef);
   }
 
   const allRows = [...parentRows, ...variationRows];

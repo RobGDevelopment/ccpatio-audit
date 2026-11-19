@@ -169,12 +169,30 @@ describe("extractWooLineSpecs", () => {
     expect(different.issues[0]!.message).toContain("given twice");
   });
 
+  it("human APF keys + embedded/display finish values resolve to Hub SKUs", () => {
+    const { specs, issues } = extractWooLineSpecs(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [
+              { key: "Select Fabric", value: "Ash (FAB-ACT-ASH)" },
+              { key: "Select Powder Coat", value: "Black (PWD-BLACK)" },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(issues).toEqual([]);
+    expect(specs[0]!.finishes.fabric).toBe("FAB-ACT-ASH");
+    expect(specs[0]!.finishes.powder_coat).toBe("PWD-BLACK");
+  });
+
   it("a rejected near-miss key names the accepted keys in its message", () => {
     const { issues } = extractWooLineSpecs(
-      wooOrder({ line_items: [wooLine({ meta_data: [{ key: "cushion_fabric", value: "FAB-A" }] })] }),
+      wooOrder({ line_items: [wooLine({ meta_data: [{ key: "stone", value: "DKT-X" }] })] }),
     );
     expect(issues[0]!.message).toContain("fabric, powder_coat, frame, dekton");
-    expect(issues[0]!.message).toContain("Use: fabric");
+    expect(issues[0]!.message).toContain("Use: (not supported)");
   });
 
   it("finish keys at ORDER level are an issue (ambiguous which line)", () => {
