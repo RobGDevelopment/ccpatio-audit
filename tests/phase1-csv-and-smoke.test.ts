@@ -54,16 +54,20 @@ describe("phase1 csv structural assertions", () => {
     expect(existsSync(HANDOFF_PATH), "tmp/PRIMEVIEW_PHASE1_HANDOFF_SPEC.md missing").toBe(true);
   });
 
-  it("has exactly 169 headers matching product_export_import_headers.csv (ID without BOM)", () => {
+  it("has exactly 173 headers (169 PrimeView + 4 native 3D/finish Meta) matching product_export_import_headers.csv", () => {
     const expected = loadHeaders();
-    expect(expected).toHaveLength(169);
+    expect(expected).toHaveLength(173);
     expect(expected[0]).toBe("ID");
 
     const { headers } = loadGeneratedCsv();
-    expect(headers).toHaveLength(169);
+    expect(headers).toHaveLength(173);
     expect(headers[0]).toBe("ID");
     expect(headers).toEqual(expected);
     expect(headers).toContain("acf_fabric_swatches_json");
+    expect(headers).toContain("Meta: acf_powder_swatches_json");
+    expect(headers).toContain("Meta: acf_dekton_swatches_json");
+    expect(headers).toContain("Meta: acf_3d_model_glb_url");
+    expect(headers).toContain("Meta: acf_3d_model_usdz_url");
     expect(headers).toContain("Meta: _w3d_enabled");
   });
 

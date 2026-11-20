@@ -34,6 +34,22 @@ export const PHASE1_POWDERS = [
   "PWD-OIL-RUB-BRONZE", "PWD-WILD-RICE",
 ] as const;
 
+/**
+ * Curated Dekton (DEC-*) swatch colors for the Swatches & Finishes studio. Hex values are
+ * visual approximations until photoshoot-grade textures are uploaded.
+ * Defined here (not in server/assets) so client bundles and finish-assets share one list.
+ */
+export const PHASE1_DEKTONS = [
+  { sku: "DEC-VEGHA", name: "Vegha", hex: "#8C867D" },
+  { sku: "DEC-BOREA", name: "Borea", hex: "#5E5A56" },
+  { sku: "DEC-NILIUM", name: "Nilium", hex: "#4A4D52" },
+  { sku: "DEC-KAIROS", name: "Kairos", hex: "#8F8F8C" },
+  { sku: "DEC-PORTUM", name: "Portum", hex: "#9A978F" },
+  { sku: "DEC-FIORD", name: "Fiord", hex: "#7A7D7B" },
+  { sku: "DEC-BLAZE", name: "Blaze", hex: "#B5623A" },
+  { sku: "DEC-NAYLA", name: "Nayla", hex: "#6B6F70" },
+] as const;
+
 /** Storefront is Aluminum-only; Steel remains a factory material but is hidden on web. */
 export const PHASE1_FRAME_FINISHES = ["MET-ALUM"] as const;
 export const PHASE1_FRAME_FINISHES_FACTORY = ["MET-STEEL", "MET-ALUM"] as const;

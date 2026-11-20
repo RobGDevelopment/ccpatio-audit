@@ -1,74 +1,182 @@
 {
-  "phase_id": "phase1-redteam-closeout",
-  "base_ref": "9f33748",
-  "blast_radius": 22,
+  "phase_id": "3d-glb-and-hires-swatch-studio",
+  "base_ref": "7c3946c",
+  "blast_radius": 36,
   "counts": {
-    "files": 22,
-    "tracked": 17,
-    "untracked": 5,
-    "insertions": 471,
-    "deletions": 144
+    "files": 36,
+    "tracked": 22,
+    "untracked": 14,
+    "insertions": 1836,
+    "deletions": 243
   },
   "files": [
     {
       "status": "??",
-      "path": "scripts/ops/remediate-phase1-redteam-closeout.ts",
+      "path": "scripts/ops/ensure-asset-studio-buckets.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/app/api/ecommerce/woo-sync/route.ts",
+      "path": "scripts/ops/seed-ecommerce-finish-assets.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/app/api/embed/refresh-token/route.ts",
+      "path": "src/app/api/assets/commit-upload/route.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/db/migrations/0059_ecommerce_listings_woo_sku.sql",
+      "path": "src/app/api/assets/presign-upload/route.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/phase1-redteam-closeout.test.ts",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/Product3dMediaDrawer.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/SwatchesFinishesDrawer.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/assets/asset-studio-auth.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/assets/ensure-buckets.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/assets/finish-assets.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/assets/presign-policy.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/db/migrations/0060_ecommerce_finish_assets_and_3d.sql",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "supabase/migrations/20261120000000_asset_studio_buckets.sql",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/e2e/swatch-3d-asset-studio.spec.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/swatch-and-3d-asset-studio.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 22,
-      "deletions": 12
+      "insertions": 31,
+      "deletions": 39
     },
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
-      "insertions": 2,
+      "insertions": 3,
       "deletions": 2
     },
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 17,
-      "deletions": 11
+      "insertions": 15,
+      "deletions": 20
+    },
+    {
+      "status": "M",
+      "path": "data_migration/Primeview/product_export_import_headers.csv",
+      "insertions": 1,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "scripts/ops/generate-primeview-phase1-csv.ts",
+      "insertions": 81,
+      "deletions": 6
+    },
+    {
+      "status": "M",
+      "path": "src/app/api/partner/primeview-handoff/download/route.ts",
+      "insertions": 29,
+      "deletions": 2
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 43,
-      "deletions": 42
+      "insertions": 305,
+      "deletions": 0
     },
     {
       "status": "M",
-      "path": "src/components/embed/EmbedSessionProvider.tsx",
-      "insertions": 51,
-      "deletions": 4
+      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase1PortalViews.tsx",
+      "insertions": 47,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase2PortalViews.tsx",
+      "insertions": 12,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/page.tsx",
+      "insertions": 29,
+      "deletions": 6
+    },
+    {
+      "status": "M",
+      "path": "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx",
+      "insertions": 942,
+      "deletions": 147
+    },
+    {
+      "status": "M",
+      "path": "src/app/partner/primeview-handoff/page.tsx",
+      "insertions": 91,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/lib/primeview-handoff-auth.ts",
+      "insertions": 1,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/lib/supabase-storage.ts",
+      "insertions": 47,
+      "deletions": 0
     },
     {
       "status": "M",
@@ -79,77 +187,62 @@
     {
       "status": "M",
       "path": "src/server/db/schema.ts",
-      "insertions": 10,
+      "insertions": 52,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": "src/server/woocommerce/finish-keys.ts",
-      "insertions": 42,
-      "deletions": 3
+      "path": "src/server/ecommerce/phase1-portal.ts",
+      "insertions": 16,
+      "deletions": 0
     },
     {
       "status": "M",
       "path": "src/server/woocommerce/handoff-spec-generator.ts",
-      "insertions": 49,
-      "deletions": 30
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/line-specs.ts",
-      "insertions": 33,
-      "deletions": 17
+      "insertions": 35,
+      "deletions": 4
     },
     {
       "status": "M",
       "path": "src/server/woocommerce/woo-catalog-sync.ts",
-      "insertions": 81,
-      "deletions": 20
+      "insertions": 57,
+      "deletions": 9
     },
     {
       "status": "M",
-      "path": "tests/path-a-finalize.test.ts",
-      "insertions": 1,
+      "path": "tests/ghl-inventory-and-woo-sync.test.ts",
+      "insertions": 24,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": "tests/phase1-bom-restore.test.ts",
-      "insertions": 32,
-      "deletions": 2
+      "path": "tests/phase1-csv-and-smoke.test.ts",
+      "insertions": 7,
+      "deletions": 3
     },
     {
       "status": "M",
-      "path": "tests/publish-idempotency.test.ts",
-      "insertions": 2,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-finish-keys.test.ts",
-      "insertions": 33,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-line-specs.test.ts",
-      "insertions": 34,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-sku-resolver-pglite.test.ts",
-      "insertions": 12,
+      "path": "tests/primeview-handoff-portal.test.ts",
+      "insertions": 4,
       "deletions": 0
     }
   ],
   "untracked": [
-    "scripts/ops/remediate-phase1-redteam-closeout.ts",
-    "src/app/api/ecommerce/woo-sync/route.ts",
-    "src/app/api/embed/refresh-token/route.ts",
-    "src/server/db/migrations/0059_ecommerce_listings_woo_sku.sql",
-    "tests/phase1-redteam-closeout.test.ts"
+    "scripts/ops/ensure-asset-studio-buckets.ts",
+    "scripts/ops/seed-ecommerce-finish-assets.ts",
+    "src/app/api/assets/commit-upload/route.ts",
+    "src/app/api/assets/presign-upload/route.ts",
+    "src/app/embed/admin/master-catalog/ecommerce/Product3dMediaDrawer.tsx",
+    "src/app/embed/admin/master-catalog/ecommerce/SwatchesFinishesDrawer.tsx",
+    "src/server/assets/asset-studio-auth.ts",
+    "src/server/assets/ensure-buckets.ts",
+    "src/server/assets/finish-assets.ts",
+    "src/server/assets/presign-policy.ts",
+    "src/server/db/migrations/0060_ecommerce_finish_assets_and_3d.sql",
+    "supabase/migrations/20261120000000_asset_studio_buckets.sql",
+    "tests/e2e/swatch-3d-asset-studio.spec.ts",
+    "tests/swatch-and-3d-asset-studio.test.ts"
   ],
-  "file_list_sha256": "84e9e064820ae5651242fe13ba6b3016b0fdcce470a98a1cd876f7c375009de7",
-  "notes": "Close all 7 independent red-team HOLD findings: woo_sku 1:1 listings + Mia price parity, Published=1, Tab1/Tab2 isolation, Brizy-safe batched Woo sync, APF (+$X.XX), embed token refresh, Vitest green."
+  "file_list_sha256": "513074899309864a6d1c44a6e1a4715acf3a6ec1cd57ca2521fa5cfc394790aa",
+  "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }

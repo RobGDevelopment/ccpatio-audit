@@ -1506,6 +1506,17 @@ export const ecommerce_listings = pgTable(
     version: integer("version").notNull().default(1),
     archived_at: timestamp("archived_at"),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
+    /** Native 3D slots (phase 3d-glb-and-hires-swatch-studio). Never sent in Woo images[]. */
+    model_3d_glb_url: text("model_3d_glb_url"),
+    model_3d_usdz_url: text("model_3d_usdz_url"),
+    model_3d_poster_url: text("model_3d_poster_url"),
+    model_3d_material_slots: jsonb("model_3d_material_slots")
+      .$type<unknown[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    model_3d_file_size: integer("model_3d_file_size"),
+    model_3d_uploaded_by: text("model_3d_uploaded_by"),
+    model_3d_updated_at: timestamp("model_3d_updated_at", { withTimezone: true }),
   },
   (table) => [
     index("ecommerce_listings_global_sku_idx").on(table.global_sku),
@@ -1532,6 +1543,47 @@ export const ecommerce_roster_gaps = pgTable("ecommerce_roster_gaps", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
+/**
+ * High-res swatch / texture registry for fabrics (FAB-*), powders (PWD-*) and Dekton (DEC-*).
+ * Seeded non-destructively; operators upload photoshoot-grade assets via presigned URLs.
+ */
+export const ecommerce_finish_assets = pgTable(
+  "ecommerce_finish_assets",
+  {
+    sku: text("sku").primaryKey(),
+    finish_category: text("finish_category")
+      .$type<"fabric" | "powder" | "dekton">()
+      .notNull(),
+    display_name: text("display_name").notNull(),
+    hex_code: text("hex_code"),
+    swatch_thumb_url: text("swatch_thumb_url"),
+    texture_2k_url: text("texture_2k_url"),
+    normal_map_url: text("normal_map_url"),
+    roughness_map_url: text("roughness_map_url"),
+    sample_width_in: numeric("sample_width_in", { precision: 10, scale: 3 }),
+    sample_height_in: numeric("sample_height_in", { precision: 10, scale: 3 }),
+    pattern_repeat_w_in: numeric("pattern_repeat_w_in", { precision: 10, scale: 3 }),
+    pattern_repeat_h_in: numeric("pattern_repeat_h_in", { precision: 10, scale: 3 }),
+    quality_status: text("quality_status")
+      .$type<"placeholder_lowres" | "photoshoot_verified">()
+      .notNull()
+      .default("placeholder_lowres"),
+    uploaded_by: text("uploaded_by"),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      "ecommerce_finish_assets_finish_category_check",
+      sql`${table.finish_category} IN ('fabric','powder','dekton')`,
+    ),
+    check(
+      "ecommerce_finish_assets_quality_status_check",
+      sql`${table.quality_status} IN ('placeholder_lowres','photoshoot_verified')`,
+    ),
+  ],
+);
+
+export type EcommerceFinishAssetRow = typeof ecommerce_finish_assets.$inferSelect;
 export type EcommerceListingRow = typeof ecommerce_listings.$inferSelect;
 export type EcommerceRosterGapRow = typeof ecommerce_roster_gaps.$inferSelect;
 

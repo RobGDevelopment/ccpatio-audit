@@ -14,6 +14,7 @@ import {
   FRAME_POLICY_ALU10,
 } from "@/server/ecommerce/alu10-pricing";
 import type { EcommerceListing } from "../actions";
+import { Model3dCell } from "./Phase1PortalViews";
 
 export type Phase2Listing = EcommerceListing & {
   attributes?: Record<string, unknown> | null;
@@ -73,10 +74,12 @@ export function Phase2StagingGrid({
   listings,
   onPromote,
   onHeal,
+  onOpen3d,
 }: {
   listings: Phase2Listing[];
   onPromote: (sku: string) => void;
   onHeal: (sku: string) => void;
+  onOpen3d?: (sku: string, productName: string) => void;
 }) {
   return (
     <div className="overflow-auto rounded-2xl border border-slate-200 bg-white" data-testid="phase2-grid">
@@ -88,6 +91,7 @@ export function Phase2StagingGrid({
             <th className="px-3 py-2">Website Price (Aluminum)</th>
             <th className="px-3 py-2">Steel (ref)</th>
             <th className="px-3 py-2">Readiness</th>
+            <th className="px-3 py-2">3D</th>
             <th className="px-3 py-2 text-right">Actions</th>
           </tr>
         </thead>
@@ -144,6 +148,13 @@ export function Phase2StagingGrid({
                     />
                   </div>
                 </td>
+                <td className="px-3 py-2">
+                  <Model3dCell
+                    glbUrl={row.model3dGlbUrl}
+                    sku={row.wooSku}
+                    onOpen={onOpen3d ? () => onOpen3d(row.wooSku, row.productName) : undefined}
+                  />
+                </td>
                 <td className="px-3 py-2 text-right">
                   <div className="flex justify-end gap-2">
                     <button
@@ -168,7 +179,7 @@ export function Phase2StagingGrid({
           })}
           {listings.length === 0 && (
             <tr>
-              <td colSpan={6} className="px-3 py-8 text-center text-slate-400">
+              <td colSpan={7} className="px-3 py-8 text-center text-slate-400">
                 No staging rows for this filter.
               </td>
             </tr>

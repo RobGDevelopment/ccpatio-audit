@@ -91,6 +91,11 @@ import {
   buildAluAttributePatch,
 } from "@/server/ecommerce/alu10-pricing";
 import { buildMiaAluminumPriceListCsv } from "@/server/ecommerce/two-tab-portal";
+import {
+  listFinishAssets,
+  resolveListing3dTarget,
+  updateFinishAsset,
+} from "@/server/assets/finish-assets";
 
 /** Woo Regular price prefers aluminum_msrp (baked +10%); falls back to steel. */
 function wooRegularFromListing(s: EcommerceListing): number | null {
@@ -367,6 +372,14 @@ export interface EcommerceListing {
     wholesaleCost: string | null;
   } | null;
   status?: "red" | "amber" | "green";
+  /** Native 3D slots (phase 3d-glb-and-hires-swatch-studio). Never sent in Woo images[]. */
+  model3dGlbUrl?: string | null;
+  model3dUsdzUrl?: string | null;
+  model3dPosterUrl?: string | null;
+  model3dFileSize?: number | null;
+  model3dUploadedBy?: string | null;
+  model3dUpdatedAt?: string | null;
+  model3dMaterialSlots?: unknown[];
 }
 
 export interface EcommerceRosterGap {
@@ -425,6 +438,13 @@ interface ListingFields {
   vendorName: string | null;
   vendorSku: string | null;
   wholesaleCost: string | null;
+  model3dGlbUrl?: string | null;
+  model3dUsdzUrl?: string | null;
+  model3dPosterUrl?: string | null;
+  model3dFileSize?: number | null;
+  model3dUploadedBy?: string | null;
+  model3dUpdatedAt?: Date | null;
+  model3dMaterialSlots?: unknown[] | null;
 }
 
 /** A null steel MSRP displays as an em dash and sorts last (never "$0.00"). */
@@ -481,6 +501,13 @@ function toListing(r: ListingFields, factory: FactoryReadiness): EcommerceListin
       vendorSku: r.vendorSku,
       wholesaleCost: r.wholesaleCost,
     } : null,
+    model3dGlbUrl: r.model3dGlbUrl ?? null,
+    model3dUsdzUrl: r.model3dUsdzUrl ?? null,
+    model3dPosterUrl: r.model3dPosterUrl ?? null,
+    model3dFileSize: r.model3dFileSize ?? null,
+    model3dUploadedBy: r.model3dUploadedBy ?? null,
+    model3dUpdatedAt: r.model3dUpdatedAt ? r.model3dUpdatedAt.toISOString() : null,
+    model3dMaterialSlots: Array.isArray(r.model3dMaterialSlots) ? r.model3dMaterialSlots : [],
   };
 }
 
@@ -709,6 +736,13 @@ export async function getEcommerceRoster(): Promise<EcommerceRoster> {
         vendorName: third_party_sources.vendor_name,
         vendorSku: third_party_sources.vendor_sku,
         wholesaleCost: third_party_sources.wholesale_cost,
+        model3dGlbUrl: ecommerce_listings.model_3d_glb_url,
+        model3dUsdzUrl: ecommerce_listings.model_3d_usdz_url,
+        model3dPosterUrl: ecommerce_listings.model_3d_poster_url,
+        model3dFileSize: ecommerce_listings.model_3d_file_size,
+        model3dUploadedBy: ecommerce_listings.model_3d_uploaded_by,
+        model3dUpdatedAt: ecommerce_listings.model_3d_updated_at,
+        model3dMaterialSlots: ecommerce_listings.model_3d_material_slots,
       })
       .from(ecommerce_listings)
       .innerJoin(
@@ -2222,6 +2256,13 @@ export async function dryRunWooPushForSku(globalSku: string) {
       (listing.wooProductId && l.wooProductId === listing.wooProductId) ||
       l.globalSku === globalSku,
   );
+  const { buildFabricSwatchesManifestJson, buildPowderSwatchesManifestJson, buildDektonSwatchesManifestJson } =
+    await import("@/server/assets/finish-assets");
+  const [fabricSwatchesJson, powderSwatchesJson, dektonSwatchesJson] = await Promise.all([
+    buildFabricSwatchesManifestJson(),
+    buildPowderSwatchesManifestJson(),
+    buildDektonSwatchesManifestJson(),
+  ]);
   const parent: HubParentInput = {
     wooProductId: listing.wooProductId,
     sku: listing.globalSku,
@@ -2231,6 +2272,11 @@ export async function dryRunWooPushForSku(globalSku: string) {
     status: listing.isWebVisible ? "publish" : "draft",
     heroImageUrl: listing.imageUrl,
     preserveExistingImages: true,
+    fabricSwatchesJson,
+    powderSwatchesJson,
+    dektonSwatchesJson,
+    model3dGlbUrl: listing.model3dGlbUrl ?? null,
+    model3dUsdzUrl: listing.model3dUsdzUrl ?? null,
     variations: siblings.map((s) => ({
       sku: s.wooSku || s.globalSku,
       regularPrice: wooRegularFromListing(s),
@@ -2242,6 +2288,8 @@ export async function dryRunWooPushForSku(globalSku: string) {
       sizeLabel: s.productName,
       katanaSku: s.globalSku,
       makeOrResale: s.thirdParty ? "Resale" : "Make",
+      model3dGlbUrl: s.model3dGlbUrl ?? null,
+      model3dUsdzUrl: s.model3dUsdzUrl ?? null,
     })),
   };
   // Dry-run never sends Brizy copy on existing products.
@@ -2262,6 +2310,13 @@ export async function pushSkuToWoo(globalSku: string) {
       (listing.wooProductId && l.wooProductId === listing.wooProductId) ||
       l.globalSku === globalSku,
   );
+  const { buildFabricSwatchesManifestJson, buildPowderSwatchesManifestJson, buildDektonSwatchesManifestJson } =
+    await import("@/server/assets/finish-assets");
+  const [fabricSwatchesJson, powderSwatchesJson, dektonSwatchesJson] = await Promise.all([
+    buildFabricSwatchesManifestJson(),
+    buildPowderSwatchesManifestJson(),
+    buildDektonSwatchesManifestJson(),
+  ]);
   const parent: HubParentInput = {
     wooProductId: listing.wooProductId,
     sku: listing.globalSku,
@@ -2271,6 +2326,11 @@ export async function pushSkuToWoo(globalSku: string) {
     status: listing.isWebVisible ? "publish" : "draft",
     heroImageUrl: null,
     preserveExistingImages: true,
+    fabricSwatchesJson,
+    powderSwatchesJson,
+    dektonSwatchesJson,
+    model3dGlbUrl: listing.model3dGlbUrl ?? null,
+    model3dUsdzUrl: listing.model3dUsdzUrl ?? null,
     variations: siblings.map((s) => ({
       sku: s.wooSku || s.globalSku,
       regularPrice: wooRegularFromListing(s),
@@ -2282,6 +2342,8 @@ export async function pushSkuToWoo(globalSku: string) {
       sizeLabel: s.productName,
       katanaSku: s.globalSku,
       makeOrResale: s.thirdParty ? "Resale" : "Make",
+      model3dGlbUrl: s.model3dGlbUrl ?? null,
+      model3dUsdzUrl: s.model3dUsdzUrl ?? null,
     })),
   };
   try {
@@ -2903,4 +2965,247 @@ export async function exportMiaAluminumPriceListCsv(): Promise<
     }),
   );
   return { ok: true, csv };
+}
+
+/* ───────────── Swatches, Finishes & 3D media (phase 3d-glb-and-hires-swatch-studio) ───────────── */
+
+export type FinishAssetCategory = "fabric" | "powder" | "dekton";
+
+/** Serializable finish registry row for the GHL drawer (numerics are plain numbers). */
+export interface FinishAssetView {
+  sku: string;
+  finishCategory: FinishAssetCategory;
+  displayName: string;
+  hexCode: string | null;
+  swatchThumbUrl: string | null;
+  texture2kUrl: string | null;
+  normalMapUrl: string | null;
+  roughnessMapUrl: string | null;
+  sampleWidthIn: number | null;
+  sampleHeightIn: number | null;
+  patternRepeatWIn: number | null;
+  patternRepeatHIn: number | null;
+  qualityStatus: "placeholder_lowres" | "photoshoot_verified";
+  uploadedBy: string | null;
+  updatedAt: string;
+}
+
+function toFinishAssetView(r: Awaited<ReturnType<typeof listFinishAssets>>[number]): FinishAssetView {
+  const n = (v: string | null) => (v == null ? null : Number(v));
+  return {
+    sku: r.sku,
+    finishCategory: r.finish_category,
+    displayName: r.display_name,
+    hexCode: r.hex_code,
+    swatchThumbUrl: r.swatch_thumb_url,
+    texture2kUrl: r.texture_2k_url,
+    normalMapUrl: r.normal_map_url,
+    roughnessMapUrl: r.roughness_map_url,
+    sampleWidthIn: n(r.sample_width_in),
+    sampleHeightIn: n(r.sample_height_in),
+    patternRepeatWIn: n(r.pattern_repeat_w_in),
+    patternRepeatHIn: n(r.pattern_repeat_h_in),
+    qualityStatus: r.quality_status,
+    uploadedBy: r.uploaded_by,
+    updatedAt: r.updated_at.toISOString(),
+  };
+}
+
+export async function listFinishAssetsForPortal(): Promise<
+  { ok: true; assets: FinishAssetView[] } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const rows = await listFinishAssets();
+    return { ok: true, assets: rows.map(toFinishAssetView) };
+  } catch (error: unknown) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not load finish assets" };
+  }
+}
+
+export interface FinishCalibrationInput {
+  sample_width_in: number | null;
+  sample_height_in: number | null;
+  pattern_repeat_w_in: number | null;
+  pattern_repeat_h_in: number | null;
+}
+
+/** Persists physical sample size + pattern repeat (inches). null clears a field. */
+export async function saveFinishCalibration(
+  sku: string,
+  input: FinishCalibrationInput,
+): Promise<{ ok: true; asset: FinishAssetView } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const row = await updateFinishAsset(sku, {
+      sample_width_in: input.sample_width_in,
+      sample_height_in: input.sample_height_in,
+      pattern_repeat_w_in: input.pattern_repeat_w_in,
+      pattern_repeat_h_in: input.pattern_repeat_h_in,
+    });
+    if (!row) return { ok: false, error: `Unknown finish SKU ${sku}` };
+    await logPimAudit({
+      operatorEmail: session.email,
+      globalSku: row.sku,
+      action: "finish_calibration_saved",
+      field: "ecommerce_finish_assets.calibration",
+      newValue: JSON.stringify(input),
+    });
+    return { ok: true, asset: toFinishAssetView(row) };
+  } catch (error: unknown) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not save calibration" };
+  }
+}
+
+const MATERIAL_SLOT_KEYS = ["frame_metal", "cushion_fabric", "stone_top", "accent_pillow"] as const;
+type MaterialSlotKey = (typeof MATERIAL_SLOT_KEYS)[number];
+
+export interface Product3dMaterialSlot {
+  slot: MaterialSlotKey;
+  /** Optional glTF material / mesh name that the viewer maps this slot to. */
+  mesh_name: string | null;
+}
+
+export interface Product3dSlots {
+  listingId: string;
+  wooSku: string | null;
+  globalSku: string;
+  glbUrl: string | null;
+  usdzUrl: string | null;
+  posterUrl: string | null;
+  fileSize: number | null;
+  uploadedBy: string | null;
+  updatedAt: string | null;
+  materialSlots: Product3dMaterialSlot[];
+}
+
+function normalizeMaterialSlots(raw: unknown): Product3dMaterialSlot[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Product3dMaterialSlot[] = [];
+  const seen = new Set<string>();
+  for (const entry of raw) {
+    const key =
+      typeof entry === "string"
+        ? entry
+        : entry && typeof entry === "object" && typeof (entry as { slot?: unknown }).slot === "string"
+          ? (entry as { slot: string }).slot
+          : null;
+    if (!key || !(MATERIAL_SLOT_KEYS as readonly string[]).includes(key) || seen.has(key)) continue;
+    seen.add(key);
+    const mesh =
+      entry && typeof entry === "object" && typeof (entry as { mesh_name?: unknown }).mesh_name === "string"
+        ? (entry as { mesh_name: string }).mesh_name.trim() || null
+        : null;
+    out.push({ slot: key as MaterialSlotKey, mesh_name: mesh });
+  }
+  return out;
+}
+
+/** Resolves a listing by Woo (storefront) SKU first, then by an unambiguous global SKU. */
+async function resolveProduct3dListing(sku: string) {
+  const trimmed = sku.trim();
+  const byWoo = await resolveListing3dTarget({ woo_sku: trimmed });
+  if (byWoo.ok) return byWoo;
+  const byGlobal = await resolveListing3dTarget({ sku: trimmed });
+  return byGlobal.ok ? byGlobal : byWoo.status === 404 ? byGlobal : byWoo;
+}
+
+export async function getProduct3dSlots(
+  wooSkuOrGlobalSku: string,
+): Promise<{ ok: true; slots: Product3dSlots } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const target = await resolveProduct3dListing(wooSkuOrGlobalSku);
+    if (!target.ok) return { ok: false, error: target.reason };
+    const l = ecommerce_listings;
+    const [row] = await getDb()
+      .select({
+        glb: l.model_3d_glb_url,
+        usdz: l.model_3d_usdz_url,
+        poster: l.model_3d_poster_url,
+        size: l.model_3d_file_size,
+        by: l.model_3d_uploaded_by,
+        at: l.model_3d_updated_at,
+        slots: l.model_3d_material_slots,
+      })
+      .from(l)
+      .where(eq(l.id, target.id))
+      .limit(1);
+    if (!row) return { ok: false, error: "Listing not found." };
+    return {
+      ok: true,
+      slots: {
+        listingId: target.id,
+        wooSku: target.woo_sku,
+        globalSku: target.global_sku,
+        glbUrl: row.glb,
+        usdzUrl: row.usdz,
+        posterUrl: row.poster,
+        fileSize: row.size,
+        uploadedBy: row.by,
+        updatedAt: row.at ? row.at.toISOString() : null,
+        materialSlots: normalizeMaterialSlots(row.slots),
+      },
+    };
+  } catch (error: unknown) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not load 3D slots" };
+  }
+}
+
+export async function saveProduct3dMaterialSlots(
+  wooSkuOrGlobalSku: string,
+  slots: { slot: string; mesh_name?: string | null }[],
+): Promise<{ ok: true; materialSlots: Product3dMaterialSlot[] } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const invalid = slots.find((s) => !(MATERIAL_SLOT_KEYS as readonly string[]).includes(s.slot));
+  if (invalid) {
+    return { ok: false, error: `Unknown material slot "${invalid.slot}". Allowed: ${MATERIAL_SLOT_KEYS.join(", ")}` };
+  }
+  try {
+    const target = await resolveProduct3dListing(wooSkuOrGlobalSku);
+    if (!target.ok) return { ok: false, error: target.reason };
+    const normalized = normalizeMaterialSlots(slots);
+    await getDb()
+      .update(ecommerce_listings)
+      .set({ model_3d_material_slots: normalized, model_3d_updated_at: new Date() })
+      .where(eq(ecommerce_listings.id, target.id));
+    await logPimAudit({
+      operatorEmail: session.email,
+      globalSku: target.global_sku,
+      action: "model_3d_material_slots_saved",
+      field: "ecommerce_listings.model_3d_material_slots",
+      newValue: JSON.stringify(normalized),
+    });
+    revalidatePath("/embed/admin/master-catalog");
+    return { ok: true, materialSlots: normalized };
+  } catch (error: unknown) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not save material slots" };
+  }
+}
+
+/**
+ * Pushes the listing's parent to WooCommerce through the existing `pushSkuToWoo` path
+ * (the 3D/finish meta mapping lives in woo-catalog-sync). Requires a stored .glb.
+ */
+export async function syncProduct3dToWoo(
+  wooSkuOrGlobalSku: string,
+): Promise<{ ok: true; globalSku: string; productId?: string | null } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const slots = await getProduct3dSlots(wooSkuOrGlobalSku);
+  if (!slots.ok) return slots;
+  if (!slots.slots.glbUrl) {
+    return { ok: false, error: "Upload a .glb before syncing 3D to WooCommerce." };
+  }
+  const pushed = await pushSkuToWoo(slots.slots.globalSku);
+  if (!pushed.ok) return { ok: false, error: pushed.error };
+  return {
+    ok: true,
+    globalSku: slots.slots.globalSku,
+    productId: (pushed as { productId?: string | null }).productId ?? null,
+  };
 }

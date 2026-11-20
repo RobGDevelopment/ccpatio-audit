@@ -48,6 +48,11 @@ import {
   resolveWebsitePriceFromFixture,
   type MiaPdfFixture,
 } from "../../src/server/ecommerce/mia-aluminum-pricing";
+import {
+  PHASE1_DEKTONS,
+  PHASE1_POWDERS,
+} from "../../src/server/ecommerce/phase1-portal";
+import { PHASE1_POWDER_DISPLAY_NAMES } from "../../src/server/woocommerce/finish-keys";
 
 const TMP = join(process.cwd(), "tmp");
 const SWATCH_DIR = join(TMP, "primeview-fabric-swatches");
@@ -352,9 +357,65 @@ export function buildFabricSwatchesJson(
         : sku);
     const color = meta?.color ?? "#CCCCCC";
     const image_url = fabricSwatchPublicUrl(sku);
-    return { label, color, image_url, fabric_sku: sku };
+    return {
+      label,
+      color,
+      image_url,
+      fabric_sku: sku,
+      // Additive PBR / physical-scale fields (defaults until photoshoot upload).
+      texture_2k_url: image_url,
+      sample_width_in: null,
+      sample_height_in: null,
+      pattern_repeat_w_in: null,
+      pattern_repeat_h_in: null,
+      quality_status: "placeholder_lowres",
+    };
   });
   return JSON.stringify(arr);
+}
+
+/** Powder-coat swatch JSON for Meta: acf_powder_swatches_json. */
+export function buildPowderSwatchesJson(): string {
+  const hex: Record<string, string> = {
+    "PWD-BLACK": "#1A1A1A",
+    "PWD-BONE": "#E3DAC9",
+    "PWD-FANUC-GRAY": "#7C7F82",
+    "PWD-LITE-BEIGE": "#CDBFA6",
+    "PWD-OIL-RUB-BRONZE": "#3B2F27",
+    "PWD-WILD-RICE": "#D6CDB5",
+  };
+  return JSON.stringify(
+    PHASE1_POWDERS.map((sku) => ({
+      label: PHASE1_POWDER_DISPLAY_NAMES[sku] ?? sku,
+      color: hex[sku] ?? "#CCCCCC",
+      image_url: null,
+      powder_sku: sku,
+      texture_2k_url: null,
+      sample_width_in: null,
+      sample_height_in: null,
+      pattern_repeat_w_in: null,
+      pattern_repeat_h_in: null,
+      quality_status: "placeholder_lowres",
+    })),
+  );
+}
+
+/** Dekton swatch JSON for Meta: acf_dekton_swatches_json. */
+export function buildDektonSwatchesJson(): string {
+  return JSON.stringify(
+    PHASE1_DEKTONS.map((d) => ({
+      label: d.name,
+      color: d.hex,
+      image_url: null,
+      dekton_sku: d.sku,
+      texture_2k_url: null,
+      sample_width_in: null,
+      sample_height_in: null,
+      pattern_repeat_w_in: null,
+      pattern_repeat_h_in: null,
+      quality_status: "placeholder_lowres",
+    })),
+  );
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
@@ -736,8 +797,9 @@ export async function buildPhase1ImportBundle(opts?: {
 }): Promise<Phase1ImportBundle> {
   const hostSwatches = opts?.hostSwatches !== false;
   const headers = loadHeaders();
-  if (headers.length !== 169) {
-    throw new Error(`Expected 169 headers, got ${headers.length}`);
+  // 169 original PrimeView headers + 4 native 3D / finish Meta columns.
+  if (headers.length !== 173) {
+    throw new Error(`Expected 173 headers, got ${headers.length}`);
   }
   if (headers[0] !== "ID") {
     throw new Error(`First header must be ID (got ${JSON.stringify(headers[0])})`);
@@ -824,6 +886,8 @@ export async function buildPhase1ImportBundle(opts?: {
   const tpsSet = new Set(tps.map((t) => t.sku));
 
   let swatchesJson = buildFabricSwatchesJson(fabricRows);
+  const powderSwatchesJson = buildPowderSwatchesJson();
+  const dektonSwatchesJson = buildDektonSwatchesJson();
   if (hostSwatches) {
     console.log("Hosting 24 fabric swatches to Supabase + tmp/primeview-fabric-swatches/...");
     const swatchHost = await hostFabricSwatches(fabricRows);
@@ -967,6 +1031,12 @@ export async function buildPhase1ImportBundle(opts?: {
       out.Parent = `id:${resolved.parentId}`;
       forceBlankW3d(out);
       out.acf_fabric_swatches_json = "";
+      out["Meta: acf_powder_swatches_json"] = "";
+      out["Meta: acf_dekton_swatches_json"] = "";
+      // Variation inherits parent .glb when Hub override is null (column left blank
+      // until PrimeView uploads; Woo REST sync resolves inheritance at push time).
+      out["Meta: acf_3d_model_glb_url"] = "";
+      out["Meta: acf_3d_model_usdz_url"] = "";
       applyPurchasableMetrics(out, {
         sku: pass.wooSku,
         price,
@@ -1036,6 +1106,10 @@ export async function buildPhase1ImportBundle(opts?: {
       });
 
     out.acf_fabric_swatches_json = parentUpholstered || upholstered ? swatchesJson : "";
+    out["Meta: acf_powder_swatches_json"] = powderSwatchesJson;
+    out["Meta: acf_dekton_swatches_json"] = dektonSwatchesJson;
+    out["Meta: acf_3d_model_glb_url"] = "";
+    out["Meta: acf_3d_model_usdz_url"] = "";
 
     if (parent.Type === "variable") {
       out.SKU = "";
@@ -1125,7 +1199,7 @@ export async function buildPhase1ImportBundle(opts?: {
   const handoffMd = `# PrimeView Phase 1 Handoff Spec (Yardi / ccpatiodev2.primeview.com)
 
 **Generated:** ${new Date().toISOString()}
-**Import file:** \`tmp/primeview-phase1-102-import.csv\` (169 columns)
+**Import file:** \`tmp/primeview-phase1-102-import.csv\` (173 columns = 169 PrimeView + 4 native 3D/finish Meta)
 **Scope:** All 102 Phase 1 SOW items → **${handoff.length} unique purchasable Woo SKUs** (${variationRows.length} variations + ${simpleParents} simple parents; Corner Sofa/Chaise emit \`-LS\`/\`-RS\` pairs)
 **Make / Resale handoff rows:** ${makeCount} / ${resaleCount}
 **Fabric swatches:** live Supabase HTTP-200 URLs + local pack \`tmp/primeview-fabric-swatches/\`
@@ -1137,12 +1211,13 @@ export async function buildPhase1ImportBundle(opts?: {
 CC Patio Hub owns catalog authority. This CSV is the turnkey WooCommerce Product CSV Import for PrimeView/Yardi on \`ccpatiodev2.primeview.com\`:
 
 - **Aluminum Website Price (Mia PDF ground truth):** \`Regular price\` = Mia's authoritative Aluminum column from the Oct 1, 2026 price list (increased base + manual \`$0\`/\`$5\` rounding). **Disregard Steel MSRP on the storefront.** Example: Bravada Club Chair = \`2530\` (not \`2080 × 1.10 = 2288\`). **DO NOT** add separate APF/ACF frame upcharges. Cabana pillows + 3P resale use Mia's non-metal column 1:1.
-- Exact 169 headers from \`product_export_import_headers.csv\` (UTF-8, \`ID\` without BOM corruption)
+- Exact 173 headers from \`product_export_import_headers.csv\` (169 original PrimeView + 4 native 3D/finish Meta; UTF-8, \`ID\` without BOM corruption)
 - Preserved PrimeView parent IDs and existing variation IDs where present
 - **107 unique purchasable SKUs** on every \`simple\` / \`variation\` row (variable parents keep blank SKU)
 - Corner Sofa (\`27674\`) + Corner Chaise (\`27687\`) Attribute 2 = **Select Facing** (\`Left-Side Facing\`, \`Right-Side Facing\`), default Left
 - Metric weights/dimensions, shipping class (\`parcel\` < 50 lb, \`freight-ltl\` ≥ 50 lb)
-- \`acf_fabric_swatches_json\` on upholstered parents (24 FAB-* swatches with **live HTTP-200** Supabase public URLs)
+- \`acf_fabric_swatches_json\` on upholstered parents (24 FAB-* swatches with **live HTTP-200** Supabase public URLs + additive \`texture_2k_url\` / physical scale fields)
+- \`Meta: acf_powder_swatches_json\`, \`Meta: acf_dekton_swatches_json\`, \`Meta: acf_3d_model_glb_url\`, \`Meta: acf_3d_model_usdz_url\` (native WebGL — never iframe; never in \`images[]\`)
 - Preserved ACF add-on price metas + RankMath/Astra/Brizy from the Oct 30 export
 - All \`Meta: _w3d_*\` columns forced blank (3D excluded from Phase 1)
 

@@ -65,6 +65,8 @@ import {
 import { isPhase1StorefrontRow } from "@/server/ecommerce/phase1-portal";
 import EcommerceGrid from "./ecommerce/EcommerceGrid";
 import NewProductDrawer from "./ecommerce/NewProductDrawer";
+import SwatchesFinishesDrawer from "./ecommerce/SwatchesFinishesDrawer";
+import Product3dMediaDrawer from "./ecommerce/Product3dMediaDrawer";
 import {
   Phase1FlatGrid,
   wooDotClass,
@@ -230,6 +232,7 @@ export default function MasterCatalogAdmin() {
   const [liveCollection, setLiveCollection] = useState("");
   const [loading, setLoading] = useState(true);
   const [swatchesOpen, setSwatchesOpen] = useState(false);
+  const [model3dTarget, setModel3dTarget] = useState<{ sku: string; name: string } | null>(null);
   const [upchargePct, setUpchargePct] = useState(DEFAULT_ALU_UPCHARGE_PCT);
   const [spotCheckOnly, setSpotCheckOnly] = useState(false);
 
@@ -619,6 +622,15 @@ export default function MasterCatalogAdmin() {
     setEcommerce((prev) => patchListings(prev, [{ id, ...patch }]));
   }
 
+  /** Re-pull Live + Phase 2 rows so the 3D badge reflects a fresh upload. */
+  async function refresh3dListings() {
+    const live = await getLiveEcommerceRows();
+    setPhase1Listings(live.listings as Phase1Listing[]);
+    setEcommerce({ listings: live.listings, gaps: live.gaps });
+    const phase2 = await getPhase2PortalRows(phase2Filter);
+    setPhase2Listings(phase2.listings as Phase2Listing[]);
+  }
+
   function openCatalogDrawer(globalSku: string) {
     const match = ecommerce?.listings.find((l) => l.globalSku === globalSku && !l.archivedAt);
     const params = new URLSearchParams(window.location.search);
@@ -922,7 +934,7 @@ export default function MasterCatalogAdmin() {
                 onClick={() => setSwatchesOpen((o) => !o)}
                 className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
               >
-                Global Swatches & Add-Ons (24 Fabrics • 6 Powders • 16 Add-Ons, Steel Hidden)
+                Swatches, Finishes &amp; Add-Ons
               </button>
               <button
                 onClick={() => setCreatingNewProduct(true)}
@@ -1080,11 +1092,6 @@ export default function MasterCatalogAdmin() {
             </div>
           </div>
 
-          {swatchesOpen && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600" data-testid="swatches-drawer">
-              Global finishes stay in a compact drawer — fabrics, powders, and ACF add-ons are not mixed into the Live catalog grid.
-            </div>
-          )}
         </div>
 
         {/* Tab 1: Live E-Commerce */}
@@ -1173,6 +1180,7 @@ export default function MasterCatalogAdmin() {
                       setPhase1Listings(live.listings as Phase1Listing[]);
                       setEcommerce({ listings: live.listings, gaps: live.gaps });
                     }}
+                    onOpen3d={(sku, name) => setModel3dTarget({ sku, name })}
                     onRoundNearest5={async (listingId) => {
                       const result = await roundListingAluminumNearest5(listingId);
                       if (!result.ok) {
@@ -1232,6 +1240,7 @@ export default function MasterCatalogAdmin() {
             />
             <Phase2StagingGrid
               listings={phase2Listings}
+              onOpen3d={(sku, name) => setModel3dTarget({ sku, name })}
               onPromote={async (sku) => {
                 const result = await promoteToLiveEcommerce(sku);
                 setToast(result.ok ? `Promoted ${sku}` : result.error);
@@ -1310,6 +1319,20 @@ export default function MasterCatalogAdmin() {
           </div>
         )}
       </div>
+
+      <SwatchesFinishesDrawer
+        open={swatchesOpen}
+        onClose={() => setSwatchesOpen(false)}
+        onToast={setToast}
+      />
+      <Product3dMediaDrawer
+        open={model3dTarget !== null}
+        sku={model3dTarget?.sku ?? null}
+        productName={model3dTarget?.name}
+        onClose={() => setModel3dTarget(null)}
+        onChanged={() => void refresh3dListings()}
+        onToast={setToast}
+      />
 
       {/* Toast */}
       {toast && (

@@ -50,6 +50,9 @@ export type HubVariationInput = {
   sizeLabel?: string | null;
   katanaSku?: string | null;
   makeOrResale?: "Make" | "Resale";
+  /** Variation-level .glb override (size / -LS/-RS geometry). Inherited from parent when null. */
+  model3dGlbUrl?: string | null;
+  model3dUsdzUrl?: string | null;
 };
 
 export type HubParentInput = {
@@ -64,6 +67,11 @@ export type HubParentInput = {
   /** Existing Woo gallery — preserved unless heroImageUrl is set and ownership claimed. */
   preserveExistingImages?: boolean;
   fabricSwatchesJson?: string | null;
+  powderSwatchesJson?: string | null;
+  dektonSwatchesJson?: string | null;
+  /** Parent-level native WebGL model URLs. Never sent in images[]. */
+  model3dGlbUrl?: string | null;
+  model3dUsdzUrl?: string | null;
   addonPrices?: Partial<Record<AcfAddonPriceKey, string | number | null>>;
   optionBadges?: {
     fabrics24?: boolean;
@@ -76,6 +84,24 @@ export type HubParentInput = {
   existingMeta?: Array<{ key: string; value: unknown }>;
   existingImages?: Array<{ id?: number; src?: string }>;
 };
+
+/** Non-empty string only — empty/null must be omitted so PUT never wipes staged WP 3D URLs. */
+export function nonEmptyUrl(value: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Resolve effective 3D URL for a variation: variation override wins, else parent.
+ * Returns null when both are empty (caller must omit the meta key).
+ */
+export function resolveInherited3dUrl(
+  variationUrl: string | null | undefined,
+  parentUrl: string | null | undefined,
+): string | null {
+  return nonEmptyUrl(variationUrl) ?? nonEmptyUrl(parentUrl);
+}
 
 export function shippingClassFromWeightLb(weightLb: number | null | undefined): "parcel" | "freight-ltl" {
   const w = Number(weightLb ?? 0);
@@ -173,6 +199,18 @@ export function buildSurgicalWooPayload(
   if (parent.fabricSwatchesJson) {
     meta_data.push({ key: "acf_fabric_swatches_json", value: parent.fabricSwatchesJson });
   }
+  if (parent.powderSwatchesJson) {
+    meta_data.push({ key: "acf_powder_swatches_json", value: parent.powderSwatchesJson });
+  }
+  if (parent.dektonSwatchesJson) {
+    meta_data.push({ key: "acf_dekton_swatches_json", value: parent.dektonSwatchesJson });
+  }
+  // Native .glb/.usdz — meta_data ONLY, never images[]. Omit when null/empty.
+  const parentGlb = nonEmptyUrl(parent.model3dGlbUrl);
+  const parentUsdz = nonEmptyUrl(parent.model3dUsdzUrl);
+  if (parentGlb) meta_data.push({ key: "acf_3d_model_glb_url", value: parentGlb });
+  if (parentUsdz) meta_data.push({ key: "acf_3d_model_usdz_url", value: parentUsdz });
+
   for (const key of ACF_ADDON_PRICE_KEYS) {
     const raw = parent.addonPrices?.[key];
     if (raw == null || raw === "") continue;
@@ -230,8 +268,12 @@ export function buildSurgicalWooPayload(
   if (parent.slug) product.slug = parent.slug;
 
   // Gallery preservation: only set images when Hub explicitly owns a new hero URL.
+  // NEVER put .glb / .usdz into images[] — Woo REST rejects non-images with 400.
   if (parent.heroImageUrl && !parent.preserveExistingImages) {
-    product.images = [{ src: parent.heroImageUrl }];
+    const hero = nonEmptyUrl(parent.heroImageUrl);
+    if (hero && !/\.(glb|gltf|usdz)(\?|$)/i.test(hero)) {
+      product.images = [{ src: hero }];
+    }
   }
   // Otherwise omit `images` entirely so Woo keeps Brizy/PrimeView gallery.
 
@@ -252,6 +294,19 @@ export function buildSurgicalWooPayload(
     if (variation.sizeLabel) attrs.push({ name: "Select Size", option: variation.sizeLabel });
     if (variation.facing) attrs.push({ name: "Select Facing", option: variation.facing });
 
+    const varMeta: Array<{ key: string; value: string }> = [
+      ...(variation.katanaSku
+        ? [{ key: "_ccpatio_katana_sku", value: variation.katanaSku }]
+        : []),
+      ...(variation.makeOrResale
+        ? [{ key: "_ccpatio_origin", value: variation.makeOrResale }]
+        : []),
+    ];
+    const glb = resolveInherited3dUrl(variation.model3dGlbUrl, parent.model3dGlbUrl);
+    const usdz = resolveInherited3dUrl(variation.model3dUsdzUrl, parent.model3dUsdzUrl);
+    if (glb) varMeta.push({ key: "acf_3d_model_glb_url", value: glb });
+    if (usdz) varMeta.push({ key: "acf_3d_model_usdz_url", value: usdz });
+
     const body: Record<string, unknown> = {
       sku: variation.sku,
       regular_price: moneyString(variation.regularPrice),
@@ -260,14 +315,7 @@ export function buildSurgicalWooPayload(
       dimensions: dims,
       shipping_class: shippingClassFromWeightLb(variation.weightLb),
       attributes: attrs,
-      meta_data: [
-        ...(variation.katanaSku
-          ? [{ key: "_ccpatio_katana_sku", value: variation.katanaSku }]
-          : []),
-        ...(variation.makeOrResale
-          ? [{ key: "_ccpatio_origin", value: variation.makeOrResale }]
-          : []),
-      ],
+      meta_data: varMeta,
     };
     create.push(body);
   }

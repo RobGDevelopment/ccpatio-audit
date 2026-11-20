@@ -258,7 +258,7 @@ export function renderLiveHandoffMarkdown(input: {
 | **Storefront parents** | ${input.parentCount} |
 | **Purchasable Woo SKUs** | ${input.variationCount} variations + ${input.simpleCount} simple = **${input.uniquePurchasableSkus}** unique SKUs covering all **${input.sowItemCount}** Phase 1 SOW items |
 | **Make / Resale rows** | ${input.makeCount} / ${input.resaleCount} |
-| **Import file** | \`primeview-phase1-102-import.csv\` (169 columns, generated live from Hub DB) |
+| **Import file** | \`primeview-phase1-102-import.csv\` (173 columns = 169 PrimeView + 4 native 3D/finish Meta, generated live from Hub DB) |
 | **Production webhook** | \`${PRODUCTION_WOO_WEBHOOK_URL}\` |
 
 > **Katana native WooCommerce plugin must remain disabled.** Hub owns Path B ingress at the production webhook above (\`order.created\` + \`order.updated\`, HMAC \`X-WC-Webhook-Signature\`).
@@ -270,14 +270,15 @@ export function renderLiveHandoffMarkdown(input: {
 CC Patio Hub owns catalog authority. This live CSV is the turnkey WooCommerce Product CSV Import for PrimeView/Yardi on \`ccpatiodev2.primeview.com\`:
 
 - **Aluminum Website Price (Mia PDF):** \`Regular price\` comes from Mia's Aluminum column (Oct 1 base + manual \`$0\`/\`$5\` rounding). Disregard Steel MSRP on the storefront. Steel is removed from storefront options. **DO NOT add separate APF/ACF frame upcharges.** Cabana pillows + 3P resale use Mia's non-metal prices 1:1.
-- Exact 169 headers from \`product_export_import_headers.csv\` (UTF-8, \`ID\` without BOM corruption)
+- Exact 173 headers from \`product_export_import_headers.csv\` (169 original PrimeView + 4 native 3D/finish Meta; UTF-8, \`ID\` without BOM corruption)
 - Preserved PrimeView parent IDs and existing variation IDs where present
 - **${input.uniquePurchasableSkus} unique purchasable SKUs** on every \`simple\` / \`variation\` row (variable parents keep blank SKU)
 - Corner Sofa (\`27674\`) + Corner Chaise (\`27687\`) Attribute 2 = **Select Facing** (\`Left-Side Facing\`, \`Right-Side Facing\`), default Left
 - Metric weights/dimensions, shipping class (\`parcel\` < 50 lb, \`freight-ltl\` ≥ 50 lb)
-- \`acf_fabric_swatches_json\` on upholstered parents (24 FAB-* swatches with **live HTTP-200** Supabase public URLs)
+- \`acf_fabric_swatches_json\` on upholstered parents (24 FAB-* swatches with **live HTTP-200** Supabase public URLs + additive PBR/scale fields)
+- \`Meta: acf_powder_swatches_json\`, \`Meta: acf_dekton_swatches_json\`, \`Meta: acf_3d_model_glb_url\`, \`Meta: acf_3d_model_usdz_url\`
 - Inline retail / sale price, weight, and visibility edits Mia saves in the GHL master-catalog portal are reflected live
-- All \`Meta: _w3d_*\` columns forced blank (3D excluded from Phase 1)
+- Legacy \`Meta: _w3d_*\` columns remain blank (VividWorks iframe path retired; use native \`.glb\` meta instead)
 
 ## 2. Import Instructions (PrimeView WP / Yardi)
 
@@ -356,6 +357,36 @@ ${PHASE1_POWDERS.map((sku) => {
 }).join("\n")}
 
 > Example APF values PrimeView may send: \`Ash (FAB-ACT-ASH)\`, \`Black (PWD-BLACK)\`, bare \`FAB-ACT-ASH\` / \`PWD-BLACK\`. Hub resolves all three forms. **Do not** send fictional SKUs like \`FAB-SUN-5453-CAN\` or \`PWD-BLK-MAT\`.
+
+## Native WooCommerce WebGL 3D Configurator (\`.glb\`) & 2048px PBR Swatch Binding Contract
+
+**Architecture (non-iframe):** PrimeView renders native WebGL on the WooCommerce product template via \`<model-viewer>\` / Three.js reading product meta:
+
+| Meta key | Purpose |
+| --- | --- |
+| \`acf_3d_model_glb_url\` | Public CDN \`.glb\` (WebGL). Inherit parent URL on variations when variation override is null. |
+| \`acf_3d_model_usdz_url\` | Public CDN \`.usdz\` (AR Quick Look). Same inheritance rule. |
+| \`acf_fabric_swatches_json\` | 24 FAB-* entries with \`image_url\`, \`texture_2k_url\`, \`sample_width_in\` / \`sample_height_in\`, \`pattern_repeat_w_in\` / \`pattern_repeat_h_in\`, \`quality_status\` |
+| \`acf_powder_swatches_json\` | 6 PWD-* powder coats (same PBR/scale schema) |
+| \`acf_dekton_swatches_json\` | DEC-* Dekton stone finishes (same PBR/scale schema) |
+
+**Hard rules for Hub → Woo REST sync:**
+
+1. **Never** put \`.glb\` / \`.usdz\` URLs inside WooCommerce REST \`images[]\` (Woo rejects non-images with \`400\`).
+2. Push 3D URLs **only** via \`meta_data\`.
+3. **Omit** \`acf_3d_model_glb_url\` / \`acf_3d_model_usdz_url\` on \`PUT\` when null/empty so GHL price syncs never wipe a PrimeView-staged model.
+4. On size / Select Facing change, swap the variation's \`.glb\` URL (variation override wins; else inherit parent).
+
+**Recommended glTF material slot names** (so swatch selection rebinds PBR maps + UV tiling):
+
+| Slot | Finish family | Texture source |
+| --- | --- | --- |
+| \`frame_metal\` | \`PWD-*\` | \`texture_2k_url\` + UV scale from \`sample_width_in\` / \`pattern_repeat_w_in\` |
+| \`cushion_fabric\` | \`FAB-*\` | same |
+| \`stone_top\` | \`DEC-*\` | same |
+| \`accent_pillow\` | \`FAB-*\` (optional) | same |
+
+Physical scale: striped/patterned fabrics must project at true 1:1 inches using \`sample_*_in\` and \`pattern_repeat_*_in\` from the Hub finish registry / partner photoshoot upload studio.
 
 Fulfillment routing (Hub authority):
 

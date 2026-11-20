@@ -117,6 +117,10 @@ describe("Live handoff spec markdown contract", () => {
     expect(md).toContain("woocommerce_add_cart_item_data");
     expect(md).toContain("woocommerce_checkout_create_order_line_item");
     expect(md).toContain("acf_fabric_swatches_json");
+    expect(md).toContain("acf_3d_model_glb_url");
+    expect(md).toContain("Native WooCommerce WebGL 3D Configurator");
+    expect(md).toContain("frame_metal");
+    expect(md).toContain("cushion_fabric");
     expect(md).toContain("wc-product-fields/v1/products");
     expect(md).toContain("FIN-BRV-CLB-CHA-34X34");
     expect(md).toContain("1999.00");

@@ -242,4 +242,28 @@ describe("WooCommerce REST v3 surgical payload builder", () => {
     }
     expect(ACF_ADDON_PRICE_KEYS).toHaveLength(16);
   });
+
+  it("omits null 3D meta and never places .glb into images[]", () => {
+    const withGlb = buildSurgicalWooPayload(
+      {
+        ...parent,
+        model3dGlbUrl: "https://cdn.example.com/corner.glb",
+        model3dUsdzUrl: null,
+      },
+      { weightUnit: "lb", dimensionUnit: "in" },
+    );
+    const meta = withGlb.product.meta_data as Array<{ key: string; value: string }>;
+    expect(meta.find((m) => m.key === "acf_3d_model_glb_url")?.value).toMatch(/\.glb$/);
+    expect(meta.some((m) => m.key === "acf_3d_model_usdz_url")).toBe(false);
+    expect(withGlb.product).not.toHaveProperty("images");
+    expect(JSON.stringify(withGlb.product.images ?? null)).not.toMatch(/\.glb/i);
+
+    const without = buildSurgicalWooPayload(
+      { ...parent, model3dGlbUrl: "", model3dUsdzUrl: "   " },
+      { weightUnit: "lb", dimensionUnit: "in" },
+    );
+    const meta2 = without.product.meta_data as Array<{ key: string; value: string }>;
+    expect(meta2.some((m) => m.key === "acf_3d_model_glb_url")).toBe(false);
+    expect(meta2.some((m) => m.key === "acf_3d_model_usdz_url")).toBe(false);
+  });
 });

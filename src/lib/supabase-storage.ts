@@ -68,6 +68,53 @@ export async function createAssetSignedUpload(input: {
   return { path: input.path, token: data.token, signedUrl: data.signedUrl };
 }
 
+/**
+ * Signs an upload with `upsert: true` for Asset Studio (swatch / 3D slots). Object keys are
+ * server-generated with a random suffix by `presign-policy`, so overwrite is only possible
+ * for a key the caller was just issued.
+ */
+export async function createSignedUploadUrlUpsert(
+  bucket: string,
+  path: string,
+): Promise<{ path: string; token: string; signedUrl: string }> {
+  const { data, error } = await getSupabaseAdmin()
+    .storage.from(bucket)
+    .createSignedUploadUrl(path, { upsert: true });
+  if (error || !data) {
+    throw new Error(error?.message ?? `Failed to create signed upload URL for ${bucket}`);
+  }
+  return { path, token: data.token, signedUrl: data.signedUrl };
+}
+
+/** Public URL for an object in a public bucket (no network call). */
+export function getPublicObjectUrl(bucket: string, path: string): string {
+  return getSupabaseAdmin().storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
+/**
+ * Looks up object metadata (size / mimetype) via a directory listing. Returns null when the
+ * object does not exist. Throws on storage errors so callers never mistake an outage for "missing".
+ */
+export async function getStorageObjectInfo(
+  bucket: string,
+  path: string,
+): Promise<{ size: number | null; contentType: string | null } | null> {
+  const slash = path.lastIndexOf("/");
+  const dir = slash >= 0 ? path.slice(0, slash) : "";
+  const name = slash >= 0 ? path.slice(slash + 1) : path;
+  const { data, error } = await getSupabaseAdmin()
+    .storage.from(bucket)
+    .list(dir, { limit: 100, search: name });
+  if (error) throw new Error(error.message);
+  const hit = (data ?? []).find((o) => o.name === name);
+  if (!hit) return null;
+  const meta = (hit.metadata ?? {}) as { size?: number; mimetype?: string };
+  return {
+    size: typeof meta.size === "number" ? meta.size : null,
+    contentType: typeof meta.mimetype === "string" ? meta.mimetype : null,
+  };
+}
+
 /** Service-role storage adapter used by the asset vault confirm step. */
 export function getVaultStorage() {
   return {

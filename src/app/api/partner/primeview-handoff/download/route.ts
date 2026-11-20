@@ -3,14 +3,17 @@ import {
   authenticatePrimeviewHandoffToken,
 } from "@/lib/primeview-handoff-auth";
 import { generateLiveHandoffBundle } from "@/server/woocommerce/handoff-spec-generator";
+import { buildFullFinishesManifest } from "@/server/assets/finish-assets";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Artifact = "csv" | "spec" | "swatches";
+type Artifact = "csv" | "spec" | "swatches" | "finishes";
 
 function parseArtifact(raw: string | null): Artifact | null {
   if (raw === "csv" || raw === "spec" || raw === "swatches") return raw;
+  // `swatches-full` is an accepted alias of `finishes` (FAB + PWD + DEC manifest).
+  if (raw === "finishes" || raw === "swatches-full") return "finishes";
   return null;
 }
 
@@ -24,12 +27,36 @@ export async function GET(request: Request) {
   const artifact = parseArtifact(url.searchParams.get("artifact"));
   if (!artifact) {
     return NextResponse.json(
-      { error: "artifact must be csv | spec | swatches" },
+      { error: "artifact must be csv | spec | swatches | finishes" },
       { status: 400 },
     );
   }
 
   try {
+    if (artifact === "finishes") {
+      // Full FAB + PWD + DEC manifest straight from ecommerce_finish_assets (no handoff bundle needed).
+      const manifest = await buildFullFinishesManifest();
+      return NextResponse.json(
+        {
+          generatedAtUtc: new Date().toISOString(),
+          counts: {
+            fabrics: manifest.fabrics.length,
+            powders: manifest.powders.length,
+            dektons: manifest.dektons.length,
+          },
+          ...manifest,
+        },
+        {
+          status: 200,
+          headers: {
+            "content-disposition":
+              'attachment; filename="primeview-phase1-finishes-and-swatches.json"',
+            "cache-control": "no-store",
+          },
+        },
+      );
+    }
+
     const bundle = await generateLiveHandoffBundle();
 
     if (artifact === "csv") {

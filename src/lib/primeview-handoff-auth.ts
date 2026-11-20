@@ -57,7 +57,7 @@ export function buildPrimeviewHandoffPath(token?: string): string {
 }
 
 export function downloadUrlForArtifact(
-  artifact: "csv" | "spec" | "swatches",
+  artifact: "csv" | "spec" | "swatches" | "finishes",
   token: string,
 ): string {
   return `/api/partner/primeview-handoff/download?artifact=${artifact}&token=${encodeURIComponent(token)}`;

@@ -21,6 +21,43 @@ import {
 import type { EcommerceListing } from "../actions";
 import type { WooSyncStatus } from "@/server/woocommerce/woo-catalog-sync";
 
+/** Compact 3D status: green when a .glb is stored, else a subtle "+ Add 3D" opener. */
+export function Model3dCell({
+  glbUrl,
+  sku,
+  onOpen,
+}: {
+  glbUrl?: string | null;
+  sku: string;
+  onOpen?: () => void;
+}) {
+  if (glbUrl) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={!onOpen}
+        title="3D model uploaded - click to manage"
+        data-testid={`model-3d-ready-${sku}`}
+        className="whitespace-nowrap rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100"
+      >
+        3D .GLB Ready
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      disabled={!onOpen}
+      data-testid={`model-3d-add-${sku}`}
+      className="whitespace-nowrap rounded-full border border-dashed border-slate-300 px-2 py-0.5 text-[10px] font-semibold text-slate-400 hover:border-sky-400 hover:text-sky-700"
+    >
+      + Add 3D
+    </button>
+  );
+}
+
 export type Phase1Listing = EcommerceListing & {
   miaApproved?: boolean;
   miaApprovedAt?: string | null;
@@ -106,6 +143,7 @@ export function Phase1FlatGrid({
   onPush,
   onSaveAluPrice,
   onRoundNearest5,
+  onOpen3d,
   spotCheckOnly = false,
 }: {
   listings: Phase1Listing[];
@@ -113,6 +151,7 @@ export function Phase1FlatGrid({
   onPush: (sku: string) => void;
   onSaveAluPrice?: (listingId: string, price: string) => void;
   onRoundNearest5?: (listingId: string) => void;
+  onOpen3d?: (sku: string, productName: string) => void;
   spotCheckOnly?: boolean;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -144,6 +183,7 @@ export function Phase1FlatGrid({
             <th className="px-2 py-2">Weight</th>
             <th className="px-2 py-2">Mia</th>
             <th className="px-2 py-2">Woo</th>
+            <th className="px-2 py-2">3D</th>
             <th className="px-2 py-2" />
           </tr>
         </thead>
@@ -308,6 +348,13 @@ export function Phase1FlatGrid({
                   <span
                     title={wooTitle(row.wooSyncStatus)}
                     className={`inline-block h-3 w-3 rounded-full ${wooDotClass(row.wooSyncStatus)}`}
+                  />
+                </td>
+                <td className="px-2 py-2">
+                  <Model3dCell
+                    glbUrl={row.model3dGlbUrl}
+                    sku={row.wooSku}
+                    onOpen={onOpen3d ? () => onOpen3d(row.wooSku, row.productName) : undefined}
                   />
                 </td>
                 <td className="px-2 py-2">
