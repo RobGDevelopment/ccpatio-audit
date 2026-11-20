@@ -179,7 +179,18 @@ async function main() {
   const phase1All = [...new Set([...phase1Canonicals, ...phase1Woo])];
 
   if (APPLY) {
-    // FGC visibility for every Phase 1 canonical that exists.
+    // FGC visibility for every Phase 1 canonical AND every listing global_sku
+    // that carries a Phase 1 woo_sku (covers OCN alias shells / FIN-BRV-DYB-84).
+    const wooLinked = await db
+      .select({ sku: ecommerce_listings.global_sku })
+      .from(ecommerce_listings)
+      .where(sql`${ecommerce_listings.woo_sku} IS NOT NULL`);
+    const visibleSkus = [
+      ...new Set([
+        ...phase1Canonicals,
+        ...wooLinked.map((r) => r.sku),
+      ]),
+    ];
     await db
       .update(finished_goods_catalog)
       .set({
@@ -187,7 +198,7 @@ async function main() {
         updated_at: new Date(),
         updated_by: UPDATED_BY,
       })
-      .where(inArray(finished_goods_catalog.global_sku, phase1Canonicals));
+      .where(inArray(finished_goods_catalog.global_sku, visibleSkus));
 
     // sku_mappings: sow_phase=1, sync_to_woo=true for Phase 1 canonicals.
     const phase1Maps = await db
