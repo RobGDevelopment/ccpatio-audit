@@ -52,6 +52,7 @@ vi.mock("@/inngest/client", () => ({
 vi.mock("@/lib/pim-audit", () => ({
   getPimSession: vi.fn(async () => hoisted.session),
   logPimAudit: vi.fn(async () => true),
+  GHL_EMBED_PRINCIPAL_EMAIL: "ghl-embed@ccpatio.com",
 }));
 
 // Strictly mock Katana to throw on ANY invocation (Zero Katana writes in Finalize)

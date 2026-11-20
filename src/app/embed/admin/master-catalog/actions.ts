@@ -65,7 +65,10 @@ import { SEO_LIMITS, SLUG_RE, normalizeTags } from "@/lib/seo-limits";
 import { deriveDfmFreight } from "@/lib/freight-utils";
 import {
   deriveWooSyncStatus,
+  fetchWooStoreUnits,
+  mapWithConcurrency,
   pushParentToWoo,
+  resetWooStoreUnitsMemo,
   resolveWooConnection,
   testWooConnection,
   type WooSyncStatus,
@@ -309,6 +312,8 @@ export interface EcommerceListing {
   id: string;
   /** Canonical hub SKU (not unique: several listings can share one). */
   globalSku: string;
+  /** Storefront Woo SKU (1:1); falls back to globalSku when unset. */
+  wooSku: string;
   productName: string;
   legacyBaseSku: string | null;
   legacySkuShared: boolean;
@@ -378,6 +383,7 @@ export interface EcommerceRoster {
 interface ListingFields {
   id: string;
   globalSku: string;
+  wooSku?: string | null;
   productName: string;
   legacyBaseSku: string | null;
   legacySkuShared: boolean;
@@ -426,6 +432,7 @@ function toListing(r: ListingFields, factory: FactoryReadiness): EcommerceListin
   return {
     id: r.id,
     globalSku: r.globalSku,
+    wooSku: (r.wooSku || r.globalSku || "").trim().toUpperCase() || r.globalSku,
     productName: r.productName,
     legacyBaseSku: r.legacyBaseSku,
     legacySkuShared: r.legacySkuShared,
@@ -523,6 +530,7 @@ export async function getHubProductForDrawer(globalSku: string): Promise<Ecommer
   return {
     id: "",
     globalSku: row.globalSku,
+    wooSku: row.globalSku,
     productName: row.productName || "Unnamed Product",
     legacyBaseSku: null,
     legacySkuShared: false,
@@ -659,6 +667,7 @@ export async function getEcommerceRoster(): Promise<EcommerceRoster> {
       .select({
         id: ecommerce_listings.id,
         globalSku: ecommerce_listings.global_sku,
+        wooSku: ecommerce_listings.woo_sku,
         productName: ecommerce_listings.product_name,
         legacyBaseSku: ecommerce_listings.legacy_base_sku,
         legacySkuShared: ecommerce_listings.legacy_sku_shared,
@@ -785,42 +794,28 @@ export async function getEcommerceRoster(): Promise<EcommerceRoster> {
   return { listings, gaps };
 }
 
-// 7. Edit a listing's steel MSRP. Mirrors to finished_goods_catalog.msrp ONLY
-// when the hub SKU backs exactly one listing; shared hub SKUs never write there
-// (and never go through updateProductMSRP).
+// 7. Legacy portal MSRP edit — ALWAYS writes aluminum_msrp (storefront Regular)
+// keyed by listing id / woo_sku. Never mutates sibling SKUs that share a
+// canonical Resale bucket. steel_msrp is left untouched.
 export async function updateListingMsrp(id: string, newPriceRaw: string) {
+  const result = await updateListingAluminumMsrp(id, newPriceRaw);
+  if (!result.ok) throw new Error(result.error);
   const db = getDb();
-  const price = parsePrice(newPriceRaw);
-  if (Number.isNaN(price)) throw new Error("Invalid numeric price");
-  const fixed = price.toFixed(2);
-
-  const { mirrored, version } = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .update(ecommerce_listings)
-      .set({ 
-        steel_msrp: fixed, 
-        updated_at: new Date(),
-        version: sql`version + 1` 
-      })
-      .where(eq(ecommerce_listings.id, id))
-      .returning({ globalSku: ecommerce_listings.global_sku, version: ecommerce_listings.version });
-    if (!row) throw new Error("Listing not found");
-
-    const [{ n }] = await tx
-      .select({ n: count() })
-      .from(ecommerce_listings)
-      .where(eq(ecommerce_listings.global_sku, row.globalSku));
-    if (Number(n) !== 1) return { mirrored: null, version: row.version };
-
-    await tx
-      .update(finished_goods_catalog)
-      .set({ msrp: fixed, updated_at: new Date() })
-      .where(eq(finished_goods_catalog.global_sku, row.globalSku));
-    return { mirrored: row.globalSku, version: row.version };
-  });
-
+  const [row] = await db
+    .select({
+      version: ecommerce_listings.version,
+      wooSku: ecommerce_listings.woo_sku,
+      globalSku: ecommerce_listings.global_sku,
+    })
+    .from(ecommerce_listings)
+    .where(eq(ecommerce_listings.id, id))
+    .limit(1);
   revalidatePath("/embed/admin/master-catalog");
-  return { success: true, mirroredSku: mirrored, version };
+  return {
+    success: true,
+    mirroredSku: row?.wooSku || row?.globalSku || null,
+    version: row?.version ?? 0,
+  };
 }
 
 // 8. Inline link. Writes product_url + url_source=row + the operator flag so a
@@ -2237,7 +2232,7 @@ export async function dryRunWooPushForSku(globalSku: string) {
     heroImageUrl: listing.imageUrl,
     preserveExistingImages: true,
     variations: siblings.map((s) => ({
-      sku: s.globalSku,
+      sku: s.wooSku || s.globalSku,
       regularPrice: wooRegularFromListing(s),
       salePrice: s.salePrice,
       weightLb: s.hubWeight ? Number(s.hubWeight) : null,
@@ -2249,7 +2244,8 @@ export async function dryRunWooPushForSku(globalSku: string) {
       makeOrResale: s.thirdParty ? "Resale" : "Make",
     })),
   };
-  const result = await pushParentToWoo(parent, { dryRun: true });
+  // Dry-run never sends Brizy copy on existing products.
+  const result = await pushParentToWoo(parent, { dryRun: true, includeCopy: false });
   return { ok: true as const, ...result };
 }
 
@@ -2276,7 +2272,7 @@ export async function pushSkuToWoo(globalSku: string) {
     heroImageUrl: null,
     preserveExistingImages: true,
     variations: siblings.map((s) => ({
-      sku: s.globalSku,
+      sku: s.wooSku || s.globalSku,
       regularPrice: wooRegularFromListing(s),
       salePrice: s.salePrice,
       weightLb: s.hubWeight ? Number(s.hubWeight) : null,
@@ -2289,7 +2285,8 @@ export async function pushSkuToWoo(globalSku: string) {
     })),
   };
   try {
-    const result = await pushParentToWoo(parent, { dryRun: false });
+    // Never clobber Brizy description on existing Woo products.
+    const result = await pushParentToWoo(parent, { dryRun: false, includeCopy: false });
     const db = getDb();
     if (result.productId) {
       await db
@@ -2340,15 +2337,19 @@ export async function pushSkuToWoo(globalSku: string) {
 export async function syncApprovedToWoo(skus: string[]) {
   const session = await getPimSession();
   if (!session) return { ok: false as const, error: "Unauthorized embed session." };
-  const results: Array<{ sku: string; ok: boolean; error?: string }> = [];
-  for (const sku of skus) {
+  // One store-units fetch per sync invocation; parents at concurrency 4.
+  resetWooStoreUnitsMemo();
+  await fetchWooStoreUnits().catch(() => undefined);
+  const unique = [...new Set(skus.map((s) => s.trim()).filter(Boolean))];
+  const results = await mapWithConcurrency(unique, 4, async (sku) => {
     const pushed = await pushSkuToWoo(sku);
-    results.push({
+    return {
       sku,
       ok: pushed.ok,
       error: pushed.ok ? undefined : pushed.error,
-    });
-  }
+    };
+  });
+  resetWooStoreUnitsMemo();
   return { ok: true as const, results };
 }
 

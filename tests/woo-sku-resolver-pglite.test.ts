@@ -49,6 +49,18 @@ beforeAll(async () => {
       notes text,
       PRIMARY KEY (parent_sku, child_sku)
     );
+    CREATE TABLE sku_aliases (
+      alias_sku text PRIMARY KEY,
+      canonical_sku text NOT NULL REFERENCES sku_mappings(global_sku),
+      reason text,
+      created_at timestamp DEFAULT now()
+    );
+    CREATE TABLE third_party_sources (
+      global_sku text PRIMARY KEY REFERENCES sku_mappings(global_sku),
+      vendor_name text,
+      vendor_sku text,
+      wholesale_cost numeric
+    );
 
     INSERT INTO sku_mappings (global_sku, item_type, sync_to_woo, katana_variant_id, attributes) VALUES
       ('${BASE_SKU}', 'finished_good', false, 100, '{}'),

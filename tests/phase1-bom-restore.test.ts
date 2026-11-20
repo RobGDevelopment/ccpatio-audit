@@ -167,11 +167,11 @@ describe("phase1 bom-restore live Hub proof", () => {
         }
       }
 
-      // sku-resolver: Make rows with appropriate finish meta.
+      // sku-resolver: Make rows with Aluminum-only finish meta (locked storefront rule).
       const deps = hubResolveDeps();
       const FAB = "FAB-ACT-ASH";
       const PWD = "PWD-BLACK";
-      const FRAME = "MET-STEEL";
+      const FRAME = "MET-ALUM";
 
       for (const row of makeRows) {
         const slots = deriveRecipeSlots(await recipeSkusFromHub(row.sku));
@@ -200,6 +200,36 @@ describe("phase1 bom-restore live Hub proof", () => {
         const line = res.lines[0]!;
         expect(line.spec.sku).toBe(row.sku);
         expect(line.skipMo).toBe(false);
+      }
+
+      // Explicit Steel on a framed Make recipe must quarantine (aluminum-only lock).
+      {
+        const framed = makeRows.find((r) => r.sku === "FIN-BRV-CLB-CHA-34X34") ?? makeRows[0]!;
+        const steelRes = await resolveWooOrder(
+          wooOrder({
+            id: 900_999,
+            line_items: [
+              wooLine({
+                sku: framed.sku,
+                meta_data: [
+                  { key: "fabric", value: FAB },
+                  { key: "powder_coat", value: PWD },
+                  { key: "frame", value: "Steel" },
+                ],
+              }),
+            ],
+          }),
+          deps,
+          { requireKatanaIds: false },
+        );
+        expect(steelRes.ok).toBe(false);
+        if (!steelRes.ok) {
+          expect(
+            steelRes.issues.some((i) =>
+              i.message.includes("steel_discontinued_on_ecommerce"),
+            ),
+          ).toBe(true);
+        }
       }
 
       // Resale: third_party_sources + skipMo (isResale).

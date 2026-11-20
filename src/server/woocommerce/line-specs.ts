@@ -8,8 +8,11 @@
 import {
   classifyFinishKey,
   FINISH_SLOTS,
+  metaKeyFromEntry,
+  metaValueFromEntry,
   normalizeSku,
   resolveFinishValueToSku,
+  stripApfPriceSuffix,
   type FinishSlot,
 } from "./finish-keys";
 import type { SkuIngressIssue, WooOrderWebhook } from "./ingress.schema";
@@ -103,7 +106,10 @@ export type ExtractedLineSpecs = {
 };
 
 function scalarValue(value: unknown): string | null {
-  if (typeof value === "string") return value.trim();
+  if (typeof value === "string") {
+    const stripped = stripApfPriceSuffix(value.trim());
+    return stripped || null;
+  }
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
   if (typeof value === "boolean") return value ? "1" : "0";
   return null;
@@ -111,21 +117,27 @@ function scalarValue(value: unknown): string | null {
 
 /** Hub-shaped SKU: at least one hyphenated segment (FIN-…, ADD-…, etc.). */
 export function looksLikeAddonSku(value: string): boolean {
-  return /^[A-Z0-9]+(?:-[A-Z0-9]+)+$/i.test(value.trim());
+  return /^[A-Z0-9]+(?:-[A-Z0-9]+)+$/i.test(stripApfPriceSuffix(value.trim()));
 }
 
-function isTruthyAddonFlag(value: string): boolean {
-  const v = value.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes" || v === "on";
+function isTruthyAddonFlag(value: string, addonKey?: string): boolean {
+  const v = stripApfPriceSuffix(value.trim()).toLowerCase();
+  if (v === "1" || v === "true" || v === "yes" || v === "on") return true;
+  // Human APF checkbox labels after price-suffix strip, e.g. "Dekton Sidearm (+$300.00)".
+  if (addonKey) {
+    const label = addonKey.replace(/_/g, " ").toLowerCase();
+    if (v === label || v.replace(/-/g, " ") === label) return true;
+  }
+  return false;
 }
 
 function isFalsyAddonFlag(value: string): boolean {
-  const v = value.trim().toLowerCase();
+  const v = stripApfPriceSuffix(value.trim()).toLowerCase();
   return v === "" || v === "0" || v === "false" || v === "no" || v === "off";
 }
 
 function normalizeAddonKey(raw: string): string {
-  let key = raw.trim().toLowerCase().replace(/\s+/g, "_");
+  let key = stripApfPriceSuffix(raw.trim()).toLowerCase().replace(/\s+/g, "_");
   let prev = "";
   while (key !== prev) {
     prev = key;
@@ -148,11 +160,12 @@ export function extractWooLineSpecs(order: WooOrderWebhook): ExtractedLineSpecs 
 
   // Finish keys belong on line items. At order level they are ambiguous (which line?).
   order.meta_data.forEach((entry, metaIndex) => {
-    const keyClass = classifyFinishKey(entry.key);
+    const key = metaKeyFromEntry(entry);
+    const keyClass = classifyFinishKey(key);
     if (keyClass.kind === "ignored") return;
     issues.push({
       path: `meta_data.${metaIndex}.key`,
-      message: `Finish key "${entry.key}" is not allowed at order level. Send finishes on the line item.`,
+      message: `Finish key "${key}" is not allowed at order level. Send finishes on the line item.`,
     });
   });
 
@@ -162,15 +175,17 @@ export function extractWooLineSpecs(order: WooOrderWebhook): ExtractedLineSpecs 
 
     item.meta_data.forEach((entry, metaIndex) => {
       const keyPath = `line_items.${index}.meta_data.${metaIndex}`;
-      const addonKey = normalizeAddonKey(entry.key);
+      const resolvedKey = metaKeyFromEntry(entry);
+      const addonKey = normalizeAddonKey(resolvedKey);
 
       if (ACF_ADDON_KEYS.has(addonKey)) {
-        const raw = scalarValue(entry.value);
-        if (raw === null || isFalsyAddonFlag(raw)) return;
+        const raw =
+          metaValueFromEntry(entry) || scalarValue(entry.value);
+        if (raw === null || raw === "" || isFalsyAddonFlag(raw)) return;
 
         // Custom welded fly table is always a sales quote — never a silent SO line.
         if (addonKey === "custom_welded_fly_table") {
-          if (isTruthyAddonFlag(raw) || looksLikeAddonSku(raw)) {
+          if (isTruthyAddonFlag(raw, addonKey) || looksLikeAddonSku(raw)) {
             issues.push({
               path: `${keyPath}.value`,
               message: `Add-on "custom_welded_fly_table" requires Contact Sales for Pricing (${CUSTOM_QUOTE_ADDON_REASON}).`,
@@ -188,7 +203,7 @@ export function extractWooLineSpecs(order: WooOrderWebhook): ExtractedLineSpecs 
           addons.push({ key: addonKey, rawValue: raw, sku: normalizeSku(raw) });
           return;
         }
-        if (isTruthyAddonFlag(raw)) {
+        if (isTruthyAddonFlag(raw, addonKey)) {
           const defaultSku = ACF_ADDON_DEFAULT_SKUS[addonKey];
           addons.push({
             key: addonKey,
@@ -204,18 +219,19 @@ export function extractWooLineSpecs(order: WooOrderWebhook): ExtractedLineSpecs 
         return;
       }
 
-      const keyClass = classifyFinishKey(entry.key);
+      const keyClass = classifyFinishKey(resolvedKey);
       if (keyClass.kind === "ignored") return;
 
       if (keyClass.kind === "rejected") {
         issues.push({
           path: `${keyPath}.key`,
-          message: `Finish key "${entry.key}" is not accepted. The only accepted finish keys are ${FINISH_SLOTS.join(", ")} (aliases: fabric_sku→fabric, frame_material→frame). Use: ${keyClass.use}.`,
+          message: `Finish key "${resolvedKey}" is not accepted. The only accepted finish keys are ${FINISH_SLOTS.join(", ")} (aliases: fabric_sku→fabric, frame_material→frame). Use: ${keyClass.use}.`,
         });
         return;
       }
 
-      const raw = scalarValue(entry.value);
+      const raw =
+        metaValueFromEntry(entry) || scalarValue(entry.value);
       if (!raw) {
         issues.push({
           path: `${keyPath}.value`,

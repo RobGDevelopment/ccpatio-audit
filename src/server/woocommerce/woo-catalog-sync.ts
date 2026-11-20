@@ -144,6 +144,15 @@ function moneyString(value: string | number | null | undefined): string {
   return n.toFixed(2);
 }
 
+export type BuildSurgicalWooPayloadOptions = {
+  /**
+   * When false (default), omit description/short_description so Hub price/variation
+   * pushes never clobber PrimeView Brizy page-builder markup or SEO copy.
+   * Set true only when creating a brand-new product or an explicit copy push.
+   */
+  includeCopy?: boolean;
+};
+
 /**
  * Build a surgical parent PUT body + variation batch payload.
  * Never includes protected meta or gallery images unless hero ownership is claimed.
@@ -151,11 +160,13 @@ function moneyString(value: string | number | null | undefined): string {
 export function buildSurgicalWooPayload(
   parent: HubParentInput,
   units: WooStoreUnits,
+  options: BuildSurgicalWooPayloadOptions = {},
 ): {
   product: Record<string, unknown>;
   variationBatch: { create: Record<string, unknown>[]; update: Record<string, unknown>[]; delete: number[] };
   dryRunPreview: Record<string, unknown>;
 } {
+  const includeCopy = options.includeCopy === true;
   const meta_data: Array<{ key: string; value: string }> = [
     { key: "_w3d_enabled", value: "" },
   ];
@@ -209,11 +220,13 @@ export function buildSurgicalWooPayload(
     sku: parent.sku,
     status: parent.status,
     type: "variable",
-    short_description: parent.shortDescription ?? "",
-    description: parent.description ?? "",
     attributes,
     meta_data,
   };
+  if (includeCopy) {
+    product.short_description = parent.shortDescription ?? "";
+    product.description = parent.description ?? "";
+  }
   if (parent.slug) product.slug = parent.slug;
 
   // Gallery preservation: only set images when Hub explicitly owns a new hero URL.
@@ -344,9 +357,23 @@ export async function wooV3Fetch<T = unknown>(
   return { data: parsed as T, status: response.status };
 }
 
+/** Per-invocation memo so bulk sync never re-fetches /settings/products N times. */
+let storeUnitsMemo: Promise<WooStoreUnits> | null = null;
+
+export function resetWooStoreUnitsMemo(): void {
+  storeUnitsMemo = null;
+}
+
 export async function fetchWooStoreUnits(): Promise<WooStoreUnits> {
-  const { data } = await wooV3Fetch<unknown>("/settings/products");
-  return parseWooStoreUnits(data);
+  if (!storeUnitsMemo) {
+    storeUnitsMemo = wooV3Fetch<unknown>("/settings/products")
+      .then(({ data }) => parseWooStoreUnits(data))
+      .catch((err) => {
+        storeUnitsMemo = null;
+        throw err;
+      });
+  }
+  return storeUnitsMemo;
 }
 
 export async function testWooConnection(): Promise<
@@ -393,19 +420,38 @@ export function deriveWooSyncStatus(input: {
 
 /**
  * Upsert a variable product surgically. Matches by woo_product_id, else SKU.
+ * Existing products: omit description/short_description unless includeCopy=true.
+ * New products (POST): always include copy so Brizy has a starting point.
  */
 export async function pushParentToWoo(
   parent: HubParentInput,
-  options?: { dryRun?: boolean },
+  options?: { dryRun?: boolean; includeCopy?: boolean; units?: WooStoreUnits },
 ): Promise<{
   dryRun: boolean;
   productId: string | null;
   preview: Record<string, unknown>;
 }> {
-  const units = await fetchWooStoreUnits().catch(
-    (): WooStoreUnits => ({ weightUnit: "lb", dimensionUnit: "in" }),
-  );
-  const built = buildSurgicalWooPayload(parent, units);
+  const units =
+    options?.units ??
+    (await fetchWooStoreUnits().catch(
+      (): WooStoreUnits => ({ weightUnit: "lb", dimensionUnit: "in" }),
+    ));
+
+  let productId = parent.wooProductId ? Number(parent.wooProductId) : NaN;
+  if (!Number.isFinite(productId) || productId <= 0) {
+    if (!options?.dryRun && resolveWooConnection().configured) {
+      const list = await wooV3Fetch<Array<{ id?: number; sku?: string }>>(
+        `/products?sku=${encodeURIComponent(parent.sku)}&per_page=1`,
+      );
+      const existing = Array.isArray(list.data) ? list.data[0] : null;
+      productId = existing && typeof existing.id === "number" ? existing.id : NaN;
+    }
+  }
+
+  const isCreate = !(Number.isFinite(productId) && productId > 0);
+  const includeCopy = options?.includeCopy === true || isCreate;
+  const built = buildSurgicalWooPayload(parent, units, { includeCopy });
+
   if (options?.dryRun || !resolveWooConnection().configured) {
     return {
       dryRun: true,
@@ -414,18 +460,13 @@ export async function pushParentToWoo(
     };
   }
 
-  let productId = parent.wooProductId ? Number(parent.wooProductId) : NaN;
-  if (!Number.isFinite(productId) || productId <= 0) {
-    const list = await wooV3Fetch<Array<{ id?: number; sku?: string }>>(
-      `/products?sku=${encodeURIComponent(parent.sku)}&per_page=1`,
-    );
-    const existing = Array.isArray(list.data) ? list.data[0] : null;
-    productId = existing && typeof existing.id === "number" ? existing.id : NaN;
-  }
-
-  if (Number.isFinite(productId) && productId > 0) {
+  if (!isCreate) {
+    // Single PUT parent + single variations/batch per parent (no 3N serial timeout).
     await wooV3Fetch(`/products/${productId}`, { method: "PUT", body: built.product });
-    if (built.variationBatch.create.length > 0) {
+    if (
+      built.variationBatch.create.length > 0 ||
+      built.variationBatch.update.length > 0
+    ) {
       await wooV3Fetch(`/products/${productId}/variations/batch`, {
         method: "POST",
         body: built.variationBatch,
@@ -451,4 +492,24 @@ export async function pushParentToWoo(
     });
   }
   return { dryRun: false, productId: String(id), preview: built.dryRunPreview };
+}
+
+/** Bounded-concurrency helper for bulk parent sync (default 4). */
+export async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const limit = Math.max(1, Math.floor(concurrency));
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  async function run(): Promise<void> {
+    while (next < items.length) {
+      const i = next;
+      next += 1;
+      results[i] = await worker(items[i]!, i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => run()));
+  return results;
 }

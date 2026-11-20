@@ -6,8 +6,12 @@ import {
   SUPPORTED_PLACEHOLDER_SKUS,
   classifyFinishKey,
   isGenericPlaceholderSku,
+  metaKeyFromEntry,
+  metaValueFromEntry,
   normalizeFinishKey,
+  resolveFinishValueToSku,
   skuPrefix,
+  stripApfPriceSuffix,
 } from "@/server/woocommerce/finish-keys";
 
 describe("finish keys (Phase B1 / pipe-hardening)", () => {
@@ -99,5 +103,34 @@ describe("finish keys (Phase B1 / pipe-hardening)", () => {
   it("skuPrefix is the segment before the first dash", () => {
     expect(skuPrefix("MET-ALUM")).toBe("MET");
     expect(skuPrefix("NODASH")).toBe("NODASH");
+  });
+
+  it("strips APF (+$X.XX) price suffixes before finish matching", () => {
+    expect(stripApfPriceSuffix("Black (+$0.00)")).toBe("Black");
+    expect(stripApfPriceSuffix("Ash (+$0.00)")).toBe("Ash");
+    expect(stripApfPriceSuffix("Yes (+$100.00)")).toBe("Yes");
+    expect(stripApfPriceSuffix("Yes (+$150.00)")).toBe("Yes");
+    expect(stripApfPriceSuffix("Dekton Sidearm (+$300.00)")).toBe("Dekton Sidearm");
+    expect(resolveFinishValueToSku("Black (+$0.00)", "powder_coat")).toBe("PWD-BLACK");
+    expect(resolveFinishValueToSku("Ash (+$0.00)", "fabric")).toBe("FAB-ACT-ASH");
+  });
+
+  it("honors display_key / display_value over raw key/value", () => {
+    expect(
+      metaKeyFromEntry({
+        key: "pa_powder",
+        display_key: "Select Powder Coat",
+      }),
+    ).toBe("Select Powder Coat");
+    expect(
+      metaValueFromEntry({
+        value: "Black (+$0.00)",
+        display_value: "Black",
+      }),
+    ).toBe("Black");
+    expect(classifyFinishKey(metaKeyFromEntry({ key: "x", display_key: "Select Fabric" }))).toEqual({
+      kind: "slot",
+      slot: "fabric",
+    });
   });
 });

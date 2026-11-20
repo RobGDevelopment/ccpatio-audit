@@ -1466,6 +1466,12 @@ export const ecommerce_listings = pgTable(
     global_sku: text("global_sku")
       .notNull()
       .references(() => sku_mappings.global_sku, { onUpdate: "cascade" }),
+    /**
+     * Storefront WooCommerce SKU (1:1 with purchasable CSV SKU). Distinct from
+     * `global_sku` / Katana canonical so Resale family buckets (Kindle, Tenjam,
+     * BAR/CNT aliases) never overwrite each other's aluminum_msrp or approval.
+     */
+    woo_sku: text("woo_sku"),
     /** Workbook Original Name / Memo (raw). */
     product_name: text("product_name").notNull(),
     /** Grid price (steel frame). Edited here, not on finished_goods_catalog. */
@@ -1504,6 +1510,10 @@ export const ecommerce_listings = pgTable(
   (table) => [
     index("ecommerce_listings_global_sku_idx").on(table.global_sku),
     uniqueIndex("ecommerce_listings_product_name_uidx").on(table.product_name),
+    /** One live listing per storefront Woo SKU (Phase 1 1:1 contract). */
+    uniqueIndex("ecommerce_listings_woo_sku_active_uidx")
+      .on(table.woo_sku)
+      .where(sql`${table.archived_at} IS NULL AND ${table.woo_sku} IS NOT NULL`),
     /** Slugs are unique among live (non-archived) listings. */
     uniqueIndex("ecommerce_listings_slug_active_uidx")
       .on(table.slug)

@@ -118,24 +118,32 @@ function overlayLivePortalEdits(
 ): CsvRow[] {
   return rows.map((row) => {
     const type = (row.Type || "").toLowerCase();
-    if (type !== "simple" && type !== "variation") return row;
-    const sku = (row.SKU || "").trim();
-    if (!sku) return row;
-    const live = liveBySku.get(sku);
-    if (!live) return row;
-    const next = { ...row };
-    if (live.regularPrice) next["Regular price"] = money(live.regularPrice);
-    if (live.salePrice) next["Sale price"] = money(live.salePrice);
-    const wt = live.weightLb ? Number(live.weightLb) : NaN;
-    if (Number.isFinite(wt) && wt > 0) {
-      next["Weight (kg)"] = lbToKg(wt);
-      next["Shipping class"] = shippingClassFromLb(wt);
+    // Parents + purchasables default Published=1 for Phase 1.
+    if (type === "variable" || type === "simple" || type === "variation") {
+      const next: CsvRow = { ...row, Published: "1" };
+      if (type === "variable") return next;
+      const sku = (next.SKU || "").trim();
+      if (!sku) return next;
+      const live = liveBySku.get(sku);
+      if (!live) {
+        // No dedicated woo_sku listing → keep Mia/SOW CSV price; stay Published=1.
+        return next;
+      }
+      if (live.regularPrice) next["Regular price"] = money(live.regularPrice);
+      if (live.salePrice) next["Sale price"] = money(live.salePrice);
+      const wt = live.weightLb ? Number(live.weightLb) : NaN;
+      if (Number.isFinite(wt) && wt > 0) {
+        next["Weight (kg)"] = lbToKg(wt);
+        next["Shipping class"] = shippingClassFromLb(wt);
+      }
+      // ONLY draft when admin explicitly toggled this Phase 1 listing off.
+      if (live.isWebVisible === false) {
+        next.Published = "0";
+        next["Visibility in catalog"] = next["Visibility in catalog"] || "hidden";
+      }
+      return next;
     }
-    if (!live.isWebVisible) {
-      next.Published = "0";
-      next["Visibility in catalog"] = next["Visibility in catalog"] || "hidden";
-    }
-    return next;
+    return row;
   });
 }
 
@@ -394,6 +402,7 @@ async function loadLivePortalOverlay(): Promise<{
     db
       .select({
         sku: ecommerce_listings.global_sku,
+        wooSku: ecommerce_listings.woo_sku,
         productName: ecommerce_listings.product_name,
         collection: ecommerce_listings.collection_label,
         aluminum: ecommerce_listings.aluminum_msrp,
@@ -430,18 +439,34 @@ async function loadLivePortalOverlay(): Promise<{
       options: string;
     }
   >();
+  // Count how many live listings share each canonical so we never key a
+  // multi-product family bucket by global_sku alone (Kindle/Tenjam/BAR).
+  const canonicalCounts = new Map<string, number>();
+  for (const row of listings) {
+    canonicalCounts.set(row.sku, (canonicalCounts.get(row.sku) ?? 0) + 1);
+  }
   for (const row of listings) {
     const hub = fgcBySku.get(row.sku);
-    liveBySku.set(row.sku, {
+    const entry = {
       // Mia Aluminum PDF is the storefront Regular price authority — never steel_msrp.
       regularPrice: row.aluminum != null ? String(row.aluminum) : null,
       salePrice: row.sale != null ? String(row.sale) : null,
       weightLb: hub?.weight != null ? String(hub.weight) : null,
-      isWebVisible: Boolean(hub?.isWebVisible ?? true),
+      // Default visible for Phase 1 unless FGC explicitly toggled off.
+      isWebVisible: hub?.isWebVisible !== false,
       collection: row.collection || "",
       productName: row.productName || row.sku,
       options: row.construction?.trim() || "",
-    });
+    };
+    const wooKey = (row.wooSku || "").trim().toUpperCase();
+    if (wooKey) {
+      liveBySku.set(wooKey, entry);
+    }
+    // Only mirror onto canonical when this family has exactly one listing AND
+    // woo_sku is absent or equals the canonical — never collapse siblings.
+    if ((canonicalCounts.get(row.sku) ?? 0) === 1 && (!wooKey || wooKey === row.sku)) {
+      liveBySku.set(row.sku, entry);
+    }
   }
 
   const miaByCanonical = new Map<
@@ -502,10 +527,8 @@ function buildStorefrontRows(
   miaByCanonical: Map<string, { approved: boolean; approvedAt: string | null }>,
 ): LiveStorefrontRow[] {
   return handoff.map((h) => {
-    const live =
-      liveBySku.get(h.wooSku) ??
-      liveBySku.get(h.canonicalSku) ??
-      null;
+    // Strict wooSku key — never fall back to a collided canonical sibling price.
+    const live = liveBySku.get(h.wooSku) ?? null;
     const mia =
       miaByCanonical.get(h.canonicalSku) ??
       miaByCanonical.get(h.wooSku) ??
@@ -554,13 +577,9 @@ export async function generateLiveHandoffBundle(): Promise<LiveHandoffBundle> {
       .where(inArray(sku_mappings.global_sku, [...PHASE1_FABRICS])),
   ]);
 
-  // Also resolve alias SKUs onto live overlay so -LS/-RS / -BAR rows inherit prices.
+  // Key liveBySku strictly by unique wooSku. Do NOT copy a collided canonical
+  // listing onto a distinct wooSku (Kindle Heater/Lamp, Tenjam Freelo/Moon, etc.).
   const liveBySku = new Map(overlay.liveBySku);
-  for (const h of base.handoff) {
-    if (!liveBySku.has(h.wooSku) && liveBySku.has(h.canonicalSku)) {
-      liveBySku.set(h.wooSku, liveBySku.get(h.canonicalSku)!);
-    }
-  }
 
   const overlaidRows = overlayLivePortalEdits(base.allRows, liveBySku);
   const csvText = rowsToCsvText(base.headers, overlaidRows);

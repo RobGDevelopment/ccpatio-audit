@@ -187,6 +187,40 @@ describe("extractWooLineSpecs", () => {
     expect(specs[0]!.finishes.powder_coat).toBe("PWD-BLACK");
   });
 
+  it("strips APF (+$X.XX) suffixes and honors display_key/display_value", () => {
+    const { specs, issues } = extractWooLineSpecs(
+      wooOrder({
+        line_items: [
+          wooLine({
+            meta_data: [
+              {
+                key: "pa_fabric",
+                display_key: "Select Fabric",
+                value: "Ash (+$0.00)",
+                display_value: "Ash",
+              },
+              {
+                key: "pa_powder",
+                display_key: "Select Powder Coat",
+                value: "Black (+$0.00)",
+              },
+              { key: "umbrella_cover", value: "Yes (+$100.00)" },
+              { key: "dekton_sidearm", value: "Dekton Sidearm (+$300.00)" },
+              { key: "base_price", value: "Yes (+$150.00)" },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(issues).toEqual([]);
+    expect(specs[0]!.finishes.fabric).toBe("FAB-ACT-ASH");
+    expect(specs[0]!.finishes.powder_coat).toBe("PWD-BLACK");
+    expect(specs[0]!.addons.map((a) => a.key).sort()).toEqual(
+      ["base_price", "dekton_sidearm", "umbrella_cover"].sort(),
+    );
+    expect(specs[0]!.addons.every((a) => a.sku)).toBe(true);
+  });
+
   it("a rejected near-miss key names the accepted keys in its message", () => {
     const { issues } = extractWooLineSpecs(
       wooOrder({ line_items: [wooLine({ meta_data: [{ key: "stone", value: "DKT-X" }] })] }),

@@ -47,7 +47,8 @@ vi.mock("@/server/factory-bom/dossier-hash", () => ({
 
 vi.mock("@/lib/pim-audit", () => ({
   getPimSession: vi.fn().mockResolvedValue({ email: "test@example.com" }),
-  logPimAudit: vi.fn().mockResolvedValue(true)
+  logPimAudit: vi.fn().mockResolvedValue(true),
+  GHL_EMBED_PRINCIPAL_EMAIL: "ghl-embed@ccpatio.com",
 }));
 
 vi.mock("@/server/pipeline/catalog-mode", () => ({

@@ -1,32 +1,50 @@
 {
-  "phase_id": "phase1-handoff-p0-remediation",
-  "base_ref": "823a324",
-  "blast_radius": 23,
+  "phase_id": "phase1-redteam-closeout",
+  "base_ref": "9f33748",
+  "blast_radius": 22,
   "counts": {
-    "files": 23,
-    "tracked": 21,
-    "untracked": 2,
-    "insertions": 710,
-    "deletions": 139
+    "files": 22,
+    "tracked": 17,
+    "untracked": 5,
+    "insertions": 471,
+    "deletions": 144
   },
   "files": [
     {
       "status": "??",
-      "path": "scripts/ops/remediate-phase1-handoff-p0.ts",
+      "path": "scripts/ops/remediate-phase1-redteam-closeout.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/phase1-p0-remediation.test.ts",
+      "path": "src/app/api/ecommerce/woo-sync/route.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/api/embed/refresh-token/route.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/db/migrations/0059_ecommerce_listings_woo_sku.sql",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/phase1-redteam-closeout.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 33,
-      "deletions": 16
+      "insertions": 22,
+      "deletions": 12
     },
     {
       "status": "M",
@@ -37,122 +55,101 @@
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 12,
-      "deletions": 12
+      "insertions": 17,
+      "deletions": 11
     },
     {
       "status": "M",
-      "path": "scripts/ops/enable-phase1-hub-data.ts",
-      "insertions": 47,
+      "path": "src/app/embed/admin/master-catalog/actions.ts",
+      "insertions": 43,
+      "deletions": 42
+    },
+    {
+      "status": "M",
+      "path": "src/components/embed/EmbedSessionProvider.tsx",
+      "insertions": 51,
       "deletions": 4
     },
     {
       "status": "M",
-      "path": "scripts/ops/generate-primeview-phase1-csv.ts",
-      "insertions": 119,
-      "deletions": 6
-    },
-    {
-      "status": "M",
-      "path": "scripts/ops/ingest-mia-aluminum-pdf.ts",
-      "insertions": 8,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/app/api/webhooks/woocommerce/route.ts",
+      "path": "src/server/db/migrations/meta/_journal.json",
       "insertions": 7,
-      "deletions": 4
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase1PortalViews.tsx",
-      "insertions": 25,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx",
-      "insertions": 63,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": "src/server/ecommerce/mia-aluminum-pricing.ts",
-      "insertions": 1,
-      "deletions": 1
+      "path": "src/server/db/schema.ts",
+      "insertions": 10,
+      "deletions": 0
     },
     {
       "status": "M",
       "path": "src/server/woocommerce/finish-keys.ts",
-      "insertions": 144,
-      "deletions": 12
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/handoff-spec-generator.ts",
-      "insertions": 27,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/ingress.ts",
-      "insertions": 15,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/line-specs.ts",
-      "insertions": 10,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/sku-resolver.ts",
-      "insertions": 18,
-      "deletions": 13
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-finish-keys.test.ts",
-      "insertions": 20,
-      "deletions": 12
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-line-specs.test.ts",
-      "insertions": 20,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "tests/woo-sku-resolver.test.ts",
-      "insertions": 44,
+      "insertions": 42,
       "deletions": 3
     },
     {
       "status": "M",
-      "path": "tests/woo-webhook-receiver.test.ts",
-      "insertions": 21,
+      "path": "src/server/woocommerce/handoff-spec-generator.ts",
+      "insertions": 49,
+      "deletions": 30
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/line-specs.ts",
+      "insertions": 33,
+      "deletions": 17
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/woo-catalog-sync.ts",
+      "insertions": 81,
+      "deletions": 20
+    },
+    {
+      "status": "M",
+      "path": "tests/path-a-finalize.test.ts",
+      "insertions": 1,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/phase1-bom-restore.test.ts",
+      "insertions": 32,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "tests/publish-idempotency.test.ts",
+      "insertions": 2,
       "deletions": 1
     },
     {
       "status": "M",
-      "path": "tests/woo-webhook-route.test.ts",
-      "insertions": 36,
-      "deletions": 7
+      "path": "tests/woo-finish-keys.test.ts",
+      "insertions": 33,
+      "deletions": 0
     },
     {
       "status": "M",
-      "path": "tsconfig.json",
-      "insertions": 38,
-      "deletions": 37
+      "path": "tests/woo-line-specs.test.ts",
+      "insertions": 34,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/woo-sku-resolver-pglite.test.ts",
+      "insertions": 12,
+      "deletions": 0
     }
   ],
   "untracked": [
-    "scripts/ops/remediate-phase1-handoff-p0.ts",
-    "tests/phase1-p0-remediation.test.ts"
+    "scripts/ops/remediate-phase1-redteam-closeout.ts",
+    "src/app/api/ecommerce/woo-sync/route.ts",
+    "src/app/api/embed/refresh-token/route.ts",
+    "src/server/db/migrations/0059_ecommerce_listings_woo_sku.sql",
+    "tests/phase1-redteam-closeout.test.ts"
   ],
-  "file_list_sha256": "4230ee74d9ab4221a8806f910bffb7475db9c2b8c1bcc8800fb8e2a7a06eb59f",
-  "notes": "Aluminum-only +10% pricing engine, zero-data-loss Phase1/2 hydrate, MET-ALUM resolver default + steel quarantine, Katana weld stamp, Mia 2-tab portal controls. QCA CERTIFIED. qa:lifecycle exit 0. qa:phase14-ledger-live passed (no QBO sandbox token refresh needed)."
+  "file_list_sha256": "84e9e064820ae5651242fe13ba6b3016b0fdcce470a98a1cd876f7c375009de7",
+  "notes": "Close all 7 independent red-team HOLD findings: woo_sku 1:1 listings + Mia price parity, Published=1, Tab1/Tab2 isolation, Brizy-safe batched Woo sync, APF (+$X.XX), embed token refresh, Vitest green."
 }

@@ -200,16 +200,28 @@ const POWDER_NAME_INDEX: ReadonlyMap<string, string> = (() => {
 })();
 
 /**
+ * Strip WooCommerce / Advanced Product Fields price-delta suffixes:
+ * `"Black (+$0.00)"` → `"Black"`, `"Yes (+$100.00)"` → `"Yes"`,
+ * `"Dekton Sidearm (+$300.00)"` → `"Dekton Sidearm"`.
+ */
+export function stripApfPriceSuffix(raw: string): string {
+  return raw
+    .replace(/\s*\(\s*\+?\s*\$?\s*[\d,]+(?:\.\d{1,2})?\s*\)\s*$/i, "")
+    .replace(/\s*\+\s*\$\s*[\d,]+(?:\.\d{1,2})?\s*$/i, "")
+    .trim();
+}
+
+/**
  * Resolve a finish meta value to a Hub SKU:
  * 1. bare Hub SKU (`FAB-ACT-ASH`)
  * 2. embedded parenthetical/hyphenated (`Canvas (FAB-ACT-ASH)`, `Matte Black - PWD-BLACK`)
- * 3. exact case-insensitive Phase 1 display name
+ * 3. exact case-insensitive Phase 1 display name (after APF `(+$X.XX)` strip)
  */
 export function resolveFinishValueToSku(
   raw: string,
   slotHint?: FinishSlot,
 ): string {
-  const trimmed = raw.trim();
+  const trimmed = stripApfPriceSuffix(raw.trim());
   if (!trimmed) return "";
   const embedded = trimmed.match(EMBEDDED_FINISH_SKU_RE);
   if (embedded?.[1]) return normalizeSku(embedded[1]);
@@ -241,7 +253,7 @@ export function resolveFinishValueToSku(
  * cleanly; hyphens are preserved and aliased explicitly (`powder-coat` → powder_coat slot).
  */
 export function normalizeFinishKey(raw: string): string {
-  let key = raw.trim().toLowerCase().replace(/\s+/g, "_");
+  let key = stripApfPriceSuffix(raw.trim()).toLowerCase().replace(/\s+/g, "_");
   // Strip nested Woo prefixes cleanly: attribute_pa_fabric → fabric, pa_attribute_frame → frame.
   let prev = "";
   while (key !== prev) {
@@ -249,6 +261,33 @@ export function normalizeFinishKey(raw: string): string {
     key = key.replace(/^attribute_/, "").replace(/^pa_/, "").replace(/^_/, "");
   }
   return key;
+}
+
+/** Prefer Woo `display_key` when present; fall back to `key`. */
+export function metaKeyFromEntry(entry: {
+  key?: unknown;
+  display_key?: unknown;
+}): string {
+  const display =
+    typeof entry.display_key === "string" ? entry.display_key.trim() : "";
+  if (display) return display;
+  return typeof entry.key === "string" ? entry.key : "";
+}
+
+/** Prefer Woo `display_value` when present; fall back to `value`, then strip APF price. */
+export function metaValueFromEntry(entry: {
+  value?: unknown;
+  display_value?: unknown;
+}): string {
+  const display =
+    typeof entry.display_value === "string" ? entry.display_value.trim() : "";
+  if (display) return stripApfPriceSuffix(display);
+  if (typeof entry.value === "string") return stripApfPriceSuffix(entry.value.trim());
+  if (typeof entry.value === "number" && Number.isFinite(entry.value)) {
+    return String(entry.value);
+  }
+  if (typeof entry.value === "boolean") return entry.value ? "1" : "0";
+  return "";
 }
 
 export type FinishKeyClass =
