@@ -749,7 +749,9 @@ function applyPurchasableMetrics(
   if (opts.depthIn != null) row["Width (cm)"] = inToCm(opts.depthIn);
   if (opts.heightIn != null) row["Height (cm)"] = inToCm(opts.heightIn);
   row["Shipping class"] = shippingClass(opts.weightLb);
-  row.Published = row.Published || "1";
+  // Phase 1 launch gate: every purchasable SKU must ship Published=1 (Woo export
+  // sometimes carries "-1"/private — never preserve that for storefront SKUs).
+  row.Published = "1";
   row["In stock?"] = row["In stock?"] || "1";
 }
 
