@@ -1,35 +1,109 @@
 {
-  "phase_id": "showroom-sales-restore-and-ci-seal",
-  "base_ref": "0ab252c",
-  "blast_radius": 3,
+  "phase_id": "autonomous-katana-baton-pass",
+  "base_ref": "6347693",
+  "blast_radius": 14,
   "counts": {
-    "files": 3,
-    "tracked": 3,
-    "untracked": 0,
-    "insertions": 1740,
-    "deletions": 4
+    "files": 14,
+    "tracked": 7,
+    "untracked": 7,
+    "insertions": 171,
+    "deletions": 72
   },
   "files": [
     {
-      "status": "A",
-      "path": "tmp/primeview-phase1-csv-report.json",
-      "insertions": 1725,
+      "status": "??",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/SystemHealthDrawer.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/inngest/katana-catalog-reconcile.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/inngest/ops-keepalive-monitor.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/katana/catalog-reconcile.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/ops/keepalive.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/woocommerce/make-furniture-price-floor.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/autonomous-katana-baton-pass.test.ts",
+      "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
+      "insertions": 15,
+      "deletions": 44
+    },
+    {
+      "status": "M",
+      "path": ".cursor/session-stamp.json",
       "insertions": 3,
       "deletions": 2
     },
     {
       "status": "M",
-      "path": "tests/phase1-csv-and-smoke.test.ts",
-      "insertions": 12,
-      "deletions": 2
+      "path": "BUILD_PLAN.md",
+      "insertions": 24,
+      "deletions": 25
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/actions.ts",
+      "insertions": 67,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/page.tsx",
+      "insertions": 31,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/inngest/functions.ts",
+      "insertions": 6,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/woo-catalog-sync.ts",
+      "insertions": 25,
+      "deletions": 0
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "63b02fa7d9ae986710e25f31d027763d3e9eec0695672811b31b916fb6a304b2",
+  "untracked": [
+    "src/app/embed/admin/master-catalog/ecommerce/SystemHealthDrawer.tsx",
+    "src/inngest/katana-catalog-reconcile.ts",
+    "src/inngest/ops-keepalive-monitor.ts",
+    "src/server/katana/catalog-reconcile.ts",
+    "src/server/ops/keepalive.ts",
+    "src/server/woocommerce/make-furniture-price-floor.ts",
+    "tests/autonomous-katana-baton-pass.test.ts"
+  ],
+  "file_list_sha256": "efeae726ed544980a5e01f964d08d3ee2d42ddaa75ec27b566769feb8b40046b",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }

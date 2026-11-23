@@ -3209,3 +3209,70 @@ export async function syncProduct3dToWoo(
     productId: (pushed as { productId?: string | null }).productId ?? null,
   };
 }
+
+/* ─── System Health / baton-pass (autonomous-katana-baton-pass) ─── */
+
+export type SystemHealthSnapshot = Awaited<
+  ReturnType<typeof import("@/server/ops/keepalive").getSystemHealthSnapshot>
+>;
+
+export async function getSystemHealthAction(): Promise<
+  { ok: true; snapshot: SystemHealthSnapshot } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const { getSystemHealthSnapshot } = await import("@/server/ops/keepalive");
+    const snapshot = await getSystemHealthSnapshot();
+    return { ok: true, snapshot };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "System health probe failed",
+    };
+  }
+}
+
+export async function requestKatanaSelfHealAction(): Promise<
+  { ok: true; eventIds: string[] } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const { inngest } = await import("@/inngest/client");
+    const { KATANA_RECONCILE_EVENT } = await import("@/server/katana/catalog-reconcile");
+    const sent = await inngest.send({
+      name: KATANA_RECONCILE_EVENT,
+      data: {
+        requestedBy: session.email,
+        source: "master-catalog-system-health",
+      },
+    });
+    await logPimAudit({
+      operatorEmail: session.email,
+      action: "request_katana_self_heal",
+      field: "katana_reconcile",
+      newValue: "ops/katana.reconcile.requested",
+    });
+    return { ok: true, eventIds: sent.ids ?? [] };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not enqueue self-heal",
+    };
+  }
+}
+
+export async function replayHeldWooOrderAction(
+  quarantineId: number,
+): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const { replayWooQuarantinedOrder } = await import(
+    "@/app/admin/quarantine/woo-actions"
+  );
+  const result = await replayWooQuarantinedOrder(quarantineId);
+  if (!result.ok) return { ok: false, error: result.error };
+  revalidatePath("/embed/admin/master-catalog");
+  return { ok: true, message: result.message };
+}

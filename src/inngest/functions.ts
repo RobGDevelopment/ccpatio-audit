@@ -45,6 +45,8 @@ import {
   factoryAirlockMarkPushed,
   factoryAirlockRelease,
 } from "./factory-airlock";
+import { katanaCatalogReconcile } from "./katana-catalog-reconcile";
+import { opsKeepaliveMonitor } from "./ops-keepalive-monitor";
 import { KATANA_TENANT_CONCURRENCY } from "@/server/sre/katana-throttle";
 import {
   ghlOpportunitySyncSchema,
@@ -709,8 +711,12 @@ export const inngestFunctions = [
   pathAGhlSync,
   factoryAirlockRelease,
   factoryAirlockMarkPushed,
+  katanaCatalogReconcile,
+  opsKeepaliveMonitor,
   globalDlqHandler,
 ];
+
+export { katanaCatalogReconcile, opsKeepaliveMonitor };
 
 /**
  * Legacy GHL Won order pipeline — defined but NOT registered. Do not add this to

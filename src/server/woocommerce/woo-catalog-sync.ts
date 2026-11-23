@@ -4,6 +4,12 @@
  * images unless the Hub hero URL explicitly changed.
  */
 import { WooCommerceApiError } from "@/lib/woocommerce-catalog";
+import {
+  assertMakeFurniturePriceFloor,
+  MakeFurniturePriceFloorError,
+} from "@/server/woocommerce/make-furniture-price-floor";
+
+export { MakeFurniturePriceFloorError, assertMakeFurniturePriceFloor };
 
 export const LB_TO_KG = 0.45359237;
 export const IN_TO_CM = 2.54;
@@ -192,6 +198,15 @@ export function buildSurgicalWooPayload(
   variationBatch: { create: Record<string, unknown>[]; update: Record<string, unknown>[]; delete: number[] };
   dryRunPreview: Record<string, unknown>;
 } {
+  assertMakeFurniturePriceFloor({
+    parentSku: parent.sku,
+    parentName: parent.name,
+    variations: parent.variations.map((v) => ({
+      sku: v.sku,
+      regularPrice: v.regularPrice,
+    })),
+  });
+
   const includeCopy = options.includeCopy === true;
   const meta_data: Array<{ key: string; value: string }> = [
     { key: "_w3d_enabled", value: "" },
@@ -479,6 +494,16 @@ export async function pushParentToWoo(
   productId: string | null;
   preview: Record<string, unknown>;
 }> {
+  // Hard circuit breaker: Make furniture below $250 (or <= $0) never reaches Woo.
+  assertMakeFurniturePriceFloor({
+    parentSku: parent.sku,
+    parentName: parent.name,
+    variations: parent.variations.map((v) => ({
+      sku: v.sku,
+      regularPrice: v.regularPrice,
+    })),
+  });
+
   const units =
     options?.units ??
     (await fetchWooStoreUnits().catch(

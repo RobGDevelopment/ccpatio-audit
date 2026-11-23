@@ -16,6 +16,7 @@ import {
   Printer,
   Download,
   Zap,
+  Activity,
 } from "lucide-react";
 import {
   getActiveCatalog,
@@ -50,6 +51,7 @@ import {
   updateListingInDrawer,
   updateHubInDrawer,
   createNewProduct,
+  getSystemHealthAction,
   type CatalogItem,
   type QuarantineItem,
   type EcommerceListing,
@@ -57,6 +59,7 @@ import {
   type Phase1PortalView,
   type WooSyncStatus,
 } from "./actions";
+import SystemHealthDrawer from "./ecommerce/SystemHealthDrawer";
 import {
   normalizeLegacySku,
   normalizeProductUrl,
@@ -246,6 +249,8 @@ export default function MasterCatalogAdmin() {
   const [ecommerceLoading, setEcommerceLoading] = useState(false);
   const [ecommerceError, setEcommerceError] = useState<string | null>(null);
   const [wooBadge, setWooBadge] = useState<{ configured: boolean; label: string } | null>(null);
+  const [systemHealth, setSystemHealth] = useState<"Healthy" | "Attention Needed" | null>(null);
+  const [healthDrawerOpen, setHealthDrawerOpen] = useState(false);
   const [dryRunJson, setDryRunJson] = useState<string | null>(null);
 
   // Inline editing
@@ -278,14 +283,16 @@ export default function MasterCatalogAdmin() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [a, q, badge] = await Promise.all([
+        const [a, q, badge, health] = await Promise.all([
           getActiveCatalog(),
           getQuarantineQueue(),
           getWooConnectionBadge(),
+          getSystemHealthAction(),
         ]);
         setCatalog(a);
         setQuarantine(q);
         setWooBadge(badge);
+        if (health.ok) setSystemHealth(health.snapshot.overall);
       } catch (err) {
         console.error("Failed to load catalog data:", err);
       } finally {
@@ -781,6 +788,20 @@ export default function MasterCatalogAdmin() {
               </h1>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                data-testid="system-health-pill"
+                onClick={() => setHealthDrawerOpen(true)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                  systemHealth === "Attention Needed"
+                    ? "bg-amber-50 text-amber-900 ring-1 ring-amber-200"
+                    : "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+                }`}
+                title="System Health, Held Orders & Admin Runbook"
+              >
+                <Activity className="h-3.5 w-3.5" />
+                System Health · {systemHealth ?? "…"}
+              </button>
               <span
                 className={`rounded-full px-3 py-1 text-xs font-semibold ${
                   wooBadge?.configured
@@ -1333,6 +1354,15 @@ export default function MasterCatalogAdmin() {
         onClose={() => setModel3dTarget(null)}
         onChanged={() => void refresh3dListings()}
         onToast={setToast}
+      />
+      <SystemHealthDrawer
+        open={healthDrawerOpen}
+        onClose={() => {
+          setHealthDrawerOpen(false);
+          void getSystemHealthAction().then((h) => {
+            if (h.ok) setSystemHealth(h.snapshot.overall);
+          });
+        }}
       />
 
       {/* Toast */}

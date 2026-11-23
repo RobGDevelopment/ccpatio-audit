@@ -1,38 +1,37 @@
-# BUILD_PLAN — `showroom-sales-restore-and-ci-seal`
+# BUILD_PLAN — `autonomous-katana-baton-pass`
 
-**Base:** `a272e7b`  
+**Base:** `6347693`  
 **Mode:** edit (Track 2 locked)  
-**Blast cap override:** true (expected = 29)
+**Blast cap override:** true
 
 ## Intent
 
-Restore sales-curated `/embed/showroom` over Hub `katana_showroom_snapshot` +
-`inventory_holds` (`<300ms`, zero live Katana on page load, zero
-`ecommerce_listings` coupling). Move raw `katana-ops` dump to
-`/embed/ops-inventory`. Seal Phase 1 CI (`pim-dictionary`) and Gate-1 Mia
-spot-check = exact `7`. Preserve `product_bom=3300`,
-`logistics_profiles=2781`, `finished_goods_catalog=1317`, `107/107`
-`ecommerce_listings`.
+Ship five hands-off autonomy & fail-safe layers so Mia/Kian can operate the
+catalog without Vercel/Supabase: throttled Katana→Hub self-heal, daily dead-man's
+switch, Woo Make furniture price floor, and a GHL System Health / held-order /
+baton-pass runbook drawer. Preserve Phase 1 `107` listings, `173`-col CSV,
+`product_bom=3300`, `logistics_profiles=2781`, Showroom `<500ms` / `0 MET-*`.
 
 ## Workstreams
 
-1. **Sales projection** — `projectShowroomSalesView()`: shop-floor exclusion,
-   1 card/SKU warehouse rollup, 6 tabs (Floor RTS / 3rd-Party / Fabrics /
-   Dekton / MTO / Active Holds), hold badge without double-subtract,
-   Order Desk MTO deep-link with embed token.
-2. **Ops move** — `/embed/ops-inventory` (+ `/admin/ops-inventory`) keeps
-   `inventoryMode="katana-ops"`; `/embed/showroom` is sales-only.
-3. **Holds** — re-enable Place/Release/Lifecycle; all hold + GHL search
-   actions accept embed token header OR cookie; refresh snapshot variant
-   after hold mutate (no double-subtract of already-synced HOLD-*).
-4. **CI seal** — Postgres service + env secrets in
-   `.github/workflows/middleware.yml`; regenerate Phase 1 CSV/handoff;
-   scope Fly Leg odd-dollar to `FIN-WFT-FLY-BST-18X18-CNT` only.
-5. **QA** — unit + E2E, `qa:lifecycle`, QCA CERTIFIED, commit/push, live
-   + Actions green.
+1. **Katana catalog reconcile** — Inngest cron `0 */2 * * *` +
+   `ops/katana.reconcile.requested`; warm `katana_showroom_snapshot`; update
+   stock / `katana_variant_id` / factory cost / soft-delete only; never touch
+   commerce fields; auto-heal deleted+recreated variant IDs; prefix-agnostic
+   ingest with `sync_to_woo=false` / `is_web_visible=false` / `sow_phase=2`.
+2. **Keepalive monitor** — daily `0 11 * * *` UTC; QBO token freshness via
+   `getMutexDb()`; Katana health + sync age `>6h`; held Woo count;
+   exception-only Resend to `OPS_ALERT_EMAILS`.
+3. **Woo price floor** — block Make furniture `FIN-*` (ex pillows/covers/
+   accessories) when `regular_price < 250` or `<= 0`.
+4. **System Health drawer** — Healthy/Attention pill on
+   `/embed/admin/master-catalog`; lamps + self-heal + held-order replay +
+   non-technical baton-pass FAQ.
+5. **QA** — unit + vitest + `qa:lifecycle` + QCA CERTIFIED + commit/push +
+   live Vercel/Inngest/Actions proof.
 
 ## Target test
 
 ```bash
-npx vitest run tests/showroom-sales-projection.test.ts tests/showroom-snapshot-and-refresh.test.ts tests/phase1-csv-and-smoke.test.ts tests/mia-aluminum-pdf-pricing.test.ts
+npx vitest run tests/autonomous-katana-baton-pass.test.ts
 ```
