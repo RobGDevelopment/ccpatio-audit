@@ -196,7 +196,12 @@ describe("phase1 csv structural assertions", () => {
 });
 
 describe("phase1 P0 live Hub + swatch + qa-test guards", () => {
-  const hasDb = Boolean(process.env.POSTGRES_URL || process.env.DATABASE_URL);
+  // CI spins an empty local Postgres; live Hub suites need the real schema.
+  const hasDb =
+    Boolean(process.env.POSTGRES_URL || process.env.DATABASE_URL) &&
+    !/^postgresql:\/\/postgres:postgres@127\.0\.0\.1:5432\b/i.test(
+      process.env.POSTGRES_URL ?? "",
+    );
 
   it("qa-test production guard returns blocked without ALLOW_LOCAL_QA_TEST", async () => {
     const { isQaTestProductionBlocked } = await import("@/app/api/qa-test/route");
@@ -378,7 +383,12 @@ describe("phase1 P0 live Hub + swatch + qa-test guards", () => {
 });
 
 describe("phase1 signed multi-path checkout smoke", () => {
-  const hasDb = Boolean(process.env.POSTGRES_URL || process.env.DATABASE_URL);
+  // CI spins an empty local Postgres; live Hub suites need the real schema.
+  const hasDb =
+    Boolean(process.env.POSTGRES_URL || process.env.DATABASE_URL) &&
+    !/^postgresql:\/\/postgres:postgres@127\.0\.0\.1:5432\b/i.test(
+      process.env.POSTGRES_URL ?? "",
+    );
   const IRONWOOD_ADDON_SKU = "FIN-ESY-MIS-ADDIRONWOOD";
   const UMBRELLA_COVER_SKU = "FIN-ESY-MIS-WEATHERPROOFCO";
 

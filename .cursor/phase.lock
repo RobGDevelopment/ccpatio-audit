@@ -2,10 +2,10 @@
   "phase_id": "showroom-sales-restore-and-ci-seal",
   "intent": "Restore sales-curated /embed/showroom (CPU projectShowroomSalesView over katana_showroom_snapshot + inventory_holds, <300ms, 1 card/SKU warehouse badges, 6 sales tabs, holds without double-subtract, MTO Order Desk deep-link). Move raw katana-ops dump to /embed/ops-inventory. Fix pim-dictionary CI (Postgres service + env + CSV). Scope Fly Leg odd-dollar spot-check to FIN-WFT-FLY-BST-18X18-CNT only (exact Needs Mia Spot-Check = 7). Zero regressions: product_bom=3300, logistics_profiles=2781, finished_goods_catalog=1317, ecommerce_listings 107/107 untouched.",
   "mode": "edit",
-  "base_ref": "a272e7b",
+  "base_ref": "0ab252c",
   "allow_dirty_base": true,
   "override_blast_cap": true,
-  "expected_blast_radius": 29,
+  "expected_blast_radius": 3,
   "target_test": "npx vitest run tests/showroom-sales-projection.test.ts tests/showroom-snapshot-and-refresh.test.ts tests/phase1-csv-and-smoke.test.ts tests/mia-aluminum-pdf-pricing.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",
@@ -50,6 +50,7 @@
     "tests/e2e/showroom-sales.spec.ts",
     "tmp/PRIMEVIEW_PHASE1_HANDOFF_SPEC.md",
     "tmp/primeview-phase1-102-import.csv",
+    "tmp/primeview-phase1-csv-report.json",
     "vitest.config.ts"
   ]
 }
