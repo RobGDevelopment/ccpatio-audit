@@ -195,17 +195,35 @@ export function buildMiaAluminumPriceListCsv(
   return lines.join("\n");
 }
 
-/** Phase 1 rows needing Mia spot-check (4 missing Milan + 3 odd-dollar). */
+/** Phase 1 rows needing Mia spot-check (4 missing Milan + 3 odd-dollar). Exact 7. */
 export function needsMiaSpotCheck(input: {
   globalSku: string;
   attributes?: Record<string, unknown> | null;
+  wooSku?: string | null;
 }): boolean {
+  const sku = input.globalSku.trim().toUpperCase();
+  const woo = (input.wooSku ?? "").trim().toUpperCase();
+  const identity = woo || sku;
+  const spot = phase1SpotCheckSkus().map((s) => s.toUpperCase());
+
+  // Fly Leg BAR is never spot-check (keep mia_approved / $945 path).
+  if (identity === "FIN-WFT-FLY-BST-18X18-BAR") return false;
+
+  // Fly Leg odd-dollar is scoped strictly to counter-height woo_sku.
+  if (
+    sku === "FIN-WFT-FLY-BST-18X18" ||
+    identity.startsWith("FIN-WFT-FLY-BST-18X18")
+  ) {
+    return identity === "FIN-WFT-FLY-BST-18X18-CNT";
+  }
+
+  if (spot.includes(identity) || spot.includes(sku) || spot.includes(woo)) return true;
+
   const flag = readPriceReviewFlag(input.attributes);
   if (flag === PRICE_REVIEW_MISSING || flag === PRICE_REVIEW_ODD) return true;
-  const base = input.globalSku.replace(/-(LS|RS)$/i, "").toUpperCase();
-  return phase1SpotCheckSkus().some(
-    (s) => s === input.globalSku.toUpperCase() || s === base,
-  );
+
+  const base = sku.replace(/-(LS|RS)$/i, "");
+  return spot.some((s) => s === base && !s.includes("FLY-BST-18X18"));
 }
 
 export function matchesPhase2SubFilter(

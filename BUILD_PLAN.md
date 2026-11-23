@@ -1,33 +1,38 @@
-# BUILD_PLAN — `phase1-final-10gate-greenlight`
+# BUILD_PLAN — `showroom-sales-restore-and-ci-seal`
 
-**Base:** `27efe1d`  
+**Base:** `a272e7b`  
 **Mode:** edit (Track 2 locked)  
-**Blast cap override:** true (expected = 26)
+**Blast cap override:** true (expected = 29)
 
 ## Intent
 
-Close the five remaining cold-start QA findings with zero regressions
-(`product_bom=3300`, `logistics_profiles=2781`, `finished_goods_catalog=1317`,
-Mia Aluminum prices, `Published=1` on all 107 Phase 1 purchasables).
+Restore sales-curated `/embed/showroom` over Hub `katana_showroom_snapshot` +
+`inventory_holds` (`<300ms`, zero live Katana on page load, zero
+`ecommerce_listings` coupling). Move raw `katana-ops` dump to
+`/embed/ops-inventory`. Seal Phase 1 CI (`pim-dictionary`) and Gate-1 Mia
+spot-check = exact `7`. Preserve `product_bom=3300`,
+`logistics_profiles=2781`, `finished_goods_catalog=1317`, `107/107`
+`ecommerce_listings`.
 
 ## Workstreams
 
-1. **Gate 10 / P0** — Hub Postgres `katana_showroom_snapshot` + `katana_sync_meta`;
-   SSR + `GET/POST /api/katana/showroom-inventory` read Hub only (&lt;300ms);
-   seed script with 429 backoff; dual embed auth (header + cookie); proxy must
-   not strip `x-ccpatio-embed-token` on `/api/*`.
-2. **Gate 6 / P1** — `/api/embed/refresh-token` header path returns 200;
-   `EmbedSessionProvider` mutable ref + `getEmbedHeaders()`.
-3. **Gate 4b / P1** — Delete `FIN-BRV-ARM-SOF-72X34` null orphan; backfill 14
-   facing/BAR/CNT `woo_sku` rows; remappoint 8 OCN/DYB shells onto Phase 1
-   canons → **107/107** distinct `woo_sku`.
-4. **Gate 2+5 / P2** — Prefix `Meta: acf_fabric_swatches_json`; dual umbrella
-   cover (Lido $100 + Cantilever $150) checkout test.
-5. **QA** — `tests/showroom-snapshot-and-refresh.test.ts`, full vitest,
-   `qa:lifecycle`, QCA CERTIFIED, commit/push, live hub.ccpatio.com probes.
+1. **Sales projection** — `projectShowroomSalesView()`: shop-floor exclusion,
+   1 card/SKU warehouse rollup, 6 tabs (Floor RTS / 3rd-Party / Fabrics /
+   Dekton / MTO / Active Holds), hold badge without double-subtract,
+   Order Desk MTO deep-link with embed token.
+2. **Ops move** — `/embed/ops-inventory` (+ `/admin/ops-inventory`) keeps
+   `inventoryMode="katana-ops"`; `/embed/showroom` is sales-only.
+3. **Holds** — re-enable Place/Release/Lifecycle; all hold + GHL search
+   actions accept embed token header OR cookie; refresh snapshot variant
+   after hold mutate (no double-subtract of already-synced HOLD-*).
+4. **CI seal** — Postgres service + env secrets in
+   `.github/workflows/middleware.yml`; regenerate Phase 1 CSV/handoff;
+   scope Fly Leg odd-dollar to `FIN-WFT-FLY-BST-18X18-CNT` only.
+5. **QA** — unit + E2E, `qa:lifecycle`, QCA CERTIFIED, commit/push, live
+   + Actions green.
 
 ## Target test
 
 ```bash
-npx vitest run tests/showroom-snapshot-and-refresh.test.ts tests/phase1-csv-and-smoke.test.ts tests/swatch-and-3d-asset-studio.test.ts tests/ghl-inventory-and-woo-sync.test.ts tests/phase1-p0-remediation.test.ts
+npx vitest run tests/showroom-sales-projection.test.ts tests/showroom-snapshot-and-refresh.test.ts tests/phase1-csv-and-smoke.test.ts tests/mia-aluminum-pdf-pricing.test.ts
 ```

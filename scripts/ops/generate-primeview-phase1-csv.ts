@@ -1088,6 +1088,8 @@ export async function buildPhase1ImportBundle(opts?: {
     const parent = parentsById.get(pid)!;
     const out = projectToHeaders(parent, headers);
     forceBlankW3d(out);
+    // Phase 1 launch gate: every exported parent (incl. variable shells) ships Published=1.
+    out.Published = "1";
 
     const sampleSow =
       handoff.find((h) => h.parentId === pid) ??
@@ -1193,7 +1195,10 @@ export async function buildPhase1ImportBundle(opts?: {
     applyAcfAddonPriceFixes(row, parentRef);
   }
 
-  const allRows = [...parentRows, ...variationRows];
+  const allRows = [...parentRows, ...variationRows].map((row) => {
+    row.Published = "1";
+    return row;
+  });
 
   const makeCount = handoff.filter((h) => h.fulfillment === "Make").length;
   const resaleCount = handoff.filter((h) => h.fulfillment === "Resale").length;

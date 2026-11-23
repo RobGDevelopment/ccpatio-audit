@@ -25,12 +25,18 @@ describe("showroom snapshot + embed refresh auth", () => {
     expect(route).not.toMatch(/getKatanaInventorySnapshot/);
   });
 
-  it("embed showroom SSR loads Hub snapshot (not live Katana pagination)", () => {
+  it("embed showroom SSR loads sales projection (not live Katana / not ops dump)", () => {
     const page = readFileSync(join(process.cwd(), "src/app/embed/showroom/page.tsx"), "utf8");
-    expect(page).toContain("loadOpsKatanaInventory");
+    expect(page).toContain("loadShowroomSalesInventory");
+    expect(page).toContain("SalesStockView");
+    expect(page).not.toContain('inventoryMode="katana-ops"');
+    const ops = readFileSync(join(process.cwd(), "src/app/embed/ops-inventory/page.tsx"), "utf8");
+    expect(ops).toContain('inventoryMode="katana-ops"');
     const stock = readFileSync(join(process.cwd(), "src/server/showroom/stock.ts"), "utf8");
     expect(stock).toContain("readShowroomSnapshotFromHub");
-    expect(stock).toContain("refreshShowroomSnapshotFromKatana");
+    expect(stock).toContain("projectShowroomSalesView");
+    expect(stock).not.toMatch(/import\s*\{[^}]*ecommerce_listings/);
+    expect(stock).not.toMatch(/\.from\(\s*ecommerce_listings\s*\)/);
     expect(stock).not.toMatch(/getKatanaInventorySnapshot\(\s*\{\s*force/);
   });
 

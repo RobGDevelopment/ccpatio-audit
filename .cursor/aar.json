@@ -1,181 +1,199 @@
 {
-  "phase_id": "phase1-final-10gate-greenlight",
-  "base_ref": "27efe1d",
-  "blast_radius": 26,
+  "phase_id": "showroom-sales-restore-and-ci-seal",
+  "base_ref": "a272e7b",
+  "blast_radius": 29,
   "counts": {
-    "files": 26,
-    "tracked": 19,
+    "files": 29,
+    "tracked": 22,
     "untracked": 7,
-    "insertions": 333,
-    "deletions": 129
+    "insertions": 1186,
+    "deletions": 102
   },
   "files": [
     {
       "status": "??",
-      "path": "scripts/ops/backfill-phase1-woo-sku-parity.ts",
+      "path": "scripts/ops/scope-fly-leg-spot-check.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "scripts/ops/seed-katana-showroom-snapshot.ts",
+      "path": "src/app/admin/ops-inventory/page.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/app/api/katana/showroom-inventory/route.ts",
+      "path": "src/app/embed/ops-inventory/page.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/db/migrations/0061_katana_showroom_snapshot.sql",
+      "path": "src/app/showroom/stock/SalesStockView.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/showroom/embed-route-auth.ts",
+      "path": "src/server/showroom/sales-projection.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/stock/showroom-snapshot.ts",
+      "path": "tests/e2e/showroom-sales.spec.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/showroom-snapshot-and-refresh.test.ts",
+      "path": "tests/showroom-sales-projection.test.ts",
       "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "A",
+      "path": "tmp/PRIMEVIEW_PHASE1_HANDOFF_SPEC.md",
+      "insertions": 260,
+      "deletions": 0
+    },
+    {
+      "status": "A",
+      "path": "tmp/primeview-phase1-102-import.csv",
+      "insertions": 435,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 28,
-      "deletions": 31
+      "insertions": 35,
+      "deletions": 29
     },
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
       "insertions": 2,
-      "deletions": 3
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": ".github/workflows/middleware.yml",
+      "insertions": 52,
+      "deletions": 0
     },
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 29,
-      "deletions": 15
-    },
-    {
-      "status": "M",
-      "path": "data_migration/Primeview/product_export_import_headers.csv",
-      "insertions": 1,
-      "deletions": 1
+      "insertions": 25,
+      "deletions": 20
     },
     {
       "status": "M",
       "path": "scripts/ops/generate-primeview-phase1-csv.ts",
-      "insertions": 8,
-      "deletions": 5
+      "insertions": 6,
+      "deletions": 1
     },
     {
       "status": "M",
-      "path": "src/app/api/embed/katana-inventory/route.ts",
-      "insertions": 54,
-      "deletions": 23
+      "path": "src/app/api/katana/showroom-inventory/route.ts",
+      "insertions": 60,
+      "deletions": 15
     },
     {
       "status": "M",
-      "path": "src/app/api/embed/refresh-token/route.ts",
-      "insertions": 16,
-      "deletions": 8
+      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase1PortalViews.tsx",
+      "insertions": 6,
+      "deletions": 1
     },
     {
       "status": "M",
-      "path": "src/app/api/webhooks/katana/route.ts",
-      "insertions": 14,
+      "path": "src/app/embed/admin/master-catalog/page.tsx",
+      "insertions": 1,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/showroom/page.tsx",
+      "insertions": 12,
+      "deletions": 12
+    },
+    {
+      "status": "M",
+      "path": "src/app/showroom/actions.ts",
+      "insertions": 30,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/app/showroom/stock/HoldLifecycleControls.tsx",
+      "insertions": 10,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "src/app/showroom/stock/InventoryCard.tsx",
+      "insertions": 52,
       "deletions": 0
     },
     {
       "status": "M",
       "path": "src/app/showroom/stock/LiveStockView.tsx",
-      "insertions": 10,
-      "deletions": 4
-    },
-    {
-      "status": "M",
-      "path": "src/components/embed/EmbedSessionProvider.tsx",
-      "insertions": 28,
-      "deletions": 14
-    },
-    {
-      "status": "M",
-      "path": "src/proxy.ts",
-      "insertions": 7,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/migrations/meta/_journal.json",
-      "insertions": 7,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/schema.ts",
-      "insertions": 43,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/server/showroom/stock.ts",
-      "insertions": 15,
-      "deletions": 6
-    },
-    {
-      "status": "M",
-      "path": "src/server/stock/katana-inventory.ts",
-      "insertions": 10,
-      "deletions": 4
-    },
-    {
-      "status": "M",
-      "path": "src/server/woocommerce/handoff-spec-generator.ts",
       "insertions": 3,
       "deletions": 3
     },
     {
       "status": "M",
-      "path": "tests/phase1-csv-and-smoke.test.ts",
-      "insertions": 12,
-      "deletions": 10
+      "path": "src/app/showroom/stock/PlaceHoldModal.tsx",
+      "insertions": 5,
+      "deletions": 2
     },
     {
       "status": "M",
-      "path": "tests/swatch-and-3d-asset-studio.test.ts",
-      "insertions": 1,
+      "path": "src/server/actions/inventory.ts",
+      "insertions": 30,
       "deletions": 1
     },
     {
       "status": "M",
-      "path": "tests/woo-line-specs.test.ts",
-      "insertions": 45,
+      "path": "src/server/ecommerce/mia-aluminum-pricing.ts",
+      "insertions": 4,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/server/ecommerce/two-tab-portal.ts",
+      "insertions": 23,
+      "deletions": 5
+    },
+    {
+      "status": "M",
+      "path": "src/server/showroom/stock.ts",
+      "insertions": 122,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "tests/showroom-snapshot-and-refresh.test.ts",
+      "insertions": 9,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "vitest.config.ts",
+      "insertions": 4,
       "deletions": 0
     }
   ],
   "untracked": [
-    "scripts/ops/backfill-phase1-woo-sku-parity.ts",
-    "scripts/ops/seed-katana-showroom-snapshot.ts",
-    "src/app/api/katana/showroom-inventory/route.ts",
-    "src/server/db/migrations/0061_katana_showroom_snapshot.sql",
-    "src/server/showroom/embed-route-auth.ts",
-    "src/server/stock/showroom-snapshot.ts",
-    "tests/showroom-snapshot-and-refresh.test.ts"
+    "scripts/ops/scope-fly-leg-spot-check.ts",
+    "src/app/admin/ops-inventory/page.tsx",
+    "src/app/embed/ops-inventory/page.tsx",
+    "src/app/showroom/stock/SalesStockView.tsx",
+    "src/server/showroom/sales-projection.ts",
+    "tests/e2e/showroom-sales.spec.ts",
+    "tests/showroom-sales-projection.test.ts"
   ],
-  "file_list_sha256": "5cb67051fb2bfb3cc5c37b4cf488b63a9a61c4f21b90db78df1b994209734cc9",
+  "file_list_sha256": "0eb5d513eafb4649c34b4132b52038e55af7ca3e258afcb5138fe3a79ac5a400",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }

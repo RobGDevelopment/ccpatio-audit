@@ -12,6 +12,7 @@ import {
 } from "@/lib/hold-quantity";
 import { SHOWROOM_HOLD_TTL_DAYS } from "@/lib/inventory-holds";
 import { formatQty, type StockRow } from "@/lib/stock-display";
+import { useEmbedSession } from "@/components/embed/EmbedSessionProvider";
 import { placeShowroomHold, searchGhlHoldTargets, type HoldSearchHit } from "../actions";
 import { softField } from "../showroom-ui";
 
@@ -36,6 +37,7 @@ export function PlaceHoldModal({
   ghlUserEmail,
   onPlaced,
 }: PlaceHoldModalProps) {
+  const { embedToken } = useEmbedSession();
   const toast = useToast();
   const titleId = useId();
   const onCloseRef = useRef(onClose);
@@ -94,7 +96,7 @@ export function PlaceHoldModal({
     const requestId = ++searchRequest.current;
     const timer = window.setTimeout(() => {
       setSearching(true);
-      void searchGhlHoldTargets(query)
+      void searchGhlHoldTargets(query, embedToken)
         .then((result) => {
           if (requestId !== searchRequest.current) return;
           setSearching(false);
@@ -113,7 +115,7 @@ export function PlaceHoldModal({
         });
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [isOpen, opportunity, opportunityQuery]);
+  }, [isOpen, opportunity, opportunityQuery, embedToken]);
 
   function review(event: FormEvent) {
     event.preventDefault();
@@ -143,6 +145,7 @@ export function PlaceHoldModal({
         note: note.trim(),
         ghlUserId,
         ghlUserEmail,
+        embedToken,
       });
       if (!result.ok) {
         setMessage(result.error);

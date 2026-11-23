@@ -159,7 +159,11 @@ export function Phase1FlatGrid({
   const sorted = useMemo(() => {
     const filtered = spotCheckOnly
       ? listings.filter((l) =>
-          needsMiaSpotCheck({ globalSku: l.globalSku, attributes: l.attributes }),
+          needsMiaSpotCheck({
+            globalSku: l.globalSku,
+            attributes: l.attributes,
+            wooSku: l.wooSku,
+          }),
         )
       : listings;
     return [...filtered].sort(
@@ -204,6 +208,7 @@ export function Phase1FlatGrid({
             const needsCheck = needsMiaSpotCheck({
               globalSku: row.globalSku,
               attributes: row.attributes,
+              wooSku: row.wooSku,
             });
             const draft =
               draftPrices[row.id] ??

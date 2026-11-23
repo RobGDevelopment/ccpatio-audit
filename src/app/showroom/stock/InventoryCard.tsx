@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ImagePlus } from "lucide-react";
 import { formatQty, type StockRow } from "@/lib/stock-display";
 import { variantImagePublicUrl } from "@/lib/product-image-url";
+import type { SalesHoldBadge, WarehouseQty } from "@/server/showroom/sales-projection";
 import { ImageUploadModal } from "./ImageUploadModal";
 import type { ActiveShowroomHold } from "../actions";
 import { HoldLifecycleControls } from "./HoldLifecycleControls";
@@ -41,6 +42,10 @@ export function InventoryCard({
   ghlUserId,
   ghlUserEmail,
   holds,
+  warehouses,
+  holdBadges,
+  showMtoQuote = false,
+  mtoHref,
   onHoldPlaced,
   onOptimisticRelease,
   onReleaseFailed,
@@ -55,6 +60,10 @@ export function InventoryCard({
   ghlUserId?: string;
   ghlUserEmail?: string;
   holds: ActiveShowroomHold[];
+  warehouses?: WarehouseQty[];
+  holdBadges?: SalesHoldBadge[];
+  showMtoQuote?: boolean;
+  mtoHref?: string;
   onHoldPlaced: () => void;
   onOptimisticRelease: (holdId: string) => void;
   onReleaseFailed: () => void;
@@ -119,6 +128,41 @@ export function InventoryCard({
             <p className="break-words line-clamp-3 text-xs text-slate-600">{row.variantLabel}</p>
           ) : null}
           <p className="mt-0.5 font-mono text-xs text-slate-500">{row.sku}</p>
+          {warehouses && warehouses.length > 0 ? (
+            <div className="mt-1.5 flex flex-wrap gap-1.5" data-testid="warehouse-badges">
+              {warehouses.map((w) => (
+                <span
+                  key={w.key}
+                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium tabular-nums text-slate-700"
+                  title={`${w.locationName}: ${formatQty(w.available)} available`}
+                >
+                  {w.label} {formatQty(w.inStock)}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {holdBadges && holdBadges.length > 0 ? (
+            <div className="mt-1.5 space-y-1" data-testid="hold-badges">
+              {holdBadges.map((badge) => {
+                const expires = (() => {
+                  try {
+                    return new Date(badge.expiresAt).toLocaleDateString();
+                  } catch {
+                    return badge.expiresAt;
+                  }
+                })();
+                return (
+                  <p
+                    key={badge.id}
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-900"
+                  >
+                    Held: {formatQty(badge.qty)} ({badge.opportunityName || "Customer"} · Expires{" "}
+                    {expires})
+                  </p>
+                );
+              })}
+            </div>
+          ) : null}
           {opsMode ? (
             <div className="mt-1 space-y-0.5 text-[11px] text-slate-500">
               {row.itemType ? <p>{row.itemType}</p> : null}
@@ -168,6 +212,14 @@ export function InventoryCard({
             </dd>
           </div>
         </dl>
+        {!opsMode && showMtoQuote && mtoHref ? (
+          <a
+            href={mtoHref}
+            className="block w-full rounded-xl border border-slate-900 bg-slate-900 px-3 py-2 text-center text-xs font-medium text-white transition-colors hover:bg-slate-800"
+          >
+            Quote Make-to-Order in Order Desk
+          </a>
+        ) : null}
         {!opsMode ? (
         <button
           type="button"

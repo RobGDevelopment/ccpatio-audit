@@ -155,13 +155,13 @@ export function LiveStockView({
         }
         if (typeFilter === "fabrics_powders") {
           const sku = row.sku.toUpperCase();
+          // Never classify MET-* steel/metal as Fabrics.
+          if (sku.startsWith("MET-")) return false;
           if (
             !t.includes("fabric") &&
             !t.includes("powder") &&
-            !t.includes("material") &&
             !sku.startsWith("FAB-") &&
-            !sku.startsWith("PWD-") &&
-            !sku.startsWith("MET-")
+            !sku.startsWith("PWD-")
           ) {
             return false;
           }

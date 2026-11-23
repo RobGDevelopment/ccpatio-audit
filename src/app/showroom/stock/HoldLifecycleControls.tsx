@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/app/admin/shared/ToastProvider";
+import { useEmbedSession } from "@/components/embed/EmbedSessionProvider";
 import { formatHoldExpiry, SHOWROOM_HOLD_TTL_DAYS } from "@/lib/inventory-holds";
-import { extendHold, releaseHold } from "@/server/actions/inventory";
-import type { ActiveShowroomHold } from "../actions";
+import { releaseShowroomHold, type ActiveShowroomHold } from "../actions";
+import { extendHold } from "@/server/actions/inventory";
 
 const releaseButton =
   "inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40";
@@ -40,6 +41,7 @@ export function HoldLifecycleControls({
   onReleased: () => void;
   onExtended: (expiresAt: string) => void;
 }) {
+  const { embedToken } = useEmbedSession();
   const toast = useToast();
   const now = useMinuteNow();
   const inflight = useRef(false);
@@ -51,7 +53,12 @@ export function HoldLifecycleControls({
     if (inflight.current || disabled) return;
     inflight.current = true;
     onOptimisticRelease();
-    const result = await releaseHold(hold.id, actor);
+    const result = await releaseShowroomHold({
+      holdId: hold.id,
+      ghlUserId,
+      ghlUserEmail,
+      embedToken,
+    });
     if (!result.ok) {
       inflight.current = false;
       onReleaseFailed();

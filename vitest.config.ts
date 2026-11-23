@@ -5,6 +5,7 @@ import { defineConfig } from "vitest/config";
 const dbIntegrationTests = [
   "tests/actions.test.ts",
   "tests/asset-vault.test.ts",
+  "tests/cad-routing-stamp.test.ts",
   "tests/confirm-asset.test.ts",
   "tests/custom-build-job.test.ts",
   "tests/dictionary-system.test.ts",
@@ -12,6 +13,9 @@ const dbIntegrationTests = [
   "tests/katana-variant-webhook.test.ts",
   "tests/order-desk-hold-swap.test.ts",
   "tests/order-desk-quote.test.ts",
+  "tests/path-a-katana-fence.test.ts",
+  "tests/phase1-bom-restore.test.ts",
+  "tests/phase1-hub-data.test.ts",
   // Run by `npm run qa:phase0-hygiene-live` (RUN_DB_TESTS=1, this one file only), part of qa:lifecycle.
   "tests/phase13-hygiene-patch-live.test.ts",
   "tests/promise-date.test.ts",

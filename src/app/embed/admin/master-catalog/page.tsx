@@ -1125,6 +1125,7 @@ export default function MasterCatalogAdmin() {
                       needsMiaSpotCheck({
                         globalSku: l.globalSku,
                         attributes: l.attributes,
+                        wooSku: l.wooSku,
                       }),
                     ).length || 7
                   }

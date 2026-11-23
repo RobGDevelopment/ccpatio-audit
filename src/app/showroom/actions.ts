@@ -53,12 +53,30 @@ export async function loadOpsKatanaInventoryAction(input?: {
   return loadOpsKatanaInventory(input);
 }
 
+export async function loadShowroomSalesInventoryAction(input?: {
+  embedToken?: string | null;
+  tab?: import("@/server/showroom/sales-projection").ShowroomSalesTab | null;
+  inStockOnly?: boolean;
+  query?: string;
+}) {
+  const { loadShowroomSalesInventory } = await import("@/server/showroom/stock");
+  return loadShowroomSalesInventory(input);
+}
+
 export type { HoldSearchHit };
+
+async function resolveShowroomSession(embedToken?: string | null) {
+  const session = await getPimSession();
+  if (session) return session;
+  const { resolveStockSession } = await import("@/server/showroom/stock");
+  return resolveStockSession(embedToken);
+}
 
 export async function searchGhlHoldTargets(
   query: string,
+  embedToken?: string | null,
 ): Promise<{ ok: true; results: HoldSearchHit[] } | { ok: false; error: string }> {
-  const session = await getPimSession();
+  const session = await resolveShowroomSession(embedToken);
   if (!session) return { ok: false, error: "Sign in to search opportunities." };
   return searchHoldTargets(query);
 }
@@ -66,7 +84,10 @@ export async function searchGhlHoldTargets(
 export async function resolveShowroomHoldActor(input: {
   ghlUserId?: string;
   ghlUserEmail?: string;
+  embedToken?: string | null;
 }): Promise<{ ok: true; name: string } | { ok: false; error: string }> {
+  const session = await resolveShowroomSession(input.embedToken);
+  if (!session) return { ok: false, error: "Sign in to place holds." };
   const actor = await resolveHoldActor(input);
   if (!actor.ok) return actor;
   return { ok: true, name: actor.ghlUserName };
@@ -86,8 +107,9 @@ export type ActiveShowroomHold = {
 
 export async function listActiveShowroomHolds(
   variantIds: number[],
+  embedToken?: string | null,
 ): Promise<{ ok: true; holds: ActiveShowroomHold[] } | { ok: false; error: string }> {
-  const session = await getPimSession();
+  const session = await resolveShowroomSession(embedToken);
   if (!session) return { ok: false, error: "Sign in to view holds." };
 
   const ids = [...new Set(variantIds.filter((id) => Number.isFinite(id) && id > 0))];
@@ -132,7 +154,10 @@ export async function releaseShowroomHold(input: {
   holdId: string;
   ghlUserId?: string;
   ghlUserEmail?: string;
+  embedToken?: string | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await resolveShowroomSession(input.embedToken);
+  if (!session) return { ok: false, error: "Sign in to release holds." };
   return releaseHold(input.holdId, {
     ghlUserId: input.ghlUserId,
     ghlUserEmail: input.ghlUserEmail,
@@ -147,7 +172,10 @@ export async function placeShowroomHold(input: {
   note: string;
   ghlUserId?: string;
   ghlUserEmail?: string;
+  embedToken?: string | null;
 }) {
+  const session = await resolveShowroomSession(input.embedToken);
+  if (!session) return { ok: false as const, error: "Sign in to place holds." };
   return createHold(input);
 }
 

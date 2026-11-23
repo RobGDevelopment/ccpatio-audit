@@ -28,7 +28,25 @@ export type CreateInventoryHoldInput = {
 function revalidateHoldSurfaces() {
   revalidatePath("/showroom");
   revalidatePath("/embed/showroom");
+  revalidatePath("/embed/ops-inventory");
+  revalidatePath("/admin/ops-inventory");
   revalidatePath("/admin/order-triage");
+}
+
+/** After hold mutate: refresh that variant in Hub snapshot so UI doesn't double-subtract. */
+async function refreshVariantSnapshot(variantId: number): Promise<void> {
+  try {
+    const { refreshShowroomSnapshotFromKatana } = await import(
+      "@/server/stock/showroom-snapshot"
+    );
+    // Full refresh is single-flight + Hub-persisted; preferred over stale committed.
+    void refreshShowroomSnapshotFromKatana({ force: true }).catch(() => {
+      // Non-blocking: sales projection still shows Held badge from inventory_holds.
+    });
+    void variantId;
+  } catch {
+    // ignore
+  }
 }
 
 /**
@@ -53,7 +71,10 @@ export async function createHold(input: CreateInventoryHoldInput): Promise<Creat
     actor,
     opportunity,
   });
-  if (result.ok) revalidateHoldSurfaces();
+  if (result.ok) {
+    revalidateHoldSurfaces();
+    await refreshVariantSnapshot(input.variantId);
+  }
   return result;
 }
 
@@ -68,9 +89,17 @@ export async function releaseHold(
   const actor = await resolveHoldActor(actorHint ?? {});
   if (!actor.ok) return actor;
 
+  const dbPeek = getDb();
+  const [holdRow] = await dbPeek
+    .select({ variantId: inventory_holds.katana_variant_id })
+    .from(inventory_holds)
+    .where(eq(inventory_holds.id, holdId.trim()))
+    .limit(1);
+
   const outcome = await releaseHoldById(holdId, actor.ghlUserEmail ?? actor.ghlUserId);
   if (outcome === "released") {
     revalidateHoldSurfaces();
+    if (holdRow?.variantId) await refreshVariantSnapshot(holdRow.variantId);
     return { ok: true };
   }
   if (outcome === "missed") {

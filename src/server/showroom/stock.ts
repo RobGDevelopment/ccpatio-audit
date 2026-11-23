@@ -21,8 +21,17 @@ import {
   readShowroomSnapshotFromHub,
   refreshShowroomSnapshotFromKatana,
 } from "@/server/stock/showroom-snapshot";
+import { asc, eq } from "drizzle-orm";
+import { inventory_holds } from "@/server/db/schema";
+import {
+  projectShowroomSalesView,
+  type ActiveHoldInput,
+  type ProjectShowroomSalesInput,
+  type SalesStockCard,
+  type ShowroomSalesTab,
+} from "@/server/showroom/sales-projection";
 
-async function resolveStockSession(embedToken?: string | null): Promise<PimSession | null> {
+export async function resolveStockSession(embedToken?: string | null): Promise<PimSession | null> {
   const session = await getPimSession();
   if (session) return session;
   if (await verifyEmbedSessionToken(embedToken, getGhlEmbedSecret())) {
@@ -156,6 +165,118 @@ export async function loadOpsKatanaInventory(input?: {
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Could not read Hub inventory snapshot.",
+    };
+  }
+}
+
+export type SalesInventoryResult =
+  | {
+      ok: true;
+      cards: SalesStockCard[];
+      rows: StockRow[];
+      syncedAt: string;
+      stale: boolean;
+      warning: string | null;
+      elapsedMs: number;
+    }
+  | { ok: false; error: string; elapsedMs?: number };
+
+async function loadActiveHoldsForSales(): Promise<ActiveHoldInput[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: inventory_holds.id,
+      variantId: inventory_holds.katana_variant_id,
+      sku: inventory_holds.sku,
+      qty: inventory_holds.qty,
+      salesperson: inventory_holds.ghl_user_name,
+      opportunityName: inventory_holds.ghl_opportunity_name,
+      note: inventory_holds.note,
+      expiresAt: inventory_holds.expires_at,
+      orderNo: inventory_holds.order_no,
+      createdAt: inventory_holds.created_at,
+    })
+    .from(inventory_holds)
+    .where(eq(inventory_holds.status, "active"))
+    .orderBy(asc(inventory_holds.expires_at));
+  return rows.map((row) => ({
+    id: row.id,
+    variantId: row.variantId,
+    sku: row.sku,
+    qty: row.qty,
+    salesperson: row.salesperson,
+    opportunityName: row.opportunityName,
+    note: row.note,
+    expiresAt: row.expiresAt,
+    orderNo: row.orderNo,
+    createdAt: row.createdAt,
+  }));
+}
+
+/**
+ * Sales-curated showroom: Hub snapshot + active holds → CPU projection.
+ * Never calls Katana. Never reads the ecommerce listing table.
+ */
+export async function loadShowroomSalesInventory(input?: {
+  embedToken?: string | null;
+  tab?: ShowroomSalesTab | null;
+  inStockOnly?: boolean;
+  query?: string;
+}): Promise<SalesInventoryResult> {
+  const started = Date.now();
+  const session = await resolveStockSession(input?.embedToken);
+  if (!session) {
+    return { ok: false, error: "Sign in to view live stock.", elapsedMs: Date.now() - started };
+  }
+  try {
+    const [snapshot, holds] = await Promise.all([
+      readShowroomSnapshotFromHub(),
+      loadActiveHoldsForSales(),
+    ]);
+    const projectInput: ProjectShowroomSalesInput = {
+      rows: snapshot.rows,
+      holds,
+      lastSyncedAt: snapshot.lastSyncedAt,
+      tab: input?.tab ?? null,
+      inStockOnly: input?.inStockOnly,
+      query: input?.query,
+    };
+    const cards = projectShowroomSalesView(projectInput);
+    const withImages = await overlayPimImages(cards);
+    const merged: SalesStockCard[] = cards.map((card, i) => ({
+      ...card,
+      imageUrl: withImages[i]?.imageUrl ?? card.imageUrl,
+    }));
+    return {
+      ok: true,
+      cards: merged,
+      rows: merged,
+      syncedAt: snapshot.lastSyncedAt ?? new Date(0).toISOString(),
+      stale: snapshot.stale || !snapshot.lastSyncedAt,
+      warning: snapshot.error,
+      elapsedMs: Date.now() - started,
+    };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not project sales inventory.",
+      elapsedMs: Date.now() - started,
+    };
+  }
+}
+
+/** All active holds (for Active Customer Holds tab / badge overlay). */
+export async function listAllActiveShowroomHolds(
+  embedToken?: string | null,
+): Promise<{ ok: true; holds: ActiveHoldInput[] } | { ok: false; error: string }> {
+  const session = await resolveStockSession(embedToken);
+  if (!session) return { ok: false, error: "Sign in to view holds." };
+  try {
+    return { ok: true, holds: await loadActiveHoldsForSales() };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not read holds.",
     };
   }
 }

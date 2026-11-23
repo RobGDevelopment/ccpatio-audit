@@ -13,6 +13,9 @@ on:
       - "drizzle.config.ts"
       - "vitest.config.ts"
       - ".github/workflows/middleware.yml"
+      - "tmp/primeview-phase1-102-import.csv"
+      - "tmp/PRIMEVIEW_PHASE1_HANDOFF_SPEC.md"
+      - "data_migration/**"
   pull_request:
     paths:
       - "src/**"
@@ -25,12 +28,34 @@ on:
       - "drizzle.config.ts"
       - "vitest.config.ts"
       - ".github/workflows/middleware.yml"
+      - "tmp/primeview-phase1-102-import.csv"
+      - "tmp/PRIMEVIEW_PHASE1_HANDOFF_SPEC.md"
+      - "data_migration/**"
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ccpatio
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ccpatio"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/ccpatio
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-service-role
+      GHL_EMBED_SECRET: ci-ghl-embed-secret
+      RUN_DB_TESTS: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,5 +64,32 @@ jobs:
       - run: npm install
       - run: npm run lint
       - run: npm run typecheck
+      - name: Ensure Phase 1 CSV artifact for static tests
+        run: |
+          mkdir -p tmp
+          if [ ! -f tmp/primeview-phase1-102-import.csv ]; then
+            echo "CSV missing from checkout — static fixture required for CI"
+            exit 1
+          fi
+          # Guard: zero Published=-1 rows when header present
+          node -e "
+            const fs=require('fs');
+            const raw=fs.readFileSync('tmp/primeview-phase1-102-import.csv','utf8');
+            const lines=raw.trim().split(/\\r?\\n/);
+            const headers=lines[0].split(',');
+            const pubIdx=headers.findIndex(h=>/^Published$/i.test(h.trim()));
+            if(pubIdx<0){ console.log('No Published column — skip'); process.exit(0); }
+            let neg=0, ones=0, total=0;
+            for(const line of lines.slice(1)){
+              if(!line.trim()) continue;
+              total++;
+              const cols=line.split(',');
+              const v=(cols[pubIdx]||'').trim();
+              if(v==='-1') neg++;
+              if(v==='1') ones++;
+            }
+            console.log(JSON.stringify({total, published1:ones, publishedNeg1:neg}));
+            if(neg!==0) process.exit(2);
+          "
       - run: npm run test
       - run: npm run db:check

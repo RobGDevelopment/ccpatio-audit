@@ -192,7 +192,8 @@ export const ODD_DOLLAR_PDF_ROWS: ReadonlyArray<{
     price: 902,
     suggested: 900,
     phase: 1,
-    skuHint: "FIN-WFT-FLY-BST-18X18",
+    // Strict: only the counter-height woo_sku — BAR ($945) stays mia_approved.
+    skuHint: "FIN-WFT-FLY-BST-18X18-CNT",
   },
   {
     pdfDescription: 'DAISY BASE TABLE (DINING HEIGHT) 42" x 120" x 30"',
@@ -611,7 +612,8 @@ export function phase1SpotCheckSkus(): string[] {
     ...MISSING_MILAN_OTTOMANS.map((m) => m.sku),
     "FIN-BRK-DIN-TAB-36X36",
     "FIN-WFT-DIN-BCH-96X22",
-    "FIN-WFT-FLY-BST-18X18",
+    // Counter-height only — do NOT include base FIN-WFT-FLY-BST-18X18 or -BAR.
+    "FIN-WFT-FLY-BST-18X18-CNT",
   ];
 }
 

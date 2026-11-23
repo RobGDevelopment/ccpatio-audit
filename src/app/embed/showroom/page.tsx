@@ -1,8 +1,8 @@
 import { getPimSession } from "@/lib/pim-audit";
 import { readActorFromSearchRecord } from "@/lib/embed-actor-params";
-import { LiveStockView } from "@/app/showroom/stock/LiveStockView";
-import { loadOpsKatanaInventory } from "@/server/showroom/stock";
-import type { StockRow } from "@/lib/stock-display";
+import { SalesStockView } from "@/app/showroom/stock/SalesStockView";
+import { loadShowroomSalesInventory } from "@/server/showroom/stock";
+import type { SalesStockCard } from "@/server/showroom/sales-projection";
 
 export const dynamic = "force-dynamic";
 
@@ -22,26 +22,26 @@ export default async function EmbedShowroomPage({
 
   const actor = readActorFromSearchRecord(await searchParams);
 
-  let initialRows: StockRow[] = [];
+  let initialCards: SalesStockCard[] = [];
   let initialSyncedAt: string | null = null;
   try {
-    const snapshot = await loadOpsKatanaInventory({ force: false });
+    const snapshot = await loadShowroomSalesInventory({
+      tab: "floor_ready",
+      inStockOnly: true,
+    });
     if (snapshot.ok) {
-      initialRows = snapshot.rows;
+      initialCards = snapshot.cards;
       initialSyncedAt = snapshot.syncedAt;
     }
   } catch {
-    // Client Retry Live Sync / Sync Live from Katana still available.
+    // Client reload still available.
   }
 
   return (
     <div className="h-full min-h-0 flex-1 overflow-auto bg-[#FAFAFA] text-slate-900">
       <div className="mx-auto max-w-6xl px-4 py-6">
-        <LiveStockView
-          defaultViewMode="dropdown"
-          persistViewMode={false}
-          inventoryMode="katana-ops"
-          initialRows={initialRows}
+        <SalesStockView
+          initialCards={initialCards}
           initialSyncedAt={initialSyncedAt}
           ghlUserId={actor.ghlUserId}
           ghlUserEmail={actor.ghlUserEmail}
