@@ -4,52 +4,52 @@
   "blast_radius": 14,
   "counts": {
     "files": 14,
-    "tracked": 7,
-    "untracked": 7,
-    "insertions": 171,
+    "tracked": 14,
+    "untracked": 0,
+    "insertions": 1995,
     "deletions": 72
   },
   "files": [
     {
-      "status": "??",
+      "status": "A",
       "path": "src/app/embed/admin/master-catalog/ecommerce/SystemHealthDrawer.tsx",
-      "insertions": 0,
+      "insertions": 243,
       "deletions": 0
     },
     {
-      "status": "??",
+      "status": "A",
       "path": "src/inngest/katana-catalog-reconcile.ts",
-      "insertions": 0,
+      "insertions": 28,
       "deletions": 0
     },
     {
-      "status": "??",
+      "status": "A",
       "path": "src/inngest/ops-keepalive-monitor.ts",
-      "insertions": 0,
+      "insertions": 19,
       "deletions": 0
     },
     {
-      "status": "??",
+      "status": "A",
       "path": "src/server/katana/catalog-reconcile.ts",
-      "insertions": 0,
+      "insertions": 636,
       "deletions": 0
     },
     {
-      "status": "??",
+      "status": "A",
       "path": "src/server/ops/keepalive.ts",
-      "insertions": 0,
+      "insertions": 456,
       "deletions": 0
     },
     {
-      "status": "??",
+      "status": "A",
       "path": "src/server/woocommerce/make-furniture-price-floor.ts",
-      "insertions": 0,
+      "insertions": 99,
       "deletions": 0
     },
     {
-      "status": "??",
+      "status": "A",
       "path": "tests/autonomous-katana-baton-pass.test.ts",
-      "insertions": 0,
+      "insertions": 343,
       "deletions": 0
     },
     {
@@ -95,15 +95,7 @@
       "deletions": 0
     }
   ],
-  "untracked": [
-    "src/app/embed/admin/master-catalog/ecommerce/SystemHealthDrawer.tsx",
-    "src/inngest/katana-catalog-reconcile.ts",
-    "src/inngest/ops-keepalive-monitor.ts",
-    "src/server/katana/catalog-reconcile.ts",
-    "src/server/ops/keepalive.ts",
-    "src/server/woocommerce/make-furniture-price-floor.ts",
-    "tests/autonomous-katana-baton-pass.test.ts"
-  ],
-  "file_list_sha256": "efeae726ed544980a5e01f964d08d3ee2d42ddaa75ec27b566769feb8b40046b",
+  "untracked": [],
+  "file_list_sha256": "4a6572e90ce49e77d53e0351da94b2a93b1fc2d79eee5f7e7573dab30086b915",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }
