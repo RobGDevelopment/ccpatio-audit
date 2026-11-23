@@ -187,7 +187,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
-async function loadFreshSnapshot(): Promise<KatanaInventorySnapshot> {
+async function loadFreshSnapshot(timeoutMs = FETCH_TIMEOUT_MS): Promise<KatanaInventorySnapshot> {
   const [materials, products, locations, inventory] = await withTimeout(
     Promise.all([
       listResource("/materials"),
@@ -195,7 +195,7 @@ async function loadFreshSnapshot(): Promise<KatanaInventorySnapshot> {
       listResource("/locations").catch(() => [] as Record<string, unknown>[]),
       listResource("/inventory"),
     ]),
-    FETCH_TIMEOUT_MS,
+    timeoutMs,
     "Katana inventory sync",
   );
 
@@ -308,14 +308,20 @@ async function loadFreshSnapshot(): Promise<KatanaInventorySnapshot> {
   };
 }
 
+/** Hub seed / Sync Live budget — must outlast Katana 429 sleep (~65s) × retries. */
+export const KATANA_HUB_SYNC_TIMEOUT_MS = 15 * 60_000;
+
 /**
  * Single-flight inventory read with fresh/stale TTLs.
  * `force` bypasses fresh TTL but still collapses concurrent refreshers.
+ * `timeoutMs` extends the live pull budget (Hub seed / POST sync).
  */
 export async function getKatanaInventorySnapshot(options?: {
   force?: boolean;
+  timeoutMs?: number;
 }): Promise<KatanaInventorySnapshot> {
   const force = options?.force === true;
+  const timeoutMs = options?.timeoutMs ?? FETCH_TIMEOUT_MS;
   const now = Date.now();
 
   if (cache) {
@@ -339,7 +345,7 @@ export async function getKatanaInventorySnapshot(options?: {
     }
     if (!force && age < STALE_TTL_MS) {
       // SWR: return stale immediately and refresh in background.
-      const inflight = loadFreshSnapshot()
+      const inflight = loadFreshSnapshot(timeoutMs)
         .then((snapshot) => {
           cache = { at: Date.now(), snapshot, inflight: null };
           return snapshot;
@@ -361,7 +367,7 @@ export async function getKatanaInventorySnapshot(options?: {
     return cache.inflight;
   }
 
-  const inflight = loadFreshSnapshot()
+  const inflight = loadFreshSnapshot(timeoutMs)
     .then((snapshot) => {
       cache = { at: Date.now(), snapshot, inflight: null };
       return snapshot;

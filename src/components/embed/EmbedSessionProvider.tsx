@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -15,6 +16,8 @@ const REFRESH_INTERVAL_MS = 45 * 60 * 1000;
 
 type EmbedSessionContextValue = {
   embedToken: string | null;
+  /** Live mutable headers for cookie-independent auth (avoids stale closures). */
+  getEmbedHeaders: () => HeadersInit;
   /** Attach the HMAC embed token header for cookie-independent auth. */
   withEmbedAuth: (init?: RequestInit) => RequestInit;
   embedFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -22,6 +25,7 @@ type EmbedSessionContextValue = {
 
 const EmbedSessionContext = createContext<EmbedSessionContextValue>({
   embedToken: null,
+  getEmbedHeaders: () => ({}),
   withEmbedAuth: (init) => init ?? {},
   embedFetch: (input, init) => fetch(input, init),
 });
@@ -40,34 +44,46 @@ export function EmbedSessionProvider({
   children: ReactNode;
 }) {
   const [embedToken, setEmbedToken] = useState<string | null>(initialToken);
+  /** Always holds the freshest token so fetch helpers never close over a stale value. */
+  const tokenRef = useRef<string | null>(initialToken);
 
   useEffect(() => {
+    tokenRef.current = initialToken;
     setEmbedToken(initialToken);
   }, [initialToken]);
 
   useEffect(() => {
+    tokenRef.current = embedToken;
     if (!embedToken || typeof document === "undefined") return;
     writeMirrorCookie(embedToken);
   }, [embedToken]);
 
+  const getEmbedHeaders = useCallback((): HeadersInit => {
+    const token = tokenRef.current;
+    if (!token) return {};
+    return { [EMBED_TOKEN_HEADER]: token };
+  }, []);
+
   const refreshToken = useCallback(async () => {
-    if (!embedToken) return;
+    const current = tokenRef.current;
+    if (!current) return;
     try {
       const res = await fetch("/api/embed/refresh-token", {
         method: "POST",
         credentials: "include",
-        headers: { [EMBED_TOKEN_HEADER]: embedToken },
+        headers: { [EMBED_TOKEN_HEADER]: current },
       });
       if (!res.ok) return;
       const data = (await res.json()) as { ok?: boolean; token?: string };
       if (data.ok && typeof data.token === "string" && data.token) {
+        tokenRef.current = data.token;
         setEmbedToken(data.token);
         writeMirrorCookie(data.token);
       }
     } catch {
       // Silent — next visibility/interval tick can retry.
     }
-  }, [embedToken]);
+  }, []);
 
   useEffect(() => {
     if (!embedToken || typeof window === "undefined") return;
@@ -84,15 +100,13 @@ export function EmbedSessionProvider({
     };
   }, [embedToken, refreshToken]);
 
-  const withEmbedAuth = useCallback(
-    (init?: RequestInit): RequestInit => {
-      if (!embedToken) return init ?? {};
-      const headers = new Headers(init?.headers);
-      headers.set(EMBED_TOKEN_HEADER, embedToken);
-      return { ...init, headers, credentials: init?.credentials ?? "include" };
-    },
-    [embedToken],
-  );
+  const withEmbedAuth = useCallback((init?: RequestInit): RequestInit => {
+    const token = tokenRef.current;
+    if (!token) return init ?? {};
+    const headers = new Headers(init?.headers);
+    headers.set(EMBED_TOKEN_HEADER, token);
+    return { ...init, headers, credentials: init?.credentials ?? "include" };
+  }, []);
 
   const embedFetch = useCallback(
     (input: RequestInfo | URL, init?: RequestInit) => fetch(input, withEmbedAuth(init)),
@@ -100,8 +114,8 @@ export function EmbedSessionProvider({
   );
 
   const value = useMemo(
-    () => ({ embedToken, withEmbedAuth, embedFetch }),
-    [embedToken, withEmbedAuth, embedFetch],
+    () => ({ embedToken, getEmbedHeaders, withEmbedAuth, embedFetch }),
+    [embedToken, getEmbedHeaders, withEmbedAuth, embedFetch],
   );
 
   return (

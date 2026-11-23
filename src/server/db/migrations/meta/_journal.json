@@ -442,6 +442,13 @@
       "when": 1795186800000,
       "tag": "0060_ecommerce_finish_assets_and_3d",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1795273200000,
+      "tag": "0061_katana_showroom_snapshot",
+      "breakpoints": true
     }
   ]
 }

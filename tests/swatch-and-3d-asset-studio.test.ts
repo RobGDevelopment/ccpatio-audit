@@ -175,7 +175,7 @@ describe("finish manifest schema", () => {
   it("CSV headers keep all 169 original columns and add 4 Meta columns (173 total)", () => {
     const headers = loadHeaders();
     expect(headers).toHaveLength(173);
-    expect(headers).toContain("acf_fabric_swatches_json");
+    expect(headers).toContain("Meta: acf_fabric_swatches_json");
     expect(headers).toContain("Meta: acf_powder_swatches_json");
     expect(headers).toContain("Meta: acf_dekton_swatches_json");
     expect(headers).toContain("Meta: acf_3d_model_glb_url");

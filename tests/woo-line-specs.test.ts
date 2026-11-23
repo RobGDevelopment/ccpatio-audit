@@ -242,4 +242,49 @@ describe("extractWooLineSpecs", () => {
     expect(wooLineKey({ index: 2, wooLineItemId: null })).toBe("idx2");
     expect(wooLineKey({ index: 2, wooLineItemId: 77, addonKey: "casters" })).toBe("77:addon:casters");
   });
+
+  it("resolves Lido ($100) + Cantilever ($150) umbrella covers in one mixed cart without collision", () => {
+    const { specs, issues } = extractWooLineSpecs(
+      wooOrder({
+        line_items: [
+          wooLine({
+            id: 501,
+            sku: "FIN-MLN-UMB",
+            meta_data: [
+              { key: "umbrella_cover", value: "Yes (+$100.00)" },
+              { key: "pa_powder", display_key: "Select Powder Coat", value: "Black" },
+            ],
+          }),
+          wooLine({
+            id: 502,
+            sku: "FIN-CAN-UMB",
+            meta_data: [
+              { key: "umbrella_cover", value: "Yes (+$150.00)" },
+              { key: "pa_powder", display_key: "Select Powder Coat", value: "Black" },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(issues).toEqual([]);
+    expect(specs).toHaveLength(2);
+    expect(specs[0]!.sku).toBe("FIN-MLN-UMB");
+    expect(specs[1]!.sku).toBe("FIN-CAN-UMB");
+    // Both covers map to the same Hub add-on SKU; parent ACF Meta prices stay
+    // distinct on FIN-MLN-UMB ($100) vs FIN-CAN-UMB ($150) — no line collision.
+    expect(specs[0]!.addons).toEqual([
+      { key: "umbrella_cover", rawValue: "Yes", sku: "FIN-ESY-MIS-WEATHERPROOFCO" },
+    ]);
+    expect(specs[1]!.addons).toEqual([
+      { key: "umbrella_cover", rawValue: "Yes", sku: "FIN-ESY-MIS-WEATHERPROOFCO" },
+    ]);
+    expect(wooLineKey(specs[0]!)).toBe("501");
+    expect(wooLineKey(specs[1]!)).toBe("502");
+    expect(wooLineKey({ ...specs[0]!, addonKey: "umbrella_cover" })).toBe(
+      "501:addon:umbrella_cover",
+    );
+    expect(wooLineKey({ ...specs[1]!, addonKey: "umbrella_cover" })).toBe(
+      "502:addon:umbrella_cover",
+    );
+  });
 });

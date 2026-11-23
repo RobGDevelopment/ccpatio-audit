@@ -162,7 +162,13 @@ function requestHeadersFor(
   if (isEmbedPath(pathname)) headers.set(EMBED_CONTEXT_HEADER, "1");
   else headers.delete(EMBED_CONTEXT_HEADER);
   if (embedKey) headers.set(EMBED_KEY_HEADER, embedKey);
-  if (embedToken) headers.set(EMBED_TOKEN_HEADER, embedToken);
+  // Preserve an inbound HMAC session header on /api/* (and other non-embed paths).
+  // Previously we deleted EMBED_TOKEN_HEADER whenever embedToken was null, which
+  // stripped client-sent `x-ccpatio-embed-token` on refresh-token + inventory APIs
+  // and forced 401 when GHL blocked third-party cookies.
+  const inboundToken = request.headers.get(EMBED_TOKEN_HEADER)?.trim() || null;
+  const nextToken = embedToken || inboundToken;
+  if (nextToken) headers.set(EMBED_TOKEN_HEADER, nextToken);
   else headers.delete(EMBED_TOKEN_HEADER);
   return headers;
 }

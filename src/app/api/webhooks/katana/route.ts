@@ -47,11 +47,19 @@ import {
   insertIncomingWebhookOnce,
   updateIncomingWebhookStatus,
 } from "@/server/webhooks/incoming-log";
+import { refreshShowroomSnapshotFromKatana } from "@/server/stock/showroom-snapshot";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Outcome = { response: Response; status: "processed" | "failed"; message?: string };
+
+/** Best-effort Hub snapshot refresh — never fails the webhook response. */
+function queueRefreshShowroomSnapshot(reason: string): void {
+  void refreshShowroomSnapshotFromKatana({ force: true }).catch((error: unknown) => {
+    logError("katana-webhook-showroom-snapshot-refresh-failed", error, { reason });
+  });
+}
 
 function done(body: unknown, init?: { status: number }): Outcome {
   return { response: NextResponse.json(body, init), status: "processed" };
@@ -88,6 +96,7 @@ async function dispatch(payload: unknown, auditKey: string): Promise<Outcome> {
     if (outcome === "released") {
       revalidatePath("/showroom");
       revalidatePath("/embed/showroom");
+      queueRefreshShowroomSnapshot("hold_released");
     }
     return done({ ok: true, released: outcome === "released" });
   }
@@ -122,6 +131,10 @@ async function dispatch(payload: unknown, auditKey: string): Promise<Outcome> {
       revalidatePath("/admin/logistics");
       revalidatePath("/admin/dictionary");
     }
+    // Inventory/variant updates refresh the Hub showroom snapshot (429-safe).
+    queueRefreshShowroomSnapshot("variant_updated");
+    revalidatePath("/showroom");
+    revalidatePath("/embed/showroom");
     return done({ ok: true, healed: result.healed });
   }
 
@@ -144,6 +157,7 @@ async function dispatch(payload: unknown, auditKey: string): Promise<Outcome> {
     revalidatePath("/showroom");
     revalidatePath("/embed/showroom");
     revalidatePath("/tools/stock-checker");
+    queueRefreshShowroomSnapshot("po_received");
     return done({
       ok: true,
       queued: true,

@@ -275,7 +275,7 @@ CC Patio Hub owns catalog authority. This live CSV is the turnkey WooCommerce Pr
 - **${input.uniquePurchasableSkus} unique purchasable SKUs** on every \`simple\` / \`variation\` row (variable parents keep blank SKU)
 - Corner Sofa (\`27674\`) + Corner Chaise (\`27687\`) Attribute 2 = **Select Facing** (\`Left-Side Facing\`, \`Right-Side Facing\`), default Left
 - Metric weights/dimensions, shipping class (\`parcel\` < 50 lb, \`freight-ltl\` ≥ 50 lb)
-- \`acf_fabric_swatches_json\` on upholstered parents (24 FAB-* swatches with **live HTTP-200** Supabase public URLs + additive PBR/scale fields)
+- \`Meta: acf_fabric_swatches_json\` on upholstered parents (24 FAB-* swatches with **live HTTP-200** Supabase public URLs + additive PBR/scale fields)
 - \`Meta: acf_powder_swatches_json\`, \`Meta: acf_dekton_swatches_json\`, \`Meta: acf_3d_model_glb_url\`, \`Meta: acf_3d_model_usdz_url\`
 - Inline retail / sale price, weight, and visibility edits Mia saves in the GHL master-catalog portal are reflected live
 - Legacy \`Meta: _w3d_*\` columns remain blank (VividWorks iframe path retired; use native \`.glb\` meta instead)
@@ -366,8 +366,8 @@ ${PHASE1_POWDERS.map((sku) => {
 | --- | --- |
 | \`acf_3d_model_glb_url\` | Public CDN \`.glb\` (WebGL). Inherit parent URL on variations when variation override is null. |
 | \`acf_3d_model_usdz_url\` | Public CDN \`.usdz\` (AR Quick Look). Same inheritance rule. |
-| \`acf_fabric_swatches_json\` | 24 FAB-* entries with \`image_url\`, \`texture_2k_url\`, \`sample_width_in\` / \`sample_height_in\`, \`pattern_repeat_w_in\` / \`pattern_repeat_h_in\`, \`quality_status\` |
-| \`acf_powder_swatches_json\` | 6 PWD-* powder coats (same PBR/scale schema) |
+| \`Meta: acf_fabric_swatches_json\` | 24 FAB-* entries with \`image_url\`, \`texture_2k_url\`, \`sample_width_in\` / \`sample_height_in\`, \`pattern_repeat_w_in\` / \`pattern_repeat_h_in\`, \`quality_status\` |
+| \`Meta: acf_powder_swatches_json\` | 6 PWD-* powder coats (same PBR/scale schema) |
 | \`acf_dekton_swatches_json\` | DEC-* Dekton stone finishes (same PBR/scale schema) |
 
 **Hard rules for Hub → Woo REST sync:**

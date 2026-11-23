@@ -27,16 +27,24 @@ export async function POST(request: Request) {
 
   const headerToken = request.headers.get(EMBED_TOKEN_HEADER);
   const cookieHeader = request.headers.get("cookie") ?? "";
-  const cookieMatch = cookieHeader.match(
-    new RegExp(`(?:^|;\\s*)${EMBED_AUTH_COOKIE}=([^;]+)`),
-  );
-  const cookieToken = cookieMatch?.[1]
-    ? decodeURIComponent(cookieMatch[1])
-    : undefined;
+  const readCookie = (name: string): string | undefined => {
+    const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+    if (!match?.[1]) return undefined;
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return match[1];
+    }
+  };
+  const authCookie = readCookie(EMBED_AUTH_COOKIE);
+  const mirroredSessionCookie = readCookie(EMBED_TOKEN_HEADER);
 
   const headerOk = Boolean(await verifyEmbedSessionToken(headerToken, secret));
-  const cookieOk = Boolean(await embedCookieIsValid(cookieToken, secret));
-  if (!headerOk && !cookieOk) {
+  const mirroredOk = Boolean(
+    await verifyEmbedSessionToken(mirroredSessionCookie, secret),
+  );
+  const cookieOk = Boolean(await embedCookieIsValid(authCookie, secret));
+  if (!headerOk && !mirroredOk && !cookieOk) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

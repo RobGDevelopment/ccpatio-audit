@@ -223,23 +223,29 @@ export function LiveStockView({
         });
         if (!result.ok && embedToken) {
           const res = await embedFetch(
-            `/api/embed/katana-inventory?force=${force ? "1" : "0"}`,
+            force
+              ? "/api/katana/showroom-inventory"
+              : "/api/katana/showroom-inventory",
+            force ? { method: "POST" } : undefined,
           );
           const json = (await res.json()) as {
             ok: boolean;
             rows?: StockRow[];
+            items?: StockRow[];
             syncedAt?: string;
+            lastSyncedAt?: string | null;
             stale?: boolean;
             error?: string;
             warning?: string;
           };
           if (!res.ok || !json.ok) {
-            result = { ok: false, error: json.error ?? "Could not read Katana inventory." };
+            result = { ok: false, error: json.error ?? "Could not read Hub inventory snapshot." };
           } else {
             result = {
               ok: true,
-              rows: json.rows ?? [],
-              syncedAt: json.syncedAt ?? new Date().toISOString(),
+              rows: json.rows ?? json.items ?? [],
+              syncedAt:
+                json.lastSyncedAt ?? json.syncedAt ?? new Date().toISOString(),
               stale: Boolean(json.stale),
               warning: json.error ?? json.warning ?? null,
             };

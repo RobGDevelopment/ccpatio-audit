@@ -2199,3 +2199,46 @@ export const katana_po_bills = pgTable(
     ),
   ],
 ).enableRLS();
+
+/**
+ * Hub-backed Katana inventory snapshot for GHL Current Inventory (`/embed/showroom`).
+ * SSR + GET /api/katana/showroom-inventory read these rows only (never live Katana HTTP).
+ * Refreshed by seed script, POST sync, and Katana inventory/variant webhooks.
+ */
+export const katana_showroom_snapshot = pgTable(
+  "katana_showroom_snapshot",
+  {
+    variant_id: integer("variant_id").notNull(),
+    location_id: integer("location_id"),
+    sku: text("sku").notNull(),
+    name: text("name").notNull(),
+    item_type: text("item_type").notNull(),
+    category: text("category"),
+    uom: text("uom"),
+    location_name: text("location_name").notNull().default("All Locations"),
+    in_stock: numeric("in_stock", { precision: 14, scale: 4 }).notNull().default("0"),
+    committed: numeric("committed", { precision: 14, scale: 4 }).notNull().default("0"),
+    expected: numeric("expected", { precision: 14, scale: 4 }).notNull().default("0"),
+    available: numeric("available", { precision: 14, scale: 4 }).notNull().default("0"),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("katana_showroom_snapshot_variant_loc_uidx").on(
+      table.variant_id,
+      table.location_id,
+    ),
+    index("katana_showroom_snapshot_sku_idx").on(table.sku),
+  ],
+);
+
+/** Single-row sync watermark for the showroom inventory snapshot. */
+export const katana_sync_meta = pgTable("katana_sync_meta", {
+  id: text("id").primaryKey().default("showroom_inventory"),
+  last_synced_at: timestamp("last_synced_at", { withTimezone: true }),
+  last_error: text("last_error"),
+  row_count: integer("row_count").notNull().default(0),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type KatanaShowroomSnapshotRow = typeof katana_showroom_snapshot.$inferSelect;
+export type KatanaSyncMetaRow = typeof katana_sync_meta.$inferSelect;

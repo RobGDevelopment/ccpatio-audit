@@ -63,7 +63,7 @@ describe("phase1 csv structural assertions", () => {
     expect(headers).toHaveLength(173);
     expect(headers[0]).toBe("ID");
     expect(headers).toEqual(expected);
-    expect(headers).toContain("acf_fabric_swatches_json");
+    expect(headers).toContain("Meta: acf_fabric_swatches_json");
     expect(headers).toContain("Meta: acf_powder_swatches_json");
     expect(headers).toContain("Meta: acf_dekton_swatches_json");
     expect(headers).toContain("Meta: acf_3d_model_glb_url");
@@ -115,7 +115,8 @@ describe("phase1 csv structural assertions", () => {
   it("populates fabric swatches on upholstered parents only (24 FAB-*, no example.com)", () => {
     const { rows } = loadGeneratedCsv();
     const parents = rows.filter((r) => r.Type === "variable" || r.Type === "simple");
-    const withSwatches = parents.filter((p) => p.acf_fabric_swatches_json.trim());
+    const fabricKey = "Meta: acf_fabric_swatches_json";
+    const withSwatches = parents.filter((p) => (p[fabricKey] ?? "").trim());
     expect(withSwatches.length).toBeGreaterThan(10);
 
     const expectedJson = buildFabricSwatchesJson(
@@ -127,8 +128,8 @@ describe("phase1 csv structural assertions", () => {
     expect(expectedSkus).toHaveLength(24);
 
     for (const p of withSwatches) {
-      expect(p.acf_fabric_swatches_json).not.toMatch(/example\.com/i);
-      const arr = JSON.parse(p.acf_fabric_swatches_json) as Array<{
+      expect(p[fabricKey]).not.toMatch(/example\.com/i);
+      const arr = JSON.parse(p[fabricKey]) as Array<{
         label: string;
         color: string;
         image_url: string;
@@ -146,8 +147,8 @@ describe("phase1 csv structural assertions", () => {
     // Non-upholstered tables/resale simples should stay blank
     const ripple = parents.find((p) => p.ID === "28335");
     const cantilever = parents.find((p) => p.ID === "28343");
-    if (ripple) expect(ripple.acf_fabric_swatches_json).toBe("");
-    if (cantilever) expect(cantilever.acf_fabric_swatches_json).toBe("");
+    if (ripple) expect(ripple[fabricKey]).toBe("");
+    if (cantilever) expect(cantilever[fabricKey]).toBe("");
   });
 
   it("requires positive Regular price + Weight (kg) on purchasable rows and blanks _w3d_enabled", () => {
@@ -190,7 +191,7 @@ describe("phase1 csv structural assertions", () => {
     const club = rows.find((r) => r.ID === "9449" && r.Type === "variable");
     expect(club).toBeTruthy();
     expect(club!["Meta: ironwood_price"]).toBeTruthy();
-    expect(club!["acf_fabric_swatches_json"]).toBeTruthy();
+    expect(club!["Meta: acf_fabric_swatches_json"]).toBeTruthy();
   });
 });
 
@@ -356,13 +357,14 @@ describe("phase1 P0 live Hub + swatch + qa-test guards", () => {
     300_000,
   );
 
-  it("live fetch against acf_fabric_swatches_json image_url returns HTTP 200", async () => {
+  it("live fetch against Meta: acf_fabric_swatches_json image_url returns HTTP 200", async () => {
+    const fabricKey = "Meta: acf_fabric_swatches_json";
     const { rows } = loadGeneratedCsv();
     const parent = rows.find(
-      (r) => r.Type === "variable" && r.acf_fabric_swatches_json.trim(),
+      (r) => r.Type === "variable" && (r[fabricKey] ?? "").trim(),
     );
     expect(parent).toBeTruthy();
-    const arr = JSON.parse(parent!.acf_fabric_swatches_json) as Array<{
+    const arr = JSON.parse(parent![fabricKey]) as Array<{
       image_url: string;
       fabric_sku: string;
     }>;

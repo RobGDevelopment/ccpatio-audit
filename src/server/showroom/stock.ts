@@ -14,10 +14,13 @@ import {
   type StockSearchResult,
 } from "@/server/stock/search-katana-stock";
 import {
-  getKatanaInventorySnapshot,
   matchesTypeFilter,
   type KatanaInventoryRow,
 } from "@/server/stock/katana-inventory";
+import {
+  readShowroomSnapshotFromHub,
+  refreshShowroomSnapshotFromKatana,
+} from "@/server/stock/showroom-snapshot";
 
 async function resolveStockSession(embedToken?: string | null): Promise<PimSession | null> {
   const session = await getPimSession();
@@ -122,7 +125,11 @@ function toStockRow(row: KatanaInventoryRow): StockRow {
   };
 }
 
-/** Full Katana ground-truth inventory for the GHL Current Inventory tab. */
+/**
+ * Full inventory for the GHL Current Inventory tab.
+ * Default: Hub Postgres snapshot only (instant). `force` refreshes from Katana
+ * into Hub then returns the new snapshot — never blocks SSR on live Katana.
+ */
 export async function loadOpsKatanaInventory(input?: {
   force?: boolean;
   embedToken?: string | null;
@@ -131,7 +138,9 @@ export async function loadOpsKatanaInventory(input?: {
   const session = await resolveStockSession(input?.embedToken);
   if (!session) return { ok: false, error: "Sign in to view live stock." };
   try {
-    const snapshot = await getKatanaInventorySnapshot({ force: input?.force });
+    const snapshot = input?.force
+      ? await refreshShowroomSnapshotFromKatana({ force: true })
+      : await readShowroomSnapshotFromHub();
     const filter = input?.typeFilter ?? "all";
     const rows = snapshot.rows
       .filter((row) => matchesTypeFilter(row.itemType, filter))
@@ -139,14 +148,14 @@ export async function loadOpsKatanaInventory(input?: {
     return {
       ok: true,
       rows: await overlayPimImages(rows),
-      syncedAt: snapshot.syncedAt,
-      stale: snapshot.stale,
+      syncedAt: snapshot.lastSyncedAt ?? new Date(0).toISOString(),
+      stale: snapshot.stale || !snapshot.lastSyncedAt,
       warning: snapshot.error,
     };
   } catch (error: unknown) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "Could not read Katana inventory.",
+      error: error instanceof Error ? error.message : "Could not read Hub inventory snapshot.",
     };
   }
 }

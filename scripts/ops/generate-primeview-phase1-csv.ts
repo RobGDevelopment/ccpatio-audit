@@ -1032,7 +1032,7 @@ export async function buildPhase1ImportBundle(opts?: {
       out.Type = "variation";
       out.Parent = `id:${resolved.parentId}`;
       forceBlankW3d(out);
-      out.acf_fabric_swatches_json = "";
+      out["Meta: acf_fabric_swatches_json"] = "";
       out["Meta: acf_powder_swatches_json"] = "";
       out["Meta: acf_dekton_swatches_json"] = "";
       // Variation inherits parent .glb when Hub override is null (column left blank
@@ -1107,7 +1107,8 @@ export async function buildPhase1ImportBundle(opts?: {
         return isUpholstered(s, parent.Name);
       });
 
-    out.acf_fabric_swatches_json = parentUpholstered || upholstered ? swatchesJson : "";
+    out["Meta: acf_fabric_swatches_json"] =
+      parentUpholstered || upholstered ? swatchesJson : "";
     out["Meta: acf_powder_swatches_json"] = powderSwatchesJson;
     out["Meta: acf_dekton_swatches_json"] = dektonSwatchesJson;
     out["Meta: acf_3d_model_glb_url"] = "";
@@ -1218,7 +1219,7 @@ CC Patio Hub owns catalog authority. This CSV is the turnkey WooCommerce Product
 - **107 unique purchasable SKUs** on every \`simple\` / \`variation\` row (variable parents keep blank SKU)
 - Corner Sofa (\`27674\`) + Corner Chaise (\`27687\`) Attribute 2 = **Select Facing** (\`Left-Side Facing\`, \`Right-Side Facing\`), default Left
 - Metric weights/dimensions, shipping class (\`parcel\` < 50 lb, \`freight-ltl\` ≥ 50 lb)
-- \`acf_fabric_swatches_json\` on upholstered parents (24 FAB-* swatches with **live HTTP-200** Supabase public URLs + additive \`texture_2k_url\` / physical scale fields)
+- \`Meta: acf_fabric_swatches_json\` on upholstered parents (24 FAB-* swatches with **live HTTP-200** Supabase public URLs + additive \`texture_2k_url\` / physical scale fields)
 - \`Meta: acf_powder_swatches_json\`, \`Meta: acf_dekton_swatches_json\`, \`Meta: acf_3d_model_glb_url\`, \`Meta: acf_3d_model_usdz_url\` (native WebGL — never iframe; never in \`images[]\`)
 - Preserved ACF add-on price metas + RankMath/Astra/Brizy from the Oct 30 export
 - All \`Meta: _w3d_*\` columns forced blank (3D excluded from Phase 1)
@@ -1235,7 +1236,7 @@ CC Patio Hub owns catalog authority. This CSV is the turnkey WooCommerce Product
    - Fly Leg Chair 18×18×18 (\`FIN-WFT-DIN-CHA-18X18\`) exists under Fly Leg Bench (\`28147\`)
    - Ripple Table (\`28335\`) / Cantilever Umbrella (\`28343\`) have unique simple SKUs
    - No duplicate SKU warnings in the import log
-6. Fabric swatch images are already hosted (Supabase public URLs in \`acf_fabric_swatches_json\`). Optional: also copy \`tmp/primeview-fabric-swatches/*.jpg\` into WP media if desired for offline backup.
+6. Fabric swatch images are already hosted (Supabase public URLs in \`Meta: acf_fabric_swatches_json\`). Optional: also copy \`tmp/primeview-fabric-swatches/*.jpg\` into WP media if desired for offline backup.
 7. Install the Cart→Order metadata PHP hook in §4, then configure NMI + webhook (§5) before flipping live traffic.
 
 ## 3. Parent → Variation SKU Reference (all 102)
@@ -1389,7 +1390,9 @@ async function main() {
     uniqueSkus: bundle.uniqueSkus,
     makeCount: bundle.makeCount,
     resaleCount: bundle.resaleCount,
-    upholsteredParents: bundle.parentRows.filter((p) => p.acf_fabric_swatches_json)
+    upholsteredParents: bundle.parentRows.filter(
+      (p) => p["Meta: acf_fabric_swatches_json"],
+    )
       .length,
     handoff: bundle.handoff,
   };
