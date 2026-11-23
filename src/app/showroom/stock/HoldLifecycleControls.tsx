@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/app/admin/shared/ToastProvider";
 import { useEmbedSession } from "@/components/embed/EmbedSessionProvider";
 import { formatHoldExpiry, SHOWROOM_HOLD_TTL_DAYS } from "@/lib/inventory-holds";
+import { formatQty } from "@/lib/stock-display";
 import { releaseShowroomHold, type ActiveShowroomHold } from "../actions";
 import { extendHold } from "@/server/actions/inventory";
 
@@ -24,6 +25,7 @@ function useMinuteNow(): number {
 
 export function HoldLifecycleControls({
   hold,
+  uom,
   ghlUserId,
   ghlUserEmail,
   disabled,
@@ -33,6 +35,7 @@ export function HoldLifecycleControls({
   onExtended,
 }: {
   hold: ActiveShowroomHold;
+  uom?: string;
   ghlUserId?: string;
   ghlUserEmail?: string;
   disabled?: boolean;
@@ -85,6 +88,11 @@ export function HoldLifecycleControls({
 
   return (
     <div className="mt-2">
+      {uom ? (
+        <p className="text-xs text-slate-600" data-testid="hold-lifecycle-uom">
+          Held qty: {formatQty(Number(hold.qty))} {uom}
+        </p>
+      ) : null}
       <p className="text-xs text-slate-600">
         {formatHoldExpiry(hold.expiresAt, new Date(now))}
         <span className="text-slate-400"> · {new Date(hold.expiresAt).toLocaleString()}</span>

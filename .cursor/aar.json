@@ -1,101 +1,116 @@
 {
-  "phase_id": "autonomous-katana-baton-pass",
-  "base_ref": "6347693",
-  "blast_radius": 14,
+  "phase_id": "showroom-option-a-flagged-polish",
+  "base_ref": "a269cda",
+  "blast_radius": 16,
   "counts": {
-    "files": 14,
+    "files": 16,
     "tracked": 14,
-    "untracked": 0,
-    "insertions": 1995,
-    "deletions": 72
+    "untracked": 2,
+    "insertions": 457,
+    "deletions": 93
   },
   "files": [
     {
-      "status": "A",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/SystemHealthDrawer.tsx",
-      "insertions": 243,
+      "status": "??",
+      "path": "src/lib/showroom-feature-flags.ts",
+      "insertions": 0,
       "deletions": 0
     },
     {
-      "status": "A",
-      "path": "src/inngest/katana-catalog-reconcile.ts",
-      "insertions": 28,
-      "deletions": 0
-    },
-    {
-      "status": "A",
-      "path": "src/inngest/ops-keepalive-monitor.ts",
-      "insertions": 19,
-      "deletions": 0
-    },
-    {
-      "status": "A",
-      "path": "src/server/katana/catalog-reconcile.ts",
-      "insertions": 636,
-      "deletions": 0
-    },
-    {
-      "status": "A",
-      "path": "src/server/ops/keepalive.ts",
-      "insertions": 456,
-      "deletions": 0
-    },
-    {
-      "status": "A",
-      "path": "src/server/woocommerce/make-furniture-price-floor.ts",
-      "insertions": 99,
-      "deletions": 0
-    },
-    {
-      "status": "A",
-      "path": "tests/autonomous-katana-baton-pass.test.ts",
-      "insertions": 343,
+      "status": "??",
+      "path": "tests/showroom-option-a-flags.test.ts",
+      "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 15,
-      "deletions": 44
+      "insertions": 18,
+      "deletions": 16
     },
     {
       "status": "M",
       "path": ".cursor/session-stamp.json",
       "insertions": 3,
-      "deletions": 2
+      "deletions": 3
     },
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 24,
-      "deletions": 25
+      "insertions": 19,
+      "deletions": 23
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 67,
+      "path": "src/app/embed/order-desk/OrderDeskPortal.tsx",
+      "insertions": 37,
+      "deletions": 4
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/order-desk/page.tsx",
+      "insertions": 4,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/page.tsx",
-      "insertions": 31,
+      "path": "src/app/embed/showroom/page.tsx",
+      "insertions": 9,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/app/showroom/stock/HoldLifecycleControls.tsx",
+      "insertions": 8,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/app/showroom/stock/InventoryCard.tsx",
+      "insertions": 27,
+      "deletions": 9
+    },
+    {
+      "status": "M",
+      "path": "src/app/showroom/stock/PlaceHoldModal.tsx",
+      "insertions": 1,
       "deletions": 1
     },
     {
       "status": "M",
-      "path": "src/inngest/functions.ts",
-      "insertions": 6,
-      "deletions": 0
+      "path": "src/app/showroom/stock/SalesStockView.tsx",
+      "insertions": 97,
+      "deletions": 17
     },
     {
       "status": "M",
-      "path": "src/server/woocommerce/woo-catalog-sync.ts",
-      "insertions": 25,
-      "deletions": 0
+      "path": "src/lib/hold-quantity.ts",
+      "insertions": 22,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/lib/katana-material-uom.ts",
+      "insertions": 2,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/showroom/sales-projection.ts",
+      "insertions": 157,
+      "deletions": 12
+    },
+    {
+      "status": "M",
+      "path": "src/server/showroom/stock.ts",
+      "insertions": 53,
+      "deletions": 4
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "4a6572e90ce49e77d53e0351da94b2a93b1fc2d79eee5f7e7573dab30086b915",
+  "untracked": [
+    "src/lib/showroom-feature-flags.ts",
+    "tests/showroom-option-a-flags.test.ts"
+  ],
+  "file_list_sha256": "b59dadf240723772a9b76be4d0082bee1198457889d4ca4b280e1efeec35b8b1",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }

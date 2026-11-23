@@ -2,6 +2,7 @@
  * CPU-bound sales curation over Hub `katana_showroom_snapshot` rows + active holds.
  * Zero live Katana HTTP. Zero ecommerce listing table reads.
  */
+import { displayStockUom } from "@/lib/hold-quantity";
 import { roundQty, type StockRow } from "@/lib/stock-display";
 import type { KatanaInventoryRow } from "@/server/stock/katana-inventory";
 
@@ -24,6 +25,24 @@ export const SHOWROOM_SALES_TAB_LABELS: Record<ShowroomSalesTab, string> = {
   mto_catalog: "Make-to-Order Catalog",
   active_holds: "Active Customer Holds",
 };
+
+/** Option A visible order — Fabrics is the default selected tab on load. */
+export const SHOWROOM_DEFAULT_SALES_TAB: ShowroomSalesTab = "fabrics";
+
+export const SHOWROOM_PRIMARY_SALES_TABS: readonly ShowroomSalesTab[] = [
+  "fabrics",
+  "dekton",
+  "third_party",
+  "floor_ready",
+  "active_holds",
+] as const;
+
+/** Tabs rendered in the sales embed; MTO stays last and only when flagged on. */
+export function visibleShowroomSalesTabs(enableMtoCatalog: boolean): ShowroomSalesTab[] {
+  return enableMtoCatalog
+    ? [...SHOWROOM_PRIMARY_SALES_TABS, "mto_catalog"]
+    : [...SHOWROOM_PRIMARY_SALES_TABS];
+}
 
 /** Tabs that default to in-stock-only (0-stock MTO shells hidden unless toggled). */
 export const IN_STOCK_DEFAULT_TABS: ReadonlySet<ShowroomSalesTab> = new Set([
@@ -125,6 +144,65 @@ const MTO_COLLECTIONS = [
   "dining tables",
 ];
 
+/**
+ * Internal job placeholders + custom customer one-offs — never sellable floor stock.
+ * FIN-JOB-*, JOB - *, FIN-SRV-*, FIN-CUS-*, *- CUSTOMER FABRIC.
+ */
+export function isInternalJobOrOneOff(sku: string, name?: string | null): boolean {
+  const upper = sku.trim().toUpperCase();
+  const nm = (name ?? "").trim().toUpperCase();
+  if (
+    upper.startsWith("FIN-JOB-") ||
+    upper.startsWith("FIN-SRV-") ||
+    upper.startsWith("FIN-CUS-")
+  ) {
+    return true;
+  }
+  if (/^JOB\s*-/.test(nm) || nm.includes("JOB - NEW BUILD") || nm.includes("JOB - OTHER") ||
+      nm.includes("JOB - SERVICE") || nm.includes("JOB - MATERIALS")) {
+    return true;
+  }
+  if (nm.includes("- CUSTOMER FABRIC") || nm.endsWith("CUSTOMER FABRIC")) return true;
+  return false;
+}
+
+/** Raw firepit pans/burners that are not retail-facing Tenjam/HPC/Kindle goods. */
+export function isNonRetailFirepitComponent(
+  sku: string,
+  category?: string | null,
+  name?: string | null,
+): boolean {
+  const upper = sku.trim().toUpperCase();
+  if (
+    upper.startsWith("3P-") ||
+    upper.startsWith("TJM-") ||
+    upper.startsWith("FIN-TJM") ||
+    upper.startsWith("FIN-HPC-") ||
+    upper.startsWith("FIN-CAN-") ||
+    upper.startsWith("FIN-MLN-UMB") ||
+    upper.startsWith("FIN-CAB-") ||
+    upper.startsWith("FIN-FLX-") ||
+    upper.startsWith("FIN-MAR-")
+  ) {
+    return false;
+  }
+  const nm = (name ?? "").toLowerCase();
+  const cat = (category ?? "").toLowerCase();
+  const looksLikeComponent =
+    /\bburner\b|\bfirepit pan\b|\bfire pit pan\b|\bbuild (kit|component)\b|\bpit pan\b/.test(nm) ||
+    ((cat.includes("fire pit") || cat.includes("firepit")) &&
+      /\bpan\b|\bburner\b|\bcomponent\b/.test(nm));
+  if (!looksLikeComponent) return false;
+  if (SHOP_FLOOR_PREFIXES.some((p) => upper.startsWith(p))) return true;
+  if (upper.startsWith("RM-") || upper.startsWith("PWD-") || upper.startsWith("HW-")) return true;
+  if (!upper.startsWith("FIN-") && !upper.startsWith("3P-")) return true;
+  // FIN-* without retail brand cues that are clearly build pans/burners
+  if (upper.startsWith("FIN-") && !/\btenjam\b|\bkindle\b|\bhpc\b|\bumbrella\b|\bcabana\b/.test(nm)) {
+    return /\bburner\b|\bpan\b/.test(nm);
+  }
+  return false;
+}
+
 /** Strict shop-floor exclusion — never show these on sales embed. */
 export function isShopFloorExcluded(sku: string, category?: string | null, name?: string | null): boolean {
   const upper = sku.trim().toUpperCase();
@@ -143,6 +221,8 @@ export function isShopFloorExcluded(sku: string, category?: string | null, name?
   ) {
     return true;
   }
+  if (isInternalJobOrOneOff(sku, name)) return true;
+  if (isNonRetailFirepitComponent(sku, category, name)) return true;
   const cat = (category ?? "").trim().toLowerCase();
   const excludedCats = [
     "metal",
@@ -184,18 +264,37 @@ export function isSalesFabric(sku: string, category?: string | null): boolean {
   return cat === "cushion - fabric" || cat === "fabric" || cat === "fabrics";
 }
 
-export function isDektonSku(sku: string, category?: string | null, name?: string | null): boolean {
+/**
+ * Genuine stone/slab materials only — STN-DKT-*, DEC-*, or material rows in Dekton - Slabs.
+ * Never classify finished furniture/pavilions that merely mention stone/Dekton.
+ */
+export function isDektonSku(
+  sku: string,
+  category?: string | null,
+  name?: string | null,
+  itemType?: string | null,
+): boolean {
   const upper = sku.trim().toUpperCase();
+  if (upper.startsWith("FIN-")) return false;
   if (upper.startsWith("STN-DKT-") || upper.startsWith("DEC-")) return true;
-  const cat = (category ?? "").toLowerCase();
-  if (cat.includes("dekton")) return true;
-  return (name ?? "").toLowerCase().includes("dekton");
+  const cat = (category ?? "").trim().toLowerCase();
+  const t = (itemType ?? "").toLowerCase();
+  const dektonCategory =
+    cat === "dekton - slabs" || cat === "dekton" || cat.startsWith("dekton -");
+  if (!dektonCategory) return false;
+  if (t.includes("product") || t.includes("finished")) return false;
+  return t.includes("material") || t === "" || t.includes("other");
 }
 
-export function isFinishedFloorSku(sku: string, itemType?: string | null): boolean {
+export function isFinishedFloorSku(
+  sku: string,
+  itemType?: string | null,
+  name?: string | null,
+): boolean {
   const upper = sku.trim().toUpperCase();
   if (!upper.startsWith("FIN-")) return false;
-  if (isThirdPartySku(sku, null, null)) return false;
+  if (isInternalJobOrOneOff(sku, name)) return false;
+  if (isThirdPartySku(sku, null, name)) return false;
   const t = (itemType ?? "").toLowerCase();
   if (t.includes("subassembl")) return false;
   return true;
@@ -248,9 +347,9 @@ export function classifySalesTab(
   if (isSalesFabric(row.sku, row.category) && !row.sku.toUpperCase().startsWith("MET-")) {
     return "fabrics";
   }
-  if (isDektonSku(row.sku, row.category, row.name)) return "dekton";
+  if (isDektonSku(row.sku, row.category, row.name, row.itemType)) return "dekton";
   if (isThirdPartySku(row.sku, row.category, row.name)) return "third_party";
-  if (isFinishedFloorSku(row.sku, row.itemType)) {
+  if (isFinishedFloorSku(row.sku, row.itemType, row.name)) {
     // In-stock floor items vs full MTO browse is decided by tab filter + stock,
     // but classification prefers floor_ready for FIN-* finished goods.
     return "floor_ready";
@@ -406,7 +505,7 @@ export function projectShowroomSalesView(
       name: seed?.name ?? h.sku,
       itemType: seed?.itemType ?? null,
       category: seed?.category ?? null,
-      uom: seed?.uom ?? "ea",
+      uom: displayStockUom(h.sku, seed?.uom),
       warehouses: new Map(),
       inStock: seed?.inStock ?? 0,
       committed: seed?.committed ?? 0,
@@ -421,6 +520,7 @@ export function projectShowroomSalesView(
     const pending = pendingHoldQtyForVariant(variantHolds, acc.variantId, input.lastSyncedAt);
     const rawAvailable = roundQty(acc.inStock - acc.committed);
     const available = roundQty(rawAvailable - pending);
+    const resolvedUom = displayStockUom(acc.sku, acc.uom);
 
     const salesTab =
       classifySalesTab({
@@ -428,7 +528,10 @@ export function projectShowroomSalesView(
         name: acc.name,
         category: acc.category,
         itemType: (acc.itemType as KatanaInventoryRow["itemType"]) ?? "Other",
-      }) ?? (heldQty > 0 && isDektonSku(acc.sku, acc.category, acc.name) ? "dekton" : null);
+      }) ??
+      (heldQty > 0 && isDektonSku(acc.sku, acc.category, acc.name, acc.itemType)
+        ? "dekton"
+        : null);
 
     const forceVisibleDueToHold = heldQty > 0;
     const holdBadges: SalesHoldBadge[] = variantHolds.map((h) => ({
@@ -453,7 +556,7 @@ export function projectShowroomSalesView(
       committed: acc.committed,
       expected: acc.expected,
       available,
-      uom: acc.uom?.trim() || "ea",
+      uom: resolvedUom,
       imageUrl: null,
       locationName: warehouses.map((w) => w.label).join(" · ") || null,
       itemType: acc.itemType,
@@ -481,13 +584,26 @@ export function projectShowroomSalesView(
     filtered = filtered.filter((c) => {
       if (c.salesTab === input.tab) return true;
       // Dekton with active holds always visible on Dekton tab.
-      if (input.tab === "dekton" && c.forceVisibleDueToHold && isDektonSku(c.sku, c.category, c.name)) {
+      if (
+        input.tab === "dekton" &&
+        c.forceVisibleDueToHold &&
+        isDektonSku(c.sku, c.category, c.name, c.itemType)
+      ) {
+        return true;
+      }
+      // Floor: genuine FIN-* with available > 0 OR an active hold (never job placeholders).
+      if (input.tab === "floor_ready" && c.forceVisibleDueToHold && c.salesTab === "floor_ready") {
         return true;
       }
       return false;
     });
   } else {
     filtered = filtered.filter((c) => c.salesTab != null || c.heldQty > 0);
+  }
+
+  // Hard purge job/one-off placeholders from floor even if a hold somehow attached.
+  if (input.tab === "floor_ready") {
+    filtered = filtered.filter((c) => !isInternalJobOrOneOff(c.sku, c.name));
   }
 
   const inStockOnly = input.inStockOnly ?? false;
@@ -536,6 +652,35 @@ export function orderDeskMtoHref(input: {
   if (input.ghlUserEmail) params.set("ghlUserEmail", input.ghlUserEmail);
   if (input.sku) params.set("sku", input.sku);
   params.set("mto", "1");
+  params.set("from", "showroom");
   const q = params.toString();
   return q ? `/embed/order-desk?${q}` : "/embed/order-desk";
+}
+
+/** Build Showroom deep-link preserving embed auth params (Order Desk → back). */
+export function showroomBackHref(input: {
+  href?: string;
+  embedToken?: string | null;
+  embedKey?: string | null;
+  ghlUserId?: string | null;
+  ghlUserEmail?: string | null;
+}): string {
+  const params = new URLSearchParams();
+  try {
+    if (input.href) {
+      const url = new URL(input.href, "https://ccpatio.local");
+      for (const [k, v] of url.searchParams) {
+        if (k === "from" || k === "mto" || k === "sku") continue;
+        params.set(k, v);
+      }
+    }
+  } catch {
+    // ignore bad href
+  }
+  if (input.embedToken) params.set("embedToken", input.embedToken);
+  if (input.embedKey) params.set("embedKey", input.embedKey);
+  if (input.ghlUserId) params.set("ghlUserId", input.ghlUserId);
+  if (input.ghlUserEmail) params.set("ghlUserEmail", input.ghlUserEmail);
+  const q = params.toString();
+  return q ? `/embed/showroom?${q}` : "/embed/showroom";
 }

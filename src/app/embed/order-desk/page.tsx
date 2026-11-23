@@ -42,6 +42,9 @@ export default async function EmbedOrderDeskPage({
 
   const params = await searchParams;
   const actor = readActorFromSearchRecord(params);
+  const fromRaw = params.from;
+  const fromValue = Array.isArray(fromRaw) ? fromRaw[0] : fromRaw;
+  const fromShowroom = fromValue === "showroom";
   const model = await loadOrderDesk({
     opportunityId: readOpportunityIdFromSearchRecord(params),
     quoteId: readQuoteIdFromSearchRecord(params),
@@ -57,6 +60,7 @@ export default async function EmbedOrderDeskPage({
         initial={model}
         ghlUserId={actor.ghlUserId}
         ghlUserEmail={actor.ghlUserEmail}
+        fromShowroom={fromShowroom}
       />
     </div>
   );

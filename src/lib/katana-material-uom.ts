@@ -63,9 +63,10 @@ export function inferMaterialUom(sku: string): InferredMaterialUom {
   if (
     s.startsWith("RM-DKT-") ||
     s.startsWith("DKT-") ||
+    s.startsWith("DEC-") ||
     s.startsWith("STN-")
   ) {
-    return pack("slab", "RM-DKT-/DKT-/STN-*");
+    return pack("slab", "RM-DKT-/DKT-/DEC-/STN-*");
   }
   if (s.includes("FOAM")) {
     return pack("boardft", "FOAM");

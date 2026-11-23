@@ -1,8 +1,12 @@
 import { getPimSession } from "@/lib/pim-audit";
 import { readActorFromSearchRecord } from "@/lib/embed-actor-params";
+import { getShowroomFeatureFlags } from "@/lib/showroom-feature-flags";
 import { SalesStockView } from "@/app/showroom/stock/SalesStockView";
 import { loadShowroomSalesInventory } from "@/server/showroom/stock";
-import type { SalesStockCard } from "@/server/showroom/sales-projection";
+import {
+  SHOWROOM_DEFAULT_SALES_TAB,
+  type SalesStockCard,
+} from "@/server/showroom/sales-projection";
 
 export const dynamic = "force-dynamic";
 
@@ -21,12 +25,13 @@ export default async function EmbedShowroomPage({
   }
 
   const actor = readActorFromSearchRecord(await searchParams);
+  const featureFlags = getShowroomFeatureFlags();
 
   let initialCards: SalesStockCard[] = [];
   let initialSyncedAt: string | null = null;
   try {
     const snapshot = await loadShowroomSalesInventory({
-      tab: "floor_ready",
+      tab: SHOWROOM_DEFAULT_SALES_TAB,
       inStockOnly: true,
     });
     if (snapshot.ok) {
@@ -43,6 +48,8 @@ export default async function EmbedShowroomPage({
         <SalesStockView
           initialCards={initialCards}
           initialSyncedAt={initialSyncedAt}
+          initialTab={SHOWROOM_DEFAULT_SALES_TAB}
+          featureFlags={featureFlags}
           ghlUserId={actor.ghlUserId}
           ghlUserEmail={actor.ghlUserEmail}
         />

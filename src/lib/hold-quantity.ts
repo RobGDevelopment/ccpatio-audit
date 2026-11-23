@@ -10,9 +10,30 @@ const FROM_KATANA: Record<string, string> = {
   yards: "yd",
 };
 
-/** Showroom label for a unit. Katana `pcs` is the hub's `ea`. */
+function isDektonStoneSku(sku: string): boolean {
+  const upper = sku.trim().toUpperCase();
+  return (
+    upper.startsWith("STN-DKT-") ||
+    upper.startsWith("DEC-") ||
+    upper.startsWith("STN-") ||
+    upper.startsWith("DKT-") ||
+    upper.startsWith("RM-DKT-")
+  );
+}
+
+/**
+ * Showroom label for a unit. Katana `pcs` is the hub's `ea`.
+ * Dekton/stone SKUs never surface a fabric `yd` — use Katana slab/pcs/ea when present,
+ * otherwise default to `slab`.
+ */
 export function displayStockUom(sku: string, raw?: string | null): string {
   const key = raw?.trim().toLowerCase() ?? "";
+  if (isDektonStoneSku(sku)) {
+    if (key && key !== "yd" && key !== "yds" && key !== "yards") {
+      return FROM_KATANA[key] ?? key;
+    }
+    return inferMaterialUom(sku).uom;
+  }
   if (key) return FROM_KATANA[key] ?? key;
   return inferMaterialUom(sku).uom;
 }

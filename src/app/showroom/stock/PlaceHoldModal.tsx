@@ -61,7 +61,7 @@ export function PlaceHoldModal({
     pendingRef.current = pending;
   }, [pending]);
 
-  const uom = row.uom?.trim() || displayStockUom(row.sku);
+  const uom = displayStockUom(row.sku, row.uom);
   const availableLabel = `${formatQty(row.available)} ${uom}`;
   const quantityIssue = holdQuantityIssue(qty);
   const quantityWarning = holdQuantityWarning(qty);

@@ -4,12 +4,17 @@ import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { readActorFromHref } from "@/lib/embed-actor-params";
+import {
+  getShowroomFeatureFlags,
+  type ShowroomFeatureFlags,
+} from "@/lib/showroom-feature-flags";
 import { useEmbedSession } from "@/components/embed/EmbedSessionProvider";
 import {
   IN_STOCK_DEFAULT_TABS,
+  SHOWROOM_DEFAULT_SALES_TAB,
   SHOWROOM_SALES_TAB_LABELS,
-  SHOWROOM_SALES_TABS,
   orderDeskMtoHref,
+  visibleShowroomSalesTabs,
   type SalesStockCard,
   type ShowroomSalesTab,
 } from "@/server/showroom/sales-projection";
@@ -49,16 +54,25 @@ function formatSyncedAt(iso: string | null): string {
 export function SalesStockView({
   initialCards,
   initialSyncedAt,
+  initialTab = SHOWROOM_DEFAULT_SALES_TAB,
+  featureFlags: featureFlagsProp,
   ghlUserId,
   ghlUserEmail,
 }: {
   initialCards?: SalesStockCard[];
   initialSyncedAt?: string | null;
+  initialTab?: ShowroomSalesTab;
+  featureFlags?: ShowroomFeatureFlags;
   ghlUserId?: string;
   ghlUserEmail?: string;
 } = {}) {
   const { embedToken } = useEmbedSession();
-  const [tab, setTab] = useState<ShowroomSalesTab>("floor_ready");
+  const flags = featureFlagsProp ?? getShowroomFeatureFlags();
+  const visibleTabs = useMemo(
+    () => visibleShowroomSalesTabs(flags.enableMtoCatalog),
+    [flags.enableMtoCatalog],
+  );
+  const [tab, setTab] = useState<ShowroomSalesTab>(initialTab);
   const [query, setQuery] = useState("");
   const [inStockOnly, setInStockOnly] = useState(true);
   const [cards, setCards] = useState<SalesStockCard[]>(initialCards ?? []);
@@ -72,6 +86,7 @@ export function SalesStockView({
   const [actorUserId, setActorUserId] = useState(ghlUserId);
   const [actorUserEmail, setActorUserEmail] = useState(ghlUserEmail);
   const [holds, setHolds] = useState<ActiveShowroomHold[]>([]);
+  const [activeHoldCount, setActiveHoldCount] = useState(0);
   const [pending, startTransition] = useTransition();
   const request = useRef(0);
   const hydrated = useRef(false);
@@ -79,6 +94,12 @@ export function SalesStockView({
   useEffect(() => {
     setInStockOnly(IN_STOCK_DEFAULT_TABS.has(tab));
   }, [tab]);
+
+  useEffect(() => {
+    if (!flags.enableMtoCatalog && tab === "mto_catalog") {
+      setTab(SHOWROOM_DEFAULT_SALES_TAB);
+    }
+  }, [flags.enableMtoCatalog, tab]);
 
   const reload = useCallback(
     async (nextTab: ShowroomSalesTab = tab, nextInStock = inStockOnly, nextQuery = query) => {
@@ -104,7 +125,9 @@ export function SalesStockView({
           result.cards.length === 0
             ? nextTab === "active_holds"
               ? "No active customer holds."
-              : "Nothing matches this sales tab."
+              : nextTab === "floor_ready"
+                ? null
+                : "Nothing matches this sales tab."
             : result.warning,
         );
         setErrorBanner(result.warning && result.stale ? result.warning : null);
@@ -117,6 +140,21 @@ export function SalesStockView({
     },
     [embedToken, tab, inStockOnly, query],
   );
+
+  const refreshActiveHoldCount = useCallback(async () => {
+    try {
+      const result = await loadShowroomSalesInventoryAction({
+        embedToken,
+        tab: "active_holds",
+        inStockOnly: false,
+      });
+      if (result.ok) {
+        setActiveHoldCount(result.cards.reduce((sum, c) => sum + (c.heldQty > 0 ? 1 : 0), 0));
+      }
+    } catch {
+      // Badge is informational; keep last known count.
+    }
+  }, [embedToken]);
 
   useEffect(() => {
     let active = true;
@@ -142,7 +180,11 @@ export function SalesStockView({
   }, [ghlUserId, ghlUserEmail, embedToken]);
 
   useEffect(() => {
-    if (!hydrated.current && initialCards && initialCards.length > 0) {
+    void refreshActiveHoldCount();
+  }, [refreshActiveHoldCount]);
+
+  useEffect(() => {
+    if (!hydrated.current && initialCards && initialCards.length > 0 && tab === initialTab) {
       hydrated.current = true;
       return;
     }
@@ -192,6 +234,17 @@ export function SalesStockView({
       }),
     [embedToken, actorUserId, actorUserEmail],
   );
+
+  const showOrderDeskCta = flags.enableOrderDeskCta && flags.enableMtoCatalog;
+
+  function tabLabel(key: ShowroomSalesTab): string {
+    if (key === "active_holds") {
+      return activeHoldCount > 0
+        ? `${SHOWROOM_SALES_TAB_LABELS[key]} (${activeHoldCount})`
+        : SHOWROOM_SALES_TAB_LABELS[key];
+    }
+    return SHOWROOM_SALES_TAB_LABELS[key];
+  }
 
   return (
     <section className="rounded-3xl bg-[#F8F9FA]" data-inventory-mode="sales" data-testid="sales-stock-view">
@@ -251,7 +304,7 @@ export function SalesStockView({
             <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
           </div>
           <div className="flex flex-wrap gap-2" role="tablist" aria-label="Sales category">
-            {SHOWROOM_SALES_TABS.map((key) => {
+            {visibleTabs.map((key) => {
               const selected = tab === key;
               return (
                 <button
@@ -266,12 +319,12 @@ export function SalesStockView({
                   onClick={() => setTab(key)}
                 >
                   {selected ? <GoldBeam /> : null}
-                  {SHOWROOM_SALES_TAB_LABELS[key]}
+                  {tabLabel(key)}
                 </button>
               );
             })}
           </div>
-          {tab === "mto_catalog" ? (
+          {tab === "mto_catalog" && showOrderDeskCta ? (
             <a
               href={mtoHref}
               data-testid="quote-mto-order-desk"
@@ -298,14 +351,28 @@ export function SalesStockView({
         <LayoutGroup>
           <AnimatePresence mode="popLayout">
             {visible.length === 0 ? (
-              <motion.p
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-sm text-slate-500"
-              >
-                {message ?? "No items."}
-              </motion.p>
+              tab === "floor_ready" ? (
+                <motion.article
+                  key="floor-empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  data-testid="floor-ready-empty"
+                  className="rounded-2xl border border-slate-100 bg-white px-6 py-10 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+                >
+                  <p className="text-sm font-medium text-slate-800">
+                    No pre-built floor models currently in stock.
+                  </p>
+                </motion.article>
+              ) : (
+                <motion.p
+                  key="empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-sm text-slate-500"
+                >
+                  {message ?? "No items."}
+                </motion.p>
+              )
             ) : (
               <motion.div
                 layout
@@ -323,17 +390,29 @@ export function SalesStockView({
                       row={card}
                       warehouses={card.warehouses}
                       holdBadges={card.holdBadges}
+                      heldQty={card.heldQty}
                       canHold={Boolean(salesperson) && !holdActorError}
                       holdDisabledReason={holdActorError}
                       salesperson={salesperson}
                       ghlUserId={actorUserId}
                       ghlUserEmail={actorUserEmail}
                       holds={rowHolds}
-                      showMtoQuote={tab === "mto_catalog"}
-                      mtoHref={mtoHref}
+                      showMtoQuote={tab === "mto_catalog" && showOrderDeskCta}
+                      mtoHref={
+                        showOrderDeskCta
+                          ? orderDeskMtoHref({
+                              href: typeof window !== "undefined" ? window.location.href : undefined,
+                              embedToken,
+                              ghlUserId: actorUserId,
+                              ghlUserEmail: actorUserEmail,
+                              sku: card.sku,
+                            })
+                          : undefined
+                      }
                       onHoldPlaced={() => {
                         startTransition(() => {
                           void reload();
+                          void refreshActiveHoldCount();
                         });
                       }}
                       onOptimisticRelease={(holdId) => {
@@ -347,6 +426,7 @@ export function SalesStockView({
                       onHoldReleased={() => {
                         startTransition(() => {
                           void reload();
+                          void refreshActiveHoldCount();
                         });
                       }}
                       onHoldExtended={(holdId, expiresAt) => {

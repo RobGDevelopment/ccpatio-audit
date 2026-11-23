@@ -10,6 +10,8 @@ import {
   readActorFromHref,
   readOpportunityIdFromHref,
 } from "@/lib/embed-actor-params";
+import { showroomBackHref } from "@/server/showroom/sales-projection";
+import { useEmbedSession } from "@/components/embed/EmbedSessionProvider";
 import { lineExtended } from "@/lib/quote-financials";
 import {
   generateQuotePackage,
@@ -348,13 +350,29 @@ export function OrderDeskPortal({
   initial,
   ghlUserId,
   ghlUserEmail,
+  fromShowroom = false,
 }: {
   initial: OrderDeskModel;
   ghlUserId?: string;
   ghlUserEmail?: string;
+  fromShowroom?: boolean;
 }) {
   const router = useRouter();
+  const { embedToken } = useEmbedSession();
   const store = useQuoteStore();
+  const [showroomHref, setShowroomHref] = useState(() =>
+    showroomBackHref({ embedToken, ghlUserId, ghlUserEmail }),
+  );
+  useEffect(() => {
+    setShowroomHref(
+      showroomBackHref({
+        href: window.location.href,
+        embedToken,
+        ghlUserId,
+        ghlUserEmail,
+      }),
+    );
+  }, [embedToken, ghlUserId, ghlUserEmail]);
   const hydratedRef = useRef<OrderDeskModel | null>(null);
   if (hydratedRef.current !== initial) {
     hydratedRef.current = initial;
@@ -1073,17 +1091,32 @@ export function OrderDeskPortal({
       /^\d{5}$/.test(zipDraft || quote.destZip || ""),
   );
 
+  const backToShowroom =
+    fromShowroom ? (
+      <a
+        href={showroomHref}
+        data-testid="order-desk-back-to-showroom"
+        className="inline-flex items-center text-sm font-medium text-slate-600 transition hover:text-slate-900"
+      >
+        ← Back to Current Inventory
+      </a>
+    ) : null;
+
   if (model.state === "needs-opportunity") {
     return (
-      <CustomerSearchHub
-        onSelect={startQuote}
-        busyOpportunityId={pending && selection ? selection.opportunityId : null}
-      />
+      <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 py-6 sm:px-6">
+        {backToShowroom ? <div className="mb-4">{backToShowroom}</div> : null}
+        <CustomerSearchHub
+          onSelect={startQuote}
+          busyOpportunityId={pending && selection ? selection.opportunityId : null}
+        />
+      </div>
     );
   }
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6">
+      {backToShowroom}
       {/* Plain English Header */}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>

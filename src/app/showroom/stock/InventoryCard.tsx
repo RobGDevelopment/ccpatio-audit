@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ImagePlus } from "lucide-react";
+import { displayStockUom } from "@/lib/hold-quantity";
 import { formatQty, type StockRow } from "@/lib/stock-display";
 import { variantImagePublicUrl } from "@/lib/product-image-url";
 import type { SalesHoldBadge, WarehouseQty } from "@/server/showroom/sales-projection";
@@ -44,6 +45,7 @@ export function InventoryCard({
   holds,
   warehouses,
   holdBadges,
+  heldQty = 0,
   showMtoQuote = false,
   mtoHref,
   onHoldPlaced,
@@ -62,6 +64,7 @@ export function InventoryCard({
   holds: ActiveShowroomHold[];
   warehouses?: WarehouseQty[];
   holdBadges?: SalesHoldBadge[];
+  heldQty?: number;
   showMtoQuote?: boolean;
   mtoHref?: string;
   onHoldPlaced: () => void;
@@ -75,8 +78,15 @@ export function InventoryCard({
   const [uploadOpen, setUploadOpen] = useState(false);
   const [holdOpen, setHoldOpen] = useState(false);
   const [releaseOpen, setReleaseOpen] = useState(false);
-  const holdDisabled = !canHold || !salesperson;
-  const imageUrl = variantImagePublicUrl(row.sku);
+  const uom = displayStockUom(row.sku, row.uom);
+  const outOfStock = row.available <= 0;
+  const holdDisabled = !canHold || !salesperson || outOfStock;
+  const holdButtonLabel = outOfStock
+    ? heldQty > 0 || holds.length > 0
+      ? "Fully Held"
+      : "Out of Stock"
+    : "Place Hold";
+  const imageUrl = row.imageUrl?.trim() || variantImagePublicUrl(row.sku);
   const src = imageUrl && version > 0 ? `${imageUrl}?v=${version}` : imageUrl;
 
   useEffect(() => {
@@ -155,8 +165,9 @@ export function InventoryCard({
                   <p
                     key={badge.id}
                     className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-900"
+                    data-testid="hold-badge-uom"
                   >
-                    Held: {formatQty(badge.qty)} ({badge.opportunityName || "Customer"} · Expires{" "}
+                    Held: {formatQty(badge.qty)} {uom} ({badge.opportunityName || "Customer"} · Expires{" "}
                     {expires})
                   </p>
                 );
@@ -223,15 +234,21 @@ export function InventoryCard({
         {!opsMode ? (
         <button
           type="button"
+          data-testid="place-hold-button"
           disabled={holdDisabled}
           title={
-            holdDisabledReason ??
-            (!salesperson ? "Confirming salesperson…" : undefined)
+            outOfStock
+              ? holdButtonLabel
+              : holdDisabledReason ??
+                (!salesperson ? "Confirming salesperson…" : undefined)
           }
-          onClick={() => setHoldOpen(true)}
+          onClick={() => {
+            if (outOfStock) return;
+            setHoldOpen(true);
+          }}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Place Hold
+          {holdButtonLabel}
         </button>
         ) : null}
         {!opsMode && holds.length > 0 ? (
@@ -240,10 +257,11 @@ export function InventoryCard({
               <li key={hold.id} className="rounded-xl border border-slate-200 p-2">
                 <p className="text-xs font-medium text-slate-900">{hold.opportunityName}</p>
                 <p className="mt-0.5 text-[11px] text-slate-500">
-                  {hold.salesperson} · {formatQty(Number(hold.qty))}
+                  {hold.salesperson} · {formatQty(Number(hold.qty))} {uom}
                 </p>
                 <HoldLifecycleControls
                   hold={hold}
+                  uom={uom}
                   ghlUserId={ghlUserId}
                   ghlUserEmail={ghlUserEmail}
                   disabled={!canHold || !salesperson}
@@ -266,7 +284,7 @@ export function InventoryCard({
           </button>
         ) : null}
       </div>
-      {!opsMode && salesperson ? (
+      {!opsMode && salesperson && !outOfStock ? (
         <PlaceHoldModal
           isOpen={holdOpen}
           onClose={() => setHoldOpen(false)}

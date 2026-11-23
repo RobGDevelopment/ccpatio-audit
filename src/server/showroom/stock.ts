@@ -4,8 +4,9 @@ import {
 } from "@/lib/embed-auth";
 import { GHL_EMBED_PRINCIPAL_EMAIL, getPimSession, type PimSession } from "@/lib/pim-audit";
 import type { StockRow } from "@/lib/stock-display";
+import { getSupabaseUrl } from "@/lib/supabase-env";
 import { getDb } from "@/server/db/client";
-import { finished_goods_catalog } from "@/server/db/schema";
+import { finished_goods_catalog, product_assets } from "@/server/db/schema";
 import {
   listCatalogCategoryItems,
   listStockCollections,
@@ -21,8 +22,9 @@ import {
   readShowroomSnapshotFromHub,
   refreshShowroomSnapshotFromKatana,
 } from "@/server/stock/showroom-snapshot";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { inventory_holds } from "@/server/db/schema";
+import { displayStockUom } from "@/lib/hold-quantity";
 import {
   projectShowroomSalesView,
   type ActiveHoldInput,
@@ -47,6 +49,22 @@ export type ShowroomCategoryResult =
   | { ok: true; items: { category: string }[] }
   | { ok: false; error: string };
 
+function productAssetPublicUrl(storagePath: string): string | null {
+  const path = storagePath.trim();
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  const base = getSupabaseUrl()?.replace(/\/$/, "");
+  if (!base) return null;
+  return `${base}/storage/v1/object/public/product-images/${path
+    .split("/")
+    .map((seg) => encodeURIComponent(seg))
+    .join("/")}`;
+}
+
+/**
+ * Cross-fill blank imageUrl from finished_goods_catalog, then product_assets.
+ * ZERO ecommerce_listings coupling — retail Tenjam/Umbrella/Kindle photos only.
+ */
 async function overlayPimImages(rows: StockRow[]): Promise<StockRow[]> {
   if (rows.length === 0) return rows;
   const db = getDb();
@@ -61,10 +79,41 @@ async function overlayPimImages(rows: StockRow[]): Promise<StockRow[]> {
     const url = row.imageUrl?.trim();
     if (url) bySku.set(row.sku.toUpperCase(), url);
   }
+
+  const missing = [
+    ...new Set(
+      rows
+        .filter((row) => !(row.imageUrl?.trim() || bySku.get(row.sku.toUpperCase())))
+        .map((row) => row.sku.trim().toUpperCase())
+        .filter(Boolean),
+    ),
+  ];
+  if (missing.length > 0) {
+    const assets = await db
+      .select({
+        sku: product_assets.global_sku,
+        storagePath: product_assets.storage_path,
+      })
+      .from(product_assets)
+      .where(
+        and(
+          inArray(sql<string>`upper(${product_assets.global_sku})`, missing),
+          eq(product_assets.kind, "primary_image"),
+          eq(product_assets.is_current, true),
+        ),
+      );
+    for (const asset of assets) {
+      const key = asset.sku.trim().toUpperCase();
+      if (bySku.has(key)) continue;
+      const url = productAssetPublicUrl(asset.storagePath);
+      if (url) bySku.set(key, url);
+    }
+  }
+
   if (bySku.size === 0) return rows;
   return rows.map((row) => ({
     ...row,
-    imageUrl: bySku.get(row.sku) ?? row.imageUrl,
+    imageUrl: row.imageUrl?.trim() || bySku.get(row.sku.toUpperCase()) || row.imageUrl,
   }));
 }
 
@@ -126,7 +175,7 @@ function toStockRow(row: KatanaInventoryRow): StockRow {
     committed: row.committed,
     expected: row.expected,
     available: row.available,
-    uom: row.uom?.trim() || "ea",
+    uom: displayStockUom(row.sku, row.uom),
     imageUrl: null,
     locationName: row.locationName,
     itemType: row.itemType,
