@@ -1,5 +1,6 @@
 import { requireMissionControlAuth } from "./actions";
 import { TrafficLights } from "@/components/mission-control/TrafficLights";
+import { QboConnectionCard } from "@/components/mission-control/QboConnectionCard";
 import { IssuesInbox } from "@/components/mission-control/IssuesInbox";
 import { KeyManager } from "@/components/mission-control/KeyManager";
 import { EscalationModal } from "@/components/mission-control/EscalationModal";
@@ -60,6 +61,10 @@ export default async function MissionControlPage() {
 
         <section aria-label="System health">
           <TrafficLights />
+        </section>
+
+        <section aria-label="QuickBooks connection">
+          <QboConnectionCard />
         </section>
 
         <section aria-label="Catalog hygiene">

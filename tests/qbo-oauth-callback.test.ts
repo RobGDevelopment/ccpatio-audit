@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildQboAuthorizeUrl,
+  canInitiateQboOAuth,
   fingerprintUpstreamBody,
   isAllowedQboRealmId,
   isValidQboConnectSecret,
@@ -212,5 +213,39 @@ describe("GET /api/auth/qbo/connect route", () => {
     const { GET } = await import("@/app/api/auth/qbo/connect/route");
     const res = await GET(new Request("https://hub.ccpatio.com/api/auth/qbo/connect"));
     expect(res.status).toBe(403);
+  });
+
+  it("allows IT_Admin session to start connect (no secret)", async () => {
+    delete process.env.QBO_CONNECT_SECRET;
+    process.env.QBO_CLIENT_ID = "cid";
+    process.env.QBO_OAUTH_REDIRECT_URI = "https://hub.ccpatio.com/api/auth/qbo/callback";
+
+    expect(canInitiateQboOAuth("IT_Admin")).toBe(true);
+
+    vi.doMock("@/utils/supabase/server", () => ({
+      createClient: async () => ({
+        auth: {
+          getUser: async () => ({
+            data: { user: { id: "it-admin-user" } },
+          }),
+        },
+      }),
+    }));
+    vi.doMock("@/server/db/client", () => ({
+      getDb: () => ({
+        select: () => ({
+          from: () => ({
+            where: () => ({
+              limit: async () => [{ role: "IT_Admin" }],
+            }),
+          }),
+        }),
+      }),
+    }));
+
+    const { GET } = await import("@/app/api/auth/qbo/connect/route");
+    const res = await GET(new Request("https://hub.ccpatio.com/api/auth/qbo/connect"));
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location") ?? "").toContain(QBO_AUTHORIZE_URL);
   });
 });

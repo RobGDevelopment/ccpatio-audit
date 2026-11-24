@@ -61,7 +61,7 @@ export function isAllowedQboRealmId(
 }
 
 /**
- * Signed connect secret for headless / ops initiation without a browser SuperAdmin session.
+ * Signed connect secret for headless / ops initiation without a browser Mission Control session.
  * Accepts `QBO_CONNECT_SECRET` via header or query.
  */
 export function isValidQboConnectSecret(
@@ -72,6 +72,11 @@ export function isValidQboConnectSecret(
   const got = (provided ?? "").trim();
   if (!expected || !got) return false;
   return timingSafeEqualString(got, expected);
+}
+
+/** Mission Control operators who may start QBO OAuth from `/api/auth/qbo/connect`. */
+export function canInitiateQboOAuth(role: string | null | undefined): boolean {
+  return role === "SuperAdmin" || role === "IT_Admin";
 }
 
 export function buildQboAuthorizeUrl(input: {

@@ -5,6 +5,7 @@ import { getDb } from "@/server/db/client";
 import { user_roles } from "@/server/db/schema";
 import {
   buildQboAuthorizeUrl,
+  canInitiateQboOAuth,
   isValidQboConnectSecret,
   mintQboOAuthState,
   QBO_OAUTH_STATE_COOKIE,
@@ -16,7 +17,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-async function isSuperAdminSession(): Promise<boolean> {
+async function hasMissionControlQboSession(): Promise<boolean> {
   try {
     const supabase = await createClient();
     const {
@@ -29,14 +30,14 @@ async function isSuperAdminSession(): Promise<boolean> {
       .from(user_roles)
       .where(eq(user_roles.id, user.id))
       .limit(1);
-    return row?.role === "SuperAdmin";
+    return canInitiateQboOAuth(row?.role);
   } catch {
     return false;
   }
 }
 
 /**
- * OAuth initiation — SuperAdmin session OR `QBO_CONNECT_SECRET`
+ * OAuth initiation — SuperAdmin / IT_Admin session OR `QBO_CONNECT_SECRET`
  * (header `x-qbo-connect-secret` or query `secret`).
  * Sets HttpOnly SameSite=Lax `qbo_oauth_state` then redirects to Intuit.
  */
@@ -46,10 +47,13 @@ export async function GET(req: Request) {
     req.headers.get("x-qbo-connect-secret") ?? url.searchParams.get("secret");
 
   const authorized =
-    isValidQboConnectSecret(secret) || (await isSuperAdminSession());
+    isValidQboConnectSecret(secret) || (await hasMissionControlQboSession());
   if (!authorized) {
     return NextResponse.json(
-      sanitizedQboOAuthError("unauthorized", "QBO connect requires SuperAdmin or connect secret"),
+      sanitizedQboOAuthError(
+        "unauthorized",
+        "QBO connect requires SuperAdmin, IT_Admin, or connect secret",
+      ),
       { status: 403 },
     );
   }
