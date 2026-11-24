@@ -13,12 +13,14 @@
     ".cursor/aar.json",
     "BUILD_PLAN.md",
     "src/app/api/auth/qbo/connect/route.ts",
+    "src/app/api/auth/qbo/callback/route.ts",
     "src/server/integrations/qbo/oauth.ts",
     "src/server/mission-control/qbo-connection.ts",
     "src/app/mission-control/qbo-action.ts",
     "src/app/mission-control/page.tsx",
     "src/components/mission-control/QboConnectionCard.tsx",
     "docs/sop/QBO_ADMIN_HANDOFF.md",
+    "docs/research/INTUIT_DEVELOPER_PLUGIN_ANALYSIS.md",
     "tests/qbo-oauth-callback.test.ts",
     "tests/qbo-connection-status.test.ts"
   ]

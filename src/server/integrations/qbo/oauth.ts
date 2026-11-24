@@ -94,12 +94,50 @@ export function buildQboAuthorizeUrl(input: {
   return url.toString();
 }
 
+/** Non-secret Intuit OAuth error codes safe to log / return to operators. */
+export const QBO_OAUTH_UPSTREAM_ERROR_CODES = new Set([
+  "invalid_client",
+  "invalid_grant",
+  "invalid_request",
+  "unauthorized_client",
+  "unsupported_grant_type",
+  "invalid_scope",
+]);
+
+export type SanitizedQboOAuthError = {
+  error: string;
+  code: string;
+  /** Allowlisted Intuit OAuth `error` only — never descriptions or tokens. */
+  oauth_error?: string;
+};
+
 /** Browser-safe error body — never echo Intuit / upstream payloads. */
 export function sanitizedQboOAuthError(
   code: string,
   message: string,
-): { error: string; code: string } {
-  return { error: message, code };
+  extras?: { oauth_error?: string | null },
+): SanitizedQboOAuthError {
+  const out: SanitizedQboOAuthError = { error: message, code };
+  const oauthError = extras?.oauth_error?.trim();
+  if (oauthError && QBO_OAUTH_UPSTREAM_ERROR_CODES.has(oauthError)) {
+    out.oauth_error = oauthError;
+  }
+  return out;
+}
+
+/**
+ * Extract Intuit's non-secret OAuth `error` code from a token endpoint body.
+ * Returns null when missing, malformed, or not in the allowlist.
+ */
+export function parseIntuitOAuthErrorCode(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as { error?: unknown };
+    if (typeof parsed.error !== "string") return null;
+    const code = parsed.error.trim();
+    return QBO_OAUTH_UPSTREAM_ERROR_CODES.has(code) ? code : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Fingerprint for server logs without leaking full token responses. */
@@ -107,6 +145,29 @@ export function fingerprintUpstreamBody(body: string): string {
   return createHash("sha256").update(body).digest("hex").slice(0, 16);
 }
 
+/** Trim BOM/whitespace and strip a single wrapping quote pair from env values. */
 export function stripEnvQuotes(value: string | undefined): string {
-  return (value ?? "").trim().replace(/^["']|["']$/g, "");
+  return (value ?? "")
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .trim();
+}
+
+/** Safe metadata for diagnosing credential/redirect misconfig without secrets. */
+export function qboCredentialLogMeta(input: {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+}): Record<string, string | number | boolean> {
+  return {
+    clientIdLength: input.clientId.length,
+    clientIdPrefix4: input.clientId.slice(0, 4),
+    clientIdSuffix4: input.clientId.slice(-4),
+    clientSecretLength: input.clientSecret.length,
+    clientSecretPrefix4: input.clientSecret.slice(0, 4),
+    clientSecretSuffix4: input.clientSecret.slice(-4),
+    redirectUri: input.redirectUri,
+    redirectUriLength: input.redirectUri.length,
+  };
 }

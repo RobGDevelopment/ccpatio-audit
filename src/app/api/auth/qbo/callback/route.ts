@@ -7,7 +7,9 @@ import {
   fingerprintUpstreamBody,
   isAllowedQboRealmId,
   oauthStateMatches,
+  parseIntuitOAuthErrorCode,
   QBO_OAUTH_STATE_COOKIE,
+  qboCredentialLogMeta,
   sanitizedQboOAuthError,
   stripEnvQuotes,
 } from "@/server/integrations/qbo/oauth";
@@ -71,6 +73,11 @@ export async function GET(req: Request) {
   const redirectUri = stripEnvQuotes(process.env.QBO_OAUTH_REDIRECT_URI);
 
   if (!clientId || !clientSecret || !redirectUri) {
+    console.error("[QBO OAUTH] Missing QBO env after trim", {
+      hasClientId: Boolean(clientId),
+      hasClientSecret: Boolean(clientSecret),
+      hasRedirectUri: Boolean(redirectUri),
+    });
     const res = NextResponse.json(
       sanitizedQboOAuthError("misconfigured", "Missing QBO environment variables"),
       { status: 500 },
@@ -98,13 +105,18 @@ export async function GET(req: Request) {
 
   if (!tokenRes.ok) {
     const errText = await tokenRes.text();
+    const oauthError = parseIntuitOAuthErrorCode(errText);
     console.error("[QBO OAUTH] Failed to exchange token:", {
       status: tokenRes.status,
+      oauthError,
       bodyFingerprint: fingerprintUpstreamBody(errText),
       bodyLength: errText.length,
+      ...qboCredentialLogMeta({ clientId, clientSecret, redirectUri }),
     });
     const res = NextResponse.json(
-      sanitizedQboOAuthError("token_exchange_failed", "Token exchange failed"),
+      sanitizedQboOAuthError("token_exchange_failed", "Token exchange failed", {
+        oauth_error: oauthError,
+      }),
       { status: 500 },
     );
     clearStateCookie(res, secure);

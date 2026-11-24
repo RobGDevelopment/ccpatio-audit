@@ -10,7 +10,9 @@ import {
   QBO_AUTHORIZE_URL,
   QBO_OAUTH_STATE_COOKIE,
   qboOAuthStateCookieOptions,
+  parseIntuitOAuthErrorCode,
   sanitizedQboOAuthError,
+  stripEnvQuotes,
 } from "@/server/integrations/qbo/oauth";
 
 describe("QBO OAuth state cookie helpers", () => {
@@ -77,6 +79,29 @@ describe("QBO authorize URL + sanitized errors", () => {
     expect(body).toEqual({ error: "Token exchange failed", code: "token_exchange_failed" });
     expect(JSON.stringify(body)).not.toContain("intuit");
     expect(fingerprintUpstreamBody('{"error":"invalid_grant"}')).toMatch(/^[a-f0-9]{16}$/);
+  });
+
+  it("allowlists Intuit oauth_error codes and strips env quotes/whitespace", () => {
+    expect(parseIntuitOAuthErrorCode('{"error":"invalid_client"}')).toBe("invalid_client");
+    expect(parseIntuitOAuthErrorCode('{"error":"invalid_grant"}')).toBe("invalid_grant");
+    expect(parseIntuitOAuthErrorCode('{"error":"not_a_real_code"}')).toBeNull();
+    expect(parseIntuitOAuthErrorCode("not-json")).toBeNull();
+    expect(
+      sanitizedQboOAuthError("token_exchange_failed", "Token exchange failed", {
+        oauth_error: "invalid_client",
+      }),
+    ).toEqual({
+      error: "Token exchange failed",
+      code: "token_exchange_failed",
+      oauth_error: "invalid_client",
+    });
+    expect(
+      sanitizedQboOAuthError("token_exchange_failed", "Token exchange failed", {
+        oauth_error: "leak_me",
+      }),
+    ).toEqual({ error: "Token exchange failed", code: "token_exchange_failed" });
+    expect(stripEnvQuotes('  "abc"  ')).toBe("abc");
+    expect(stripEnvQuotes("\uFEFFxyz\n")).toBe("xyz");
   });
 });
 
@@ -147,11 +172,11 @@ describe("GET /api/auth/qbo/callback route hardening", () => {
     delete process.env.QBO_EXPECTED_REALM_ID;
   });
 
-  it("sanitizes Intuit token-exchange failures (no details echo)", async () => {
+  it("surfaces allowlisted Intuit oauth_error without error_description", async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: false,
-      status: 400,
-      text: async () => '{"error":"invalid_grant","error_description":"Token invalid"}',
+      status: 401,
+      text: async () => '{"error":"invalid_client","error_description":"Secret leak"}',
     });
     const { GET, insert } = await loadRoute({ cookieState: "state-1", fetchImpl });
     const res = await GET(
@@ -164,8 +189,10 @@ describe("GET /api/auth/qbo/callback route hardening", () => {
     expect(json).toEqual({
       error: "Token exchange failed",
       code: "token_exchange_failed",
+      oauth_error: "invalid_client",
     });
-    expect(JSON.stringify(json)).not.toContain("invalid_grant");
+    expect(JSON.stringify(json)).not.toContain("Secret leak");
+    expect(JSON.stringify(json)).not.toContain("error_description");
     expect(insert).not.toHaveBeenCalled();
   });
 });
