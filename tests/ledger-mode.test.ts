@@ -131,7 +131,24 @@ describe("env schema", () => {
 });
 
 describe("clover-sync containment", () => {
+  const ORIGINAL_QBO = process.env.QBO_LEDGER_MODE;
+  const ORIGINAL_CLOVER = process.env.CLOVER_LEDGER_MODE;
+
+  function isolateLegacyLedgerEnv() {
+    // Lane flags from .env.local must not shadow LEDGER_PIPELINE_MODE in these cases.
+    delete process.env.QBO_LEDGER_MODE;
+    delete process.env.CLOVER_LEDGER_MODE;
+  }
+
+  afterEach(() => {
+    if (ORIGINAL_QBO === undefined) delete process.env.QBO_LEDGER_MODE;
+    else process.env.QBO_LEDGER_MODE = ORIGINAL_QBO;
+    if (ORIGINAL_CLOVER === undefined) delete process.env.CLOVER_LEDGER_MODE;
+    else process.env.CLOVER_LEDGER_MODE = ORIGINAL_CLOVER;
+  });
+
   it("log mode (unset) never calls pushToQBO and returns a dry-run result", async () => {
+    isolateLegacyLedgerEnv();
     delete process.env.LEDGER_PIPELINE_MODE;
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const result = await runCloverPaymentSync({ event, step: fakeStep() });
@@ -150,6 +167,7 @@ describe("clover-sync containment", () => {
   it.each(["log", "garbage", "", "approve", "liv"])(
     "mode %j never calls pushToQBO",
     async (raw) => {
+      isolateLegacyLedgerEnv();
       process.env.LEDGER_PIPELINE_MODE = raw;
       vi.spyOn(console, "log").mockImplementation(() => {});
       const result = await runCloverPaymentSync({ event, step: fakeStep() });
@@ -159,6 +177,7 @@ describe("clover-sync containment", () => {
   );
 
   it.each(["live", " LIVE ", "Live"])("mode %j calls pushToQBO exactly once", async (raw) => {
+    isolateLegacyLedgerEnv();
     process.env.LEDGER_PIPELINE_MODE = raw;
     const result = await runCloverPaymentSync({ event, step: fakeStep() });
     expect(pushToQBO).toHaveBeenCalledTimes(1);

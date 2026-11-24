@@ -294,21 +294,33 @@ describe("Woo saga: mode gate (ORDER_PIPELINE_MODE)", () => {
     expect(k.state.created).toHaveLength(1);
   });
 
-  it("defaultWooSagaDeps reads both gates at CALL time, fail closed", () => {
-    const keep = { o: process.env.ORDER_PIPELINE_MODE, l: process.env.LEDGER_PIPELINE_MODE };
+  it("defaultWooSagaDeps reads both gates at CALL time, fail closed (WOO_LEDGER_MODE)", () => {
+    const keep = {
+      o: process.env.ORDER_PIPELINE_MODE,
+      l: process.env.LEDGER_PIPELINE_MODE,
+      w: process.env.WOO_LEDGER_MODE,
+    };
     try {
       const deps = defaultWooSagaDeps();
       delete process.env.ORDER_PIPELINE_MODE;
       delete process.env.LEDGER_PIPELINE_MODE;
+      delete process.env.WOO_LEDGER_MODE;
       expect(deps.getModes()).toEqual({ orderMode: "log", ledgerMode: "log" });
       process.env.ORDER_PIPELINE_MODE = " LIVE ";
       process.env.LEDGER_PIPELINE_MODE = "Live";
+      // Woo lane never falls back to LEDGER_PIPELINE_MODE.
+      expect(deps.getModes()).toEqual({ orderMode: "live", ledgerMode: "log" });
+      process.env.WOO_LEDGER_MODE = "  LIVE  ";
       expect(deps.getModes()).toEqual({ orderMode: "live", ledgerMode: "live" });
       process.env.ORDER_PIPELINE_MODE = "garbage";
-      process.env.LEDGER_PIPELINE_MODE = "";
+      process.env.WOO_LEDGER_MODE = "";
       expect(deps.getModes()).toEqual({ orderMode: "log", ledgerMode: "log" });
     } finally {
-      for (const [name, value] of [["ORDER_PIPELINE_MODE", keep.o], ["LEDGER_PIPELINE_MODE", keep.l]] as const) {
+      for (const [name, value] of [
+        ["ORDER_PIPELINE_MODE", keep.o],
+        ["LEDGER_PIPELINE_MODE", keep.l],
+        ["WOO_LEDGER_MODE", keep.w],
+      ] as const) {
         if (value === undefined) delete process.env[name];
         else process.env[name] = value;
       }

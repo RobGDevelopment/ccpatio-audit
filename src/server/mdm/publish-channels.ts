@@ -36,6 +36,10 @@ import {
   canMutateKatanaCatalog,
   getCatalogPublishMode,
 } from "@/server/pipeline/catalog-mode";
+import {
+  canMutateWooCommerceCatalog,
+  getWooCatalogPublishMode,
+} from "@/server/pipeline/woo-catalog-mode";
 
 function httpStatus(error: unknown): number | null {
   if (error instanceof KatanaApiError) return error.status;
@@ -267,6 +271,27 @@ export async function publishToWooCommerce(
       payloadHash,
     });
     return { skipped: true, externalId: "skipped" };
+  }
+
+  // Explicit WOO_CATALOG_PUBLISH_MODE=log blocks REST writes; unset preserves legacy allow.
+  if (!canMutateWooCommerceCatalog(getWooCatalogPublishMode())) {
+    console.log(
+      JSON.stringify({
+        tag: "woo-catalog-containment",
+        mode: "log",
+        dryRun: true,
+        globalSku,
+      }),
+    );
+    await upsertChannelSync({
+      globalSku,
+      channel: "woocommerce",
+      status: "success",
+      externalId: existing?.external_id ?? "dry_run",
+      lastError: null,
+      payloadHash,
+    });
+    return { skipped: true, externalId: existing?.external_id ?? "dry_run" };
   }
 
   try {

@@ -3,6 +3,10 @@
  * Binding SoT: docs/MDM_MASTER_BLUEPRINT.md Phase 4.
  */
 import type { CloverItemPayload } from "@/mappers/clover";
+import {
+  resolveCloverApiBase,
+  resolveCloverBearerToken,
+} from "@/server/integrations/clover/credentials";
 
 export class CloverApiError extends Error {
   readonly status: number;
@@ -16,10 +20,10 @@ export class CloverApiError extends Error {
 
 function resolveCloverConfig(): { merchantId: string; token: string } {
   const merchantId = process.env.CLOVER_MERCHANT_ID?.trim();
-  const token = process.env.CLOVER_API_TOKEN?.trim();
+  const token = resolveCloverBearerToken();
   if (!merchantId || !token) {
     throw new CloverApiError(
-      "Missing CLOVER_MERCHANT_ID / CLOVER_API_TOKEN",
+      "Missing CLOVER_MERCHANT_ID / CLOVER_MERCHANT_TOKEN|CLOVER_API_TOKEN",
       0,
     );
   }
@@ -31,9 +35,7 @@ async function cloverFetch<T = unknown>(
   options: { method?: string; body?: unknown } = {},
 ): Promise<{ data: T; status: number }> {
   const { merchantId, token } = resolveCloverConfig();
-  const base =
-    process.env.CLOVER_API_BASE?.trim().replace(/\/$/, "") ||
-    "https://api.clover.com";
+  const base = resolveCloverApiBase();
   const url = `${base}/v3/merchants/${merchantId}${pathname}`;
   const response = await fetch(url, {
     method: options.method ?? "GET",

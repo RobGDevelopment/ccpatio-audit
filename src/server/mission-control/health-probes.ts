@@ -15,6 +15,7 @@ import { eq, sql } from "drizzle-orm";
 import { logError } from "@/lib/log/structured";
 import { getDb } from "@/server/db/client";
 import { dlq_events, qbo_auth_tokens, saga_runs } from "@/server/db/schema";
+import { getQboTokenId } from "@/server/integrations/qbo/client";
 import { runSpokeTokenHealthCheck, type SpokePingResult } from "@/server/mdm/token-health";
 import {
   deriveTrafficMatrix,
@@ -90,12 +91,15 @@ export function deriveQboVerdict(snapshot: QboSnapshot, now: Date): Verdict {
 
 export async function readQboSnapshot(): Promise<QboSnapshot> {
   const db = getDb();
+  // Active env row only: production => id=true, sandbox => id=false (never a stale sibling).
+  const targetId = getQboTokenId();
   const [token] = await db
     .select({
       hasRefresh: sql<boolean>`coalesce(length(${qbo_auth_tokens.refresh_token}) > 0, false)`,
       expiresAt: qbo_auth_tokens.expires_at,
     })
     .from(qbo_auth_tokens)
+    .where(eq(qbo_auth_tokens.id, targetId))
     .limit(1);
   const [failed] = await db
     .select({ n: sql<number>`cast(count(*) as int)` })

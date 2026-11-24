@@ -46,6 +46,10 @@ export const coreEnvSchema = z.object({
   QBO_CLIENT_ID: z.string().optional(),
   QBO_CLIENT_SECRET: z.string().optional(),
   QBO_OAUTH_REDIRECT_URI: z.string().optional(),
+  /** When set, OAuth callback rejects any other Intuit company realmId with 403. */
+  QBO_EXPECTED_REALM_ID: z.string().optional(),
+  /** Ops/headless connect gate for GET /api/auth/qbo/connect (alternative to SuperAdmin). */
+  QBO_CONNECT_SECRET: z.string().optional(),
   QBO_GATEWAY_CLEARING_ACCOUNT_ID: z.union([z.string(), z.number()]).optional(),
   QBO_RAW_MATERIALS_ASSET_ACCOUNT_ID: z.union([z.string(), z.number()]).optional(),
   LEDGER_COMPANY_TIMEZONE: z.string().optional(),

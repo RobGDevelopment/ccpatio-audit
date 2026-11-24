@@ -11,7 +11,7 @@
  *   - ORDER_PIPELINE_MODE: only `live` may touch Katana. `log`/`approve` = dry run, zero
  *     Katana calls, saga left PENDING/`dry_run_logged` so the order is still processable after
  *     the live flip (replay tooling is roadmap step 9, out of scope).
- *   - LEDGER_PIPELINE_MODE: see ledger-leg.ts (marker only; no QBO in this phase).
+ *   - WOO_LEDGER_MODE: see ledger-leg.ts (marker only; no QBO in this phase). Fail-closed to log.
  *
  * This module (and everything it imports from src/server/woocommerce) must not import QBO.
  */
@@ -21,7 +21,7 @@ import { runKatanaStep } from "@/inngest/katana-step";
 import { KatanaApiError, mapWooOrderToKatanaSalesOrder } from "@/lib/katana";
 import { WEB_ALUMINUM_ONLY_STAMP } from "@/server/ecommerce/alu10-pricing";
 import { MET_ALUM_SKU } from "@/server/woocommerce/finish-keys";
-import { getLedgerPipelineMode, type LedgerPipelineMode } from "@/server/pipeline/ledger-mode";
+import { getLedgerMode, type LedgerPipelineMode } from "@/server/pipeline/ledger-mode";
 import {
   canMutateKatanaOrders,
   getOrderPipelineMode,
@@ -93,7 +93,7 @@ export function defaultWooSagaDeps(): WooSagaDeps {
     updateAudit: updateIncomingWebhookStatus,
     getModes: () => ({
       orderMode: getOrderPipelineMode(),
-      ledgerMode: getLedgerPipelineMode(),
+      ledgerMode: getLedgerMode("woo"),
     }),
     now: () => new Date(),
   };
