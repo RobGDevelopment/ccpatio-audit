@@ -52,6 +52,7 @@ import {
   updateHubInDrawer,
   createNewProduct,
   getSystemHealthAction,
+  getEcommercePortalAccess,
   type CatalogItem,
   type QuarantineItem,
   type EcommerceListing,
@@ -69,6 +70,7 @@ import { isPhase1StorefrontRow } from "@/server/ecommerce/phase1-portal";
 import EcommerceGrid from "./ecommerce/EcommerceGrid";
 import NewProductDrawer from "./ecommerce/NewProductDrawer";
 import SwatchesFinishesDrawer from "./ecommerce/SwatchesFinishesDrawer";
+import EcommerceCertificationPortal from "./ecommerce/EcommerceCertificationPortal";
 import Product3dMediaDrawer from "./ecommerce/Product3dMediaDrawer";
 import {
   Phase1FlatGrid,
@@ -238,6 +240,10 @@ export default function MasterCatalogAdmin() {
   const [model3dTarget, setModel3dTarget] = useState<{ sku: string; name: string } | null>(null);
   const [upchargePct, setUpchargePct] = useState(DEFAULT_ALU_UPCHARGE_PCT);
   const [spotCheckOnly, setSpotCheckOnly] = useState(false);
+  const [portalAccess, setPortalAccess] = useState<{
+    canAccess: boolean;
+    canFullCatalog: boolean;
+  } | null>(null);
 
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [quarantine, setQuarantine] = useState<QuarantineItem[]>([]);
@@ -283,16 +289,27 @@ export default function MasterCatalogAdmin() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [a, q, badge, health] = await Promise.all([
+        const [a, q, badge, health, access] = await Promise.all([
           getActiveCatalog(),
           getQuarantineQueue(),
           getWooConnectionBadge(),
           getSystemHealthAction(),
+          getEcommercePortalAccess(),
         ]);
         setCatalog(a);
         setQuarantine(q);
         setWooBadge(badge);
         if (health.ok) setSystemHealth(health.snapshot.overall);
+        if (access.ok) {
+          setPortalAccess({
+            canAccess: access.canAccess,
+            canFullCatalog: access.canFullCatalog,
+          });
+          // Mia / Kian / embed: lock to E-Commerce tab; Superadmin keeps full catalog toggle.
+          if (access.canAccess && !access.canFullCatalog) {
+            setView("ecommerce");
+          }
+        }
       } catch (err) {
         console.error("Failed to load catalog data:", err);
       } finally {
@@ -1115,8 +1132,39 @@ export default function MasterCatalogAdmin() {
 
         </div>
 
+        {portalAccess && !portalAccess.canAccess ? (
+          <div
+            className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-sm text-amber-950"
+            data-testid="ecommerce-access-denied"
+          >
+            The E-Commerce tab is limited to Mia, Kian, and Superadmin. Ask an admin if you need access.
+          </div>
+        ) : (
+          <EcommerceCertificationPortal
+            miaApprovedCount={phase1Listings.filter((l) => l.miaApproved).length}
+            sowItemCount={phase1Listings.length || 102}
+            canFullCatalog={portalAccess?.canFullCatalog ?? false}
+            onOpenFinishes={() => setSwatchesOpen(true)}
+            onOpenFullCatalog={
+              portalAccess?.canFullCatalog
+                ? () => {
+                    window.open("/admin/mission-control", "_blank", "noopener,noreferrer");
+                  }
+                : undefined
+            }
+            onOpenPrimeviewHandoff={async () => {
+              const link = await getPrimeviewPartnerHandoffLink();
+              if (!link.ok) {
+                setToast(link.error);
+                return;
+              }
+              window.open(link.url, "_blank", "noopener,noreferrer");
+            }}
+          />
+        )}
+
         {/* Tab 1: Live E-Commerce */}
-        {activeTab === "live" ? (
+        {portalAccess && !portalAccess.canAccess ? null : activeTab === "live" ? (
           <div className="flex-1 min-h-0 flex flex-col gap-3" data-testid="live-ecommerce-panel">
             {ecommerceError ? (
               <div className="rounded-2xl border border-rose-100 bg-white/90 p-8 text-sm text-rose-600">

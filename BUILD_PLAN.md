@@ -1,33 +1,49 @@
-# BUILD_PLAN — `showroom-option-a-flagged-polish`
+# BUILD_PLAN — `ghl-ecommerce-32-finish-portal`
 
-**Base:** `a269cda`  
+**Base:** `HEAD`  
 **Mode:** edit (Track 2 locked)  
-**Blast cap override:** true
+**Blast cap override:** true  
+**Expected blast radius:** 14
 
 ## Intent
 
-Polish the curated `/embed/showroom` sales view (Option A) while preserving 100% of
-Make-to-Order Catalog projection + Order Desk deep-link code behind feature flags
-(default **off**). Do not touch Phase 1 `ecommerce_listings` (107/107),
-`product_bom=3300`, `logistics_profiles=2781`, or `finished_goods_catalog=1317`.
+Unify the GHL `E-Commerce` tab into a Handoff & Certification portal scoped to the exact
+32 e-commerce finishes (19932.jpg), with locked auto-generated SKUs, `+`/`−` finish rows
+for Mia / Kian / Superadmin, Aluminum-only frame exports, and Vitest coverage. Do not flip
+any `*_MODE` / `DOWNSTREAM_MUTATIONS` flags. High-res media staging lives outside the repo
+(`C:\Workspace\ccpatio-media-staging\`); `docs/HighRezImages/` must not remain in-tree.
 
 ## Workstreams
 
-1. **Feature flags** — `getShowroomFeatureFlags()` with
-   `NEXT_PUBLIC_SHOWROOM_MTO_CATALOG_ENABLED` / `NEXT_PUBLIC_SHOWROOM_ORDER_DESK_CTA_ENABLED`
-   (default false). When true: MTO tab + Order Desk CTAs + `?from=showroom` back link.
-2. **5-tab bar** — Fabrics (default) → Dekton Slabs → 3rd-Party Retail →
-   Floor & Ready-to-Ship → Active Customer Holds (live count badge). MTO tab only when flagged.
-3. **Catalog hygiene** — Exclude `FIN-JOB-*` / `JOB - *` / `FIN-SRV-*` / `FIN-CUS-*` /
-   customer-fabric one-offs from Floor; strict Dekton slab materials only; retail image
-   cross-fill from `finished_goods_catalog` / `product_assets` (never `ecommerce_listings`).
-4. **Hold UX** — Disable Place Hold when `available <= 0` (`Fully Held` / `Out of Stock`);
-   show real Katana UOM (slab/pcs/ea/yd) for Dekton holds.
-5. **QA** — Dual-mode vitest (`flags=false` + `flags=true`) + `qa:lifecycle` + QCA CERTIFIED
-   + commit/push + live proof (`0` FIN-JOB-*, `0` MET-*, `3` Dekton holds, `<1s`).
+1. **Exact 32-finish roster** — `src/server/ecommerce/ecommerce-32-finish-roster.ts`
+   (Sunbrella 16 + Ultraleather 4 + Dekton 6 `DKT-*` + Powder 6). Filter showroom extras
+   from e-commerce views / Woo manifests. Aluminum-only frame export strips steel / +10%.
+2. **Portal + roles** — Certification strip on master-catalog E-Commerce tab; access for
+   Mia, Kian, Superadmin (and GHL embed); Superadmin link to Mission Control.
+3. **Locked SKUs + `+`/`−`** — Auto-mint FAB-/PWD-/DKT- on add; SKU read-only; soft-disable
+   via `uploaded_by=ecommerce:disabled`; aliases recorded on roster definitions.
+4. **Vitest** — `tests/ghl-ecommerce-32-finish-portal.test.ts`.
+
+## Allowed files
+
+1. `.cursor/phase.lock`
+2. `.cursor/session-stamp.json`
+3. `.cursor/aar.json`
+4. `BUILD_PLAN.md`
+5. `src/app/embed/admin/master-catalog/actions.ts`
+6. `src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx`
+7. `src/app/embed/admin/master-catalog/ecommerce/SwatchesFinishesDrawer.tsx`
+8. `src/app/embed/admin/master-catalog/page.tsx`
+9. `src/app/partner/primeview-handoff/PartnerHandoffClient.tsx`
+10. `src/lib/ecommerce-roster.ts`
+11. `src/server/assets/finish-assets.ts`
+12. `src/server/ecommerce/auto-sku-engine.ts`
+13. `src/server/ecommerce/ecommerce-32-finish-roster.ts`
+14. `src/server/ecommerce/phase1-portal.ts`
+15. `tests/ghl-ecommerce-32-finish-portal.test.ts`
 
 ## Target test
 
 ```bash
-npx vitest run tests/showroom-option-a-flags.test.ts
+npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts
 ```

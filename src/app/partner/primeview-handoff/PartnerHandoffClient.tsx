@@ -14,9 +14,9 @@ import {
 import type { LiveStorefrontRow } from "@/server/woocommerce/handoff-spec-generator";
 import { PHASE1_FABRICS, PHASE1_POWDERS } from "@/server/ecommerce/phase1-portal";
 import {
-  PHASE1_FABRIC_DISPLAY_NAMES,
-  PHASE1_POWDER_DISPLAY_NAMES,
-} from "@/server/woocommerce/finish-keys";
+  ECOMMERCE_32_FINISH_COUNT,
+  ecommerceFinishBySku,
+} from "@/server/ecommerce/ecommerce-32-finish-roster";
 
 export type PartnerFinishAsset = {
   sku: string;
@@ -772,7 +772,7 @@ export default function PartnerHandoffClient(props: Props) {
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 px-4 py-3 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15"
                 >
                   <Download className="h-4 w-4" />
-                  Download 24 Fabric Swatches Manifest (.json)
+                  Download {PHASE1_FABRICS.length} Fabric Swatches Manifest (.json)
                 </a>
               </div>
               <p className="mt-3 text-xs text-slate-500">
@@ -786,7 +786,7 @@ export default function PartnerHandoffClient(props: Props) {
             <section className="mt-10 grid gap-6 lg:grid-cols-2">
               <div>
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-                  24 Fabric Swatches (Hub SKUs)
+                  {PHASE1_FABRICS.length} Fabric Swatches (exact {ECOMMERCE_32_FINISH_COUNT}-finish roster)
                 </h2>
                 <div className="mt-3 max-h-64 overflow-auto rounded-xl border border-white/10">
                   <table className="min-w-full text-left text-xs">
@@ -801,7 +801,7 @@ export default function PartnerHandoffClient(props: Props) {
                         <tr key={sku} className="border-t border-white/5">
                           <td className="px-3 py-1.5 font-mono text-amber-200/90">{sku}</td>
                           <td className="px-3 py-1.5 text-slate-300">
-                            {PHASE1_FABRIC_DISPLAY_NAMES[sku] ?? sku}
+                            {ecommerceFinishBySku(sku)?.displayName ?? sku}
                           </td>
                         </tr>
                       ))}
@@ -811,7 +811,7 @@ export default function PartnerHandoffClient(props: Props) {
               </div>
               <div>
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-                  6 Powder-Coat Finishes (Hub SKUs)
+                  6 Powder-Coat Finishes (Hub SKUs · Aluminum frames)
                 </h2>
                 <div className="mt-3 overflow-auto rounded-xl border border-white/10">
                   <table className="min-w-full text-left text-xs">
@@ -826,7 +826,7 @@ export default function PartnerHandoffClient(props: Props) {
                         <tr key={sku} className="border-t border-white/5">
                           <td className="px-3 py-1.5 font-mono text-amber-200/90">{sku}</td>
                           <td className="px-3 py-1.5 text-slate-300">
-                            {PHASE1_POWDER_DISPLAY_NAMES[sku] ?? sku}
+                            {ecommerceFinishBySku(sku)?.displayName ?? sku}
                           </td>
                         </tr>
                       ))}

@@ -13,53 +13,22 @@ import {
   PHASE1_FABRICS,
   PHASE1_POWDERS,
 } from "@/server/ecommerce/phase1-portal";
-import { PHASE1_POWDER_DISPLAY_NAMES } from "@/server/woocommerce/finish-keys";
+import {
+  ECOMMERCE_32_FINISHES,
+  ECOMMERCE_FINISH_DISABLED_SENTINEL,
+  filterActiveEcommerceFinishes,
+  isEcommerce32FinishSku,
+} from "@/server/ecommerce/ecommerce-32-finish-roster";
 
 export { PHASE1_DEKTONS };
 
 export type FinishCategory = "fabric" | "powder" | "dekton";
 export type FinishQualityStatus = "placeholder_lowres" | "photoshoot_verified";
 
-/**
- * Fabric hex approximations. Duplicated from scripts/ops/generate-primeview-phase1-csv.ts
- * (FABRIC_SWATCH_META) on purpose: src/ must never import scripts/ops (circular + bundle bloat).
- */
-const FABRIC_META: Readonly<Record<string, { label: string; color: string }>> = {
-  "FAB-ACT-ASH": { label: "Action Ash", color: "#A8A29A" },
-  "FAB-ACT-STO": { label: "Action Stone", color: "#C4B9A8" },
-  "FAB-ADA-IND": { label: "Adaptation Indigo", color: "#3D4F6F" },
-  "FAB-ADA-STO": { label: "Adaptation Stone", color: "#B7AFA3" },
-  "FAB-AGR-IND": { label: "Agra Indigo", color: "#2F3E5C" },
-  "FAB-ARI-DEW": { label: "Ariana Dew", color: "#D8D2C4" },
-  "FAB-ARR-CAR": { label: "Array Caribbean", color: "#4A7C8C" },
-  "FAB-ARR-DUN": { label: "Array Dune", color: "#C9B89A" },
-  "FAB-ARR-CAL": { label: "Array Calypso", color: "#D4A574" },
-  "FAB-ASC-SPA": { label: "Ascend Spa", color: "#8FA9A3" },
-  "FAB-ASC-TRO": { label: "Ascend Tropical", color: "#3F6B5A" },
-  "FAB-ASS-SAN": { label: "Assemble Sand", color: "#D2C3A8" },
-  "FAB-ASS-IITEA": { label: "Assemble II Teak", color: "#B08968" },
-  "FAB-AUT-PEB": { label: "Authentic Pebble", color: "#9A958C" },
-  "FAB-BER-TUX": { label: "Berenson Tuxedo", color: "#2B2B2B" },
-  "FAB-BEA-ULT": { label: "Beacon Ultraleather", color: "#E8E4DC" },
-  "FAB-BLE-IND": { label: "Blend Indigo", color: "#44587A" },
-  "FAB-BLE-LIN": { label: "Blend Linen", color: "#D9D0C0" },
-  "FAB-BLE-SAN": { label: "Blend Sand", color: "#D6C7AE" },
-  "FAB-BLI-ALO": { label: "Bliss Aloe", color: "#A8B89A" },
-  "FAB-BLI-DEW": { label: "Bliss Dew", color: "#E2DDD2" },
-  "FAB-BLI-GUA": { label: "Bliss Guava", color: "#C97B6E" },
-  "FAB-BLI-LIN": { label: "Bliss Linen", color: "#DED6C8" },
-  "FAB-BLI-SAN": { label: "Bliss Sand", color: "#D4C6B0" },
-};
-
-/** Powder-coat hex approximations. */
-const POWDER_HEX: Readonly<Record<string, string>> = {
-  "PWD-BLACK": "#1A1A1A",
-  "PWD-BONE": "#E3DAC9",
-  "PWD-FANUC-GRAY": "#7C7F82",
-  "PWD-LITE-BEIGE": "#CDBFA6",
-  "PWD-OIL-RUB-BRONZE": "#3B2F27",
-  "PWD-WILD-RICE": "#D6CDB5",
-};
+/** Hex + label from the exact 32 e-commerce roster. */
+const FINISH_META: Readonly<Record<string, { label: string; color: string }>> = Object.fromEntries(
+  ECOMMERCE_32_FINISHES.map((f) => [f.sku, { label: f.displayName, color: f.hex }] as const),
+);
 
 /**
  * Public URL of the pre-existing low-res fabric swatch:
@@ -78,7 +47,7 @@ export function finishCategoryForSku(sku: string): FinishCategory | null {
   const upper = sku.trim().toUpperCase();
   if (upper.startsWith("FAB-")) return "fabric";
   if (upper.startsWith("PWD-")) return "powder";
-  if (upper.startsWith("DEC-")) return "dekton";
+  if (upper.startsWith("DEC-") || upper.startsWith("DKT-")) return "dekton";
   return null;
 }
 
@@ -93,36 +62,25 @@ type SeedRow = {
 
 export function buildFinishSeedRows(): SeedRow[] {
   const rows: SeedRow[] = [];
-  for (const sku of PHASE1_FABRICS) {
-    const meta = FABRIC_META[sku];
-    const url = fabricSwatchPublicUrl(sku);
+  for (const def of ECOMMERCE_32_FINISHES) {
+    const meta = FINISH_META[def.sku];
+    const fabricUrl =
+      def.category === "fabric"
+        ? (() => {
+            try {
+              return fabricSwatchPublicUrl(def.sku);
+            } catch {
+              return null;
+            }
+          })()
+        : null;
     rows.push({
-      sku,
-      finish_category: "fabric",
-      display_name: meta?.label ?? sku,
-      hex_code: meta?.color ?? null,
-      swatch_thumb_url: url,
-      texture_2k_url: url,
-    });
-  }
-  for (const sku of PHASE1_POWDERS) {
-    rows.push({
-      sku,
-      finish_category: "powder",
-      display_name: PHASE1_POWDER_DISPLAY_NAMES[sku] ?? sku,
-      hex_code: POWDER_HEX[sku] ?? null,
-      swatch_thumb_url: null,
-      texture_2k_url: null,
-    });
-  }
-  for (const d of PHASE1_DEKTONS) {
-    rows.push({
-      sku: d.sku,
-      finish_category: "dekton",
-      display_name: d.name,
-      hex_code: d.hex,
-      swatch_thumb_url: null,
-      texture_2k_url: null,
+      sku: def.sku,
+      finish_category: def.category,
+      display_name: meta?.label ?? def.displayName,
+      hex_code: meta?.color ?? def.hex,
+      swatch_thumb_url: fabricUrl,
+      texture_2k_url: fabricUrl,
     });
   }
   return rows;
@@ -399,24 +357,114 @@ function ordered(rows: EcommerceFinishAssetRow[], curated: readonly string[]) {
   );
 }
 
-/** Fabric manifest (`fabric_sku` key + `image_url`, backward compatible with the Phase 1 swatches JSON). */
+/** Fabric manifest — exact 32-roster active fabrics only (showroom extras hidden). */
 export async function buildFabricSwatchesManifestJson(): Promise<string> {
-  const rows = ordered(await listFinishAssets({ category: "fabric" }), PHASE1_FABRICS);
+  const rows = ordered(
+    filterActiveEcommerceFinishes(await listFinishAssets({ category: "fabric" })),
+    PHASE1_FABRICS,
+  );
   return JSON.stringify(rows.map((r) => ({ ...manifestEntry(r), fabric_sku: r.sku })));
 }
 
 export async function buildPowderSwatchesManifestJson(): Promise<string> {
-  const rows = ordered(await listFinishAssets({ category: "powder" }), PHASE1_POWDERS);
+  const rows = ordered(
+    filterActiveEcommerceFinishes(await listFinishAssets({ category: "powder" })),
+    PHASE1_POWDERS,
+  );
   return JSON.stringify(rows.map((r) => ({ ...manifestEntry(r), powder_sku: r.sku })));
 }
 
 export async function buildDektonSwatchesManifestJson(): Promise<string> {
   const rows = ordered(
-    await listFinishAssets({ category: "dekton" }),
+    filterActiveEcommerceFinishes(await listFinishAssets({ category: "dekton" })),
     PHASE1_DEKTONS.map((d) => d.sku),
   );
   return JSON.stringify(rows.map((r) => ({ ...manifestEntry(r), dekton_sku: r.sku })));
 }
+
+/** Soft-disable a finish from e-commerce views/exports (Hub row retained). */
+export async function disableEcommerceFinishAsset(
+  sku: string,
+): Promise<EcommerceFinishAssetRow | null> {
+  return updateFinishAsset(sku, { uploaded_by: ECOMMERCE_FINISH_DISABLED_SENTINEL });
+}
+
+/** Re-enable a previously soft-disabled finish for e-commerce. */
+export async function enableEcommerceFinishAsset(
+  sku: string,
+): Promise<EcommerceFinishAssetRow | null> {
+  const key = sku.trim().toUpperCase();
+  const [row] = await getDb()
+    .select()
+    .from(ecommerce_finish_assets)
+    .where(eq(ecommerce_finish_assets.sku, key))
+    .limit(1);
+  if (!row) return null;
+  if ((row.uploaded_by ?? "").toLowerCase() !== ECOMMERCE_FINISH_DISABLED_SENTINEL) {
+    return row;
+  }
+  return updateFinishAsset(sku, { uploaded_by: null });
+}
+
+/**
+ * Mint + insert a new e-commerce finish row (SKU auto-generated & locked).
+ * Collision check is injected for pure unit tests.
+ */
+export async function addEcommerceFinishAsset(input: {
+  category: FinishCategory;
+  displayName: string;
+  hexCode?: string | null;
+  exists?: (sku: string) => Promise<boolean>;
+}): Promise<EcommerceFinishAssetRow> {
+  const { tokensFromFinishDisplayName, generateCollisionCheckedFinishSku } = await import(
+    "@/server/ecommerce/ecommerce-32-finish-roster"
+  );
+  const tokens = tokensFromFinishDisplayName(input.displayName, input.category);
+  const exists =
+    input.exists ??
+    (async (sku: string) => {
+      const [hit] = await getDb()
+        .select({ sku: ecommerce_finish_assets.sku })
+        .from(ecommerce_finish_assets)
+        .where(eq(ecommerce_finish_assets.sku, sku))
+        .limit(1);
+      return Boolean(hit);
+    });
+  const minted = await generateCollisionCheckedFinishSku(tokens, exists);
+  const fabricUrl =
+    input.category === "fabric"
+      ? (() => {
+          try {
+            return fabricSwatchPublicUrl(minted.sku);
+          } catch {
+            return null;
+          }
+        })()
+      : null;
+  const [row] = await getDb()
+    .insert(ecommerce_finish_assets)
+    .values({
+      sku: minted.sku,
+      finish_category: input.category,
+      display_name: input.displayName.trim(),
+      hex_code: input.hexCode ?? null,
+      swatch_thumb_url: fabricUrl,
+      texture_2k_url: fabricUrl,
+      quality_status: "placeholder_lowres",
+    })
+    .onConflictDoNothing({ target: ecommerce_finish_assets.sku })
+    .returning();
+  if (row) return row;
+  const [existing] = await getDb()
+    .select()
+    .from(ecommerce_finish_assets)
+    .where(eq(ecommerce_finish_assets.sku, minted.sku))
+    .limit(1);
+  if (!existing) throw new Error(`Failed to insert finish asset ${minted.sku}`);
+  return existing;
+}
+
+export { isEcommerce32FinishSku, filterActiveEcommerceFinishes };
 
 export type FullFinishesManifest = {
   fabrics: unknown[];

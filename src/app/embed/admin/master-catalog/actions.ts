@@ -92,10 +92,19 @@ import {
 } from "@/server/ecommerce/alu10-pricing";
 import { buildMiaAluminumPriceListCsv } from "@/server/ecommerce/two-tab-portal";
 import {
+  addEcommerceFinishAsset,
+  disableEcommerceFinishAsset,
+  enableEcommerceFinishAsset,
+  filterActiveEcommerceFinishes,
   listFinishAssets,
   resolveListing3dTarget,
   updateFinishAsset,
 } from "@/server/assets/finish-assets";
+import {
+  canAccessEcommercePortal,
+  canAccessFullMasterCatalog,
+  isFinishSkuLocked,
+} from "@/server/ecommerce/ecommerce-32-finish-roster";
 
 /** Woo Regular price prefers aluminum_msrp (baked +10%); falls back to steel. */
 function wooRegularFromListing(s: EcommerceListing): number | null {
@@ -3011,16 +3020,159 @@ function toFinishAssetView(r: Awaited<ReturnType<typeof listFinishAssets>>[numbe
   };
 }
 
+export async function getEcommercePortalAccess(): Promise<{
+  ok: true;
+  canAccess: boolean;
+  canFullCatalog: boolean;
+  email: string | null;
+  role: string | null;
+  embedSession: boolean;
+} | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  let role: string | null = null;
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      const [row] = await getDb()
+        .select({ role: user_roles.role })
+        .from(user_roles)
+        .where(eq(user_roles.id, user.id))
+        .limit(1);
+      role = row?.role ?? null;
+    }
+  } catch {
+    role = null;
+  }
+  const embedSession = isEmbedPrincipal(session);
+  return {
+    ok: true,
+    canAccess: canAccessEcommercePortal({
+      email: session.email,
+      role,
+      embedSession,
+    }),
+    canFullCatalog: canAccessFullMasterCatalog({ email: session.email, role }),
+    email: session.email,
+    role,
+    embedSession,
+  };
+}
+
 export async function listFinishAssetsForPortal(): Promise<
   { ok: true; assets: FinishAssetView[] } | { ok: false; error: string }
 > {
   const session = await getPimSession();
   if (!session) return { ok: false, error: "Unauthorized embed session." };
   try {
-    const rows = await listFinishAssets();
+    const rows = filterActiveEcommerceFinishes(await listFinishAssets());
     return { ok: true, assets: rows.map(toFinishAssetView) };
   } catch (error: unknown) {
     return { ok: false, error: error instanceof Error ? error.message : "Could not load finish assets" };
+  }
+}
+
+/** Soft-remove (−) a finish from the active e-commerce roster (SKU retained in Hub). */
+export async function disableFinishRowForPortal(
+  sku: string,
+): Promise<{ ok: true; asset: FinishAssetView } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const row = await disableEcommerceFinishAsset(sku);
+    if (!row) return { ok: false, error: `Unknown finish SKU ${sku}` };
+    await logPimAudit({
+      operatorEmail: session.email,
+      globalSku: row.sku,
+      action: "ecommerce_finish_disabled",
+      field: "ecommerce_finish_assets.uploaded_by",
+      newValue: row.uploaded_by,
+    });
+    revalidatePath("/embed/admin/master-catalog");
+    return { ok: true, asset: toFinishAssetView(row) };
+  } catch (error: unknown) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not disable finish" };
+  }
+}
+
+/** + add finish row — SKU auto-minted and locked. */
+export async function addFinishRowForPortal(input: {
+  category: FinishAssetCategory;
+  displayName: string;
+  hexCode?: string | null;
+}): Promise<{ ok: true; asset: FinishAssetView; skuLocked: true } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const name = input.displayName?.trim();
+    if (!name) return { ok: false, error: "Display name is required." };
+    const row = await addEcommerceFinishAsset({
+      category: input.category,
+      displayName: name,
+      hexCode: input.hexCode ?? null,
+    });
+    await logPimAudit({
+      operatorEmail: session.email,
+      globalSku: row.sku,
+      action: "ecommerce_finish_added",
+      field: "ecommerce_finish_assets",
+      newValue: JSON.stringify({ sku: row.sku, displayName: name, locked: isFinishSkuLocked(row.sku) }),
+    });
+    revalidatePath("/embed/admin/master-catalog");
+    return { ok: true, asset: toFinishAssetView(row), skuLocked: true };
+  } catch (error: unknown) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not add finish" };
+  }
+}
+
+/** Edit allowed fields (display name / hex) — SKU stays locked. */
+export async function updateFinishDisplayForPortal(
+  sku: string,
+  input: { displayName?: string; hexCode?: string | null },
+): Promise<{ ok: true; asset: FinishAssetView } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    if (!isFinishSkuLocked(sku)) {
+      return { ok: false, error: "SKU lock invariant violated." };
+    }
+    const row = await updateFinishAsset(sku, {
+      ...(input.displayName !== undefined ? { display_name: input.displayName } : {}),
+      ...(input.hexCode !== undefined ? { hex_code: input.hexCode } : {}),
+    });
+    if (!row) return { ok: false, error: `Unknown finish SKU ${sku}` };
+    await logPimAudit({
+      operatorEmail: session.email,
+      globalSku: row.sku,
+      action: "ecommerce_finish_display_updated",
+      field: "ecommerce_finish_assets.display_name",
+      newValue: row.display_name,
+    });
+    return { ok: true, asset: toFinishAssetView(row) };
+  } catch (error: unknown) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not update finish" };
+  }
+}
+
+export async function reenableFinishRowForPortal(
+  sku: string,
+): Promise<{ ok: true; asset: FinishAssetView } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const row = await enableEcommerceFinishAsset(sku);
+    if (!row) return { ok: false, error: `Unknown finish SKU ${sku}` };
+    await logPimAudit({
+      operatorEmail: session.email,
+      globalSku: row.sku,
+      action: "ecommerce_finish_reenabled",
+      field: "ecommerce_finish_assets.uploaded_by",
+    });
+    revalidatePath("/embed/admin/master-catalog");
+    return { ok: true, asset: toFinishAssetView(row) };
+  } catch (error: unknown) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not re-enable finish" };
   }
 }
 

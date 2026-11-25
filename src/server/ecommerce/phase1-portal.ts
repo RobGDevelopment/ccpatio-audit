@@ -1,7 +1,20 @@
 /**
  * Phase 1 E-Commerce portal view helpers for the GHL master-catalog UI.
  * Keep this free of scripts/ops imports so the App Router bundle stays clean.
+ *
+ * Active e-commerce finishes are the exact 32 from `ecommerce-32-finish-roster`
+ * (Sunbrella 16 + Ultraleather 4 + Dekton 6 + Powder 6). Non-matching showroom
+ * swatches stay in Hub but are hidden from e-commerce views / Woo exports.
  */
+
+import {
+  ecommerceDektonEntries,
+  ecommerceFabricSkus,
+  ecommerceFactoryFrameSkus,
+  ecommercePowderSkus,
+  ecommerceStorefrontFrameSkus,
+  isEcommerce32FinishSku,
+} from "./ecommerce-32-finish-roster";
 
 export type Phase1PortalView =
   | "phase1_parents"
@@ -12,47 +25,34 @@ export type Phase1PortalView =
 export const PHASE1_VIEW_LABELS: Record<Phase1PortalView, string> = {
   phase1_parents: "Phase 1 Storefront Parents (47)",
   phase1_flat: "Phase 1 Flat Sheet Grid (107 Variations / 102 SOW)",
-  finishes_addons: "Global Finishes & Add-Ons",
+  finishes_addons: "Global Finishes & Add-Ons (32)",
   all_hub: "All Hub SKUs",
 };
 
 export const PHASE1_LAUNCH_BANNER =
-  "Phase 1 Launch (47 Products • 102 SOW Items • 107 Variations)";
+  "Phase 1 Launch (47 Products • 102 SOW Items • 107 Variations • 32 Finishes)";
 
 export { STOREFRONT_POLICY_BANNER } from "./alu10-pricing";
 
-export const PHASE1_FABRICS = [
-  "FAB-ACT-ASH", "FAB-ACT-STO", "FAB-ADA-IND", "FAB-ADA-STO", "FAB-AGR-IND",
-  "FAB-ARI-DEW", "FAB-ARR-CAR", "FAB-ARR-DUN", "FAB-ASC-SPA", "FAB-ASC-TRO",
-  "FAB-ASS-SAN", "FAB-AUT-PEB", "FAB-BER-TUX", "FAB-BLE-IND", "FAB-BLE-LIN",
-  "FAB-BLE-SAN", "FAB-BLI-ALO", "FAB-BLI-DEW", "FAB-BLI-GUA", "FAB-BLI-LIN",
-  "FAB-BLI-SAN", "FAB-BEA-ULT", "FAB-ASS-IITEA", "FAB-ARR-CAL",
-] as const;
+/** Exact 20 e-commerce fabrics (16 Sunbrella + 4 Ultraleather). */
+export const PHASE1_FABRICS = ecommerceFabricSkus() as readonly string[] & { readonly length: 20 };
 
-export const PHASE1_POWDERS = [
-  "PWD-BLACK", "PWD-BONE", "PWD-FANUC-GRAY", "PWD-LITE-BEIGE",
-  "PWD-OIL-RUB-BRONZE", "PWD-WILD-RICE",
-] as const;
+/** Exact 6 e-commerce powder coats (Aluminum frames only on storefront). */
+export const PHASE1_POWDERS = ecommercePowderSkus() as readonly string[] & { readonly length: 6 };
 
 /**
- * Curated Dekton (DEC-*) swatch colors for the Swatches & Finishes studio. Hex values are
- * visual approximations until photoshoot-grade textures are uploaded.
- * Defined here (not in server/assets) so client bundles and finish-assets share one list.
+ * Exact 6 e-commerce Dekton (DKT-*) swatches. Hex values are visual
+ * approximations until photoshoot-grade textures are uploaded.
  */
-export const PHASE1_DEKTONS = [
-  { sku: "DEC-VEGHA", name: "Vegha", hex: "#8C867D" },
-  { sku: "DEC-BOREA", name: "Borea", hex: "#5E5A56" },
-  { sku: "DEC-NILIUM", name: "Nilium", hex: "#4A4D52" },
-  { sku: "DEC-KAIROS", name: "Kairos", hex: "#8F8F8C" },
-  { sku: "DEC-PORTUM", name: "Portum", hex: "#9A978F" },
-  { sku: "DEC-FIORD", name: "Fiord", hex: "#7A7D7B" },
-  { sku: "DEC-BLAZE", name: "Blaze", hex: "#B5623A" },
-  { sku: "DEC-NAYLA", name: "Nayla", hex: "#6B6F70" },
-] as const;
+export const PHASE1_DEKTONS = ecommerceDektonEntries() as readonly {
+  sku: string;
+  name: string;
+  hex: string;
+}[];
 
 /** Storefront is Aluminum-only; Steel remains a factory material but is hidden on web. */
-export const PHASE1_FRAME_FINISHES = ["MET-ALUM"] as const;
-export const PHASE1_FRAME_FINISHES_FACTORY = ["MET-STEEL", "MET-ALUM"] as const;
+export const PHASE1_FRAME_FINISHES = ecommerceStorefrontFrameSkus();
+export const PHASE1_FRAME_FINISHES_FACTORY = ecommerceFactoryFrameSkus();
 
 /** Woo parent IDs that require Select Facing L/R variation pairs. */
 export const FACING_PARENT_IDS = new Set(["27674", "27687"]);
@@ -94,12 +94,20 @@ export function isPhase1StorefrontRow(input: {
 
 export function isFinishOrAddonSku(sku: string): boolean {
   const upper = sku.trim().toUpperCase();
-  if (PHASE1_FABRICS.includes(upper as (typeof PHASE1_FABRICS)[number])) return true;
-  if (PHASE1_POWDERS.includes(upper as (typeof PHASE1_POWDERS)[number])) return true;
+  if (isEcommerce32FinishSku(upper)) return true;
   if (PHASE1_FRAME_FINISHES.includes(upper as (typeof PHASE1_FRAME_FINISHES)[number])) {
     return true;
   }
-  return upper.startsWith("FAB-") || upper.startsWith("PWD-") || upper.startsWith("MET-") || upper.includes("-ADDIRONWOOD") || upper.includes("FLYTBL") || upper.includes("WEATHERPROOF");
+  return (
+    upper.startsWith("FAB-") ||
+    upper.startsWith("PWD-") ||
+    upper.startsWith("DKT-") ||
+    upper.startsWith("DEC-") ||
+    upper.startsWith("MET-") ||
+    upper.includes("-ADDIRONWOOD") ||
+    upper.includes("FLYTBL") ||
+    upper.includes("WEATHERPROOF")
+  );
 }
 
 export function shippingClassFromLb(weightLb: number): "parcel" | "freight-ltl" {

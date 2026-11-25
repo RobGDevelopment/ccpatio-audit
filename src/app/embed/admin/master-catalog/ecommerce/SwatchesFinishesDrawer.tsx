@@ -1,13 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, Save, UploadCloud, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Lock, Loader2, Minus, Plus, Save, UploadCloud, X } from "lucide-react";
 import { useEmbedSession } from "@/components/embed/EmbedSessionProvider";
 import { EMBED_TOKEN_HEADER } from "@/lib/embed-auth";
 import { PHASE1_ADDON_ACF_KEYS } from "@/server/ecommerce/phase1-portal";
+import { ECOMMERCE_32_FINISH_COUNT, isFinishSkuLocked } from "@/lib/ecommerce-roster";
 import {
+  addFinishRowForPortal,
+  disableFinishRowForPortal,
   listFinishAssetsForPortal,
   saveFinishCalibration,
+  updateFinishDisplayForPortal,
   type FinishAssetCategory,
   type FinishAssetView,
 } from "../actions";
@@ -224,7 +228,7 @@ const TAB_LABEL: Record<TabKey, string> = {
   addons: "Add-Ons",
 };
 
-const DEFAULT_COUNT: Partial<Record<TabKey, number>> = { fabric: 24, powder: 6 };
+const DEFAULT_COUNT: Partial<Record<TabKey, number>> = { fabric: 20, powder: 6, dekton: 6 };
 
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp";
 
@@ -290,17 +294,21 @@ function FinishRow({
   embedToken,
   onChanged,
   onToast,
+  onRemove,
 }: {
   asset: FinishAssetView;
   embedToken: string | null;
   onChanged: () => void;
   onToast: (msg: string) => void;
+  onRemove: (sku: string) => void;
 }) {
   const [draft, setDraft] = useState<CalDraft>(() => draftFromAsset(asset));
+  const [displayName, setDisplayName] = useState(asset.displayName);
   const [progress, setProgress] = useState<Partial<Record<"thumb" | "texture_2k", number>>>({});
   const [busy, setBusy] = useState<"thumb" | "texture_2k" | null>(null);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "warn" | "err"; text: string } | null>(null);
+  const skuLocked = isFinishSkuLocked(asset.sku);
 
   const calKey = [
     asset.sampleWidthIn,
@@ -310,8 +318,9 @@ function FinishRow({
   ].join("|");
   useEffect(() => {
     setDraft(draftFromAsset(asset));
+    setDisplayName(asset.displayName);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calKey]);
+  }, [calKey, asset.displayName]);
 
   async function upload(slot: "thumb" | "texture_2k", file: File) {
     setNote(null);
@@ -359,6 +368,16 @@ function FinishRow({
     }
     setSaving(true);
     setNote(null);
+    if (displayName.trim() && displayName.trim() !== asset.displayName) {
+      const renamed = await updateFinishDisplayForPortal(asset.sku, {
+        displayName: displayName.trim(),
+      });
+      if (!renamed.ok) {
+        setSaving(false);
+        setNote({ tone: "err", text: renamed.error });
+        return;
+      }
+    }
     const res = await saveFinishCalibration(asset.sku, {
       sample_width_in: parsed.sample_width_in as number | null,
       sample_height_in: parsed.sample_height_in as number | null,
@@ -370,7 +389,7 @@ function FinishRow({
       setNote({ tone: "err", text: res.error });
       return;
     }
-    setNote({ tone: "ok", text: "Calibration saved" });
+    setNote({ tone: "ok", text: "Saved (SKU locked)" });
     onChanged();
   }
 
@@ -396,10 +415,39 @@ function FinishRow({
         )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xs font-semibold text-slate-800">{asset.sku}</span>
+            <span
+              className="inline-flex items-center gap-1 font-mono text-xs font-semibold text-slate-800"
+              title="System-generated SKU — locked"
+              data-testid={`finish-sku-locked-${asset.sku}`}
+            >
+              {skuLocked ? <Lock className="h-3 w-3 text-slate-400" /> : null}
+              <input
+                readOnly
+                value={asset.sku}
+                aria-readonly="true"
+                className="w-36 cursor-not-allowed rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[11px] text-slate-700"
+              />
+            </span>
             <QualityBadge status={asset.qualityStatus} />
+            <button
+              type="button"
+              data-testid={`finish-row-remove-${asset.sku}`}
+              title="Remove from e-commerce roster (−)"
+              onClick={() => onRemove(asset.sku)}
+              className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
           </div>
-          <p className="truncate text-[11px] text-slate-500">{asset.displayName}</p>
+          <label className="mt-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            Display name
+            <input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              data-testid={`finish-display-${asset.sku}`}
+              className="mt-0.5 block w-full max-w-xs rounded border border-slate-300 px-1.5 py-1 text-[12px] font-medium normal-case text-slate-900"
+            />
+          </label>
         </div>
         <div className="grid w-64 shrink-0 grid-cols-2 gap-1.5">
           <DropButton
@@ -466,6 +514,8 @@ export default function SwatchesFinishesDrawer({
   const [assets, setAssets] = useState<FinishAssetView[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -494,6 +544,35 @@ export default function SwatchesFinishesDrawer({
     [assets, tab],
   );
 
+  async function handleAdd() {
+    if (tab === "addons") return;
+    const name = newName.trim();
+    if (!name) {
+      setError("Enter a display name before adding a finish row.");
+      return;
+    }
+    setAdding(true);
+    const res = await addFinishRowForPortal({ category: tab, displayName: name });
+    setAdding(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setNewName("");
+    onToast?.(`Added ${res.asset.sku} (SKU locked)`);
+    await load();
+  }
+
+  async function handleRemove(sku: string) {
+    const res = await disableFinishRowForPortal(sku);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    onToast?.(`Removed ${sku} from e-commerce roster`);
+    await load();
+  }
+
   if (!open) return null;
 
   const tabs: TabKey[] = ["fabric", "powder", "dekton", "addons"];
@@ -514,9 +593,11 @@ export default function SwatchesFinishesDrawer({
       >
         <header className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
           <div>
-            <h3 className="text-sm font-bold text-slate-800">Swatches, Finishes &amp; Add-Ons</h3>
+            <h3 className="text-sm font-bold text-slate-800">
+              E-Commerce Finishes ({ECOMMERCE_32_FINISH_COUNT})
+            </h3>
             <p className="text-[11px] text-slate-500">
-              UI swatch = storefront thumbnail · 3D texture = 2048px map for the .glb viewer. Steel hidden on web.
+              Exact 32 storefront finishes · SKUs auto-generated &amp; locked · Aluminum frames only · Steel hidden on web.
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-slate-700">
@@ -565,22 +646,55 @@ export default function SwatchesFinishesDrawer({
                 ))}
               </ul>
             </div>
-          ) : rows.length === 0 ? (
-            <p className="py-10 text-center text-xs text-slate-400">
-              No {TAB_LABEL[tab].toLowerCase()} in the registry yet. Run the finish-assets seed script.
-            </p>
           ) : (
-            <ul className="space-y-2">
-              {rows.map((a) => (
-                <FinishRow
-                  key={a.sku}
-                  asset={a}
-                  embedToken={embedToken}
-                  onChanged={() => void load()}
-                  onToast={(m) => onToast?.(m)}
-                />
-              ))}
-            </ul>
+            <div className="space-y-3">
+              <div
+                className="flex flex-wrap items-end gap-2 rounded-xl border border-dashed border-sky-300 bg-sky-50/60 p-3"
+                data-testid="finish-row-add"
+              >
+                <label className="min-w-[12rem] flex-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  New {TAB_LABEL[tab].slice(0, -1)} display name
+                  <input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="e.g. Canvas Ivory"
+                    data-testid="finish-add-name"
+                    className="mt-0.5 block w-full rounded border border-slate-300 px-2 py-1.5 text-[12px] font-medium normal-case text-slate-900"
+                  />
+                </label>
+                <button
+                  type="button"
+                  data-testid="finish-add-btn"
+                  disabled={adding}
+                  onClick={() => void handleAdd()}
+                  className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50"
+                >
+                  {adding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  Add row (+)
+                </button>
+                <p className="w-full text-[10px] text-slate-500">
+                  SKU is minted automatically (FAB-/PWD-/DKT-) and stays read-only.
+                </p>
+              </div>
+              {rows.length === 0 ? (
+                <p className="py-10 text-center text-xs text-slate-400">
+                  No active {TAB_LABEL[tab].toLowerCase()} on the e-commerce roster. Use + to add one, or run the finish-assets seed.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {rows.map((a) => (
+                    <FinishRow
+                      key={a.sku}
+                      asset={a}
+                      embedToken={embedToken}
+                      onChanged={() => void load()}
+                      onToast={(m) => onToast?.(m)}
+                      onRemove={(sku) => void handleRemove(sku)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
       </aside>

@@ -1,6 +1,8 @@
 /**
  * Deterministic CC Patio FIN-/3P- SKU + display-name generator for the
  * Auto-SKU wizard. Collision checks are injected so unit tests stay pure.
+ * Finish (FAB-/PWD-/DKT-) minting lives in ecommerce-32-finish-roster and is
+ * re-exported here so the portal uses one SKU engine surface.
  */
 
 import {
@@ -12,6 +14,14 @@ import {
   wooEcommercePrice,
   type FramePolicy,
 } from "./alu10-pricing";
+
+export {
+  buildFinishAutoSku,
+  generateCollisionCheckedFinishSku,
+  isFinishSkuLocked,
+  tokensFromFinishDisplayName,
+  type FinishSkuFamilyInput,
+} from "./ecommerce-32-finish-roster";
 
 export type FacingMode = "standard" | "LS" | "RS";
 export type HeightMode = "standard" | "BAR" | "CNT" | "DIN";

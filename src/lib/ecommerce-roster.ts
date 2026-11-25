@@ -1,7 +1,30 @@
 /**
  * Pure helpers for the Master Catalog E-Commerce roster.
  * No I/O, no DB — isolated so they can be unit-tested directly.
+ *
+ * Finish-roster / aluminum-only / SKU-lock helpers are re-exported from the
+ * exact-32 module so UI + Vitest share one import surface.
  */
+
+export {
+  assertExact32Roster,
+  buildFinishAutoSku,
+  canAccessEcommercePortal,
+  canAccessFullMasterCatalog,
+  ECOMMERCE_32_FINISH_COUNT,
+  ECOMMERCE_32_FINISHES,
+  ecommerceFinishBySku,
+  filterActiveEcommerceFinishes,
+  filterAluminumOnlyFrameExport,
+  generateCollisionCheckedFinishSku,
+  isActiveEcommerceFinishAsset,
+  isEcommerce32FinishSku,
+  isFinishSkuLocked,
+  resolveEcommerceFinishSku,
+  tokensFromFinishDisplayName,
+  type EcommerceFinishDefinition,
+  type FrameExportOption,
+} from "@/server/ecommerce/ecommerce-32-finish-roster";
 
 /* ───────────────────── text normalization ───────────────────── */
 
