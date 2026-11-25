@@ -4,7 +4,7 @@
  */
 
 const USER_ID_KEYS = ["ghluserid", "userid", "user_id"] as const;
-const EMAIL_KEYS = ["ghluseremail", "useremail", "user_email"] as const;
+const EMAIL_KEYS = ["email", "ghluseremail", "useremail", "user_email"] as const;
 const OPPORTUNITY_KEYS = ["opportunityid", "opportunity_id"] as const;
 const QUOTE_KEYS = ["quoteid", "quote_id"] as const;
 const CONTACT_KEYS = ["contactid", "contact_id"] as const;

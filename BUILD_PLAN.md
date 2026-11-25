@@ -1,130 +1,108 @@
-# BUILD_PLAN — `katana-inventory-resilience-fix`
+# BUILD_PLAN — `embed-auth-ssr-stack-bar-hardening`
 
 **Base:** `HEAD`  
 **Mode:** edit (Track 2 locked)  
 **Blast cap override:** true  
-**Expected blast radius:** 22 (QCA excludes `.cursor/aar.json`; `tolerance: 0`)
+**Expected blast radius:** 19 (QCA excludes `.cursor/aar.json`; `tolerance: 0`)
 
 ## Intent
 
-Eliminate 30s Katana rate-limit hangs on Current Inventory (`/embed/showroom`) via
-instant Supabase-only UI reads; fix shared Katana rate-limit bucket
-starvation / TTL deadlocks; add priority token reserve + checkpointed sync
-recovery; wire bucket reset + live staleness into Executive Stack Health.
+Allowlist `rjg.cal@gmail.com` as Executive SuperAdmin; keep all 7 Stack Health
+pills (including **Katana MRP**) permanently mounted with SSR hydration; mint
+embed tokens reliably for valid GHL `?key=` embeds (handling literal
+`{{user.email}}` safely); prevent half-authenticated shell renders; and remove
+duplicate Tab 2 filter pills.
 
 Do **not** flip any `*_MODE` or `DOWNSTREAM_MUTATIONS` flags (`log` / `false`).
 
-## Diagnosed root cause (pre-fix)
+## Diagnosed production bugs (live GHL iframe on hub.ccpatio.com)
 
-The exact emitter is `src/server/sre/katana-throttle.ts` →
-`createKatanaSharedBucketPacer` → `acquireToken(..., maxWaitMs: 30_000)` throwing:
-
-> `Katana shared rate-limit bucket: no token available after ${waited}ms. Deferring.`
-
-Contributing mechanisms:
-
-1. **Bucket monopolization:** Postgres token bucket is capacity `1` / `1 req/s`
-   (`KATANA_BUCKET_*`). Bulk inventory pagination
-   (`src/server/stock/katana-inventory.ts` → `listResource`, up to 40 pages ×
-   materials/products/variants/locations/inventory) consumes 100% of tokens for
-   minutes. Interactive callers block the full `30_000ms` then throw — matching
-   production `30221ms`.
-2. **Unclamped 429 backoff:** `src/lib/katana.ts` computes
-   `waitMs = resetAt * 1000 - Date.now()` assuming `X-Ratelimit-Reset` is epoch
-   **seconds**. Poisoned / ms-scale / huge values (and the twin path in
-   `src/inngest/katana-step.ts`) are not clamped to `≤ 65_000ms`, so a single
-   429 can sleep far beyond the intended Katana window and keep the bucket
-   starved.
-3. **Showroom still surfaces the throw:** Failed
-   `refreshShowroomSnapshotFromKatana` writes the raw `KatanaApiError` message
-   into `katana_sync_meta.last_error`. Sales UI renders that string as the
-   message / banner. Hub reads never call Katana, but the **badge ignores age**
-   (`stale` is only set on missing `last_synced_at` / in-flight failure), so a
-   48h-old `Hub synced` stays **green**.
-4. **All-or-nothing persist:** Snapshot replace is one transaction after the
-   full Katana crawl; serverless timeout mid-crawl leaves `last_synced_at`
-   frozen for days with no incremental checkpoint.
+1. **Missing allowlist entry:** `rjg.cal@gmail.com` (Rob's GHL/Google admin
+   login) is absent from the executive email allowlist that currently includes
+   only `mia@ccpatio.com` and `kian@ccpatio.com`.
+2. **Stack Health bar unmounts:** The 7-pill Top Stack Health Bar shows
+   `"Probing full stack..."` then **completely unmounts** whenever its client
+   fetch returns an error or `401` — hiding Katana MRP, QuickBooks, WooCommerce,
+   etc.
+3. **Half-authenticated SSR shell:** `/embed/admin/master-catalog` can render
+   product chrome (e.g. 107 products) without a signed client `embedToken` when
+   cookies are blocked in GHL's cross-origin iframe or when
+   `?email={{user.email}}` is uninterpolated/absent — Tab 1 finishes and
+   `Edit Details` then fail with `Unauthorized embed session.` / `unauthorized`.
+4. **Duplicate Tab 2 pills:** Tab 2 (`107 E-Commerce Products`) renders a 4th
+   row of duplicate `Needs Mia Spot-Check` and `Mia Approved` pills below the
+   Readiness filter row.
 
 ## Workstreams
 
-### 1. Harden `Katana shared rate-limit bucket` (self-healing)
+### 1. Executive Allowlist + Bulletproof GHL `?key=` Embed Token Minting
 
-**Files:** `src/server/sre/token-bucket.ts`, `src/server/sre/katana-throttle.ts`,
-`src/lib/katana.ts`, `src/inngest/katana-step.ts`, `scripts/`
+**Files:** `src/lib/`, `src/server/`, `src/app/embed/`, `src/app/api/`
 
-- Clamp every `retryAfter` / `waitMs` / `blockedUntil` derivation to a hard
-  ceiling of **`≤ 65_000ms`** (normalize epoch-seconds vs epoch-ms vs delta-ms).
-- Enforce short self-heal semantics on bucket state:
-  - Prefer atomic refill that cannot leave tokens permanently `< 1`
-    (clamp negative balances; treat absurd `updated_at` skew as full refill).
-  - Idempotent **`resetKatanaRateLimitBucket()`** helper that resets
-    `rate_limit_buckets` row for `katana:api` (and any sync-lock key) without
-    touching Katana ERP records.
-  - Ops script under `scripts/` to clear wedged bucket/lock state via
-    `.env.local` `POSTGRES_URL` when reachable.
-- **Priority Lane:** reserve interactive tokens so `Place Hold` and executive
-  `Run Katana Sync Now` / `Reset Bucket & Sync Katana Now` never starve behind
-  bulk pagination. Bulk callers use the standard lane; interactive callers use
-  `priority: true` (or a dedicated priority key) with short / zero blocking wait
-  for reads and a reserved capacity share for mutations.
-- Interactive **read** paths that accidentally hit the pacer must fail fast
-  (`maxWaitMs: 0` or tiny) — never block UI for 30s.
+- Add `rjg.cal@gmail.com` (case-insensitive) to the canonical executive /
+  SuperAdmin email allowlist alongside `mia@ccpatio.com` and `kian@ccpatio.com`
+  across all portal SSR checks and `/api/ecommerce/*` routes.
+- Confirm query param aliases for `/embed/showroom` and
+  `/embed/admin/master-catalog`: `key` and `access_key`.
+- On `/embed/admin/master-catalog` when `?key=<GHL_EMBED_SECRET>` is valid:
+  - If `email` / `user_email` is a real interpolated email (ignore empty
+    strings and literal uninterpolated `{{...}}` GHL placeholders), enforce the
+    executive allowlist.
+  - When valid `?key=` passes **or** a valid executive session cookie exists,
+    **ALWAYS** mint and inject a signed `embedToken` into the client portal
+    **and** set `SameSite=None; Secure; Partitioned` (CHIPS) cookie fallback so
+    client fetches (`stack-health`, `finishes`, `portal-product`, Katana
+    reset/sync) succeed with zero `401`s inside Chrome's cross-origin GHL iframe.
+- If **neither** a valid `?key=` **nor** an authorized executive session
+  exists: do **not** render a half-loaded portal shell — render a clean dark
+  Executive Auth Gate card:
+  - Copy: `"Missing or invalid GHL embed key (?key=...)"`
+  - Setup instructions:
+    `.../embed/admin/master-catalog?key=<GHL_EMBED_SECRET>&email={{user.email}}`
 
-### 2. Decouple `/embed/showroom` from live Katana (`0ms` blocking)
+### 2. Permanently Mounted 7-Pill Stack Health Bar + SSR Initial Hydration
 
-**Files:** `src/app/embed/showroom/`, `src/app/showroom/stock/`,
-`src/server/showroom/`, `src/server/stock/showroom-snapshot.ts`,
-`src/app/api/katana/`, `src/app/api/embed/`
+**Files:** `src/components/`, `src/app/embed/admin/master-catalog/`,
+`src/server/`, `src/lib/`
 
-- Showroom page loads, tab switches, and GET read APIs serve **only** from
-  Supabase Postgres Hub cache (`readShowroomSnapshotFromHub`) — target
-  **`< 200ms`**, hard assert **`< 1s`**, **zero** `30_000ms` token waits.
-- When `last_synced_at` exceeds freshness threshold, fire a **non-blocking**,
-  **deduplicated** background sync trigger (debounce/lock key so N pageviews
-  enqueue ONE sync). Never await Katana on the request path.
-- Sanitize operator-facing copy: never expose raw developer strings such as
-  `Katana shared rate-limit bucket: no token available after 30221ms`.
-- Fix `Hub synced` badge semantics on `/embed/showroom`:
-  - **Green:** age `< 30 minutes`
-  - **Amber:** `30m – 2h` → label `Refreshing in background…`
-  - **Red:** `> 2h` → `Snapshot Stale — Background Sync Queued` + manual
-    non-blocking `Refresh` button
+- Hydrate initial **32 finishes** (`16/4/6/6`) **and** initial 7-service Stack
+  Health state server-side, **or** guarantee immediate render of all 7 pills:
+  **Supabase**, **Katana MRP**, **QuickBooks**, **WooCommerce**, **GHL CRM**,
+  **FedEx LTL**, **Inngest** — so the top bar **never** vanishes from the DOM.
+- During refresh/probe, keep all 7 pills visible; on probe error / `401` /
+  `500`, mark the pill Amber/Red (`Probe Failed — Click to Diagnose & Retry`)
+  with its diagnostic drawer still clickable (including
+  **`Reset Bucket & Sync Katana Now`** on Katana MRP and **`Reconnect QuickBooks`**
+  on QuickBooks).
 
-### 3. Checkpointed background sync + Executive Control Center
+### 3. Remove Duplicate Filter Pills on Tab 2
 
-**Files:** `src/server/stock/`, `src/server/ecommerce/executive-stack-health.ts`,
-`src/app/embed/admin/master-catalog/`, Inngest/cron callers already in
-`allowed_files`
+**Files:** `src/components/`, `src/app/embed/admin/master-catalog/`
 
-- Persist stock rows + sync telemetry **incrementally per chunk/page** so a
-  serverless timeout never discards progress or leaves `Hub synced` days behind.
-- Wire Katana bucket health (`tokensAvailable`, `cooldownMs`, `lastSyncedAt`,
-  staleness threshold) into the **Katana MRP** pill on
-  `/embed/admin/master-catalog` Executive Control Center:
-  - Pill **Amber/Red** when Hub synced `> 2h` stale **or** bucket throttled.
-  - Diagnostic drawer action: **`Reset Bucket & Sync Katana Now`** (reset
-    bucket/lock → enqueue/dedupe sync; still honor `*_MODE` /
-    `DOWNSTREAM_MUTATIONS` — no flag flips, no ERP mutations beyond existing
-    read/sync paths).
+- Remove the duplicate 4th row of `Needs Mia Spot-Check` and `Mia Approved`
+  pills on Tab 2 so each filter appears once in the Readiness row.
 
 ### 4. Verification
 
 **Target Vitest:**
 
 ```bash
-npx vitest run tests/katana-inventory-resilience.test.ts
+npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts
 ```
 
-Assertions:
+**Playwright / Vitest assertions:**
 
-1. `/embed/showroom` (and sales inventory loader) returns cached stock
-   immediately (`< 1s`) with zero `30221ms` wait and zero raw rate-limit error
-   banner even when the Katana bucket is 100% exhausted.
-2. Poisoned / huge `Retry-After` / `X-Ratelimit-Reset` values clamp to
-   `≤ 65_000ms`; expired / wedged locks self-heal via reset helper.
-3. Priority tokens succeed for interactive callers during bulk background load.
-4. `Hub synced` badge turns Amber/Red at `>30m` / `>2h`; Executive Control
-   Center `Katana MRP` pill reflects staleness + throttled bucket accurately.
+1. `rjg.cal@gmail.com` is recognized as Executive / SuperAdmin.
+2. Loading `/embed/admin/master-catalog?key=<valid>&email={{user.email}}` with
+   **all browser cookies cleared** (`context.clearCookies()`):
+   - Renders all **7 Stack Health pills** (explicitly assert **Katana MRP** is
+     visible and clickable → reveals `Reset Bucket & Sync Katana Now`)
+   - Renders **32** active finishes (`16/16` Sunbrella)
+   - Opens `Edit Details` on `FIN-BRV-CLB-CHA-34X34` with zero `unauthorized`
+     errors
+3. Loading `/embed/admin/master-catalog` with **no** `?key=` and **no** cookies
+   renders the clean dark Executive Auth Gate (not a half-broken `0/16` shell).
+4. Simulated `/api/...` failures **never** unmount the 7-pill Stack Health Bar.
 
 **Gate sequence:**
 
@@ -134,7 +112,7 @@ Assertions:
    (`tolerance: 0`, exclude `.cursor/aar.json`)
 4. `node .cursor/skills/aar/scripts/emit.mjs`
 5. `node .cursor/skills/qca/scripts/qca.mjs` → `CERTIFIED` (`audit_exit: 0`);
-   paste verbatim QCA JSON + brief summary of the `30221ms` wedge cause
+   paste verbatim QCA JSON
 
 ## Allowed files
 
@@ -142,33 +120,25 @@ Assertions:
 2. `.cursor/session-stamp.json`
 3. `.cursor/aar.json`
 4. `BUILD_PLAN.md`
-5. `src/app/embed/showroom/`
-6. `src/app/embed/admin/master-catalog/`
-7. `src/app/showroom/`
-8. `src/app/api/`
-9. `src/components/`
-10. `src/lib/`
-11. `src/server/`
-12. `src/inngest/`
-13. `scripts/`
-14. `tests/`
-15. `e2e/`
+5. `src/proxy.ts`
+6. `src/app/embed/`
+7. `src/app/api/`
+8. `src/components/`
+9. `src/lib/`
+10. `src/server/`
+11. `tests/`
+12. `e2e/`
 
 ## Target test
 
 ```bash
-npx vitest run tests/katana-inventory-resilience.test.ts
+npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts
 ```
 
 ## Hard constraints
 
 - No `*_MODE` / `DOWNSTREAM_MUTATIONS` flag flips (`log` / `false` stay)
-- Reset helpers may clear Hub Redis/Postgres **rate-limit & sync-lock** state
-  only — **NEVER** mutate Katana ERP records
-- No hard-deletes of middleware DB business rows; snapshot upserts are additive
-  / replace-within-sync only
-- No schema drops; additive only if a column/table is required for checkpoint
-  telemetry
+- No schema drops; additive only if required
 - Never modify tests to fake Phase 2 DB proof
 - Never delete a paid order; ledger failure is retried, not rolled back
 - Katana remains single live tenant — no sandbox writes from this phase

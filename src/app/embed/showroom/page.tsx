@@ -19,7 +19,7 @@ export default async function EmbedShowroomPage({
   if (!session) {
     return (
       <main className="flex h-full min-h-0 flex-1 items-center justify-center bg-[#FAFAFA] px-6 text-sm text-slate-700">
-        This embed link is missing a valid access key.
+        This embed link is missing a valid access key (?key= / ?access_key= / ?embedKey=).
       </main>
     );
   }

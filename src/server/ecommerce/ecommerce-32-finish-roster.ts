@@ -32,14 +32,21 @@ export type EcommerceFinishDefinition = {
 
 export const ECOMMERCE_FINISH_DISABLED_SENTINEL = "ecommerce:disabled";
 
-/** Roles allowed on the Executive Control Center (in addition to Mia/Kian emails). */
+/** Roles allowed on the Executive Control Center (in addition to executive emails). */
 export const ECOMMERCE_PORTAL_ROLES = ["SuperAdmin"] as const;
 
-/** Operator emails (case-insensitive) treated as Mia / Kian merchandisers. */
+/**
+ * Operator emails (case-insensitive) treated as Executive merchandisers /
+ * SuperAdmins: Mia, Kian, and Rob (GHL/Google admin).
+ */
 export const ECOMMERCE_PORTAL_OPERATOR_EMAILS = [
   "mia@ccpatio.com",
   "kian@ccpatio.com",
+  "rjg.cal@gmail.com",
 ] as const;
+
+/** Emails that unlock full Master Catalog / Mission Control (email-only SuperAdmin). */
+export const ECOMMERCE_PORTAL_SUPERADMIN_EMAILS = ["rjg.cal@gmail.com"] as const;
 
 /**
  * Exact 32 e-commerce finishes.
@@ -388,7 +395,11 @@ export function canAccessFullMasterCatalog(input: {
   email?: string | null;
   role?: string | null;
 }): boolean {
-  return (input.role ?? "").trim() === "SuperAdmin";
+  if ((input.role ?? "").trim() === "SuperAdmin") return true;
+  const email = (input.email ?? "").trim().toLowerCase();
+  return ECOMMERCE_PORTAL_SUPERADMIN_EMAILS.includes(
+    email as (typeof ECOMMERCE_PORTAL_SUPERADMIN_EMAILS)[number],
+  );
 }
 
 export type SkuAliasRecord = {

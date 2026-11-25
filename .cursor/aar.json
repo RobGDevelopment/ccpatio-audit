@@ -1,44 +1,44 @@
 {
-  "phase_id": "katana-inventory-resilience-fix",
+  "phase_id": "embed-auth-ssr-stack-bar-hardening",
   "base_ref": "HEAD",
-  "blast_radius": 22,
+  "blast_radius": 19,
   "counts": {
-    "files": 22,
-    "tracked": 18,
+    "files": 19,
+    "tracked": 15,
     "untracked": 4,
-    "insertions": 985,
-    "deletions": 344
+    "insertions": 428,
+    "deletions": 1034
   },
   "files": [
     {
       "status": "??",
-      "path": "scripts/ops/reset-katana-rate-limit-bucket.ts",
+      "path": "src/app/embed/admin/master-catalog/MasterCatalogClient.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/lib/katana-rate-limit-wait.ts",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/ExecutiveAuthGate.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/stock/hub-sync-freshness.ts",
+      "path": "src/server/ecommerce/master-catalog-embed-auth.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/katana-inventory-resilience.test.ts",
+      "path": "tests/e2e/embed-auth-ssr-stack-bar.spec.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 9,
-      "deletions": 6
+      "insertions": 6,
+      "deletions": 9
     },
     {
       "status": "M",
@@ -49,106 +49,88 @@
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 129,
-      "deletions": 152
-    },
-    {
-      "status": "M",
-      "path": "scripts/qa/proof-of-life.runner.ts",
-      "insertions": 5,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/app/api/embed/katana-inventory/route.ts",
-      "insertions": 30,
-      "deletions": 8
-    },
-    {
-      "status": "M",
-      "path": "src/app/api/katana/showroom-inventory/route.ts",
-      "insertions": 33,
-      "deletions": 8
+      "insertions": 94,
+      "deletions": 124
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 53,
-      "deletions": 3
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/ExecutiveStackHealthStrip.tsx",
       "insertions": 5,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/app/showroom/stock/SalesStockView.tsx",
-      "insertions": 49,
-      "deletions": 9
-    },
-    {
-      "status": "M",
-      "path": "src/inngest/katana-step.ts",
-      "insertions": 2,
-      "deletions": 4
-    },
-    {
-      "status": "M",
-      "path": "src/lib/katana.ts",
-      "insertions": 11,
-      "deletions": 3
-    },
-    {
-      "status": "M",
-      "path": "src/server/showroom/stock.ts",
-      "insertions": 36,
-      "deletions": 9
-    },
-    {
-      "status": "M",
-      "path": "src/server/sre/katana-throttle.ts",
-      "insertions": 130,
       "deletions": 5
     },
     {
       "status": "M",
-      "path": "src/server/sre/token-bucket.ts",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx",
+      "insertions": 15,
+      "deletions": 23
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/ExecutiveStackHealthStrip.tsx",
+      "insertions": 43,
+      "deletions": 23
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/page.tsx",
+      "insertions": 54,
+      "deletions": 835
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/showroom/page.tsx",
+      "insertions": 1,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/lib/ecommerce-roster.ts",
+      "insertions": 2,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/lib/embed-actor-params.ts",
+      "insertions": 1,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/lib/embed-auth.ts",
       "insertions": 79,
-      "deletions": 18
+      "deletions": 0
     },
     {
       "status": "M",
-      "path": "src/server/stock/create-hold.ts",
-      "insertions": 5,
-      "deletions": 1
+      "path": "src/proxy.ts",
+      "insertions": 2,
+      "deletions": 3
     },
     {
       "status": "M",
-      "path": "src/server/stock/katana-inventory.ts",
-      "insertions": 155,
-      "deletions": 50
+      "path": "src/server/ecommerce/ecommerce-32-finish-roster.ts",
+      "insertions": 14,
+      "deletions": 3
     },
     {
       "status": "M",
-      "path": "src/server/stock/showroom-snapshot.ts",
-      "insertions": 249,
-      "deletions": 63
+      "path": "src/server/ecommerce/executive-stack-health.ts",
+      "insertions": 40,
+      "deletions": 0
     },
     {
       "status": "M",
-      "path": "tests/showroom-snapshot-and-refresh.test.ts",
-      "insertions": 3,
-      "deletions": 1
+      "path": "tests/ghl-ecommerce-32-finish-portal.test.ts",
+      "insertions": 70,
+      "deletions": 5
     }
   ],
   "untracked": [
-    "scripts/ops/reset-katana-rate-limit-bucket.ts",
-    "src/lib/katana-rate-limit-wait.ts",
-    "src/server/stock/hub-sync-freshness.ts",
-    "tests/katana-inventory-resilience.test.ts"
+    "src/app/embed/admin/master-catalog/MasterCatalogClient.tsx",
+    "src/app/embed/admin/master-catalog/ecommerce/ExecutiveAuthGate.tsx",
+    "src/server/ecommerce/master-catalog-embed-auth.ts",
+    "tests/e2e/embed-auth-ssr-stack-bar.spec.ts"
   ],
-  "file_list_sha256": "3942bb19c9910a7eaba2366cf6f308fb70e2a1adca8cfe31fe48c139bb5a370e",
+  "file_list_sha256": "d0abe5bf3437fbd5db94ff7455a2b7b6707387c5c1ac321dea576bf769a094b9",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }

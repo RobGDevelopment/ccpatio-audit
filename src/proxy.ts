@@ -22,6 +22,7 @@ import {
   EMBED_TOKEN_HEADER,
   embedAuthCookieOptions,
   embedAuthCookieValue,
+  embedKeyFromSearchRecord,
   embedKeyIsValid,
   getGhlEmbedSecret,
   mintEmbedSessionToken,
@@ -138,9 +139,7 @@ function applyFramePolicy(
 }
 
 function embedKeyFromRequest(request: NextRequest): string | null {
-  const key = request.nextUrl.searchParams.get("embedKey")?.trim() ?? "";
-  if (!key || key.length > 256 || /[\r\n]/.test(key)) return null;
-  return key;
+  return embedKeyFromSearchRecord(request.nextUrl.searchParams);
 }
 
 function embedTokenFromRequest(request: NextRequest): string | null {

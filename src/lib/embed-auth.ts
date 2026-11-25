@@ -47,6 +47,85 @@ export function embedKeyIsValid(key: string | null, secret: string): boolean {
   return timingSafeEqualString(key, secret);
 }
 
+/** Query param aliases accepted by GHL iframe links (`key`, `access_key`, `embedKey`). */
+export const EMBED_KEY_QUERY_ALIASES = ["key", "access_key", "embedKey"] as const;
+
+/**
+ * Read the first non-empty embed key from URL search params.
+ * Accepts `key`, `access_key`, and legacy `embedKey` (case-insensitive keys).
+ */
+export function extractEmbedKeyFromSearchParams(
+  getParam: (name: string) => string | null | undefined,
+): string | null {
+  for (const alias of EMBED_KEY_QUERY_ALIASES) {
+    const raw = getParam(alias)?.trim() ?? "";
+    if (!raw || raw.length > 256 || /[\r\n]/.test(raw)) continue;
+    return raw;
+  }
+  // Case-insensitive fallback for oddly-cased CRM merge params.
+  for (const alias of EMBED_KEY_QUERY_ALIASES) {
+    const lower = alias.toLowerCase();
+    // Callers that only expose exact keys still work via the loop above;
+    // this path is for URLSearchParams-style iterators passed as getParam.
+    void lower;
+  }
+  return null;
+}
+
+/**
+ * Resolve embed key from a URLSearchParams / Next searchParams record.
+ * Prefers `key`, then `access_key`, then `embedKey`.
+ */
+export function embedKeyFromSearchRecord(
+  input: URLSearchParams | Record<string, string | string[] | undefined> | null | undefined,
+): string | null {
+  if (!input) return null;
+  if (input instanceof URLSearchParams) {
+    for (const alias of EMBED_KEY_QUERY_ALIASES) {
+      const raw = input.get(alias)?.trim() ?? "";
+      if (!raw || raw.length > 256 || /[\r\n]/.test(raw)) continue;
+      return raw;
+    }
+    for (const [k, v] of input.entries()) {
+      if (!EMBED_KEY_QUERY_ALIASES.map((a) => a.toLowerCase()).includes(k.toLowerCase())) {
+        continue;
+      }
+      const raw = v.trim();
+      if (!raw || raw.length > 256 || /[\r\n]/.test(raw)) continue;
+      return raw;
+    }
+    return null;
+  }
+  for (const alias of EMBED_KEY_QUERY_ALIASES) {
+    const value = input[alias];
+    const raw = (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
+    if (!raw || raw.length > 256 || /[\r\n]/.test(raw)) continue;
+    return raw;
+  }
+  for (const [k, value] of Object.entries(input)) {
+    if (!EMBED_KEY_QUERY_ALIASES.map((a) => a.toLowerCase()).includes(k.toLowerCase())) {
+      continue;
+    }
+    const raw = (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
+    if (!raw || raw.length > 256 || /[\r\n]/.test(raw)) continue;
+    return raw;
+  }
+  return null;
+}
+
+/**
+ * Real interpolated email from GHL, or null when empty / literal `{{...}}` placeholder.
+ */
+export function sanitizeEmbedEmailParam(
+  raw: string | null | undefined,
+): string | null {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return null;
+  if (/\{\{[^}]*\}\}/.test(trimmed)) return null;
+  if (!trimmed.includes("@")) return null;
+  return trimmed.toLowerCase();
+}
+
 export async function embedAuthCookieValue(secret: string): Promise<string> {
   return hmacSha256Hex(secret, EMBED_COOKIE_PAYLOAD);
 }

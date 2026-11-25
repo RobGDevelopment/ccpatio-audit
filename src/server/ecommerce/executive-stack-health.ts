@@ -34,6 +34,46 @@ export type ExecutiveStackHealth = {
   qboLedgerMode: string;
 };
 
+export const STACK_LAYER_LABELS: Record<StackLayerId, string> = {
+  supabase: "Supabase",
+  katana: "Katana MRP",
+  qbo: "QuickBooks",
+  woocommerce: "WooCommerce",
+  ghl: "GHL CRM",
+  fedex: "FedEx LTL",
+  inngest_dlq: "Inngest",
+};
+
+const PROBE_FAILED_DETAIL = "Probe Failed — Click to Diagnose & Retry";
+
+/**
+ * Always-mounted 7-pill skeleton used for SSR hydration and probe/401 failures.
+ * Never return an empty strip — pills stay in the DOM Amber/Red with CTAs.
+ */
+export function probeFailedStackLayers(
+  detail = PROBE_FAILED_DETAIL,
+): StackLayerPill[] {
+  return (Object.keys(STACK_LAYER_LABELS) as StackLayerId[]).map((id) => {
+    const base: StackLayerPill = {
+      id,
+      label: STACK_LAYER_LABELS[id],
+      status: "Action Required",
+      detail,
+    };
+    if (id === "katana") {
+      base.actions = [
+        { id: "katana_sync_now", label: "Run Katana Sync Now" },
+        { id: "katana_reset_bucket_sync", label: "Reset Bucket & Sync Katana Now" },
+      ];
+    } else if (id === "qbo") {
+      base.actions = [{ id: "qbo_reconnect", label: "Reconnect QuickBooks" }];
+    } else if (id === "woocommerce") {
+      base.actions = [{ id: "woo_retest", label: "Re-Test" }];
+    }
+    return base;
+  });
+}
+
 export function lampFromState(
   state: "healthy" | "degraded" | "critical" | "green" | "amber" | "red",
 ): StackLampStatus {

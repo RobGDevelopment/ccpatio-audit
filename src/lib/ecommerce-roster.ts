@@ -13,6 +13,8 @@ export {
   canAccessFullMasterCatalog,
   ECOMMERCE_32_FINISH_COUNT,
   ECOMMERCE_32_FINISHES,
+  ECOMMERCE_PORTAL_OPERATOR_EMAILS,
+  ECOMMERCE_PORTAL_SUPERADMIN_EMAILS,
   ecommerceFinishBySku,
   filterActiveEcommerceFinishes,
   filterAluminumOnlyFrameExport,

@@ -66,6 +66,7 @@ import { Model3dCell, type Phase1Listing } from "./Phase1PortalViews";
 import ExecutiveStackHealthStrip from "./ExecutiveStackHealthStrip";
 import ArchiveImpactModal, { type ArchiveImpactTarget } from "./ArchiveImpactModal";
 import PendingCommitBar, { type StagedPortalChange } from "./PendingCommitBar";
+import type { StackLayerPill } from "@/server/ecommerce/executive-stack-health";
 
 type PortalTab = "finishes" | "products" | "sync";
 type StatusFilter = "all" | "spot_check" | "approved";
@@ -105,6 +106,10 @@ type Props = {
     listing: Phase1Listing,
     focus?: "freight" | "media" | "surface" | "title",
   ) => void;
+  /** SSR-hydrated finishes so Tab 1 never flashes 0/16. */
+  initialAssets?: FinishAssetView[];
+  /** SSR-hydrated 7-pill stack so Katana MRP never unmounts. */
+  initialStackLayers?: StackLayerPill[];
 };
 
 const FAMILY_GROUPS = [
@@ -581,6 +586,8 @@ export default function EcommerceCertificationPortal({
   onToast,
   onListingsChange,
   onOpenProductEdit,
+  initialAssets,
+  initialStackLayers,
 }: Props) {
   const { embedToken } = useEmbedSession();
   const [tab, setTab] = useState<PortalTab>("finishes");
@@ -604,8 +611,8 @@ export default function EcommerceCertificationPortal({
   const [guidance, setGuidance] = useState<string | null>(null);
   const [productTypeFilter, setProductTypeFilter] = useState<ProductTypeFilter>("all");
   const [readinessFilter, setReadinessFilter] = useState<ReadinessFilter>("none");
-  const [assets, setAssets] = useState<FinishAssetView[]>([]);
-  const [assetsLoading, setAssetsLoading] = useState(false);
+  const [assets, setAssets] = useState<FinishAssetView[]>(() => initialAssets ?? []);
+  const [assetsLoading, setAssetsLoading] = useState(!(initialAssets && initialAssets.length > 0));
   const [assetsError, setAssetsError] = useState<string | null>(null);
   const [addName, setAddName] = useState<Partial<Record<FinishAssetCategory, string>>>({});
   const [adding, setAdding] = useState<FinishAssetCategory | null>(null);
@@ -858,7 +865,10 @@ export default function EcommerceCertificationPortal({
       data-testid="ecommerce-certification-portal"
     >
       <div className="w-full max-w-none px-5 py-6 xl:px-8">
-        <ExecutiveStackHealthStrip onToast={onToast} />
+        <ExecutiveStackHealthStrip
+          onToast={onToast}
+          initialLayers={initialStackLayers ?? null}
+        />
         <header className="border-b border-white/10 pb-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -1273,29 +1283,11 @@ export default function EcommerceCertificationPortal({
                     onClick={() => {
                       setReadinessFilter(key);
                       if (key === "spot_check") setStatusFilter("spot_check");
-                      if (key === "approved") setStatusFilter("approved");
+                      else if (key === "approved") setStatusFilter("approved");
+                      else setStatusFilter("all");
                       if (key === "archived") void loadArchivedProducts();
                     }}
                     className={chip(readinessFilter === key)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-2" data-testid="portal-status-filters">
-                {(
-                  [
-                    ["all", "All"],
-                    ["spot_check", "Needs Mia Spot-Check"],
-                    ["approved", "Mia Approved"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    data-testid={`portal-status-${key}`}
-                    onClick={() => setStatusFilter(key)}
-                    className={chip(statusFilter === key)}
                   >
                     {label}
                   </button>

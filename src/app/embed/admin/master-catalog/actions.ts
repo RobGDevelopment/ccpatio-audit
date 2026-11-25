@@ -4177,7 +4177,7 @@ export async function getExecutiveStackHealthAction(): Promise<
     );
     const supabaseLayer: StackLayerPill = {
       id: "supabase",
-      label: "Supabase DB & Storage",
+      label: "Supabase",
       status: storageReady ? "Healthy" : "Degraded",
       detail: storageReady ? "PostgreSQL reachable · Storage env present" : "Storage env incomplete",
     };
@@ -4231,10 +4231,10 @@ export async function getExecutiveStackHealthAction(): Promise<
 
     const qboLayer: StackLayerPill = {
       id: "qbo",
-      label: "QuickBooks Online",
+      label: "QuickBooks",
       status: lampFromState(snapshot.qbo.state),
       detail: `${snapshot.qbo.detail} · QBO_LEDGER_MODE=${qboLedgerMode} (read-only)`,
-      actions: [{ id: "qbo_reconnect", label: "Reconnect" }],
+      actions: [{ id: "qbo_reconnect", label: "Reconnect QuickBooks" }],
     };
 
     const wooProbe = await testWooConnection();
@@ -4263,7 +4263,7 @@ export async function getExecutiveStackHealthAction(): Promise<
 
     const ghlLayer: StackLayerPill = {
       id: "ghl",
-      label: "GoHighLevel CRM",
+      label: "GHL CRM",
       status: !ghl.configured
         ? "Degraded"
         : ghl.ok
@@ -4324,7 +4324,7 @@ export async function getExecutiveStackHealthAction(): Promise<
           : "Degraded";
     const inngestLayer: StackLayerPill = {
       id: "inngest_dlq",
-      label: "Inngest Queue / DLQ",
+      label: "Inngest",
       status: dlqLamp,
       detail:
         dlq.open === 0

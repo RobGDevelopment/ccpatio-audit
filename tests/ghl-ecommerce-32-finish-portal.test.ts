@@ -29,7 +29,14 @@ import {
 import { MET_ALUM_SKU, MET_STEEL_SKU } from "@/server/woocommerce/finish-keys";
 import { STEEL_DISCONTINUED_REASON } from "@/server/ecommerce/alu10-pricing";
 import { buildFinishAutoSku as engineBuildFinishSku, isFinishSkuLocked as engineSkuLocked } from "@/server/ecommerce/auto-sku-engine";
-import { classifyWooProbeBody } from "@/server/ecommerce/executive-stack-health";
+import {
+  classifyWooProbeBody,
+  probeFailedStackLayers,
+} from "@/server/ecommerce/executive-stack-health";
+import {
+  embedKeyFromSearchRecord,
+  sanitizeEmbedEmailParam,
+} from "@/lib/embed-auth";
 
 const ROOT = process.cwd();
 
@@ -135,9 +142,11 @@ describe("auto-SKU generation + SKU lock", () => {
 });
 
 describe("E-Commerce portal role access", () => {
-  it("allows Mia, Kian, Superadmin, and GHL embed; denies Ops_Manager", () => {
+  it("allows Mia, Kian, Rob (rjg.cal), Superadmin, and GHL embed; denies Ops_Manager", () => {
     expect(canAccessEcommercePortal({ email: "mia@ccpatio.com", role: "Designer" })).toBe(true);
     expect(canAccessEcommercePortal({ email: "kian@ccpatio.com", role: null })).toBe(true);
+    expect(canAccessEcommercePortal({ email: "RJG.CAL@GMAIL.COM", role: null })).toBe(true);
+    expect(canAccessEcommercePortal({ email: "rjg.cal@gmail.com", role: "Designer" })).toBe(true);
     expect(canAccessEcommercePortal({ email: "ops@ccpatio.com", role: "SuperAdmin" })).toBe(true);
     expect(canAccessEcommercePortal({ email: "ops@ccpatio.com", role: "Ops_Manager" })).toBe(false);
     expect(canAccessEcommercePortal({ email: "ghl-embed@ccpatio.com", embedSession: true })).toBe(
@@ -147,6 +156,7 @@ describe("E-Commerce portal role access", () => {
       false,
     );
     expect(canAccessFullMasterCatalog({ role: "SuperAdmin" })).toBe(true);
+    expect(canAccessFullMasterCatalog({ email: "rjg.cal@gmail.com", role: null })).toBe(true);
     expect(canAccessFullMasterCatalog({ role: "Ops_Manager" })).toBe(false);
   });
 });
@@ -186,6 +196,10 @@ describe("default GHL route is dark Executive Control Center (no legacy chrome)"
       join(ROOT, "src/app/embed/admin/master-catalog/page.tsx"),
       "utf8",
     );
+    const client = readFileSync(
+      join(ROOT, "src/app/embed/admin/master-catalog/MasterCatalogClient.tsx"),
+      "utf8",
+    );
     const portal = readFileSync(
       join(ROOT, "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx"),
       "utf8",
@@ -214,12 +228,19 @@ describe("default GHL route is dark Executive Control Center (no legacy chrome)"
       join(ROOT, "src/app/embed/admin/master-catalog/ecommerce/PendingCommitBar.tsx"),
       "utf8",
     );
+    const authGate = readFileSync(
+      join(ROOT, "src/app/embed/admin/master-catalog/ecommerce/ExecutiveAuthGate.tsx"),
+      "utf8",
+    );
 
     expect(page).not.toContain('view") === "legacy-admin"');
     expect(page).not.toContain("legacy-back-to-portal");
-    expect(page).toContain("EcommerceCertificationPortal");
-    expect(page).toContain("PortalProductDrawer");
-    expect(page).toContain("Access Restricted");
+    expect(page).toContain("MasterCatalogClient");
+    expect(page).toContain("ExecutiveAuthGate");
+    expect(page).toContain("resolveMasterCatalogEmbedAuth");
+    expect(client).toContain("EcommerceCertificationPortal");
+    expect(client).toContain("PortalProductDrawer");
+    expect(client).toContain("ecommerce-access-denied");
 
     expect(layout).toContain("h-[100dvh]");
     expect(layout).toContain("bg-[#0b0f17]");
@@ -243,12 +264,23 @@ describe("default GHL route is dark Executive Control Center (no legacy chrome)"
     expect(portal).toContain("ExecutiveStackHealthStrip");
     expect(portal).toContain("ArchiveImpactModal");
     expect(portal).toContain("PendingCommitBar");
+    expect(portal).toContain("portal-readiness-filters");
+    expect(portal).not.toContain("portal-status-filters");
     expect(portal).not.toContain("Recalculate Upcharge %");
     expect(portal).not.toContain("upcharge-pct-input");
     expect(portal).not.toContain("legacy-admin");
     expect(portal).not.toContain("mission-control");
 
     expect(stackStrip).toContain("executive-stack-health-strip");
+    expect(stackStrip).toContain("probeFailedStackLayers");
+    expect(stackStrip).not.toContain("setLayers(null)");
+    expect(authGate).toContain("executive-auth-gate");
+    expect(authGate).toContain("executive-auth-gate-message");
+    const embedAuth = readFileSync(
+      join(ROOT, "src/server/ecommerce/master-catalog-embed-auth.ts"),
+      "utf8",
+    );
+    expect(embedAuth).toContain("Missing or invalid GHL embed key (?key=...)");
     expect(archiveModal).toContain("archive-impact-modal");
     expect(commitBar).toContain("pending-commit-bar");
 
@@ -337,6 +369,39 @@ describe("portal readiness + spot-check parity helpers", () => {
         n === "x-ccpatio-embed-token" ? "hdr-tok" : null,
       ),
     ).toBe("hdr-tok");
+  });
+
+  it("accepts key / access_key / embedKey aliases and sanitizes GHL email placeholders", () => {
+    expect(embedKeyFromSearchRecord({ key: "secret-a" })).toBe("secret-a");
+    expect(embedKeyFromSearchRecord({ access_key: "secret-b" })).toBe("secret-b");
+    expect(embedKeyFromSearchRecord({ embedKey: "secret-c" })).toBe("secret-c");
+    expect(
+      embedKeyFromSearchRecord(new URLSearchParams("key=from-qs&embedKey=legacy")),
+    ).toBe("from-qs");
+    expect(sanitizeEmbedEmailParam("rjg.cal@gmail.com")).toBe("rjg.cal@gmail.com");
+    expect(sanitizeEmbedEmailParam("{{user.email}}")).toBeNull();
+    expect(sanitizeEmbedEmailParam("")).toBeNull();
+    expect(sanitizeEmbedEmailParam("not-an-email")).toBeNull();
+  });
+
+  it("keeps all 7 stack pills (incl. Katana MRP) on probe failure", () => {
+    const layers = probeFailedStackLayers();
+    expect(layers).toHaveLength(7);
+    expect(layers.map((l) => l.id)).toEqual([
+      "supabase",
+      "katana",
+      "qbo",
+      "woocommerce",
+      "ghl",
+      "fedex",
+      "inngest_dlq",
+    ]);
+    const katana = layers.find((l) => l.id === "katana");
+    expect(katana?.label).toBe("Katana MRP");
+    expect(katana?.actions?.some((a) => a.id === "katana_reset_bucket_sync")).toBe(true);
+    expect(katana?.detail).toContain("Probe Failed");
+    const qbo = layers.find((l) => l.id === "qbo");
+    expect(qbo?.actions?.some((a) => a.label === "Reconnect QuickBooks")).toBe(true);
   });
 });
 
