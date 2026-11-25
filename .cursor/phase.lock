@@ -1,27 +1,22 @@
 {
-  "phase_id": "ghl-ecommerce-32-finish-portal",
-  "intent": "Unified GHL E-Commerce tab layout on existing route, exact 32-finish e-commerce roster with aluminum-only frame policy, locked auto-generated SKUs with +/- row management, and Vitest verification.",
+  "phase_id": "highrez-swatch-crop-match-upload",
+  "intent": "32-finish local image pipeline: tape-measure scale calibration, safe-square crop/deskew, illumination flattening, 26 studio matches + 6 synthetic fallbacks, QA contact sheet + manifest, gated Supabase dry-run uploader. Media stays outside git under C:\\Workspace\\ccpatio-media-staging. Do not flip *_MODE or DOWNSTREAM_MUTATIONS.",
   "mode": "edit",
   "base_ref": "HEAD",
   "allow_dirty_base": true,
   "override_blast_cap": true,
-  "expected_blast_radius": 14,
-  "target_test": "npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts",
+  "expected_blast_radius": 9,
+  "target_test": "npx vitest run tests/highrez-swatch-pipeline.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/session-stamp.json",
     ".cursor/aar.json",
     "BUILD_PLAN.md",
-    "src/app/embed/admin/master-catalog/actions.ts",
-    "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx",
-    "src/app/embed/admin/master-catalog/ecommerce/SwatchesFinishesDrawer.tsx",
-    "src/app/embed/admin/master-catalog/page.tsx",
-    "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx",
-    "src/lib/ecommerce-roster.ts",
+    "scripts/ops/process-highrez-finishes.ts",
+    "scripts/ops/process-highrez-finishes-cv.py",
+    "scripts/ops/upload-highrez-finishes.ts",
     "src/server/assets/finish-assets.ts",
-    "src/server/ecommerce/auto-sku-engine.ts",
-    "src/server/ecommerce/ecommerce-32-finish-roster.ts",
-    "src/server/ecommerce/phase1-portal.ts",
-    "tests/ghl-ecommerce-32-finish-portal.test.ts"
+    "package.json",
+    "tests/highrez-swatch-pipeline.test.ts"
   ]
 }

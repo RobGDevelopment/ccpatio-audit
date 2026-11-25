@@ -466,6 +466,67 @@ export async function addEcommerceFinishAsset(input: {
 
 export { isEcommerce32FinishSku, filterActiveEcommerceFinishes };
 
+/** Yardi / WebGL physical scale helpers for high-rez finish textures. */
+export type FinishPhysicalScale = {
+  /** Physical inches spanned by one edge of the 2048 texture tile. */
+  repeat_inches: number;
+  /**
+   * Yardi 3D plugin texture scale: inches-per-texture-unit.
+   * Anchored so Cabana Classic vertical stripe period ≈ 7" when known.
+   */
+  texture_scale: number;
+  sample_width_in: number;
+  sample_height_in: number;
+  pattern_repeat_w_in: number | null;
+  pattern_repeat_h_in: number | null;
+};
+
+/**
+ * Derive `repeat_inches` / `texture_scale` from measured crop width + optional roster pattern.
+ * Cabana Classic anchors ~7" vertical stripe when stripe period is available.
+ */
+export function deriveFinishPhysicalScale(input: {
+  croppedWidthIn: number | null | undefined;
+  patternRepeatIn?: { w: number; h: number } | null;
+  /** Measured vertical stripe period in inches (e.g. Cabana ≈ 7). */
+  stripePeriodIn?: number | null;
+  sku?: string;
+}): FinishPhysicalScale {
+  const cropped =
+    input.croppedWidthIn != null && Number.isFinite(input.croppedWidthIn) && input.croppedWidthIn > 0
+      ? input.croppedWidthIn
+      : 8;
+  const stripe =
+    input.stripePeriodIn != null && Number.isFinite(input.stripePeriodIn) && input.stripePeriodIn > 0
+      ? input.stripePeriodIn
+      : null;
+  const isCabana = (input.sku ?? "").toUpperCase() === "FAB-CAB-CLA";
+  const repeat_inches = stripe ?? (isCabana ? 7 : cropped);
+  const texture_scale = repeat_inches;
+  const pr = input.patternRepeatIn ?? null;
+  return {
+    repeat_inches: Number(repeat_inches.toFixed(3)),
+    texture_scale: Number(texture_scale.toFixed(3)),
+    sample_width_in: Number(cropped.toFixed(3)),
+    sample_height_in: Number(cropped.toFixed(3)),
+    pattern_repeat_w_in: pr ? Number(pr.w.toFixed(3)) : null,
+    pattern_repeat_h_in: pr ? Number(pr.h.toFixed(3)) : null,
+  };
+}
+
+/** Supabase Storage object prefix for photoshoot-verified finishes. */
+export function finishStoragePrefix(sku: string): string {
+  return `finishes/${sku.trim().toUpperCase()}`;
+}
+
+export function finishTextureObjectPath(sku: string): string {
+  return `${finishStoragePrefix(sku)}/texture-2048.jpg`;
+}
+
+export function finishThumbObjectPath(sku: string): string {
+  return `${finishStoragePrefix(sku)}/thumb-512.jpg`;
+}
+
 export type FullFinishesManifest = {
   fabrics: unknown[];
   powders: unknown[];

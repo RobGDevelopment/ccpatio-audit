@@ -160,7 +160,9 @@
     "ecom:apply-research": "npx dotenv -e .env.local -- tsx scripts/apply-handoff-research.ts",
     "ecom:harden-spark": "npx tsx scripts/harden-spark-handoff-mq.ts",
     "ecom:price-audit": "npx tsx scripts/audit-price-update.ts",
-    "vendor:handoff-workbook": "npx dotenv -e .env.local -- tsx scripts/generate-vendor-handoff-workbook.ts"
+    "vendor:handoff-workbook": "npx dotenv -e .env.local -- tsx scripts/generate-vendor-handoff-workbook.ts",
+    "finishes:process": "tsx scripts/ops/process-highrez-finishes.ts",
+    "finishes:upload": "tsx scripts/ops/upload-highrez-finishes.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

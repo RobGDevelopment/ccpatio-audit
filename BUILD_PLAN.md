@@ -1,28 +1,34 @@
-# BUILD_PLAN — `ghl-ecommerce-32-finish-portal`
+# BUILD_PLAN — `highrez-swatch-crop-match-upload`
 
-**Base:** `HEAD`  
+**Base:** `HEAD` (`43273c8`)  
 **Mode:** edit (Track 2 locked)  
 **Blast cap override:** true  
-**Expected blast radius:** 14
+**Expected blast radius:** 9 (QCA excludes `.cursor/aar.json`)
 
 ## Intent
 
-Unify the GHL `E-Commerce` tab into a Handoff & Certification portal scoped to the exact
-32 e-commerce finishes (19932.jpg), with locked auto-generated SKUs, `+`/`−` finish rows
-for Mia / Kian / Superadmin, Aluminum-only frame exports, and Vitest coverage. Do not flip
-any `*_MODE` / `DOWNSTREAM_MUTATIONS` flags. High-res media staging lives outside the repo
-(`C:\Workspace\ccpatio-media-staging\`); `docs/HighRezImages/` must not remain in-tree.
+32-finish local image pipeline: tape-measure scale calibration, safe-square crop /
+deskew, illumination flattening, match 26 unique studio photos + synthesize 6 clean
+fallbacks, QA contact sheet + editable `manifest.json`, and a gated Supabase uploader
+defaulting to `--dry-run`. Keep ALL raw inputs and generated media strictly outside
+the git repo under `C:\Workspace\ccpatio-media-staging\`. Do **not** flip any
+`*_MODE` or `DOWNSTREAM_MUTATIONS` flags.
 
 ## Workstreams
 
-1. **Exact 32-finish roster** — `src/server/ecommerce/ecommerce-32-finish-roster.ts`
-   (Sunbrella 16 + Ultraleather 4 + Dekton 6 `DKT-*` + Powder 6). Filter showroom extras
-   from e-commerce views / Woo manifests. Aluminum-only frame export strips steel / +10%.
-2. **Portal + roles** — Certification strip on master-catalog E-Commerce tab; access for
-   Mia, Kian, Superadmin (and GHL embed); Superadmin link to Mission Control.
-3. **Locked SKUs + `+`/`−`** — Auto-mint FAB-/PWD-/DKT- on add; SKU read-only; soft-disable
-   via `uploaded_by=ecommerce:disabled`; aliases recorded on roster definitions.
-4. **Vitest** — `tests/ghl-ecommerce-32-finish-portal.test.ts`.
+1. **`finishes:process`** — `scripts/ops/process-highrez-finishes.ts` (+ OpenCV/PIL
+   helper `scripts/ops/process-highrez-finishes-cv.py`): read
+   `HighRezImages/{Dekton,Fabrics,PowderCoat}`, calibrate `pixels_per_inch` from
+   yellow tape, safe interior square crop (8–10% inset), deskew, flatten lighting,
+   write `processed/textures/{sku}.jpg` (2048) + `processed/thumbs/{sku}.jpg` (512),
+   match 26 unique studio shots to the canonical 32 roster, synthesize 6 fallbacks,
+   emit `processed/manifest.json` + `processed/qa-contact-sheet.html`.
+2. **`finishes:upload`** — `scripts/ops/upload-highrez-finishes.ts`: default `--dry-run`
+   validates 32/32 + dimensions + SKUs; `--apply` uploads to Supabase
+   `finishes/{sku}/...` and persists public URLs + `repeat_inches` / `texture_scale`.
+3. **Additive helpers** — `src/server/assets/finish-assets.ts` only if needed for
+   `repeat_inches` / `texture_scale` metadata mapping (no schema drops).
+4. **Vitest** — `tests/highrez-swatch-pipeline.test.ts`.
 
 ## Allowed files
 
@@ -30,20 +36,22 @@ any `*_MODE` / `DOWNSTREAM_MUTATIONS` flags. High-res media staging lives outsid
 2. `.cursor/session-stamp.json`
 3. `.cursor/aar.json`
 4. `BUILD_PLAN.md`
-5. `src/app/embed/admin/master-catalog/actions.ts`
-6. `src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx`
-7. `src/app/embed/admin/master-catalog/ecommerce/SwatchesFinishesDrawer.tsx`
-8. `src/app/embed/admin/master-catalog/page.tsx`
-9. `src/app/partner/primeview-handoff/PartnerHandoffClient.tsx`
-10. `src/lib/ecommerce-roster.ts`
-11. `src/server/assets/finish-assets.ts`
-12. `src/server/ecommerce/auto-sku-engine.ts`
-13. `src/server/ecommerce/ecommerce-32-finish-roster.ts`
-14. `src/server/ecommerce/phase1-portal.ts`
-15. `tests/ghl-ecommerce-32-finish-portal.test.ts`
+5. `scripts/ops/process-highrez-finishes.ts`
+6. `scripts/ops/process-highrez-finishes-cv.py`
+7. `scripts/ops/upload-highrez-finishes.ts`
+8. `src/server/assets/finish-assets.ts`
+9. `package.json`
+10. `tests/highrez-swatch-pipeline.test.ts`
 
 ## Target test
 
 ```bash
-npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts
+npx vitest run tests/highrez-swatch-pipeline.test.ts
+```
+
+## Commands
+
+```bash
+npm run finishes:process
+npm run finishes:upload -- --dry-run
 ```

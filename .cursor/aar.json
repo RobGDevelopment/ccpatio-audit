@@ -1,38 +1,44 @@
 {
-  "phase_id": "ghl-ecommerce-32-finish-portal",
+  "phase_id": "highrez-swatch-crop-match-upload",
   "base_ref": "HEAD",
-  "blast_radius": 14,
+  "blast_radius": 9,
   "counts": {
-    "files": 14,
-    "tracked": 11,
-    "untracked": 3,
-    "insertions": 596,
-    "deletions": 177
+    "files": 9,
+    "tracked": 5,
+    "untracked": 4,
+    "insertions": 111,
+    "deletions": 45
   },
   "files": [
     {
       "status": "??",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx",
+      "path": "scripts/ops/process-highrez-finishes-cv.py",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/ecommerce/ecommerce-32-finish-roster.ts",
+      "path": "scripts/ops/process-highrez-finishes.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/ghl-ecommerce-32-finish-portal.test.ts",
+      "path": "scripts/ops/upload-highrez-finishes.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/highrez-swatch-pipeline.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 15,
-      "deletions": 15
+      "insertions": 9,
+      "deletions": 14
     },
     {
       "status": "M",
@@ -44,62 +50,27 @@
       "status": "M",
       "path": "BUILD_PLAN.md",
       "insertions": 36,
-      "deletions": 20
+      "deletions": 28
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 153,
+      "path": "package.json",
+      "insertions": 3,
       "deletions": 1
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/SwatchesFinishesDrawer.tsx",
-      "insertions": 137,
-      "deletions": 23
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/page.tsx",
-      "insertions": 50,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx",
-      "insertions": 8,
-      "deletions": 8
-    },
-    {
-      "status": "M",
-      "path": "src/lib/ecommerce-roster.ts",
-      "insertions": 23,
-      "deletions": 0
-    },
-    {
-      "status": "M",
       "path": "src/server/assets/finish-assets.ts",
-      "insertions": 123,
-      "deletions": 75
-    },
-    {
-      "status": "M",
-      "path": "src/server/ecommerce/auto-sku-engine.ts",
-      "insertions": 10,
+      "insertions": 61,
       "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/server/ecommerce/phase1-portal.ts",
-      "insertions": 39,
-      "deletions": 31
     }
   ],
   "untracked": [
-    "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx",
-    "src/server/ecommerce/ecommerce-32-finish-roster.ts",
-    "tests/ghl-ecommerce-32-finish-portal.test.ts"
+    "scripts/ops/process-highrez-finishes-cv.py",
+    "scripts/ops/process-highrez-finishes.ts",
+    "scripts/ops/upload-highrez-finishes.ts",
+    "tests/highrez-swatch-pipeline.test.ts"
   ],
-  "file_list_sha256": "81d7c01ae77a556a23be5d1e56c2bcca853f4cbf36d67a29f56b4e8d5898bb89",
+  "file_list_sha256": "734def1ef958e1765322792e94309f9342e4a513ddca2417c5719c002a993382",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }
