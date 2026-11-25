@@ -9,7 +9,7 @@ import {
   ExternalLink,
   Loader2,
   Lock,
-  Minus,
+  Archive,
   Palette,
   Plus,
   Search,
@@ -45,6 +45,7 @@ import { sameGroupedParent } from "@/server/ecommerce/grouped-sku-resolve";
 import {
   addFinishRowForPortal,
   disableFinishRowForPortal,
+  reenableFinishRowForPortal,
   dryRunWooPushForSku,
   getPrimeviewHandoffDownloadUrls,
   getPrimeviewPartnerHandoffLink,
@@ -59,9 +60,29 @@ import {
 } from "../actions";
 import { DropButton, uploadEmbedAsset } from "./SwatchesFinishesDrawer";
 import { Model3dCell, type Phase1Listing } from "./Phase1PortalViews";
+import ExecutiveStackHealthStrip from "./ExecutiveStackHealthStrip";
+import ArchiveImpactModal, { type ArchiveImpactTarget } from "./ArchiveImpactModal";
+import PendingCommitBar, { type StagedPortalChange } from "./PendingCommitBar";
 
 type PortalTab = "finishes" | "products" | "sync";
 type StatusFilter = "all" | "spot_check" | "approved";
+type FinishSubFilter =
+  | "all_active"
+  | "sunbrella"
+  | "ultraleather"
+  | "dekton"
+  | "powder"
+  | "addons"
+  | "archived";
+type ProductTypeFilter = "all" | "sofas" | "chairs" | "tables" | "ottomans" | "swings" | "misc";
+type ReadinessFilter =
+  | "none"
+  | "missing_dims"
+  | "missing_media"
+  | "spot_check"
+  | "approved"
+  | "phase2"
+  | "archived";
 
 type Props = {
   listings: Phase1Listing[];
@@ -73,15 +94,14 @@ type Props = {
   variationCount?: number;
   simpleCount?: number;
   purchasableSkuCount?: number;
-  canFullCatalog: boolean;
   wooBadgeLabel: string | null;
   wooConfigured: boolean;
-  systemHealth: "Healthy" | "Attention Needed" | null;
-  onOpenSystemHealth: () => void;
   onToast: (msg: string) => void;
   onListingsChange: (next: Phase1Listing[]) => void;
-  onOpenProductEdit: (listing: Phase1Listing) => void;
-  onOpen3d: (sku: string, name: string) => void;
+  onOpenProductEdit: (
+    listing: Phase1Listing,
+    focus?: "freight" | "media" | "surface" | "title",
+  ) => void;
 };
 
 const FAMILY_GROUPS = [
@@ -138,13 +158,17 @@ function DarkFinishRow({
   embedToken,
   onChanged,
   onToast,
-  onRemove,
+  onArchive,
+  restoreMode = false,
+  onRestore,
 }: {
   asset: FinishAssetView;
   embedToken: string | null;
   onChanged: () => void;
   onToast: (msg: string) => void;
-  onRemove: (sku: string) => void;
+  onArchive: (sku: string, displayName: string) => void;
+  restoreMode?: boolean;
+  onRestore?: (sku: string) => void;
 }) {
   const [displayName, setDisplayName] = useState(asset.displayName);
   const [repeatW, setRepeatW] = useState(asset.patternRepeatWIn?.toString() ?? "");
@@ -185,7 +209,24 @@ function DarkFinishRow({
     onChanged();
   }
 
+  function fieldDirty() {
+    const parse = (v: string) => {
+      const t = v.trim();
+      if (!t) return null;
+      const n = Number(t);
+      return Number.isFinite(n) && n >= 0 ? n : null;
+    };
+    return (
+      (displayName.trim() && displayName.trim() !== asset.displayName) ||
+      parse(repeatW) !== asset.patternRepeatWIn ||
+      parse(repeatH) !== asset.patternRepeatHIn ||
+      parse(textureScale) !==
+        (asset.patternRepeatWIn ?? asset.sampleWidthIn ?? null)
+    );
+  }
+
   async function save() {
+    if (!fieldDirty()) return;
     setSaving(true);
     setSaveFeedback("saving");
     if (displayName.trim() && displayName.trim() !== asset.displayName) {
@@ -264,7 +305,7 @@ function DarkFinishRow({
             readOnly
             value={asset.sku}
             aria-readonly="true"
-            className="w-32 cursor-not-allowed rounded border border-white/10 bg-[#0b0f17] px-1.5 py-0.5 font-mono text-[11px] text-amber-300"
+            className="w-32 cursor-not-allowed whitespace-nowrap rounded border border-white/10 bg-[#0b0f17] px-1.5 py-0.5 font-mono text-[11px] text-amber-300"
           />
         </span>
       </td>
@@ -272,7 +313,10 @@ function DarkFinishRow({
         <div className="flex flex-col gap-1">
           <input
             value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
+            onChange={(e) => {
+              setDisplayName(e.target.value);
+              setSaveFeedback("idle");
+            }}
             onBlur={() => void save()}
             data-testid={`finish-display-${asset.sku}`}
             className={`w-full min-w-[8rem] rounded px-2 py-1 text-xs ${FINISH_INPUT}`}
@@ -332,7 +376,7 @@ function DarkFinishRow({
             : "dekton"}
       </td>
       <td className="px-3 py-2.5">
-        <div className="flex min-w-[10rem] flex-col gap-1">
+        <div className="flex min-w-[12rem] flex-row gap-1">
           <DropButton
             label="Swatch"
             accept={IMAGE_ACCEPT}
@@ -354,15 +398,26 @@ function DarkFinishRow({
         </div>
       </td>
       <td className="px-3 py-2.5">
-        <button
-          type="button"
-          data-testid={`finish-row-remove-${asset.sku}`}
-          title="Soft-disable from e-commerce roster"
-          onClick={() => onRemove(asset.sku)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
-        >
-          <Minus className="h-3.5 w-3.5" />
-        </button>
+        {restoreMode ? (
+          <button
+            type="button"
+            data-testid={`finish-row-restore-${asset.sku}`}
+            onClick={() => onRestore?.(asset.sku)}
+            className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-200"
+          >
+            Restore
+          </button>
+        ) : (
+          <button
+            type="button"
+            data-testid={`finish-row-archive-${asset.sku}`}
+            title="Archive from e-commerce roster"
+            onClick={() => onArchive(asset.sku, asset.displayName)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
+          >
+            <Archive className="h-3.5 w-3.5" />
+          </button>
+        )}
       </td>
     </tr>
   );
@@ -518,18 +573,22 @@ export default function EcommerceCertificationPortal({
   variationCount = PHASE1_VARIATION_COUNT,
   simpleCount = PHASE1_SIMPLE_COUNT,
   purchasableSkuCount = PHASE1_PURCHASABLE_SKU_COUNT,
-  canFullCatalog,
   wooBadgeLabel,
   wooConfigured,
-  systemHealth,
-  onOpenSystemHealth,
   onToast,
   onListingsChange,
   onOpenProductEdit,
-  onOpen3d,
 }: Props) {
   const { embedToken } = useEmbedSession();
   const [tab, setTab] = useState<PortalTab>("finishes");
+  const [finishSubFilter, setFinishSubFilter] = useState<FinishSubFilter>("all_active");
+  const [archivedAssets, setArchivedAssets] = useState<FinishAssetView[]>([]);
+  const [stagedChanges, setStagedChanges] = useState<StagedPortalChange[]>([]);
+  const [committing, setCommitting] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<ArchiveImpactTarget | null>(null);
+  const [guidance, setGuidance] = useState<string | null>(null);
+  const [productTypeFilter, setProductTypeFilter] = useState<ProductTypeFilter>("all");
+  const [readinessFilter, setReadinessFilter] = useState<ReadinessFilter>("none");
   const [assets, setAssets] = useState<FinishAssetView[]>([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [assetsError, setAssetsError] = useState<string | null>(null);
@@ -564,6 +623,7 @@ export default function EcommerceCertificationPortal({
     const res = await listFinishAssetsForPortal();
     if (res.ok) {
       setAssets(res.assets);
+      setArchivedAssets(res.archivedAssets ?? []);
       setAssetsError(null);
     } else {
       setAssetsError(res.error);
@@ -594,9 +654,34 @@ export default function EcommerceCertificationPortal({
 
   const productRows = useMemo(() => {
     const q = search.toLowerCase().trim();
+    const typeMatch = (name: string) => {
+      const n = name.toLowerCase();
+      switch (productTypeFilter) {
+        case "sofas":
+          return n.includes("sofa") || n.includes("sectional");
+        case "chairs":
+          return n.includes("chair") || n.includes("lounger") || n.includes("chaise");
+        case "tables":
+          return n.includes("table") || n.includes("dining");
+        case "ottomans":
+          return n.includes("ottoman") || n.includes("bench");
+        case "swings":
+          return n.includes("swing");
+        case "misc":
+          return (
+            n.includes("umbrella") ||
+            n.includes("heater") ||
+            n.includes("lamp") ||
+            n.includes("pool")
+          );
+        default:
+          return true;
+      }
+    };
     return listings
       .filter((l) => {
         if (collection && l.collectionLabel !== collection) return false;
+        if (!typeMatch(l.productName)) return false;
         if (statusFilter === "approved" && !l.miaApproved) return false;
         if (
           statusFilter === "spot_check" &&
@@ -609,6 +694,27 @@ export default function EcommerceCertificationPortal({
         ) {
           return false;
         }
+        const freight = freightDimsBadge({
+          weightLb: l.hubWeight,
+          lengthIn: l.hubLength,
+          widthIn: l.hubDepth,
+          heightIn: l.hubHeight,
+        });
+        if (readinessFilter === "missing_dims" && freight === "Ready") return false;
+        if (readinessFilter === "missing_media" && Boolean(l.model3dGlbUrl || l.imageUrl))
+          return false;
+        if (
+          readinessFilter === "spot_check" &&
+          !needsMiaSpotCheck({
+            globalSku: l.globalSku,
+            attributes: l.attributes,
+            wooSku: l.wooSku,
+            miaApproved: l.miaApproved,
+          })
+        ) {
+          return false;
+        }
+        if (readinessFilter === "approved" && !l.miaApproved) return false;
         if (!q) return true;
         return (
           l.productName.toLowerCase().includes(q) ||
@@ -617,7 +723,7 @@ export default function EcommerceCertificationPortal({
         );
       })
       .sort((a, b) => a.sheetOrder - b.sheetOrder || a.globalSku.localeCompare(b.globalSku));
-  }, [listings, search, collection, statusFilter]);
+  }, [listings, search, collection, statusFilter, productTypeFilter, readinessFilter]);
 
   async function handleAdd(category: FinishAssetCategory) {
     const name = (addName[category] ?? "").trim();
@@ -642,13 +748,38 @@ export default function EcommerceCertificationPortal({
     await loadAssets();
   }
 
-  async function handleRemove(sku: string) {
-    const res = await disableFinishRowForPortal(sku);
-    if (!res.ok) {
-      onToast(res.error);
-      return;
+  function stageArchiveFinish(sku: string, displayName: string) {
+    const id = `archive_finish:${sku}:${Date.now()}`;
+    setStagedChanges((prev) => [
+      ...prev.filter((c) => !(c.kind === "archive_finish" && c.sku === sku)),
+      { id, kind: "archive_finish", sku, label: displayName, stagedAt: new Date().toISOString() },
+    ]);
+    onToast(`Staged archive for ${sku}`);
+  }
+
+  async function commitStagedChanges() {
+    if (!stagedChanges.length) return;
+    setCommitting(true);
+    for (const change of stagedChanges) {
+      if (change.kind === "archive_finish") {
+        const res = await disableFinishRowForPortal(change.sku);
+        if (!res.ok) {
+          onToast(res.error);
+          setCommitting(false);
+          return;
+        }
+      } else if (change.kind === "restore_finish") {
+        const res = await reenableFinishRowForPortal(change.sku);
+        if (!res.ok) {
+          onToast(res.error);
+          setCommitting(false);
+          return;
+        }
+      }
     }
-    onToast(`Removed ${sku} from e-commerce roster`);
+    setStagedChanges([]);
+    setCommitting(false);
+    onToast("Committed roster changes");
     await loadAssets();
   }
 
@@ -668,19 +799,20 @@ export default function EcommerceCertificationPortal({
       className="h-[100dvh] max-h-[100dvh] min-h-0 overflow-y-auto overscroll-contain bg-[#0b0f17] pb-24 text-slate-100"
       data-testid="ecommerce-certification-portal"
     >
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+      <div className="w-full max-w-none px-5 py-6 xl:px-8">
+        <ExecutiveStackHealthStrip onToast={onToast} />
         <header className="border-b border-white/10 pb-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90">
-                CC PATIO · E-COMMERCE SINGLE SOURCE OF TRUTH
+                CC PATIO · EXECUTIVE CONTROL PLANE
               </p>
               <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                E-Commerce Certification &amp; Handoff Portal
+                Executive Control Center
               </h1>
               <p className="mt-2 max-w-2xl text-sm text-slate-400">
-                Exact {ECOMMERCE_32_FINISH_COUNT} storefront finishes · locked system SKUs · Mia / Kian /
-                Superadmin certification lane for GHL.
+                Unified dark certification lane — {assets.length} active storefront finishes · locked
+                system SKUs · Mia / Kian / SuperAdmin.
               </p>
               <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-200 ring-1 ring-amber-500/20">
                 <Shield className="h-3.5 w-3.5" />
@@ -688,75 +820,76 @@ export default function EcommerceCertificationPortal({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span
+              <button
+                type="button"
                 className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-semibold text-emerald-300 ring-1 ring-emerald-500/30"
                 data-testid="mia-approved-pill"
+                onClick={() => {
+                  setTab("products");
+                  setStatusFilter("approved");
+                  setGuidance(`Filtering ${approvedShown} Mia-approved SOW items.`);
+                }}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Mia Approved {approvedShown} / {sowShown}
-              </span>
-              <span
+              </button>
+              <button
+                type="button"
                 className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/15 px-3 py-1 text-xs font-semibold text-sky-200 ring-1 ring-sky-500/30"
                 data-testid="storefront-readiness-pill"
-                title="Storefront readiness for Mia / Kian (QBO/DLQ health lives in Mission Control)"
+                onClick={() => {
+                  setTab("finishes");
+                  setFinishSubFilter("all_active");
+                  setGuidance("Active finish roster — upload swatches + 2048px textures.");
+                }}
               >
                 <Activity className="h-3.5 w-3.5" />
-                Storefront Readiness ·{" "}
-                {assets.length >= ECOMMERCE_32_FINISH_COUNT ? "32/32 Finishes" : `${assets.length}/32`}
-              </span>
-              {canFullCatalog ? (
-                <>
-                  <button
-                    type="button"
-                    data-testid="system-health-pill"
-                    onClick={onOpenSystemHealth}
-                    title={`System Health · ${systemHealth ?? "…"} (Superadmin)`}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
-                      systemHealth === "Attention Needed"
-                        ? "bg-amber-500/15 text-amber-200 ring-amber-500/30"
-                        : "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30"
-                    }`}
-                  >
-                    <Activity className="h-3.5 w-3.5" />
-                    System Health · {systemHealth ?? "…"}
-                  </button>
-                  <a
-                    href="/embed/admin/master-catalog?view=legacy-admin"
-                    data-testid="superadmin-raw-catalog-link"
-                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 hover:border-amber-400/40 hover:text-amber-200"
-                  >
-                    Raw Catalog Grid →
-                  </a>
-                  <a
-                    href="/admin/mission-control"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-testid="superadmin-mission-control-link"
-                    title={`Mission Control → System Health · ${systemHealth ?? "…"}`}
-                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 hover:border-amber-400/40 hover:text-amber-200"
-                  >
-                    Mission Control →
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </>
-              ) : null}
+                Storefront Readiness · {assets.length} / {ECOMMERCE_32_FINISH_COUNT} Finishes
+              </button>
             </div>
           </div>
+
+          {guidance ? (
+            <div
+              className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-xs text-sky-100"
+              data-testid="portal-guidance-strip"
+            >
+              <span>{guidance}</span>
+              <button
+                type="button"
+                className="text-sky-200/80 hover:text-white"
+                onClick={() => setGuidance(null)}
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : null}
 
           <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="portal-kpi-cards">
             {(
               [
-                ["Parents", parentCount],
-                ["Variations", variationCount],
-                ["Simple", simpleCount],
-                ["Purchasable SKUs", purchasableSkuCount],
-                ["Active Finishes", ECOMMERCE_32_FINISH_COUNT],
+                ["Parents", parentCount, () => setTab("products")],
+                ["Variations", variationCount, () => setTab("products")],
+                ["Simple", simpleCount, () => setTab("products")],
+                ["Purchasable SKUs", purchasableSkuCount, () => setTab("products")],
+                ["Active Finishes", assets.length, () => {
+                  setTab("finishes");
+                  setFinishSubFilter("all_active");
+                }],
               ] as const
-            ).map(([label, n]) => (
-              <div key={label} className="rounded-lg bg-[#111827] px-3 py-2 ring-1 ring-white/10">
+            ).map(([label, n, onClick]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => {
+                  onClick();
+                  setGuidance(`Opened ${label} view.`);
+                }}
+                className="rounded-lg bg-[#111827] px-3 py-2 text-left ring-1 ring-white/10 hover:ring-amber-400/40"
+              >
                 <dt className="text-[11px] uppercase tracking-wide text-slate-500">{label}</dt>
                 <dd className="text-lg font-semibold text-white">{n}</dd>
-              </div>
+              </button>
             ))}
           </dl>
         </header>
@@ -803,6 +936,29 @@ export default function EcommerceCertificationPortal({
 
         {tab === "finishes" ? (
           <div className="mt-6 space-y-6" data-testid="portal-panel-finishes">
+            <div className="flex flex-wrap gap-2" data-testid="portal-finish-subfilters">
+              {(
+                [
+                  ["all_active", `All 32 Active (${assets.length})`],
+                  ["sunbrella", "Sunbrella"],
+                  ["ultraleather", "Ultraleather"],
+                  ["dekton", "Dekton"],
+                  ["powder", "Powder Coats"],
+                  ["addons", "Storefront Add-Ons"],
+                  ["archived", `Archived/Disabled (${archivedAssets.length})`],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  data-testid={`finish-subfilter-${key}`}
+                  onClick={() => setFinishSubFilter(key)}
+                  className={chip(finishSubFilter === key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
               {STOREFRONT_POLICY_BANNER}
               <span className="mt-1 block text-amber-200/80">
@@ -812,12 +968,53 @@ export default function EcommerceCertificationPortal({
             {assetsError ? (
               <p className="rounded-lg bg-rose-500/10 p-3 text-xs text-rose-300">{assetsError}</p>
             ) : null}
+            {finishSubFilter === "archived" ? (
+              <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#111827]">
+                <table className="min-w-full text-left text-xs">
+                  <tbody>
+                    {archivedAssets.length === 0 ? (
+                      <tr>
+                        <td className="px-3 py-8 text-center text-slate-500">No archived finishes.</td>
+                      </tr>
+                    ) : (
+                      archivedAssets.map((a) => (
+                        <DarkFinishRow
+                          key={a.sku}
+                          asset={a}
+                          embedToken={embedToken}
+                          onChanged={() => void loadAssets()}
+                          onToast={onToast}
+                          onArchive={() => {}}
+                          restoreMode
+                          onRestore={(sku) => {
+                            setStagedChanges((prev) => [
+                              ...prev,
+                              {
+                                id: `restore_finish:${sku}:${Date.now()}`,
+                                kind: "restore_finish",
+                                sku,
+                                label: a.displayName,
+                                stagedAt: new Date().toISOString(),
+                              },
+                            ]);
+                            onToast(`Staged restore for ${sku}`);
+                          }}
+                        />
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </section>
+            ) : null}
             {assetsLoading && assets.length === 0 ? (
               <div className="flex items-center gap-2 py-16 text-sm text-slate-400">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading finishes…
               </div>
-            ) : (
-              FAMILY_GROUPS.map((group) => {
+            ) : finishSubFilter !== "archived" ? (
+              FAMILY_GROUPS.filter((group) => {
+                if (finishSubFilter === "all_active" || finishSubFilter === "addons") return true;
+                return finishSubFilter === group.key;
+              }).map((group) => {
                 const rosterSkus = new Set(group.skus());
                 const rows = assets.filter(
                   (a) => a.finishCategory === group.category && rosterSkus.has(a.sku),
@@ -929,7 +1126,9 @@ export default function EcommerceCertificationPortal({
                                 embedToken={embedToken}
                                 onChanged={() => void loadAssets()}
                                 onToast={onToast}
-                                onRemove={(sku) => void handleRemove(sku)}
+                                onArchive={(sku, displayName) =>
+                                  setArchiveTarget({ kind: "finish", sku, displayName })
+                                }
                               />
                             ))
                           )}
@@ -939,7 +1138,7 @@ export default function EcommerceCertificationPortal({
                   </section>
                 );
               })
-            )}
+            ) : null}
           </div>
         ) : null}
 
@@ -975,6 +1174,54 @@ export default function EcommerceCertificationPortal({
                   </button>
                 ))}
               </div>
+              <div className="flex flex-wrap gap-2" data-testid="portal-product-type-pills">
+                {(
+                  [
+                    ["all", "All Types"],
+                    ["sofas", "Sofas & Sectionals"],
+                    ["chairs", "Chairs & Loungers"],
+                    ["tables", "Tables"],
+                    ["ottomans", "Ottomans"],
+                    ["swings", "Swings"],
+                    ["misc", "Umbrellas, Heaters & Misc"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    data-testid={`portal-product-type-${key}`}
+                    onClick={() => setProductTypeFilter(key)}
+                    className={chip(productTypeFilter === key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2" data-testid="portal-readiness-filters">
+                {(
+                  [
+                    ["none", "All readiness"],
+                    ["missing_dims", "Missing Dims"],
+                    ["missing_media", "Missing 3D/Media"],
+                    ["spot_check", "Needs Mia Spot-Check"],
+                    ["approved", "Mia Approved"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    data-testid={`portal-readiness-${key}`}
+                    onClick={() => {
+                      setReadinessFilter(key);
+                      if (key === "spot_check") setStatusFilter("spot_check");
+                      if (key === "approved") setStatusFilter("approved");
+                    }}
+                    className={chip(readinessFilter === key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <div className="flex flex-wrap gap-2" data-testid="portal-status-filters">
                 {(
                   [
@@ -1001,6 +1248,13 @@ export default function EcommerceCertificationPortal({
             ) : listingsLoading && listings.length === 0 ? (
               <div className="flex items-center gap-2 py-16 text-sm text-slate-400">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading products…
+              </div>
+            ) : productRows.length === 0 ? (
+              <div
+                className="rounded-2xl border border-white/10 bg-[#111827] px-6 py-12 text-center text-sm text-slate-300"
+                data-testid="portal-products-empty"
+              >
+                0 items match this filter — adjust product type or readiness pills.
               </div>
             ) : (
               <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#111827]">
@@ -1083,7 +1337,7 @@ export default function EcommerceCertificationPortal({
                             ) : null}
                           </td>
                           <td className="px-3 py-2.5">
-                            <span className="inline-flex items-center gap-1 font-mono text-xs text-amber-300">
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap font-mono text-xs text-amber-300">
                               <Lock className="h-3 w-3 text-amber-400/60" />
                               {row.globalSku}
                             </span>
@@ -1123,7 +1377,7 @@ export default function EcommerceCertificationPortal({
                             <Model3dCell
                               glbUrl={row.model3dGlbUrl}
                               sku={row.globalSku}
-                              onOpen={() => onOpen3d(row.globalSku, row.productName)}
+                              onOpen={() => onOpenProductEdit(row, "media")}
                             />
                           </td>
                           <td className="px-3 py-2.5">
@@ -1398,6 +1652,22 @@ export default function EcommerceCertificationPortal({
           </div>
         ) : null}
       </div>
+      <ArchiveImpactModal
+        open={archiveTarget !== null}
+        target={archiveTarget}
+        onCancel={() => setArchiveTarget(null)}
+        onConfirm={() => {
+          if (!archiveTarget || archiveTarget.kind !== "finish") return;
+          stageArchiveFinish(archiveTarget.sku, archiveTarget.displayName);
+          setArchiveTarget(null);
+        }}
+      />
+      <PendingCommitBar
+        changes={stagedChanges}
+        committing={committing}
+        onCommit={() => void commitStagedChanges()}
+        onDiscard={() => setStagedChanges([])}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 /**
  * Default `/embed/admin/master-catalog` is the dark 3-tab Handoff Portal.
- * Legacy spreadsheet tools live behind `?view=legacy-admin` (Superadmin).
+ * Legacy spreadsheet is retired — `?view=legacy-admin` still lands on the dark portal.
  * Auth may gate the embed; soft-skip when the session cookie is absent.
  */
 test.describe("ecommerce handoff portal (default route)", () => {
@@ -43,25 +43,15 @@ test.describe("ecommerce handoff portal (default route)", () => {
     await expect(page.getByTestId("test-woo-connection")).toBeVisible();
   });
 
-  test("legacy-admin spreadsheet escape hatch still exposes Upcharge tools", async ({ page }) => {
+  test("legacy-admin query must NOT expose Upcharge — dark portal only", async ({ page }) => {
     await page.goto("/embed/admin/master-catalog?view=legacy-admin");
-    const legacy = page.getByTestId("legacy-admin-catalog");
     const portal = page.getByTestId("ecommerce-certification-portal");
-    const legacyVisible = await legacy.isVisible().catch(() => false);
     const portalVisible = await portal.isVisible().catch(() => false);
-    test.skip(
-      !legacyVisible && !portalVisible,
-      "Embed master-catalog requires authenticated GHL session",
-    );
+    test.skip(!portalVisible, "Embed master-catalog requires authenticated GHL session");
 
-    if (legacyVisible) {
-      await expect(page.getByTestId("legacy-back-to-portal")).toBeVisible();
-      await expect(page.getByTestId("recalculate-upcharge-btn")).toBeVisible();
-      await expect(page.getByTestId("tab-live-ecommerce")).toBeVisible();
-    } else {
-      // Non-superadmin sessions are forced back to the dark portal
-      await expect(portal).toBeVisible();
-      await expect(page.getByTestId("recalculate-upcharge-btn")).toHaveCount(0);
-    }
+    await expect(portal).toBeVisible();
+    await expect(page.getByTestId("legacy-admin-catalog")).toHaveCount(0);
+    await expect(page.getByTestId("recalculate-upcharge-btn")).toHaveCount(0);
+    await expect(page.getByTestId("executive-stack-health-strip")).toBeVisible();
   });
 });

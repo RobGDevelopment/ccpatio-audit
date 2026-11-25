@@ -4,13 +4,23 @@
  * APF target groups, and staging-guard messaging.
  */
 
+import { storefrontTitlePreserveAcronyms } from "@/server/ecommerce/executive-stack-health";
+
 export type SurfaceProfile =
   | "Cushion + Frame"
   | "Cushion + Pillow + Frame"
   | "Dekton Tabletop + Frame"
+  | "Umbrella Canopy + Frame"
+  | "Finish / Hardware Only [Heaters, Lamps, Pool]"
   | "Frame Only";
 
-export type SurfaceBadge = "Cushion" | "Pillow" | "Tabletop" | "Frame";
+export type SurfaceBadge =
+  | "Cushion"
+  | "Pillow"
+  | "Tabletop"
+  | "Umbrella"
+  | "Hardware"
+  | "Frame";
 
 export type ApfTargetGroup = "Cushion & Pillow" | "Dekton Tabletop" | "Aluminum Frame";
 
@@ -26,15 +36,11 @@ export function stripFinBracketsFromTitle(raw: string | null | undefined): strin
   return raw.replace(FIN_BRACKET_RE, " ").replace(/\s{2,}/g, " ").trim();
 }
 
-/** Title Case storefront display title with FIN brackets removed. */
+/** Title Case storefront display title with FIN brackets removed; preserve BH/SH/OD/LED. */
 export function storefrontDisplayTitle(raw: string | null | undefined): string {
   const cleaned = stripFinBracketsFromTitle(raw);
   if (!cleaned) return "";
-  return cleaned
-    .toLowerCase()
-    .split(/\s+/)
-    .map((w) => (w.length ? w[0]!.toUpperCase() + w.slice(1) : w))
-    .join(" ");
+  return storefrontTitlePreserveAcronyms(cleaned);
 }
 
 /** Format Variations / Facing cell: Simple vs 2 Vars (-LS / -RS). */
@@ -63,6 +69,10 @@ export function surfaceBadgeFromProfile(profile: SurfaceProfile | null | undefin
   switch (profile) {
     case "Dekton Tabletop + Frame":
       return "Tabletop";
+    case "Umbrella Canopy + Frame":
+      return "Umbrella";
+    case "Finish / Hardware Only [Heaters, Lamps, Pool]":
+      return "Hardware";
     case "Frame Only":
       return "Frame";
     case "Cushion + Pillow + Frame":
@@ -85,11 +95,17 @@ export function inferSurfaceProfile(input: {
     stored === "Cushion + Frame" ||
     stored === "Cushion + Pillow + Frame" ||
     stored === "Dekton Tabletop + Frame" ||
+    stored === "Umbrella Canopy + Frame" ||
+    stored === "Finish / Hardware Only [Heaters, Lamps, Pool]" ||
     stored === "Frame Only"
   ) {
     return stored;
   }
   const hay = `${input.productName ?? ""} ${input.collectionLabel ?? ""}`.toLowerCase();
+  if (/umbrella|canopy/.test(hay)) return "Umbrella Canopy + Frame";
+  if (/heater|lamp|pool\b|hardware/.test(hay) && !/cushion|sofa|chair|table/.test(hay)) {
+    return "Finish / Hardware Only [Heaters, Lamps, Pool]";
+  }
   if (/dekton|table\b|tabletop/.test(hay)) return "Dekton Tabletop + Frame";
   if (/frame only|powder/.test(hay) && !/cushion|pillow|sofa|chair/.test(hay)) {
     return "Frame Only";
@@ -153,5 +169,7 @@ export const SURFACE_PROFILE_OPTIONS: readonly SurfaceProfile[] = [
   "Cushion + Frame",
   "Cushion + Pillow + Frame",
   "Dekton Tabletop + Frame",
+  "Umbrella Canopy + Frame",
+  "Finish / Hardware Only [Heaters, Lamps, Pool]",
   "Frame Only",
 ] as const;

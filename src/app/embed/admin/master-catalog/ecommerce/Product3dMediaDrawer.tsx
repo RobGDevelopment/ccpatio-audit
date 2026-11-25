@@ -13,9 +13,12 @@ import { DropButton, uploadEmbedAsset } from "./SwatchesFinishesDrawer";
 
 export const MATERIAL_SLOT_TAGS = [
   { key: "frame_metal", label: "frame_metal" },
+  { key: "frame_finish", label: "frame_finish" },
   { key: "cushion_fabric", label: "cushion_fabric" },
   { key: "stone_top", label: "stone_top" },
+  { key: "table_top", label: "table_top" },
   { key: "accent_pillow", label: "accent_pillow" },
+  { key: "accent_accents", label: "accent_accents" },
 ] as const;
 
 type SlotKey = (typeof MATERIAL_SLOT_TAGS)[number]["key"];

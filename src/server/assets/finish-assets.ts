@@ -144,6 +144,7 @@ export async function seedEcommerceFinishAssets(): Promise<SeedFinishAssetsResul
 
   for (const row of rows) {
     const refreshName = staleBySku.has(row.sku);
+    const isCabana = row.sku.toUpperCase() === "FAB-CAB-CLA";
     await db
       .insert(t)
       .values({ ...row, quality_status: "placeholder_lowres" })
@@ -156,11 +157,19 @@ export async function seedEcommerceFinishAssets(): Promise<SeedFinishAssetsResul
           sample_width_in: sql`COALESCE(${t.sample_width_in}, excluded.sample_width_in)`,
           sample_height_in: sql`COALESCE(${t.sample_height_in}, excluded.sample_height_in)`,
           pattern_repeat_w_in: sql`COALESCE(${t.pattern_repeat_w_in}, excluded.pattern_repeat_w_in)`,
-          pattern_repeat_h_in: sql`COALESCE(${t.pattern_repeat_h_in}, excluded.pattern_repeat_h_in)`,
+          // Cabana Classic canonical vertical repeat is 7" — always restore.
+          pattern_repeat_h_in: isCabana
+            ? sql`excluded.pattern_repeat_h_in`
+            : sql`COALESCE(${t.pattern_repeat_h_in}, excluded.pattern_repeat_h_in)`,
           ...(refreshName ? { display_name: row.display_name } : {}),
+          // Zero-accidental-deletion restore: never leave FAB-CAB-CLA soft-disabled.
+          ...(isCabana ? { uploaded_by: null } : {}),
         },
       });
   }
+
+  // Explicit restore path if Cabana was soft-disabled outside seed conflict.
+  await enableEcommerceFinishAsset("FAB-CAB-CLA").catch(() => null);
 
   const byCategory: Record<FinishCategory, number> = { fabric: 0, powder: 0, dekton: 0 };
   for (const r of rows) byCategory[r.finish_category] += 1;

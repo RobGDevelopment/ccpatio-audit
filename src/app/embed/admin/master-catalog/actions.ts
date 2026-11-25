@@ -107,8 +107,18 @@ import {
 import {
   canAccessEcommercePortal,
   canAccessFullMasterCatalog,
+  ECOMMERCE_FINISH_DISABLED_SENTINEL,
+  isEcommerce32FinishSku,
   isFinishSkuLocked,
 } from "@/server/ecommerce/ecommerce-32-finish-roster";
+import type { ExecutiveStackHealth } from "@/server/ecommerce/executive-stack-health";
+import {
+  buildWooDiagnosticReport,
+  lampFromState,
+  type StackLayerPill,
+} from "@/server/ecommerce/executive-stack-health";
+import { pingGhl, readDlqSnapshot } from "@/server/mission-control/health-probes";
+import { isFedExFreightConfigured } from "@/lib/freight/fedex-freight";
 import {
   pickGroupedSkuRow,
   resolveGroupedSkuCandidates,
@@ -2165,7 +2175,15 @@ export async function getWooConnectionBadge(): Promise<{
 }
 
 export async function testWooConnectionAction(): Promise<
-  { ok: true; host: string } | { ok: false; reason: string }
+  | { ok: true; host: string }
+  | {
+      ok: false;
+      reason: string;
+      critical?: boolean;
+      snippet?: string;
+      httpStatus?: number;
+      diagnosticReport?: string;
+    }
 > {
   return testWooConnection();
 }
@@ -3083,21 +3101,106 @@ export async function getEcommercePortalAccess(): Promise<{
 }
 
 export async function listFinishAssetsForPortal(): Promise<
-  { ok: true; assets: FinishAssetView[]; seeded?: { inserted: number; existing: number } } | { ok: false; error: string }
+  | {
+      ok: true;
+      assets: FinishAssetView[];
+      archivedAssets: FinishAssetView[];
+      seeded?: { inserted: number; existing: number };
+    }
+  | { ok: false; error: string }
 > {
   const session = await getPimSession();
   if (!session) return { ok: false, error: "Unauthorized embed session." };
   try {
     // Idempotent hydrate — merge all 32 canonical finishes on first read / boot.
     const seeded = await seedEcommerceFinishAssets();
-    const rows = filterActiveEcommerceFinishes(await listFinishAssets());
+    const allRows = await listFinishAssets();
+    const rows = filterActiveEcommerceFinishes(allRows);
+    const archivedAssets = allRows
+      .filter(
+        (r) =>
+          isEcommerce32FinishSku(r.sku) &&
+          (r.uploaded_by ?? "").toLowerCase() === ECOMMERCE_FINISH_DISABLED_SENTINEL,
+      )
+      .map(toFinishAssetView);
     return {
       ok: true,
       assets: rows.map(toFinishAssetView),
+      archivedAssets,
       seeded: { inserted: seeded.inserted, existing: seeded.existing },
     };
   } catch (error: unknown) {
     return { ok: false, error: error instanceof Error ? error.message : "Could not load finish assets" };
+  }
+}
+
+/** Soft-archive a storefront listing in Hub only — never Woo DELETE. */
+export async function archiveEcommerceListingForPortal(
+  listingId: string,
+): Promise<{ ok: true; globalSku: string } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const db = getDb();
+    const [row] = await db
+      .select({ id: ecommerce_listings.id, globalSku: ecommerce_listings.global_sku })
+      .from(ecommerce_listings)
+      .where(and(eq(ecommerce_listings.id, listingId), isNull(ecommerce_listings.archived_at)))
+      .limit(1);
+    if (!row) return { ok: false, error: "Active listing not found." };
+    await db
+      .update(ecommerce_listings)
+      .set({ archived_at: new Date(), updated_at: new Date() })
+      .where(eq(ecommerce_listings.id, listingId));
+    await logPimAudit({
+      operatorEmail: session.email,
+      globalSku: row.globalSku,
+      action: "ecommerce_listing_archived",
+      field: "ecommerce_listings.archived_at",
+      newValue: new Date().toISOString(),
+    });
+    revalidatePath("/embed/admin/master-catalog");
+    return { ok: true, globalSku: row.globalSku };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not archive listing",
+    };
+  }
+}
+
+/** Restore a soft-archived listing — Hub-only, no Woo DELETE. */
+export async function restoreEcommerceListingForPortal(
+  listingId: string,
+): Promise<{ ok: true; globalSku: string } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const db = getDb();
+    const [row] = await db
+      .select({ id: ecommerce_listings.id, globalSku: ecommerce_listings.global_sku })
+      .from(ecommerce_listings)
+      .where(eq(ecommerce_listings.id, listingId))
+      .limit(1);
+    if (!row) return { ok: false, error: "Listing not found." };
+    await db
+      .update(ecommerce_listings)
+      .set({ archived_at: null, updated_at: new Date() })
+      .where(eq(ecommerce_listings.id, listingId));
+    await logPimAudit({
+      operatorEmail: session.email,
+      globalSku: row.globalSku,
+      action: "ecommerce_listing_restored",
+      field: "ecommerce_listings.archived_at",
+      newValue: null,
+    });
+    revalidatePath("/embed/admin/master-catalog");
+    return { ok: true, globalSku: row.globalSku };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not restore listing",
+    };
   }
 }
 
@@ -3239,7 +3342,15 @@ export async function saveFinishCalibration(
   }
 }
 
-const MATERIAL_SLOT_KEYS = ["frame_metal", "cushion_fabric", "stone_top", "accent_pillow"] as const;
+const MATERIAL_SLOT_KEYS = [
+  "frame_metal",
+  "frame_finish",
+  "cushion_fabric",
+  "stone_top",
+  "table_top",
+  "accent_pillow",
+  "accent_accents",
+] as const;
 type MaterialSlotKey = (typeof MATERIAL_SLOT_KEYS)[number];
 
 export interface Product3dMaterialSlot {
@@ -3816,4 +3927,203 @@ export async function runPortalStagingPush(input: {
     readiness: { finishes: finishes.length, blockers },
     preview,
   };
+}
+
+/** Seven-layer Executive Control Center health strip (read-only probes). */
+export async function getExecutiveStackHealthAction(): Promise<
+  { ok: true; health: ExecutiveStackHealth } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const checkedAt = new Date().toISOString();
+    const qboLedgerMode = (process.env.QBO_LEDGER_MODE ?? "log").trim() || "log";
+    const { getSystemHealthSnapshot } = await import("@/server/ops/keepalive");
+    const snapshot = await getSystemHealthSnapshot();
+    const dlq = await readDlqSnapshot();
+    const ghl = await pingGhl();
+
+    const db = getDb();
+    await db.select({ n: count() }).from(user_roles).limit(1);
+
+    const storageReady = Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
+        (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+          process.env.SUPABASE_ANON_KEY?.trim()),
+    );
+    const supabaseLayer: StackLayerPill = {
+      id: "supabase",
+      label: "Supabase DB & Storage",
+      status: storageReady ? "Healthy" : "Degraded",
+      detail: storageReady ? "PostgreSQL reachable · Storage env present" : "Storage env incomplete",
+    };
+
+    const katanaAge = snapshot.katanaSyncAge;
+    const katanaLayer: StackLayerPill = {
+      id: "katana",
+      label: "Katana MRP",
+      status: lampFromState(katanaAge.state),
+      detail: katanaAge.detail,
+      actions: [{ id: "katana_sync_now", label: "Run Katana Sync Now" }],
+    };
+
+    const qboLayer: StackLayerPill = {
+      id: "qbo",
+      label: "QuickBooks Online",
+      status: lampFromState(snapshot.qbo.state),
+      detail: `${snapshot.qbo.detail} · QBO_LEDGER_MODE=${qboLedgerMode} (read-only)`,
+      actions: [{ id: "qbo_reconnect", label: "Reconnect" }],
+    };
+
+    const wooProbe = await testWooConnection();
+    const wooLayer: StackLayerPill =
+      wooProbe.ok
+        ? {
+            id: "woocommerce",
+            label: "WooCommerce",
+            status: "Healthy",
+            detail: `Connected to ${wooProbe.host}`,
+            actions: [{ id: "woo_retest", label: "Re-Test" }],
+          }
+        : {
+            id: "woocommerce",
+            label: "WooCommerce",
+            status: wooProbe.critical ? "Action Required" : "Degraded",
+            detail: wooProbe.reason,
+            errorSnippet: wooProbe.snippet ?? null,
+            actions: [
+              { id: "woo_retest", label: "Re-Test" },
+              ...(wooProbe.diagnosticReport
+                ? [{ id: "woo_copy_diagnostic", label: "Copy Diagnostic" }]
+                : []),
+            ],
+          };
+
+    const ghlLayer: StackLayerPill = {
+      id: "ghl",
+      label: "GoHighLevel CRM",
+      status: !ghl.configured
+        ? "Degraded"
+        : ghl.ok
+          ? "Healthy"
+          : ghl.authFailed
+            ? "Action Required"
+            : "Degraded",
+      detail: !ghl.configured
+        ? "GHL token / location not configured"
+        : ghl.ok
+          ? "Connected"
+          : ghl.authFailed
+            ? `Token rejected (HTTP ${ghl.status ?? "?"})`
+            : `HTTP ${ghl.status ?? "unreachable"}`,
+    };
+
+    const fedexConfigured = isFedExFreightConfigured();
+    const [dimsRow] = await db
+      .select({
+        n: sql<number>`cast(count(*) as int)`,
+      })
+      .from(ecommerce_listings)
+      .leftJoin(
+        catalog_ship_profiles,
+        eq(catalog_ship_profiles.global_sku, ecommerce_listings.global_sku),
+      )
+      .where(
+        and(
+          isNull(ecommerce_listings.archived_at),
+          or(
+            sql`coalesce(${catalog_ship_profiles.weight_lb}, 0) <= 0`,
+            sql`coalesce(${catalog_ship_profiles.length_in}, 0) <= 0`,
+            sql`coalesce(${catalog_ship_profiles.width_in}, 0) <= 0`,
+            sql`coalesce(${catalog_ship_profiles.height_in}, 0) <= 0`,
+          ),
+        ),
+      );
+    const missingDimsSkuCount = Number(dimsRow?.n ?? 0);
+
+    const fedexLayer: StackLayerPill = {
+      id: "fedex",
+      label: "FedEx LTL",
+      status: fedexConfigured
+        ? missingDimsSkuCount > 0
+          ? "Degraded"
+          : "Healthy"
+        : "Action Required",
+      detail: fedexConfigured
+        ? `${missingDimsSkuCount} listing(s) missing freight dims`
+        : "FedEx Freight credentials incomplete",
+    };
+
+    const dlqLamp =
+      dlq.open === 0
+        ? "Healthy"
+        : dlq.unalerted > 0 || dlq.open >= 10
+          ? "Action Required"
+          : "Degraded";
+    const inngestLayer: StackLayerPill = {
+      id: "inngest_dlq",
+      label: "Inngest Queue / DLQ",
+      status: dlqLamp,
+      detail:
+        dlq.open === 0
+          ? "DLQ empty"
+          : `${dlq.open} open DLQ event(s)${dlq.unalerted ? ` · ${dlq.unalerted} unalerted` : ""}`,
+    };
+
+    const health: ExecutiveStackHealth = {
+      checkedAt,
+      layers: [
+        supabaseLayer,
+        katanaLayer,
+        qboLayer,
+        wooLayer,
+        ghlLayer,
+        fedexLayer,
+        inngestLayer,
+      ],
+      heldOrderCount: snapshot.heldOrderRows.length,
+      missingDimsSkuCount,
+      openDlqCount: dlq.open,
+      qboLedgerMode,
+    };
+
+    return { ok: true, health };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Executive stack health probe failed",
+    };
+  }
+}
+
+export async function runKatanaSyncNowAction(): Promise<
+  { ok: true; message: string; eventIds?: string[] } | { ok: false; error: string }
+> {
+  const queued = await requestKatanaSelfHealAction();
+  if (!queued.ok) return queued;
+  return {
+    ok: true,
+    message: "Katana catalog reconcile queued (read-only until downstream flags allow writes).",
+    eventIds: queued.eventIds,
+  };
+}
+
+export async function buildWooDiagnosticReportAction(): Promise<
+  { ok: true; report: string } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const probe = await testWooConnection();
+  const conn = resolveWooConnection();
+  if (!conn.configured) {
+    return { ok: false, error: conn.reason };
+  }
+  const report = buildWooDiagnosticReport({
+    host: conn.host,
+    httpStatus: probe.ok ? 200 : probe.httpStatus ?? 500,
+    label: probe.ok ? "Connected" : probe.reason,
+    snippet: probe.ok ? null : probe.snippet ?? null,
+    checkedAt: new Date().toISOString(),
+  });
+  return { ok: true, report };
 }

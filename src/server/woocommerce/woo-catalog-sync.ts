@@ -441,24 +441,81 @@ export async function fetchWooStoreUnits(): Promise<WooStoreUnits> {
 
 export async function testWooConnection(): Promise<
   | { ok: true; host: string }
-  | { ok: false; reason: string }
+  | {
+      ok: false;
+      reason: string;
+      critical?: boolean;
+      snippet?: string;
+      httpStatus?: number;
+      diagnosticReport?: string;
+    }
 > {
   const conn = resolveWooConnection();
   if (!conn.configured) return { ok: false, reason: conn.reason };
-  try {
-    await wooV3Fetch("/system_status?_fields=environment");
-    return { ok: true, host: conn.host };
-  } catch (error: unknown) {
-    // Fallback: settings endpoint is enough to prove keys work.
-    try {
-      await fetchWooStoreUnits();
-      return { ok: true, host: conn.host };
-    } catch {
+  const { baseUrl, authHeader, host } = conn;
+  const {
+    classifyWooProbeBody,
+    buildWooDiagnosticReport,
+  } = await import("@/server/ecommerce/executive-stack-health");
+
+  async function probe(pathname: string): Promise<
+    | { ok: true }
+    | { ok: false; reason: string; critical: boolean; snippet: string; httpStatus: number }
+  > {
+    const url = `${baseUrl}/wp-json/wc/v3${pathname}`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: authHeader,
+        Accept: "application/json",
+      },
+    });
+    const bodyText = await response.text();
+    const classified = classifyWooProbeBody({
+      httpStatus: response.status,
+      contentType: response.headers.get("content-type"),
+      bodyText,
+    });
+    if (!classified.ok) {
       return {
         ok: false,
-        reason: error instanceof Error ? error.message : "Woo connection failed",
+        reason: classified.label,
+        critical: classified.label === "WP Critical Error",
+        snippet: classified.snippet ?? classified.label,
+        httpStatus: response.status,
       };
     }
+    return { ok: true };
+  }
+
+  try {
+    const primary = await probe("/system_status?_fields=environment");
+    if (primary.ok) return { ok: true, host };
+    const fallback = await probe("/settings/products");
+    if (fallback.ok) return { ok: true, host };
+    const fail = !primary.ok ? primary : fallback;
+    if (!fail.ok) {
+      return {
+        ok: false,
+        reason: fail.reason,
+        critical: fail.critical,
+        snippet: fail.snippet,
+        httpStatus: fail.httpStatus,
+        diagnosticReport: buildWooDiagnosticReport({
+          host,
+          httpStatus: fail.httpStatus,
+          label: fail.reason,
+          snippet: fail.snippet,
+        }),
+      };
+    }
+    return { ok: false, reason: "Woo connection failed" };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      reason: error instanceof Error ? error.message : "Woo connection failed",
+      critical: true,
+    };
   }
 }
 

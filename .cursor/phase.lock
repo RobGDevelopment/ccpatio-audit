@@ -1,11 +1,11 @@
 {
-  "phase_id": "ghl-ecommerce-portal-scroll-seed-readiness",
-  "intent": "Fix GHL iframe vertical scrolling across all 3 tabs, auto-seed all 32 canonical finishes (16/4/6/6), fix cross-origin Edit Details drawer auth and dark theme, add WooCommerce surface/freight/media readiness and safe staging push controls, and certify via Vitest, Playwright, and QCA.",
+  "phase_id": "executive-dark-control-plane-unification",
+  "intent": "Unify GHL E-Commerce & full-stack Mission Control into one full-width dark Executive Control Center for Mia/Kian/SuperAdmin, restore FAB-CAB-CLA, add warning + staged commit + archive/restore protection, make every pill/KPI clickable with guided actions, and retire all white views/drawers.",
   "mode": "edit",
   "base_ref": "HEAD",
   "allow_dirty_base": true,
   "override_blast_cap": true,
-  "expected_blast_radius": 20,
+  "expected_blast_radius": 18,
   "target_test": "npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",
@@ -17,8 +17,7 @@
     "src/app/partner/primeview-handoff/",
     "src/components/",
     "src/lib/",
-    "src/server/ecommerce/",
-    "src/server/assets/",
+    "src/server/",
     "tests/",
     "e2e/"
   ]

@@ -32,8 +32,8 @@ export type EcommerceFinishDefinition = {
 
 export const ECOMMERCE_FINISH_DISABLED_SENTINEL = "ecommerce:disabled";
 
-/** Roles / identities allowed to open the GHL E-Commerce tab. */
-export const ECOMMERCE_PORTAL_ROLES = ["SuperAdmin", "Ops_Manager"] as const;
+/** Roles allowed on the Executive Control Center (in addition to Mia/Kian emails). */
+export const ECOMMERCE_PORTAL_ROLES = ["SuperAdmin"] as const;
 
 /** Operator emails (case-insensitive) treated as Mia / Kian merchandisers. */
 export const ECOMMERCE_PORTAL_OPERATOR_EMAILS = [
@@ -57,7 +57,7 @@ export const ECOMMERCE_32_FINISHES: readonly EcommerceFinishDefinition[] = [
   { sku: "FAB-RIT-ROS", displayName: "Ritsy Rosemary", family: "sunbrella", category: "fabric", hex: "#6B7F5A", patternRepeatIn: { w: 27, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
   { sku: "FAB-MET-CLO", displayName: "Metamorphic Cloud", family: "sunbrella", category: "fabric", hex: "#C8C4BC", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
   { sku: "FAB-HER-PAP", displayName: "Heritage Papyrus", family: "sunbrella", category: "fabric", hex: "#E8DFC8", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
-  { sku: "FAB-CAB-CLA", displayName: "Cabana Classic", family: "sunbrella", category: "fabric", hex: "#EDE6D9", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
+  { sku: "FAB-CAB-CLA", displayName: "Cabana Classic", family: "sunbrella", category: "fabric", hex: "#EDE6D9", patternRepeatIn: { w: 54, h: 7 }, wooMetaKey: "fabric_sku", aliases: [] },
   { sku: "FAB-SHE-LIN", displayName: "Shelter Linen", family: "sunbrella", category: "fabric", hex: "#D9D0C0", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
   { sku: "FAB-POS-SAP", displayName: "Posh Sapphire", family: "sunbrella", category: "fabric", hex: "#2F4A6E", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
   { sku: "FAB-CRU-ASH", displayName: "Crush Ash", family: "sunbrella", category: "fabric", hex: "#A8A29A", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
@@ -316,8 +316,8 @@ export type EcommercePortalAccessInput = {
 };
 
 /**
- * Mia, Kian, and Superadmin (plus Ops_Manager) may use the E-Commerce tab.
- * Valid GHL embed sessions are treated as the merchandiser portal.
+ * Executive Control Center gate: Mia, Kian, SuperAdmin, or a valid
+ * executive GHL embed session. Non-executive showroom/floor roles are denied.
  */
 export function canAccessEcommercePortal(input: EcommercePortalAccessInput): boolean {
   if (input.embedSession) return true;
@@ -332,7 +332,6 @@ export function canAccessEcommercePortal(input: EcommercePortalAccessInput): boo
   const role = (input.role ?? "").trim();
   return (
     role === "SuperAdmin" ||
-    role === "Ops_Manager" ||
     ECOMMERCE_PORTAL_ROLES.includes(role as (typeof ECOMMERCE_PORTAL_ROLES)[number])
   );
 }

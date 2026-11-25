@@ -29,6 +29,7 @@ import {
 import { MET_ALUM_SKU, MET_STEEL_SKU } from "@/server/woocommerce/finish-keys";
 import { STEEL_DISCONTINUED_REASON } from "@/server/ecommerce/alu10-pricing";
 import { buildFinishAutoSku as engineBuildFinishSku, isFinishSkuLocked as engineSkuLocked } from "@/server/ecommerce/auto-sku-engine";
+import { classifyWooProbeBody } from "@/server/ecommerce/executive-stack-health";
 
 const ROOT = process.cwd();
 
@@ -40,6 +41,12 @@ describe("exact 32 e-commerce finish roster", () => {
     expect(ECOMMERCE_32_FINISHES.filter((f) => f.family === "ultraleather")).toHaveLength(4);
     expect(ECOMMERCE_32_FINISHES.filter((f) => f.family === "dekton")).toHaveLength(6);
     expect(ECOMMERCE_32_FINISHES.filter((f) => f.family === "powder")).toHaveLength(6);
+  });
+
+  it("keeps FAB-CAB-CLA on roster with 7 inch vertical repeat", () => {
+    const cabana = ECOMMERCE_32_FINISHES.find((f) => f.sku === "FAB-CAB-CLA");
+    expect(cabana).toBeDefined();
+    expect(cabana?.patternRepeatIn?.h).toBe(7);
   });
 
   it("maps Phase 1 portal lists to the exact 32 roster", () => {
@@ -128,11 +135,11 @@ describe("auto-SKU generation + SKU lock", () => {
 });
 
 describe("E-Commerce portal role access", () => {
-  it("allows Mia, Kian, Superadmin, Ops_Manager, and GHL embed", () => {
+  it("allows Mia, Kian, Superadmin, and GHL embed; denies Ops_Manager", () => {
     expect(canAccessEcommercePortal({ email: "mia@ccpatio.com", role: "Designer" })).toBe(true);
     expect(canAccessEcommercePortal({ email: "kian@ccpatio.com", role: null })).toBe(true);
     expect(canAccessEcommercePortal({ email: "ops@ccpatio.com", role: "SuperAdmin" })).toBe(true);
-    expect(canAccessEcommercePortal({ email: "ops@ccpatio.com", role: "Ops_Manager" })).toBe(true);
+    expect(canAccessEcommercePortal({ email: "ops@ccpatio.com", role: "Ops_Manager" })).toBe(false);
     expect(canAccessEcommercePortal({ email: "ghl-embed@ccpatio.com", embedSession: true })).toBe(
       true,
     );
@@ -141,6 +148,20 @@ describe("E-Commerce portal role access", () => {
     );
     expect(canAccessFullMasterCatalog({ role: "SuperAdmin" })).toBe(true);
     expect(canAccessFullMasterCatalog({ role: "Ops_Manager" })).toBe(false);
+  });
+});
+
+describe("classifyWooProbeBody", () => {
+  it("flags WordPress critical HTML as Action Required", () => {
+    const body =
+      "<!DOCTYPE html><html><body><p>There has been a critical error on this website.</p></body></html>";
+    const verdict = classifyWooProbeBody({
+      httpStatus: 200,
+      contentType: "text/html",
+      bodyText: body,
+    });
+    expect(verdict.status).toBe("Action Required");
+    expect(verdict.label).toBe("WP Critical Error");
   });
 });
 
@@ -159,8 +180,8 @@ describe("Mia Approved count reconciliation (102 SOW, not 107 variations)", () =
   });
 });
 
-describe("default GHL route is dark 3-tab portal (no legacy chrome)", () => {
-  it("ships portal tabs + legacy-admin escape hatch; no default Upcharge bar", () => {
+describe("default GHL route is dark Executive Control Center (no legacy chrome)", () => {
+  it("ships full-bleed portal without legacy-admin or Upcharge escape hatches", () => {
     const page = readFileSync(
       join(ROOT, "src/app/embed/admin/master-catalog/page.tsx"),
       "utf8",
@@ -178,11 +199,27 @@ describe("default GHL route is dark 3-tab portal (no legacy chrome)", () => {
       join(ROOT, "src/app/embed/admin/master-catalog/loading.tsx"),
       "utf8",
     );
+    const stackStrip = readFileSync(
+      join(
+        ROOT,
+        "src/app/embed/admin/master-catalog/ecommerce/ExecutiveStackHealthStrip.tsx",
+      ),
+      "utf8",
+    );
+    const archiveModal = readFileSync(
+      join(ROOT, "src/app/embed/admin/master-catalog/ecommerce/ArchiveImpactModal.tsx"),
+      "utf8",
+    );
+    const commitBar = readFileSync(
+      join(ROOT, "src/app/embed/admin/master-catalog/ecommerce/PendingCommitBar.tsx"),
+      "utf8",
+    );
 
-    expect(page).toContain('view") === "legacy-admin"');
-    expect(page).toContain("legacy-back-to-portal");
+    expect(page).not.toContain('view") === "legacy-admin"');
+    expect(page).not.toContain("legacy-back-to-portal");
     expect(page).toContain("EcommerceCertificationPortal");
     expect(page).toContain("PortalProductDrawer");
+    expect(page).toContain("Access Restricted");
 
     expect(layout).toContain("h-[100dvh]");
     expect(layout).toContain("bg-[#0b0f17]");
@@ -192,7 +229,8 @@ describe("default GHL route is dark 3-tab portal (no legacy chrome)", () => {
     expect(portal).toContain("portal-tab-products");
     expect(portal).toContain("portal-tab-sync");
     expect(portal).toContain("portal-search-input");
-    expect(portal).toContain("E-Commerce Certification & Handoff Portal");
+    expect(portal).toContain("Executive Control Center");
+    expect(portal).toContain("max-w-none");
     expect(portal).toContain("#0b0f17");
     expect(portal).toContain("overflow-y-auto");
     expect(portal).toContain("sticky top-0");
@@ -201,8 +239,18 @@ describe("default GHL route is dark 3-tab portal (no legacy chrome)", () => {
     expect(portal).toContain("push-catalog-staging");
     expect(portal).toContain("portal-sku-combobox");
     expect(portal).toContain("APF Target Group");
+    expect(portal).toContain("portal-guidance-strip");
+    expect(portal).toContain("ExecutiveStackHealthStrip");
+    expect(portal).toContain("ArchiveImpactModal");
+    expect(portal).toContain("PendingCommitBar");
     expect(portal).not.toContain("Recalculate Upcharge %");
     expect(portal).not.toContain("upcharge-pct-input");
+    expect(portal).not.toContain("legacy-admin");
+    expect(portal).not.toContain("mission-control");
+
+    expect(stackStrip).toContain("executive-stack-health-strip");
+    expect(archiveModal).toContain("archive-impact-modal");
+    expect(commitBar).toContain("pending-commit-bar");
 
     expect(partner).toContain("Upholstery Swatches");
     expect(partner).toContain("Dekton Stones");

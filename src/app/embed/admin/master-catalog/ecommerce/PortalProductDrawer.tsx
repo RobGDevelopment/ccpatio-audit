@@ -1,18 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Lock, Save, UploadCloud, X } from "lucide-react";
 import { useEmbedSession } from "@/components/embed/EmbedSessionProvider";
 import {
+  getProduct3dSlots,
   savePortalProductDetail,
+  saveProduct3dMaterialSlots,
   type PortalProductDetail,
+  type Product3dSlots,
 } from "../actions";
 import {
   SURFACE_PROFILE_OPTIONS,
   freightDimsBadge,
   type SurfaceProfile,
 } from "@/server/ecommerce/portal-readiness";
-import { uploadEmbedAsset } from "./SwatchesFinishesDrawer";
+import { DropButton, uploadEmbedAsset } from "./SwatchesFinishesDrawer";
+
+export type PortalDrawerFocus = "freight" | "media" | "surface" | "title";
+
+const MATERIAL_SLOTS = [
+  { key: "frame_finish", label: "frame_finish" },
+  { key: "cushion_fabric", label: "cushion_fabric" },
+  { key: "table_top", label: "table_top" },
+  { key: "accent_accents", label: "accent_accents" },
+] as const;
+
+type SlotKey = (typeof MATERIAL_SLOTS)[number]["key"];
 
 type Props = {
   sku: string;
@@ -20,10 +34,11 @@ type Props = {
   onClose: () => void;
   onToast: (msg: string) => void;
   onSaved?: () => void;
+  focusSection?: PortalDrawerFocus;
 };
 
 /**
- * Dark Edit Details drawer for the GHL E-Commerce Portal.
+ * Merged dark Product & 3D drawer for the Executive Control Center.
  * Loads via /api/ecommerce/portal-product with embed token headers
  * so cross-origin iframes work when third-party cookies are blocked.
  */
@@ -33,12 +48,14 @@ export default function PortalProductDrawer({
   onClose,
   onToast,
   onSaved,
+  focusSection,
 }: Props) {
   const { embedFetch, embedToken } = useEmbedSession();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<PortalProductDetail | null>(null);
+  const [slots, setSlots] = useState<Product3dSlots | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [aluminumMsrp, setAluminumMsrp] = useState("");
@@ -48,7 +65,13 @@ export default function PortalProductDrawer({
   const [lengthIn, setLengthIn] = useState("");
   const [widthIn, setWidthIn] = useState("");
   const [heightIn, setHeightIn] = useState("");
-  const [uploadBusy, setUploadBusy] = useState<"photo" | "glb" | null>(null);
+  const [uploadBusy, setUploadBusy] = useState<"photo" | "glb" | "usdz" | null>(null);
+  const [materialTags, setMaterialTags] = useState<Set<SlotKey>>(new Set());
+
+  const titleRef = useRef<HTMLInputElement>(null);
+  const surfaceRef = useRef<HTMLSelectElement>(null);
+  const freightRef = useRef<HTMLDivElement>(null);
+  const mediaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open || !sku) return;
@@ -56,11 +79,13 @@ export default function PortalProductDrawer({
     setLoading(true);
     setError(null);
     setDetail(null);
+    setSlots(null);
     void (async () => {
       try {
-        const res = await embedFetch(
-          `/api/ecommerce/portal-product?sku=${encodeURIComponent(sku)}`,
-        );
+        const [res, slotsRes] = await Promise.all([
+          embedFetch(`/api/ecommerce/portal-product?sku=${encodeURIComponent(sku)}`),
+          getProduct3dSlots(sku),
+        ]);
         const json = (await res.json()) as
           | { ok: true; detail: PortalProductDetail }
           | { ok: false; error: string };
@@ -88,6 +113,19 @@ export default function PortalProductDrawer({
         setLengthIn(json.detail.freight.lengthIn);
         setWidthIn(json.detail.freight.widthIn);
         setHeightIn(json.detail.freight.heightIn);
+        if (slotsRes.ok) {
+          setSlots(slotsRes.slots);
+          const mapped = new Set<SlotKey>();
+          for (const m of slotsRes.slots.materialSlots) {
+            if (m.slot === "frame_metal" || m.slot === "frame_finish") mapped.add("frame_finish");
+            if (m.slot === "cushion_fabric") mapped.add("cushion_fabric");
+            if (m.slot === "stone_top" || m.slot === "table_top") mapped.add("table_top");
+            if (m.slot === "accent_pillow" || m.slot === "accent_accents") {
+              mapped.add("accent_accents");
+            }
+          }
+          setMaterialTags(mapped);
+        }
         setLoading(false);
       } catch (err) {
         if (cancelled) return;
@@ -102,6 +140,17 @@ export default function PortalProductDrawer({
     };
   }, [open, sku, embedFetch]);
 
+  useEffect(() => {
+    if (!open || loading || !detail) return;
+    const t = window.setTimeout(() => {
+      if (focusSection === "title") titleRef.current?.focus();
+      if (focusSection === "surface") surfaceRef.current?.focus();
+      if (focusSection === "freight") freightRef.current?.scrollIntoView({ block: "center" });
+      if (focusSection === "media") mediaRef.current?.scrollIntoView({ block: "center" });
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [open, loading, detail, focusSection]);
+
   if (!open) return null;
 
   const dimsBadge = freightDimsBadge({
@@ -110,6 +159,8 @@ export default function PortalProductDrawer({
     widthIn,
     heightIn,
   });
+
+  const hasVariations = (detail?.childSkus?.length ?? 0) > 0;
 
   async function handleSave() {
     if (!detail) return;
@@ -124,6 +175,25 @@ export default function PortalProductDrawer({
       preserveWpGallery: preserveWp,
       freight: { weightLb, lengthIn, widthIn, heightIn },
     });
+    if (res.ok) {
+      const slotAlias: Record<SlotKey, string> = {
+        frame_finish: "frame_finish",
+        cushion_fabric: "cushion_fabric",
+        table_top: "table_top",
+        accent_accents: "accent_accents",
+      };
+      await saveProduct3dMaterialSlots(
+        detail.parentSku,
+        MATERIAL_SLOTS.filter((t) => materialTags.has(t.key)).map((t) => ({
+          slot: slotAlias[t.key] as
+            | "frame_finish"
+            | "cushion_fabric"
+            | "table_top"
+            | "accent_accents",
+          mesh_name: null,
+        })),
+      );
+    }
     setSaving(false);
     if (!res.ok) {
       onToast(res.error);
@@ -133,36 +203,45 @@ export default function PortalProductDrawer({
     onSaved?.();
   }
 
-  async function uploadMedia(kind: "photo" | "glb", file: File) {
+  async function uploadMedia(kind: "photo" | "glb" | "usdz", file: File) {
     if (!detail) return;
     setUploadBusy(kind);
     const res = await uploadEmbedAsset({
       embedToken,
       kind: "product_3d",
-      slot: kind === "glb" ? "glb" : "poster",
+      slot: kind === "photo" ? "poster" : kind,
       wooSku: detail.parentSku,
       file,
     });
     setUploadBusy(null);
-    onToast(res.ok ? `${kind === "glb" ? ".glb" : "Photo"} uploaded` : res.error);
+    onToast(
+      res.ok
+        ? `${kind === "photo" ? "Photo" : `.${kind}`} uploaded`
+        : res.error,
+    );
+    if (res.ok) {
+      const refreshed = await getProduct3dSlots(detail.parentSku);
+      if (refreshed.ok) setSlots(refreshed.slots);
+    }
   }
 
   const inputClass =
     "mt-0.5 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 focus:border-amber-400 focus:outline-none";
+  const optionClass = "bg-slate-900 text-slate-100";
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" data-testid="portal-product-drawer">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex h-full w-full max-w-xl flex-col border-l border-white/10 bg-[#0b0f17] text-slate-100 shadow-2xl">
+      <div className="relative flex h-full w-full max-w-2xl flex-col border-l border-white/10 bg-[#0b0f17] text-slate-100 shadow-2xl">
         <header className="flex items-start justify-between gap-3 border-b border-white/10 bg-[#111827] px-5 py-4">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-400/90">
-              Edit Details · Woo Push Prep
+              Edit Details · 3D &amp; Gallery Studio
             </p>
             <h2 className="mt-1 truncate text-lg font-semibold text-white">
               {detail?.storefrontTitle || sku}
             </h2>
-            <p className="mt-1 font-mono text-[11px] text-amber-300/90">{sku}</p>
+            <p className="mt-1 whitespace-nowrap font-mono text-[11px] text-amber-300/90">{sku}</p>
           </div>
           <button
             type="button"
@@ -196,15 +275,24 @@ export default function PortalProductDrawer({
                   Read-Only Locked SKUs
                 </h3>
                 <div className="mt-2 space-y-1.5">
-                  <p className="inline-flex items-center gap-1.5 font-mono text-xs text-amber-300">
+                  <p className="inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-xs text-amber-300">
                     <Lock className="h-3 w-3" />
                     Parent: {detail.parentSku}
                   </p>
-                  {detail.childSkus.map((c) => (
-                    <p key={c} className="font-mono text-[11px] text-slate-400">
-                      Variation: {c}
-                    </p>
-                  ))}
+                  {hasVariations
+                    ? detail.childSkus.map((c) => (
+                        <p
+                          key={c}
+                          className="whitespace-nowrap font-mono text-[11px] text-slate-400"
+                        >
+                          Variation: {c}
+                        </p>
+                      ))
+                    : (
+                      <p className="text-[11px] text-slate-500">
+                        Simple item — no -LS / -RS variations
+                      </p>
+                    )}
                 </div>
               </section>
 
@@ -218,6 +306,7 @@ export default function PortalProductDrawer({
                 <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   Storefront Display Title
                   <input
+                    ref={titleRef}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     data-testid="portal-drawer-title"
@@ -226,12 +315,13 @@ export default function PortalProductDrawer({
                 </label>
                 <p className="mt-1 text-[10px] text-slate-500">
                   Factory name: {detail.factoryName}
+                  {" · "}Preserve acronyms BH / SH / OD / LED
                 </p>
               </section>
 
               <section>
                 <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Description
+                  Description / Copy
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -254,22 +344,20 @@ export default function PortalProductDrawer({
                     className={inputClass}
                   />
                 </label>
-                <p className="mt-1 text-[10px] text-amber-200/80">
-                  Aluminum-only policy — steel / +10% excluded from storefront.
-                </p>
               </section>
 
               <section>
                 <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Customizable Surface / Add-On Profile
+                  Surface Profile
                   <select
+                    ref={surfaceRef}
                     value={surfaceProfile}
                     onChange={(e) => setSurfaceProfile(e.target.value as SurfaceProfile)}
                     data-testid="portal-drawer-surface-profile"
                     className={inputClass}
                   >
                     {SURFACE_PROFILE_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
+                      <option key={opt} value={opt} className={optionClass}>
                         {opt}
                       </option>
                     ))}
@@ -277,7 +365,11 @@ export default function PortalProductDrawer({
                 </label>
               </section>
 
-              <section className="rounded-xl border border-white/10 bg-[#111827] p-4">
+              <section
+                ref={freightRef}
+                className="rounded-xl border border-white/10 bg-[#111827] p-4"
+                data-testid="portal-drawer-freight"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                     Freight Packaging
@@ -295,15 +387,16 @@ export default function PortalProductDrawer({
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <label className="text-[10px] font-semibold uppercase text-slate-500">
-                    Weight (lbs)
+                    Weight lbs
                     <input
                       value={weightLb}
                       onChange={(e) => setWeightLb(e.target.value)}
                       className={inputClass}
+                      data-testid="portal-drawer-weight"
                     />
                   </label>
                   <label className="text-[10px] font-semibold uppercase text-slate-500">
-                    L (in)
+                    Length in
                     <input
                       value={lengthIn}
                       onChange={(e) => setLengthIn(e.target.value)}
@@ -311,7 +404,7 @@ export default function PortalProductDrawer({
                     />
                   </label>
                   <label className="text-[10px] font-semibold uppercase text-slate-500">
-                    W (in)
+                    Width in
                     <input
                       value={widthIn}
                       onChange={(e) => setWidthIn(e.target.value)}
@@ -319,7 +412,7 @@ export default function PortalProductDrawer({
                     />
                   </label>
                   <label className="text-[10px] font-semibold uppercase text-slate-500">
-                    H (in)
+                    Height in
                     <input
                       value={heightIn}
                       onChange={(e) => setHeightIn(e.target.value)}
@@ -329,11 +422,107 @@ export default function PortalProductDrawer({
                 </div>
               </section>
 
-              <section className="rounded-xl border border-white/10 bg-[#111827] p-4">
+              <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-white/10 bg-[#111827] p-3">
+                  <p className="text-[10px] font-semibold uppercase text-slate-500">Legacy SKU</p>
+                  <p className="mt-1 whitespace-nowrap font-mono text-xs text-slate-200">
+                    {(detail as { legacySku?: string | null }).legacySku ?? "—"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-[#111827] p-3">
+                  <p className="text-[10px] font-semibold uppercase text-slate-500">
+                    Factory Approved
+                  </p>
+                  <p className="mt-1 text-xs text-slate-200">
+                    {(detail as { factoryApproved?: boolean }).factoryApproved
+                      ? "Yes"
+                      : "Pending"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-[#111827] p-3">
+                  <p className="text-[10px] font-semibold uppercase text-slate-500">
+                    View on Staging
+                  </p>
+                  {(detail as { stagingUrl?: string | null }).stagingUrl ? (
+                    <a
+                      href={(detail as { stagingUrl?: string }).stagingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-block text-xs font-semibold text-sky-300 hover:underline"
+                    >
+                      Open staging →
+                    </a>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-500">Not linked</p>
+                  )}
+                </div>
+              </section>
+
+              <section
+                ref={mediaRef}
+                className="rounded-xl border border-white/10 bg-[#111827] p-4"
+                data-testid="portal-drawer-3d-studio"
+              >
                 <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   <UploadCloud className="h-3.5 w-3.5" />
-                  Product Media &amp; 3D
+                  3D &amp; Gallery Studio
                 </h3>
+                <dl className="mt-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+                  <div>
+                    <dt className="text-slate-500">GLB</dt>
+                    <dd className="truncate text-slate-200">{slots?.glbUrl ? "Ready" : "Missing"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">USDZ</dt>
+                    <dd className="truncate text-slate-200">
+                      {slots?.usdzUrl ? "Ready" : "Missing"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">SHA-256</dt>
+                    <dd className="truncate font-mono text-slate-200">
+                      {(slots as { sha256?: string | null } | null)?.sha256 ?? "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">Size</dt>
+                    <dd className="text-slate-200">
+                      {slots?.fileSize != null ? `${Math.round(slots.fileSize / 1024)} KB` : "—"}
+                    </dd>
+                  </div>
+                </dl>
+
+                <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  Material Slots
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  {MATERIAL_SLOTS.map((slot) => {
+                    const on = materialTags.has(slot.key);
+                    return (
+                      <button
+                        key={slot.key}
+                        type="button"
+                        data-testid={`material-slot-${slot.key}`}
+                        onClick={() => {
+                          setMaterialTags((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(slot.key)) next.delete(slot.key);
+                            else next.add(slot.key);
+                            return next;
+                          });
+                        }}
+                        className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold ring-1 ${
+                          on
+                            ? "bg-amber-500/20 text-amber-100 ring-amber-400/40"
+                            : "bg-white/5 text-slate-400 ring-white/10"
+                        }`}
+                      >
+                        {slot.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <label className="mt-3 flex items-start gap-2 text-xs text-slate-300">
                   <input
                     type="checkbox"
@@ -343,18 +532,19 @@ export default function PortalProductDrawer({
                     className="mt-0.5"
                   />
                   <span>
-                    Preserve existing WordPress gallery images when Hub media is empty
+                    Preserve WP Gallery Images
                     <span className="ml-2 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
                       {preserveWp ? "ON" : "OFF"}
                     </span>
                   </span>
                 </label>
+
                 <div className="mt-3 flex flex-wrap gap-2">
                   <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-amber-400/40">
                     {uploadBusy === "photo" ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : null}
-                    Product Photos (.jpg/.png/.webp)
+                    Gallery Photos
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
@@ -365,21 +555,22 @@ export default function PortalProductDrawer({
                       }}
                     />
                   </label>
-                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-amber-400/40">
-                    {uploadBusy === "glb" ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : null}
-                    3D Model (.glb)
-                    <input
-                      type="file"
-                      accept=".glb,model/gltf-binary"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) void uploadMedia("glb", f);
-                      }}
-                    />
-                  </label>
+                  <DropButton
+                    label="GLB"
+                    accept=".glb,model/gltf-binary"
+                    busy={uploadBusy === "glb"}
+                    disabled={uploadBusy !== null}
+                    onFile={(f) => void uploadMedia("glb", f)}
+                    testId="portal-drawer-glb"
+                  />
+                  <DropButton
+                    label="USDZ"
+                    accept=".usdz"
+                    busy={uploadBusy === "usdz"}
+                    disabled={uploadBusy !== null}
+                    onFile={(f) => void uploadMedia("usdz", f)}
+                    testId="portal-drawer-usdz"
+                  />
                 </div>
               </section>
             </div>
