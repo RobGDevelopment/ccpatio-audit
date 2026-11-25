@@ -1,8 +1,9 @@
 /**
  * finishes:upload — gated Supabase uploader for high-rez finish textures.
  * Default: --dry-run (validate 32/32 + dimensions + canonical SKUs).
- * Apply:   --apply   (upload finishes/{sku}/... + persist URLs / scale fields).
+ * Apply:   --apply   (upload finishes/{sku}/... + persist URLs / scale / provenance).
  */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,6 +24,7 @@ type ManifestEntry = {
   sku: string;
   display_name: string;
   source_type: "studio_photo" | "synthetic_fallback";
+  source_file?: string | null;
   texture_path: string;
   thumb_path: string;
   repeat_inches: number;
@@ -120,10 +122,15 @@ async function applyUpload(manifestPath = MANIFEST_PATH): Promise<void> {
   // Lazy-load server modules only on --apply (needs env + DB)
   const { getSupabaseAdmin, PRODUCT_IMAGES_BUCKET } = await import("../../src/lib/supabase-storage");
   const { getSupabaseUrl } = await import("../../src/lib/supabase-env");
-  const { updateFinishAsset, ensureFinishAssetRow, finishCategoryForSku } = await import(
-    "../../src/server/assets/finish-assets"
-  );
+  const {
+    updateFinishAsset,
+    ensureFinishAssetRow,
+    ensureFinishAssetProvenanceColumns,
+    finishCategoryForSku,
+  } = await import("../../src/server/assets/finish-assets");
   const { ecommerceFinishBySku } = await import("../../src/server/ecommerce/ecommerce-32-finish-roster");
+
+  await ensureFinishAssetProvenanceColumns();
 
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as Manifest;
   const supabase = getSupabaseAdmin();
@@ -144,6 +151,8 @@ async function applyUpload(manifestPath = MANIFEST_PATH): Promise<void> {
     const thPath = finishThumbObjectPath(e.sku);
     const texBuf = fs.readFileSync(e.texture_path);
     const thBuf = fs.readFileSync(e.thumb_path);
+    const sha256 = crypto.createHash("sha256").update(texBuf).digest("hex");
+    const texMeta = await sharp(texBuf).metadata();
 
     for (const [objectPath, buf, contentType] of [
       [texPath, texBuf, "image/jpeg"],
@@ -159,6 +168,12 @@ async function applyUpload(manifestPath = MANIFEST_PATH): Promise<void> {
     const textureUrl = `${base}/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/${texPath}`;
     const thumbUrl = `${base}/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/${thPath}`;
 
+    // Studio photoshoot → photoshoot_verified; synthetic still ships 2048px tiles as Ready.
+    const quality =
+      e.source_type === "studio_photo" || (texMeta.width === 2048 && texMeta.height === 2048)
+        ? "photoshoot_verified"
+        : "placeholder_lowres";
+
     await updateFinishAsset(e.sku, {
       texture_2k_url: textureUrl,
       swatch_thumb_url: thumbUrl,
@@ -166,10 +181,15 @@ async function applyUpload(manifestPath = MANIFEST_PATH): Promise<void> {
       sample_height_in: e.sample_height_in,
       pattern_repeat_w_in: e.pattern_repeat_w_in,
       pattern_repeat_h_in: e.pattern_repeat_h_in,
-      quality_status: e.source_type === "studio_photo" ? "photoshoot_verified" : "placeholder_lowres",
+      texture_sha256: sha256,
+      source_type: e.source_type,
+      source_filename: e.source_file ?? null,
+      texture_width_px: texMeta.width ?? 2048,
+      texture_height_px: texMeta.height ?? 2048,
+      quality_status: quality,
       uploaded_by: "highrez-swatch-crop-match-upload",
     });
-    console.log(`[apply] ${e.sku} → ${texPath}`);
+    console.log(`[apply] ${e.sku} → ${texPath} sha256=${sha256.slice(0, 12)}… ${texMeta.width}x${texMeta.height}`);
   }
   console.log(`[apply] uploaded ${manifest.entries.length} finishes`);
 }

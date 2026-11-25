@@ -66,9 +66,24 @@ export function probeFailedStackLayers(
         { id: "katana_reset_bucket_sync", label: "Reset Bucket & Sync Katana Now" },
       ];
     } else if (id === "qbo") {
-      base.actions = [{ id: "qbo_reconnect", label: "Reconnect QuickBooks" }];
+      base.actions = [
+        { id: "qbo_reconnect", label: "Reconnect QuickBooks" },
+        { id: "qbo_verify_token", label: "Verify Live QBO Token" },
+      ];
     } else if (id === "woocommerce") {
-      base.actions = [{ id: "woo_retest", label: "Re-Test" }];
+      base.actions = [
+        { id: "woo_retest", label: "Re-Test Connection" },
+        { id: "woo_copy_diagnostic", label: "Copy Diagnostic Report for PrimeView" },
+        { id: "woo_held_orders", label: "Held Orders" },
+      ];
+    } else if (id === "fedex") {
+      base.actions = [{ id: "fedex_view_missing_dims", label: "View SKUs Missing Dims →" }];
+    } else if (id === "inngest_dlq") {
+      base.actions = [
+        { id: "dlq_archive_stale", label: "Resolve / Archive Stale Test Failures" },
+      ];
+    } else if (id === "supabase" || id === "ghl") {
+      base.actions = [{ id: "layer_reprobe", label: "Re-Probe" }];
     }
     return base;
   });

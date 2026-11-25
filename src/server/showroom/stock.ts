@@ -6,7 +6,11 @@ import { GHL_EMBED_PRINCIPAL_EMAIL, getPimSession, type PimSession } from "@/lib
 import type { StockRow } from "@/lib/stock-display";
 import { getSupabaseUrl } from "@/lib/supabase-env";
 import { getDb } from "@/server/db/client";
-import { finished_goods_catalog, product_assets } from "@/server/db/schema";
+import {
+  ecommerce_finish_assets,
+  finished_goods_catalog,
+  product_assets,
+} from "@/server/db/schema";
 import {
   listCatalogCategoryItems,
   listStockCollections,
@@ -67,7 +71,8 @@ function productAssetPublicUrl(storagePath: string): string | null {
 }
 
 /**
- * Cross-fill blank imageUrl from finished_goods_catalog, then product_assets.
+ * Cross-fill blank imageUrl from finished_goods_catalog, product_assets, then
+ * ecommerce_finish_assets (FAB-/DKT-/PWD- high-rez swatches for Current Inventory).
  * ZERO ecommerce_listings coupling — retail Tenjam/Umbrella/Kindle photos only.
  */
 async function overlayPimImages(rows: StockRow[]): Promise<StockRow[]> {
@@ -111,6 +116,37 @@ async function overlayPimImages(rows: StockRow[]): Promise<StockRow[]> {
       const key = asset.sku.trim().toUpperCase();
       if (bySku.has(key)) continue;
       const url = productAssetPublicUrl(asset.storagePath);
+      if (url) bySku.set(key, url);
+    }
+  }
+
+  const stillMissing = [
+    ...new Set(
+      rows
+        .filter((row) => !(row.imageUrl?.trim() || bySku.get(row.sku.toUpperCase())))
+        .map((row) => row.sku.trim().toUpperCase())
+        .filter(
+          (sku) =>
+            sku.startsWith("FAB-") ||
+            sku.startsWith("DKT-") ||
+            sku.startsWith("DEC-") ||
+            sku.startsWith("PWD-"),
+        ),
+    ),
+  ];
+  if (stillMissing.length > 0) {
+    const finishes = await db
+      .select({
+        sku: ecommerce_finish_assets.sku,
+        thumb: ecommerce_finish_assets.swatch_thumb_url,
+        texture: ecommerce_finish_assets.texture_2k_url,
+      })
+      .from(ecommerce_finish_assets)
+      .where(inArray(ecommerce_finish_assets.sku, stillMissing));
+    for (const f of finishes) {
+      const key = f.sku.toUpperCase();
+      if (bySku.has(key)) continue;
+      const url = (f.thumb ?? f.texture)?.trim();
       if (url) bySku.set(key, url);
     }
   }

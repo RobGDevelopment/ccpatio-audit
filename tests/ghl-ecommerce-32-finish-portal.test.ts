@@ -272,8 +272,21 @@ describe("default GHL route is dark Executive Control Center (no legacy chrome)"
     expect(portal).not.toContain("mission-control");
 
     expect(stackStrip).toContain("executive-stack-health-strip");
+    expect(stackStrip).toContain("stack-diagnostic-drawer");
     expect(stackStrip).toContain("probeFailedStackLayers");
+    expect(stackStrip).toContain("maxHeight");
     expect(stackStrip).not.toContain("setLayers(null)");
+    expect(stackStrip).not.toContain("min-h-[4.5rem]");
+    expect(portal).toContain("FullResImageLightbox");
+    expect(portal).toContain("storefront-addons-editor");
+    expect(portal).toContain("portal-kpi-");
+    expect(portal).toContain("catalogShapeFilter");
+    expect(portal).toContain("APF GROUP");
+    expect(portal).toContain("N/A (Slab)");
+    expect(portal).toContain("N/A (Matte Coat)");
+    expect(portal).toMatch(/Cushion &amp; Pillow|Cushion & Pillow/);
+    expect(portal).toContain("Dekton Tabletop");
+    expect(portal).toContain("Aluminum Frame");
     expect(authGate).toContain("executive-auth-gate");
     expect(authGate).toContain("executive-auth-gate-message");
     const embedAuth = readFileSync(
@@ -517,6 +530,44 @@ describe("woocommerce-payload-pricing-integrity", () => {
       "FIN-FLY-LEF-ARM-SOF-88X34-LS",
       "FIN-FLY-LEF-ARM-SOF-88X34-RS",
     ]);
+  });
+
+  it("scrubs 54 inch bolt-width from solid Sunbrellas and keeps Cabana at 7", () => {
+    const solids = [
+      "FAB-CRU-ASH",
+      "FAB-DUM-STU",
+      "FAB-HER-PAP",
+      "FAB-KIN-SIL",
+      "FAB-MET-CLO",
+      "FAB-POS-SAP",
+      "FAB-PRE-FAW",
+      "FAB-RUE-COS",
+      "FAB-SHE-LIN",
+    ];
+    for (const sku of solids) {
+      const def = ECOMMERCE_32_FINISHES.find((f) => f.sku === sku);
+      expect(def?.patternRepeatIn?.w ?? null, sku).not.toBe(54);
+    }
+    expect(ECOMMERCE_32_FINISHES.find((f) => f.sku === "FAB-CAB-CLA")?.patternRepeatIn?.h).toBe(7);
+    expect(ECOMMERCE_32_FINISHES.find((f) => f.sku === "PWD-FANUC-GRAY")?.displayName).toBe("Gray");
+    expect(ECOMMERCE_32_FINISHES.find((f) => f.sku === "PWD-LITE-BEIGE")?.displayName).toBe("Beige");
+    expect(ECOMMERCE_32_FINISHES.find((f) => f.sku === "PWD-OIL-RUB-BRONZE")?.displayName).toBe(
+      "Bronze",
+    );
+  });
+
+  it("keeps inbound Katana sync ungated by DOWNSTREAM_MUTATIONS", () => {
+    const actions = readFileSync(
+      join(ROOT, "src/app/embed/admin/master-catalog/actions.ts"),
+      "utf8",
+    );
+    expect(actions).toContain("Inbound Katana inventory pull");
+    expect(actions).toContain("refreshShowroomSnapshotFromKatana");
+    expect(actions).not.toContain(
+      "Inventory pull skipped (read-only until downstream flags flip).",
+    );
+    expect(actions).toContain("verifyLiveQboTokenAction");
+    expect(actions).toContain("archiveOpenDlqEventsAction");
   });
 
   it("wires product archive modal + staged commit + staging push batch modes in portal sources", () => {

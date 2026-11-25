@@ -29,7 +29,9 @@ import {
   PHASE1_SOW_ITEM_COUNT,
   PHASE1_VARIATION_COUNT,
   reconcileMiaApprovedCounts,
+  sowKeyFromSku,
 } from "@/server/ecommerce/phase1-portal";
+import { ecommerceFinishBySku } from "@/server/ecommerce/ecommerce-32-finish-roster";
 import { needsMiaSpotCheck, STOREFRONT_POLICY_BANNER } from "@/server/ecommerce/two-tab-portal";
 import {
   apfTargetGroupForFamily,
@@ -60,9 +62,16 @@ import {
   updateFinishDisplayForPortal,
   type FinishAssetCategory,
   type FinishAssetView,
+  archiveOpenDlqEventsAction,
+  listOpenDlqEventsAction,
+  retryDlqEventAction,
+  resolveDlqEventAction,
+  verifyLiveQboTokenAction,
+  type DlqOpenRow,
 } from "../actions";
 import { DropButton, uploadEmbedAsset } from "./SwatchesFinishesDrawer";
 import { Model3dCell, type Phase1Listing } from "./Phase1PortalViews";
+import FullResImageLightbox from "./FullResImageLightbox";
 import ExecutiveStackHealthStrip from "./ExecutiveStackHealthStrip";
 import ArchiveImpactModal, { type ArchiveImpactTarget } from "./ArchiveImpactModal";
 import PendingCommitBar, { type StagedPortalChange } from "./PendingCommitBar";
@@ -78,6 +87,7 @@ type FinishSubFilter =
   | "powder"
   | "addons"
   | "archived";
+type CatalogShapeFilter = "all" | "parents" | "variations" | "simple" | "purchasable";
 type ProductTypeFilter = "all" | "sofas" | "chairs" | "tables" | "ottomans" | "swings" | "misc";
 type ReadinessFilter =
   | "none"
@@ -169,6 +179,7 @@ function DarkFinishRow({
   onArchive,
   restoreMode = false,
   onRestore,
+  onInspect,
 }: {
   asset: FinishAssetView;
   embedToken: string | null;
@@ -177,6 +188,7 @@ function DarkFinishRow({
   onArchive: (sku: string, displayName: string) => void;
   restoreMode?: boolean;
   onRestore?: (sku: string) => void;
+  onInspect?: () => void;
 }) {
   const [displayName, setDisplayName] = useState(asset.displayName);
   const [repeatW, setRepeatW] = useState(asset.patternRepeatWIn?.toString() ?? "");
@@ -188,13 +200,16 @@ function DarkFinishRow({
   const [progress, setProgress] = useState<Partial<Record<"thumb" | "texture_2k", number>>>({});
   const [saving, setSaving] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState<"idle" | "saving" | "saved">("idle");
+  const [imgBroken, setImgBroken] = useState(false);
   const skuLocked = isFinishSkuLocked(asset.sku);
+  const finishDef = ecommerceFinishBySku(asset.sku);
 
   useEffect(() => {
     setDisplayName(asset.displayName);
     setRepeatW(asset.patternRepeatWIn?.toString() ?? "");
     setRepeatH(asset.patternRepeatHIn?.toString() ?? "");
     setTextureScale(asset.patternRepeatWIn?.toString() ?? asset.sampleWidthIn?.toString() ?? "");
+    setImgBroken(false);
   }, [asset]);
 
   async function upload(slot: "thumb" | "texture_2k", file: File) {
@@ -276,26 +291,39 @@ function DarkFinishRow({
   return (
     <tr className="border-t border-white/5" data-testid={`finish-row-${asset.sku}`}>
       <td className="px-3 py-2.5">
-        {asset.swatchThumbUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={asset.swatchThumbUrl}
-            alt={asset.displayName}
-            className="h-10 w-10 rounded-lg border border-white/10 object-cover"
-          />
-        ) : (
-          <span
-            className="block h-10 w-10 rounded-lg border border-white/10"
-            style={{ backgroundColor: asset.hexCode ?? "#334155" }}
-          />
-        )}
+        <button
+          type="button"
+          className="block cursor-pointer"
+          onClick={() => onInspect?.()}
+          aria-label={`Inspect ${asset.displayName}`}
+        >
+          {asset.swatchThumbUrl && !imgBroken ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={asset.swatchThumbUrl}
+              alt={asset.displayName}
+              className="h-10 w-10 rounded-lg border border-white/10 object-cover"
+              onError={() => setImgBroken(true)}
+            />
+          ) : (
+            <span
+              className="block h-10 w-10 rounded-lg border border-white/10"
+              style={{ backgroundColor: asset.hexCode ?? "#334155" }}
+              title={asset.hexCode ?? "No swatch"}
+            />
+          )}
+        </button>
       </td>
       <td className="px-3 py-2.5">
         {asset.qualityStatus === "photoshoot_verified" ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+          <button
+            type="button"
+            onClick={() => onInspect?.()}
+            className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300 cursor-pointer hover:bg-emerald-500/25"
+          >
             <CheckCircle2 className="h-3 w-3" />
             2048px Ready
-          </span>
+          </button>
         ) : (
           <span className="inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
             Needs 2048px
@@ -342,26 +370,42 @@ function DarkFinishRow({
         </div>
       </td>
       <td className="px-3 py-2.5">
+        {asset.finishCategory !== "fabric" && !repeatW && !repeatH ? (
+          <span className="text-[10px] text-slate-500 italic">
+            {asset.finishCategory === "dekton" ? "N/A (Slab)" : "N/A (Matte Coat)"}
+          </span>
+        ) : null}
         <div className="flex items-center gap-1">
-          <input
-            inputMode="decimal"
-            value={repeatW}
-            onChange={(e) => setRepeatW(e.target.value)}
-            onBlur={() => void save()}
-            placeholder="W"
-            className={`w-14 rounded px-1.5 py-1 font-mono text-[11px] ${FINISH_INPUT}`}
-            data-testid={`cal-patternRepeatWIn-${asset.sku}`}
-          />
-          <span className="text-slate-600">×</span>
-          <input
-            inputMode="decimal"
-            value={repeatH}
-            onChange={(e) => setRepeatH(e.target.value)}
-            onBlur={() => void save()}
-            placeholder="H"
-            className={`w-14 rounded px-1.5 py-1 font-mono text-[11px] ${FINISH_INPUT}`}
-            data-testid={`cal-patternRepeatHIn-${asset.sku}`}
-          />
+          <label className="flex flex-col items-center">
+            <span className="text-[9px] text-slate-500">Repeat</span>
+            <div className="flex items-center gap-1">
+              <label className="flex flex-col items-center">
+                <span className="text-[8px] text-slate-600">W&quot;</span>
+                <input
+                  inputMode="decimal"
+                  value={repeatW}
+                  onChange={(e) => setRepeatW(e.target.value)}
+                  onBlur={() => void save()}
+                  placeholder="W"
+                  className={`w-16 text-center rounded px-1.5 py-1 font-mono text-[11px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${FINISH_INPUT}`}
+                  data-testid={`cal-patternRepeatWIn-${asset.sku}`}
+                />
+              </label>
+              <span className="text-slate-600 mt-3">×</span>
+              <label className="flex flex-col items-center">
+                <span className="text-[8px] text-slate-600">H&quot;</span>
+                <input
+                  inputMode="decimal"
+                  value={repeatH}
+                  onChange={(e) => setRepeatH(e.target.value)}
+                  onBlur={() => void save()}
+                  placeholder="H"
+                  className={`w-16 text-center rounded px-1.5 py-1 font-mono text-[11px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${FINISH_INPUT}`}
+                  data-testid={`cal-patternRepeatHIn-${asset.sku}`}
+                />
+              </label>
+            </div>
+          </label>
         </div>
       </td>
       <td className="px-3 py-2.5">
@@ -376,17 +420,39 @@ function DarkFinishRow({
           data-testid={`cal-textureScale-${asset.sku}`}
         />
       </td>
-      <td className="px-3 py-2.5 font-mono text-[10px] text-slate-500">
-        {asset.finishCategory === "fabric"
-          ? "fabric_sku"
-          : asset.finishCategory === "powder"
-            ? "powder_coat"
-            : "dekton"}
+      <td className="min-w-[165px] whitespace-nowrap px-3 py-2.5">
+        {asset.finishCategory === "fabric" ? (
+          <span
+            className="inline-flex rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold text-sky-200"
+            title="fabric_sku"
+          >
+            Cushion &amp; Pillow
+          </span>
+        ) : asset.finishCategory === "dekton" ? (
+          <span
+            className="inline-flex rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-bold text-violet-200"
+            title="dekton"
+          >
+            Dekton Tabletop
+          </span>
+        ) : (
+          <span
+            className="inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-200"
+            title="powder_coat"
+          >
+            Aluminum Frame
+          </span>
+        )}
+        {asset.finishCategory === "powder" && finishDef ? (
+          <span className="mt-0.5 block text-[9px] text-slate-500" title={`Factory SKU: ${asset.sku}`}>
+            {asset.sku}
+          </span>
+        ) : null}
       </td>
       <td className="px-3 py-2.5">
         <div className="flex min-w-[12rem] flex-row gap-1">
           <DropButton
-            label="Swatch"
+            label="↑ Swatch"
             accept={IMAGE_ACCEPT}
             busy={busy === "thumb"}
             disabled={busy !== null || saving}
@@ -395,7 +461,7 @@ function DarkFinishRow({
             testId={`upload-thumb-${asset.sku}`}
           />
           <DropButton
-            label="2048px Texture"
+            label="↑ 2048px"
             accept={IMAGE_ACCEPT}
             busy={busy === "texture_2k"}
             disabled={busy !== null || saving}
@@ -632,6 +698,11 @@ export default function EcommerceCertificationPortal({
     null,
   );
   const [stagingNote, setStagingNote] = useState<string | null>(null);
+  const [lightboxAsset, setLightboxAsset] = useState<FinishAssetView | null>(null);
+  const [catalogShapeFilter, setCatalogShapeFilter] = useState<CatalogShapeFilter>("all");
+  const [operatorInfoOpen, setOperatorInfoOpen] = useState(false);
+  const [policyInfoOpen, setPolicyInfoOpen] = useState(false);
+  const [dlqRows, setDlqRows] = useState<DlqOpenRow[]>([]);
 
   const reconciled = useMemo(
     () => reconcileMiaApprovedCounts(listings),
@@ -656,6 +727,89 @@ export default function EcommerceCertificationPortal({
   useEffect(() => {
     void loadAssets();
   }, [loadAssets]);
+
+  const handleDrawerAction = useCallback(
+    async (_layerId: string, actionId: string) => {
+      if (actionId === "qbo_verify_token") {
+        const res = await verifyLiveQboTokenAction();
+        onToast(res.ok ? `QBO token valid — ${res.companyName ?? "OK"}` : res.error);
+      } else if (actionId === "fedex_view_missing_dims") {
+        setTab("products");
+        setReadinessFilter("missing_dims");
+        setGuidance("Filtered to products missing freight dimensions.");
+      } else if (actionId === "woo_held_orders") {
+        onToast("Held orders are managed in WooCommerce admin → Orders → On Hold.");
+        setGuidance("View held orders in WooCommerce admin → Orders → On Hold.");
+      } else if (actionId === "dlq_archive_stale") {
+        const res = await archiveOpenDlqEventsAction();
+        onToast(res.ok ? `Archived ${res.resolved} stale DLQ events` : res.error);
+        if (res.ok) {
+          const refresh = await listOpenDlqEventsAction();
+          if (refresh.ok) setDlqRows(refresh.rows);
+        }
+      } else if (actionId.startsWith("dlq_retry:")) {
+        const id = actionId.replace("dlq_retry:", "");
+        const res = await retryDlqEventAction(id);
+        onToast(res.ok ? res.message : res.error);
+      } else if (actionId.startsWith("dlq_resolve:")) {
+        const id = actionId.replace("dlq_resolve:", "");
+        const res = await resolveDlqEventAction(id);
+        onToast(res.ok ? "DLQ event resolved" : res.error);
+        if (res.ok) setDlqRows((prev) => prev.filter((r) => r.id !== id));
+      } else if (actionId === "layer_reprobe") {
+        onToast("Re-probing…");
+      }
+    },
+    [onToast],
+  );
+
+  const loadDlqRows = useCallback(async () => {
+    const res = await listOpenDlqEventsAction();
+    if (res.ok) setDlqRows(res.rows);
+  }, []);
+
+  useEffect(() => {
+    void loadDlqRows();
+  }, [loadDlqRows]);
+
+  const dlqDrawerExtras = useMemo(() => {
+    if (dlqRows.length === 0) return <p className="text-xs text-slate-500">No open DLQ events.</p>;
+    return (
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+          Open DLQ Events ({dlqRows.length})
+        </p>
+        {dlqRows.map((row) => (
+          <div
+            key={row.id}
+            className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs"
+          >
+            <div className="min-w-0 flex-1">
+              <span className="font-mono text-amber-300">{row.functionId}</span>
+              <span className="ml-2 text-slate-500">{row.eventName}</span>
+              <span className="ml-2 text-rose-400 truncate">{row.errorMessage?.slice(0, 60)}</span>
+            </div>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => void handleDrawerAction("inngest_dlq", `dlq_retry:${row.id}`)}
+                className="rounded bg-amber-500/20 px-2 py-1 text-[10px] font-semibold text-amber-200 hover:bg-amber-500/30"
+              >
+                Retry
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDrawerAction("inngest_dlq", `dlq_resolve:${row.id}`)}
+                className="rounded bg-slate-500/20 px-2 py-1 text-[10px] font-semibold text-slate-300 hover:bg-slate-500/30"
+              >
+                Resolve
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }, [dlqRows, handleDrawerAction]);
 
   useEffect(() => {
     void getPrimeviewHandoffDownloadUrls().then((res) => {
@@ -700,7 +854,7 @@ export default function EcommerceCertificationPortal({
           return true;
       }
     };
-    return listings
+    let filtered = listings
       .filter((l) => {
         if (collection && l.collectionLabel !== collection) return false;
         if (!typeMatch(l.productName)) return false;
@@ -737,7 +891,6 @@ export default function EcommerceCertificationPortal({
           return false;
         }
         if (readinessFilter === "approved" && !l.miaApproved) return false;
-        // Archived vault is a separate list — hide active rows when that filter is on.
         if (readinessFilter === "archived") return false;
         if (!q) return true;
         return (
@@ -747,7 +900,38 @@ export default function EcommerceCertificationPortal({
         );
       })
       .sort((a, b) => a.sheetOrder - b.sheetOrder || a.globalSku.localeCompare(b.globalSku));
-  }, [listings, search, collection, statusFilter, productTypeFilter, readinessFilter]);
+
+    if (catalogShapeFilter === "variations") {
+      filtered = filtered.filter((l) => /-(LS|RS)$/i.test(l.wooSku || l.globalSku));
+    } else if (catalogShapeFilter === "simple") {
+      filtered = filtered.filter((l) => {
+        const sku = (l.wooSku || l.globalSku).toUpperCase();
+        if (/-(LS|RS)$/i.test(sku)) return false;
+        const vLabel = formatVariationsFacing({
+          globalSku: l.globalSku,
+          wooSku: l.wooSku,
+          hasLsRsPair: false,
+          variationCount: 1,
+        });
+        return vLabel === "Simple";
+      });
+    } else if (catalogShapeFilter === "parents") {
+      const seen = new Set<string>();
+      filtered = filtered.filter((l) => {
+        const key = sowKeyFromSku(l.globalSku);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      filtered.sort((a, b) => {
+        const aIsParent = !/-(LS|RS)$/i.test(a.wooSku || a.globalSku) ? 0 : 1;
+        const bIsParent = !/-(LS|RS)$/i.test(b.wooSku || b.globalSku) ? 0 : 1;
+        return aIsParent - bIsParent || a.globalSku.localeCompare(b.globalSku);
+      });
+    }
+
+    return filtered;
+  }, [listings, search, collection, statusFilter, productTypeFilter, readinessFilter, catalogShapeFilter]);
 
   async function handleAdd(category: FinishAssetCategory) {
     const name = (addName[category] ?? "").trim();
@@ -868,6 +1052,8 @@ export default function EcommerceCertificationPortal({
         <ExecutiveStackHealthStrip
           onToast={onToast}
           initialLayers={initialStackLayers ?? null}
+          onDrawerAction={handleDrawerAction}
+          drawerExtras={dlqDrawerExtras}
         />
         <header className="border-b border-white/10 pb-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -882,10 +1068,36 @@ export default function EcommerceCertificationPortal({
                 Unified dark certification lane — {assets.length} active storefront finishes · locked
                 system SKUs · Mia / Kian / SuperAdmin.
               </p>
-              <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-200 ring-1 ring-amber-500/20">
-                <Shield className="h-3.5 w-3.5" />
-                Mia · Kian · Superadmin
-              </p>
+              <div className="relative mt-2 inline-block">
+                <button
+                  type="button"
+                  onClick={() => setOperatorInfoOpen((v) => !v)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-200 ring-1 ring-amber-500/20 cursor-pointer hover:bg-amber-500/20"
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  Mia · Kian · Superadmin
+                </button>
+                {operatorInfoOpen ? (
+                  <div
+                    data-testid="operator-info-popover"
+                    className="absolute left-0 top-full z-30 mt-2 w-72 rounded-xl border border-white/10 bg-slate-900 p-4 text-xs text-slate-300 shadow-xl"
+                  >
+                    <p className="font-semibold text-white">Operator Roles</p>
+                    <ul className="mt-2 space-y-1">
+                      <li><span className="font-semibold text-amber-300">Mia</span> — Catalog QA & spot-check approvals</li>
+                      <li><span className="font-semibold text-amber-300">Kian</span> — 3D asset pipeline & finish calibration</li>
+                      <li><span className="font-semibold text-amber-300">Superadmin</span> — Full portal access, staging push, archive</li>
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => setOperatorInfoOpen(false)}
+                      className="mt-3 text-[10px] text-slate-500 hover:text-white"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -936,21 +1148,20 @@ export default function EcommerceCertificationPortal({
           <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="portal-kpi-cards">
             {(
               [
-                ["Parents", parentCount, () => setTab("products")],
-                ["Variations", variationCount, () => setTab("products")],
-                ["Simple", simpleCount, () => setTab("products")],
-                ["Purchasable SKUs", purchasableSkuCount, () => setTab("products")],
-                ["Active Finishes", assets.length, () => {
-                  setTab("finishes");
-                  setFinishSubFilter("all_active");
-                }],
+                ["Parents", parentCount, "parents" as CatalogShapeFilter],
+                ["Variations", variationCount, "variations" as CatalogShapeFilter],
+                ["Simple", simpleCount, "simple" as CatalogShapeFilter],
+                ["Purchasable SKUs", purchasableSkuCount, "purchasable" as CatalogShapeFilter],
               ] as const
-            ).map(([label, n, onClick]) => (
+            ).map(([label, n, shape]) => (
               <button
                 key={label}
                 type="button"
+                data-testid={`portal-kpi-${shape}`}
                 onClick={() => {
-                  onClick();
+                  setTab("products");
+                  setCatalogShapeFilter(shape);
+                  setReadinessFilter("none");
                   setGuidance(`Opened ${label} view.`);
                 }}
                 className="rounded-lg bg-[#111827] px-3 py-2 text-left ring-1 ring-white/10 hover:ring-amber-400/40"
@@ -959,6 +1170,19 @@ export default function EcommerceCertificationPortal({
                 <dd className="text-lg font-semibold text-white">{n}</dd>
               </button>
             ))}
+            <button
+              type="button"
+              data-testid="portal-kpi-active-finishes"
+              onClick={() => {
+                setTab("finishes");
+                setFinishSubFilter("all_active");
+                setGuidance("Opened Active Finishes view.");
+              }}
+              className="rounded-lg bg-[#111827] px-3 py-2 text-left ring-1 ring-white/10 hover:ring-amber-400/40"
+            >
+              <dt className="text-[11px] uppercase tracking-wide text-slate-500">Active Finishes</dt>
+              <dd className="text-lg font-semibold text-white">{assets.length}</dd>
+            </button>
           </dl>
         </header>
 
@@ -1007,13 +1231,13 @@ export default function EcommerceCertificationPortal({
             <div className="flex flex-wrap gap-2" data-testid="portal-finish-subfilters">
               {(
                 [
-                  ["all_active", `All 32 Active (${assets.length})`],
-                  ["sunbrella", "Sunbrella"],
-                  ["ultraleather", "Ultraleather"],
-                  ["dekton", "Dekton"],
-                  ["powder", "Powder Coats"],
-                  ["addons", "Storefront Add-Ons"],
-                  ["archived", `Archived/Disabled (${archivedAssets.length})`],
+                  ["all_active", `All Active (${assets.length})`],
+                  ["sunbrella", `Sunbrella (${assets.filter((a) => { const d = ecommerceFinishBySku(a.sku); return d?.family === "sunbrella"; }).length})`],
+                  ["ultraleather", `Ultraleather (${assets.filter((a) => { const d = ecommerceFinishBySku(a.sku); return d?.family === "ultraleather"; }).length})`],
+                  ["dekton", `Dekton (${assets.filter((a) => { const d = ecommerceFinishBySku(a.sku); return d?.family === "dekton"; }).length})`],
+                  ["powder", `Powder Coats (${assets.filter((a) => { const d = ecommerceFinishBySku(a.sku); return d?.family === "powder"; }).length})`],
+                  ["addons", "Storefront Add-Ons (5)"],
+                  ["archived", `Archived (${archivedAssets.length})`],
                 ] as const
               ).map(([key, label]) => (
                 <button
@@ -1027,12 +1251,42 @@ export default function EcommerceCertificationPortal({
                 </button>
               ))}
             </div>
-            <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
-              {STOREFRONT_POLICY_BANNER}
-              <span className="mt-1 block text-amber-200/80">
-                Aluminum-Only Storefront Policy — Steel/+10% Excluded from web export.
-              </span>
-            </p>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setPolicyInfoOpen((v) => !v)}
+                className="w-full rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-left text-xs text-amber-100 cursor-pointer hover:bg-amber-500/15"
+              >
+                {STOREFRONT_POLICY_BANNER}
+                <span className="mt-1 block text-amber-200/80">
+                  Aluminum-Only Storefront Policy — Steel/+10% Excluded from web export.
+                </span>
+              </button>
+              {policyInfoOpen ? (
+                <div
+                  data-testid="policy-info-popover"
+                  className="absolute left-0 top-full z-30 mt-2 w-96 rounded-xl border border-white/10 bg-slate-900 p-4 text-xs text-slate-300 shadow-xl"
+                >
+                  <p className="font-semibold text-white">Aluminum-Only Storefront Policy</p>
+                  <p className="mt-2">
+                    Only aluminum-frame products are exported to the web storefront.
+                    Steel frames carry a +10% surcharge and are excluded from automated
+                    WooCommerce sync. This prevents incorrect pricing from reaching customers.
+                  </p>
+                  <p className="mt-2 text-slate-400">
+                    Powder coat finishes (6 active) apply exclusively to the aluminum frame SKUs.
+                    Steel variants must be quoted manually.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setPolicyInfoOpen(false)}
+                    className="mt-3 text-[10px] text-slate-500 hover:text-white"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              ) : null}
+            </div>
             {assetsError ? (
               <p className="rounded-lg bg-rose-500/10 p-3 text-xs text-rose-300">{assetsError}</p>
             ) : null}
@@ -1074,13 +1328,41 @@ export default function EcommerceCertificationPortal({
                 </table>
               </section>
             ) : null}
+            {finishSubFilter === "addons" ? (
+              <section
+                className="rounded-2xl border border-white/10 bg-[#111827] p-5"
+                data-testid="storefront-addons-editor"
+              >
+                <h2 className="text-sm font-semibold text-white">Storefront Add-Ons Editor</h2>
+                <p className="mt-1 text-xs text-slate-400">
+                  Configure purchasable add-on categories for the storefront.
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {[
+                    { title: "Cushion Core/Fill", desc: "Foam density, quick-dry fill, Dacron wrap options." },
+                    { title: "Accent Pillows", desc: "Lumbar & throw pillow pairings per finish family." },
+                    { title: "Protective Covers", desc: "All-weather covers matched to product dimensions." },
+                    { title: "Dekton Tabletop Rules", desc: "Slab size constraints and edge-profile selections." },
+                    { title: "Umbrella Bases", desc: "Weight & bolt-down base pairings per umbrella SKU." },
+                  ].map((addon) => (
+                    <div
+                      key={addon.title}
+                      className="rounded-xl border border-white/10 bg-slate-900/60 p-4"
+                    >
+                      <h3 className="text-xs font-semibold text-amber-300">{addon.title}</h3>
+                      <p className="mt-1 text-[11px] text-slate-400">{addon.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
             {assetsLoading && assets.length === 0 ? (
               <div className="flex items-center gap-2 py-16 text-sm text-slate-400">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading finishes…
               </div>
-            ) : finishSubFilter !== "archived" ? (
+            ) : finishSubFilter !== "archived" && finishSubFilter !== "addons" ? (
               FAMILY_GROUPS.filter((group) => {
-                if (finishSubFilter === "all_active" || finishSubFilter === "addons") return true;
+                if (finishSubFilter === "all_active") return true;
                 return finishSubFilter === group.key;
               }).map((group) => {
                 const rosterSkus = new Set(group.skus());
@@ -1174,7 +1456,7 @@ export default function EcommerceCertificationPortal({
                             <th className="px-3 py-2">Display Name</th>
                             <th className="px-3 py-2">Pattern Repeat (in)</th>
                             <th className="px-3 py-2">Texture Scale</th>
-                            <th className="px-3 py-2">Woo / APF</th>
+                            <th className="min-w-[165px] px-3 py-2">APF GROUP</th>
                             <th className="px-3 py-2">Upload</th>
                             <th className="px-3 py-2" />
                           </tr>
@@ -1197,6 +1479,7 @@ export default function EcommerceCertificationPortal({
                                 onArchive={(sku, displayName) =>
                                   setArchiveTarget({ kind: "finish", sku, displayName })
                                 }
+                                onInspect={() => setLightboxAsset(a)}
                               />
                             ))
                           )}
@@ -1818,6 +2101,31 @@ export default function EcommerceCertificationPortal({
         onCommit={() => void commitStagedChanges()}
         onDiscard={() => setStagedChanges([])}
       />
+      {lightboxAsset ? (
+        <FullResImageLightbox
+          open
+          onClose={() => setLightboxAsset(null)}
+          sku={lightboxAsset.sku}
+          displayName={lightboxAsset.displayName}
+          category={lightboxAsset.finishCategory}
+          apfGroup={apfTargetGroupForFamily(ecommerceFinishBySku(lightboxAsset.sku)?.family ?? "sunbrella")}
+          sourceProvenance={
+            lightboxAsset.sourceType === "studio_photo"
+              ? `Studio Photo: ${lightboxAsset.sourceFilename ?? "unknown"}`
+              : lightboxAsset.sourceType === "synthetic_fallback"
+                ? "Synthetic Fallback"
+                : "—"
+          }
+          repeatScale={
+            lightboxAsset.patternRepeatWIn != null
+              ? `${lightboxAsset.patternRepeatWIn}″ × ${lightboxAsset.patternRepeatHIn ?? lightboxAsset.patternRepeatWIn}″`
+              : "—"
+          }
+          sha256={lightboxAsset.textureSha256 ?? null}
+          thumbUrl={lightboxAsset.swatchThumbUrl}
+          fullResUrl={lightboxAsset.texture2kUrl}
+        />
+      ) : null}
     </div>
   );
 }

@@ -26,11 +26,29 @@ export { PHASE1_DEKTONS };
 
 export type FinishCategory = "fabric" | "powder" | "dekton";
 export type FinishQualityStatus = "placeholder_lowres" | "photoshoot_verified";
+export type FinishSourceType = "studio_photo" | "synthetic_fallback";
 
 /** Hex + label from the exact 32 e-commerce roster. */
 const FINISH_META: Readonly<Record<string, { label: string; color: string }>> = Object.fromEntries(
   ECOMMERCE_32_FINISHES.map((f) => [f.sku, { label: f.displayName, color: f.hex }] as const),
 );
+
+/** True when URL points at photoshoot-verified finishes/{SKU}/… Storage objects. */
+export function isHighRezFinishStorageUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /\/storage\/v1\/object\/public\/[^/]+\/finishes\/[A-Z0-9-]+\//i.test(url);
+}
+
+/** Legacy low-res / 404-prone paths that must never clobber high-rez Storage URLs. */
+export function isStaleLegacyFinishUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const u = url.toLowerCase();
+  return (
+    u.includes("_low.jpg") ||
+    u.includes("_low.png") ||
+    /\/fabrics\/fab-[a-z0-9-]+\.jpg(?:\?|$)/i.test(u)
+  );
+}
 
 /**
  * Public URL of the pre-existing low-res fabric swatch:
@@ -43,6 +61,21 @@ export function fabricSwatchPublicUrl(sku: string): string {
     throw new Error("NEXT_PUBLIC_SUPABASE_URL is required for fabric swatch hosting");
   }
   return `${base}/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/fabrics/${sku.trim().toLowerCase()}.jpg`;
+}
+
+/**
+ * Additive provenance columns for high-rez uploads. Idempotent — safe on every boot.
+ * Never drops columns or rewrites existing URL values.
+ */
+export async function ensureFinishAssetProvenanceColumns(): Promise<void> {
+  const db = getDb();
+  await db.execute(sql`
+    ALTER TABLE ecommerce_finish_assets ADD COLUMN IF NOT EXISTS texture_sha256 text;
+    ALTER TABLE ecommerce_finish_assets ADD COLUMN IF NOT EXISTS source_type text;
+    ALTER TABLE ecommerce_finish_assets ADD COLUMN IF NOT EXISTS source_filename text;
+    ALTER TABLE ecommerce_finish_assets ADD COLUMN IF NOT EXISTS texture_width_px integer;
+    ALTER TABLE ecommerce_finish_assets ADD COLUMN IF NOT EXISTS texture_height_px integer;
+  `);
 }
 
 export function finishCategoryForSku(sku: string): FinishCategory | null {
@@ -127,15 +160,22 @@ export type SeedFinishAssetsResult = {
 /**
  * NON-DESTRUCTIVE seed. New rows are inserted (fabrics as `placeholder_lowres`, pointing at the
  * existing `fabrics/{sku.lower}.jpg`). On conflict ONLY empty (NULL / '') hex + URL fields are
- * filled; a non-empty `swatch_thumb_url` / `texture_2k_url`, `quality_status`, `display_name`,
- * `uploaded_by` and physical-scale fields are never overwritten.
+ * filled; a non-empty high-rez `finishes/{SKU}/…` URL is NEVER overwritten by legacy fabrics/ or
+ * `*_LOW.jpg` paths. `quality_status`, operator `uploaded_by`, and verified scale are preserved.
  */
 export async function seedEcommerceFinishAssets(): Promise<SeedFinishAssetsResult> {
+  await ensureFinishAssetProvenanceColumns().catch(() => undefined);
   const db = getDb();
   const rows = buildFinishSeedRows();
   const t = ecommerce_finish_assets;
   const before = await db
-    .select({ sku: t.sku, display_name: t.display_name })
+    .select({
+      sku: t.sku,
+      display_name: t.display_name,
+      swatch_thumb_url: t.swatch_thumb_url,
+      texture_2k_url: t.texture_2k_url,
+      pattern_repeat_w_in: t.pattern_repeat_w_in,
+    })
     .from(t);
   const known = new Set(before.map((r) => r.sku));
   const staleBySku = new Map(
@@ -143,10 +183,35 @@ export async function seedEcommerceFinishAssets(): Promise<SeedFinishAssetsResul
       .filter((r) => isStaleFinishDisplayName(r.sku, r.display_name))
       .map((r) => [r.sku, true] as const),
   );
+  const BOLT_WIDTH_SCRUB = new Set([
+    "FAB-MET-CLO",
+    "FAB-HER-PAP",
+    "FAB-SHE-LIN",
+    "FAB-POS-SAP",
+    "FAB-CRU-ASH",
+    "FAB-DUM-STU",
+    "FAB-RUE-COS",
+    "FAB-PRE-FAW",
+    "FAB-KIN-SIL",
+    "FAB-RIT-NEC",
+    "FAB-RIT-ROS",
+  ]);
 
   for (const row of rows) {
     const refreshName = staleBySku.has(row.sku);
     const isCabana = row.sku.toUpperCase() === "FAB-CAB-CLA";
+    const existing = before.find((r) => r.sku === row.sku);
+    const keepThumb =
+      isHighRezFinishStorageUrl(existing?.swatch_thumb_url) ||
+      (!isStaleLegacyFinishUrl(existing?.swatch_thumb_url) &&
+        Boolean(existing?.swatch_thumb_url?.trim()));
+    const keepTexture =
+      isHighRezFinishStorageUrl(existing?.texture_2k_url) ||
+      (!isStaleLegacyFinishUrl(existing?.texture_2k_url) &&
+        Boolean(existing?.texture_2k_url?.trim()));
+    const scrubBoltWidth =
+      BOLT_WIDTH_SCRUB.has(row.sku.toUpperCase()) &&
+      Number(existing?.pattern_repeat_w_in) === 54;
     await db
       .insert(t)
       .values({ ...row, quality_status: "placeholder_lowres" })
@@ -154,15 +219,26 @@ export async function seedEcommerceFinishAssets(): Promise<SeedFinishAssetsResul
         target: t.sku,
         set: {
           hex_code: sql`COALESCE(NULLIF(${t.hex_code}, ''), excluded.hex_code)`,
-          swatch_thumb_url: sql`COALESCE(NULLIF(${t.swatch_thumb_url}, ''), excluded.swatch_thumb_url)`,
-          texture_2k_url: sql`COALESCE(NULLIF(${t.texture_2k_url}, ''), excluded.texture_2k_url)`,
+          // Never replace high-rez Storage URLs with legacy fabrics/*_LOW paths.
+          swatch_thumb_url: keepThumb
+            ? sql`${t.swatch_thumb_url}`
+            : sql`COALESCE(NULLIF(${t.swatch_thumb_url}, ''), excluded.swatch_thumb_url)`,
+          texture_2k_url: keepTexture
+            ? sql`${t.texture_2k_url}`
+            : sql`COALESCE(NULLIF(${t.texture_2k_url}, ''), excluded.texture_2k_url)`,
           sample_width_in: sql`COALESCE(${t.sample_width_in}, excluded.sample_width_in)`,
           sample_height_in: sql`COALESCE(${t.sample_height_in}, excluded.sample_height_in)`,
-          pattern_repeat_w_in: sql`COALESCE(${t.pattern_repeat_w_in}, excluded.pattern_repeat_w_in)`,
+          pattern_repeat_w_in: isCabana
+            ? sql`excluded.pattern_repeat_w_in`
+            : scrubBoltWidth
+              ? sql`excluded.pattern_repeat_w_in`
+              : sql`COALESCE(${t.pattern_repeat_w_in}, excluded.pattern_repeat_w_in)`,
           // Cabana Classic canonical vertical repeat is 7" — always restore.
           pattern_repeat_h_in: isCabana
             ? sql`excluded.pattern_repeat_h_in`
-            : sql`COALESCE(${t.pattern_repeat_h_in}, excluded.pattern_repeat_h_in)`,
+            : scrubBoltWidth
+              ? sql`excluded.pattern_repeat_h_in`
+              : sql`COALESCE(${t.pattern_repeat_h_in}, excluded.pattern_repeat_h_in)`,
           ...(refreshName ? { display_name: row.display_name } : {}),
           // Zero-accidental-deletion restore: never leave FAB-CAB-CLA soft-disabled.
           ...(isCabana ? { uploaded_by: null } : {}),
@@ -217,6 +293,11 @@ export type FinishAssetPatch = Partial<{
   sample_height_in: number | string | null;
   pattern_repeat_w_in: number | string | null;
   pattern_repeat_h_in: number | string | null;
+  texture_sha256: string | null;
+  source_type: FinishSourceType | null;
+  source_filename: string | null;
+  texture_width_px: number | null;
+  texture_height_px: number | null;
   quality_status: FinishQualityStatus;
   uploaded_by: string | null;
 }>;
@@ -271,6 +352,20 @@ export async function updateFinishAsset(
     }
     set.quality_status = patch.quality_status;
   }
+  if (patch.texture_sha256 !== undefined) set.texture_sha256 = patch.texture_sha256;
+  if (patch.source_type !== undefined) {
+    if (
+      patch.source_type !== null &&
+      patch.source_type !== "studio_photo" &&
+      patch.source_type !== "synthetic_fallback"
+    ) {
+      throw new Error("invalid source_type");
+    }
+    set.source_type = patch.source_type;
+  }
+  if (patch.source_filename !== undefined) set.source_filename = patch.source_filename;
+  if (patch.texture_width_px !== undefined) set.texture_width_px = patch.texture_width_px;
+  if (patch.texture_height_px !== undefined) set.texture_height_px = patch.texture_height_px;
   if (patch.uploaded_by !== undefined) set.uploaded_by = patch.uploaded_by;
 
   const key = sku.trim().toUpperCase();

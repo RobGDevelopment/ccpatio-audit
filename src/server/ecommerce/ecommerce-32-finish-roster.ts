@@ -62,16 +62,18 @@ export const ECOMMERCE_32_FINISHES: readonly EcommerceFinishDefinition[] = [
   { sku: "FAB-CAN-NAV", displayName: "Canvas Navy", family: "sunbrella", category: "fabric", hex: "#1B2A4A", patternRepeatIn: null, wooMetaKey: "fabric_sku", aliases: [] },
   { sku: "FAB-RIT-NEC", displayName: "Ritsy Nectar", family: "sunbrella", category: "fabric", hex: "#D4A574", patternRepeatIn: { w: 27, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
   { sku: "FAB-RIT-ROS", displayName: "Ritsy Rosemary", family: "sunbrella", category: "fabric", hex: "#6B7F5A", patternRepeatIn: { w: 27, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
-  { sku: "FAB-MET-CLO", displayName: "Metamorphic Cloud", family: "sunbrella", category: "fabric", hex: "#C8C4BC", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
-  { sku: "FAB-HER-PAP", displayName: "Heritage Papyrus", family: "sunbrella", category: "fabric", hex: "#E8DFC8", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
-  { sku: "FAB-CAB-CLA", displayName: "Cabana Classic", family: "sunbrella", category: "fabric", hex: "#EDE6D9", patternRepeatIn: { w: 54, h: 7 }, wooMetaKey: "fabric_sku", aliases: [] },
-  { sku: "FAB-SHE-LIN", displayName: "Shelter Linen", family: "sunbrella", category: "fabric", hex: "#D9D0C0", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
-  { sku: "FAB-POS-SAP", displayName: "Posh Sapphire", family: "sunbrella", category: "fabric", hex: "#2F4A6E", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
-  { sku: "FAB-CRU-ASH", displayName: "Crush Ash", family: "sunbrella", category: "fabric", hex: "#A8A29A", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
-  { sku: "FAB-DUM-STU", displayName: "Dumont Stucco", family: "sunbrella", category: "fabric", hex: "#C4B9A8", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
-  { sku: "FAB-RUE-COS", displayName: "Rue Coastal", family: "sunbrella", category: "fabric", hex: "#7A9AA8", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
-  { sku: "FAB-PRE-FAW", displayName: "Precise Fawn", family: "sunbrella", category: "fabric", hex: "#C9B89A", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
-  { sku: "FAB-KIN-SIL", displayName: "Kindle Silk", family: "sunbrella", category: "fabric", hex: "#E2DDD2", patternRepeatIn: { w: 54, h: 25.25 }, wooMetaKey: "fabric_sku", aliases: [] },
+  // Solid / textured Sunbrellas: never store bolt-width 54" as pattern repeat.
+  { sku: "FAB-MET-CLO", displayName: "Metamorphic Cloud", family: "sunbrella", category: "fabric", hex: "#C8C4BC", patternRepeatIn: null, wooMetaKey: "fabric_sku", aliases: [] },
+  { sku: "FAB-HER-PAP", displayName: "Heritage Papyrus", family: "sunbrella", category: "fabric", hex: "#E8DFC8", patternRepeatIn: null, wooMetaKey: "fabric_sku", aliases: [] },
+  // Cabana Classic = 7" vertical stripe repeat (not 54" bolt width).
+  { sku: "FAB-CAB-CLA", displayName: "Cabana Classic", family: "sunbrella", category: "fabric", hex: "#EDE6D9", patternRepeatIn: { w: 7, h: 7 }, wooMetaKey: "fabric_sku", aliases: [] },
+  { sku: "FAB-SHE-LIN", displayName: "Shelter Linen", family: "sunbrella", category: "fabric", hex: "#D9D0C0", patternRepeatIn: null, wooMetaKey: "fabric_sku", aliases: [] },
+  { sku: "FAB-POS-SAP", displayName: "Posh Sapphire", family: "sunbrella", category: "fabric", hex: "#2F4A6E", patternRepeatIn: null, wooMetaKey: "fabric_sku", aliases: [] },
+  { sku: "FAB-CRU-ASH", displayName: "Crush Ash", family: "sunbrella", category: "fabric", hex: "#A8A29A", patternRepeatIn: null, wooMetaKey: "fabric_sku", aliases: [] },
+  { sku: "FAB-DUM-STU", displayName: "Dumont Stucco", family: "sunbrella", category: "fabric", hex: "#C4B9A8", patternRepeatIn: null, wooMetaKey: "fabric_sku", aliases: [] },
+  { sku: "FAB-RUE-COS", displayName: "Rue Coastal", family: "sunbrella", category: "fabric", hex: "#7A9AA8", patternRepeatIn: null, wooMetaKey: "fabric_sku", aliases: [] },
+  { sku: "FAB-PRE-FAW", displayName: "Precise Fawn", family: "sunbrella", category: "fabric", hex: "#C9B89A", patternRepeatIn: null, wooMetaKey: "fabric_sku", aliases: [] },
+  { sku: "FAB-KIN-SIL", displayName: "Kindle Silk", family: "sunbrella", category: "fabric", hex: "#E2DDD2", patternRepeatIn: null, wooMetaKey: "fabric_sku", aliases: [] },
 
   // ── Ultraleather (4) ─────────────────────────────────────────────────
   { sku: "FAB-BEA-ULT", displayName: "Beacon", family: "ultraleather", category: "fabric", hex: "#E8E4DC", patternRepeatIn: null, wooMetaKey: "fabric_sku", aliases: ["FAB-BEA-BEA"] },

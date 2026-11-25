@@ -1564,6 +1564,14 @@ export const ecommerce_finish_assets = pgTable(
     sample_height_in: numeric("sample_height_in", { precision: 10, scale: 3 }),
     pattern_repeat_w_in: numeric("pattern_repeat_w_in", { precision: 10, scale: 3 }),
     pattern_repeat_h_in: numeric("pattern_repeat_h_in", { precision: 10, scale: 3 }),
+    /** SHA-256 of the uploaded 2048 texture bytes (hex). */
+    texture_sha256: text("texture_sha256"),
+    /** Studio vs synthetic provenance from high-rez pipeline. */
+    source_type: text("source_type").$type<"studio_photo" | "synthetic_fallback">(),
+    /** Raw studio filename e.g. Fabrics/PV205084.JPG (null for synthetic). */
+    source_filename: text("source_filename"),
+    texture_width_px: integer("texture_width_px"),
+    texture_height_px: integer("texture_height_px"),
     quality_status: text("quality_status")
       .$type<"placeholder_lowres" | "photoshoot_verified">()
       .notNull()

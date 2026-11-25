@@ -1,44 +1,38 @@
 {
-  "phase_id": "embed-auth-ssr-stack-bar-hardening",
+  "phase_id": "ecc-compact-stack-highrez-lightbox-polish",
   "base_ref": "HEAD",
-  "blast_radius": 19,
+  "blast_radius": 18,
   "counts": {
-    "files": 19,
+    "files": 18,
     "tracked": 15,
-    "untracked": 4,
-    "insertions": 428,
-    "deletions": 1034
+    "untracked": 3,
+    "insertions": 1130,
+    "deletions": 311
   },
   "files": [
     {
       "status": "??",
-      "path": "src/app/embed/admin/master-catalog/MasterCatalogClient.tsx",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/FullResImageLightbox.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/ExecutiveAuthGate.tsx",
+      "path": "src/server/db/migrations/0062_finish_asset_provenance.sql",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/ecommerce/master-catalog-embed-auth.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/e2e/embed-auth-ssr-stack-bar.spec.ts",
+      "path": "tests/e2e/ecc-compact-stack-lightbox.spec.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 6,
-      "deletions": 9
+      "insertions": 5,
+      "deletions": 4
     },
     {
       "status": "M",
@@ -49,88 +43,87 @@
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 94,
-      "deletions": 124
+      "insertions": 61,
+      "deletions": 132
+    },
+    {
+      "status": "M",
+      "path": "scripts/ops/upload-highrez-finishes.ts",
+      "insertions": 26,
+      "deletions": 6
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 5,
-      "deletions": 5
+      "insertions": 275,
+      "deletions": 17
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx",
-      "insertions": 15,
-      "deletions": 23
+      "insertions": 383,
+      "deletions": 75
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/ecommerce/ExecutiveStackHealthStrip.tsx",
-      "insertions": 43,
-      "deletions": 23
+      "insertions": 112,
+      "deletions": 49
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/page.tsx",
-      "insertions": 54,
-      "deletions": 835
+      "path": "src/server/assets/finish-assets.ts",
+      "insertions": 102,
+      "deletions": 7
     },
     {
       "status": "M",
-      "path": "src/app/embed/showroom/page.tsx",
-      "insertions": 1,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/lib/ecommerce-roster.ts",
-      "insertions": 2,
+      "path": "src/server/db/schema.ts",
+      "insertions": 8,
       "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/lib/embed-actor-params.ts",
-      "insertions": 1,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/lib/embed-auth.ts",
-      "insertions": 79,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/proxy.ts",
-      "insertions": 2,
-      "deletions": 3
     },
     {
       "status": "M",
       "path": "src/server/ecommerce/ecommerce-32-finish-roster.ts",
-      "insertions": 14,
-      "deletions": 3
+      "insertions": 12,
+      "deletions": 10
     },
     {
       "status": "M",
       "path": "src/server/ecommerce/executive-stack-health.ts",
-      "insertions": 40,
-      "deletions": 0
+      "insertions": 17,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/server/showroom/stock.ts",
+      "insertions": 38,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/server/stock/hub-sync-freshness.ts",
+      "insertions": 15,
+      "deletions": 3
     },
     {
       "status": "M",
       "path": "tests/ghl-ecommerce-32-finish-portal.test.ts",
-      "insertions": 70,
-      "deletions": 5
+      "insertions": 51,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/highrez-swatch-pipeline.test.ts",
+      "insertions": 23,
+      "deletions": 2
     }
   ],
   "untracked": [
-    "src/app/embed/admin/master-catalog/MasterCatalogClient.tsx",
-    "src/app/embed/admin/master-catalog/ecommerce/ExecutiveAuthGate.tsx",
-    "src/server/ecommerce/master-catalog-embed-auth.ts",
-    "tests/e2e/embed-auth-ssr-stack-bar.spec.ts"
+    "src/app/embed/admin/master-catalog/ecommerce/FullResImageLightbox.tsx",
+    "src/server/db/migrations/0062_finish_asset_provenance.sql",
+    "tests/e2e/ecc-compact-stack-lightbox.spec.ts"
   ],
-  "file_list_sha256": "d0abe5bf3437fbd5db94ff7455a2b7b6707387c5c1ac321dea576bf769a094b9",
+  "file_list_sha256": "bb9e2d5d2f943a5e02682f791acf856d3bd3db6285128ec94ec7ce01d1137f90",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }

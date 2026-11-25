@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { X } from "lucide-react";
 import {
   buildWooDiagnosticReportAction,
   getExecutiveStackHealthAction,
@@ -20,23 +21,36 @@ const LAMP_CLASS: Record<StackLampStatus, string> = {
   "Action Required": "bg-rose-500/20 text-rose-100 ring-rose-500/40",
 };
 
+const LAMP_DOT: Record<StackLampStatus, string> = {
+  Healthy: "bg-emerald-400",
+  Degraded: "bg-amber-400",
+  "Action Required": "bg-rose-400",
+};
+
 type Props = {
   onToast: (msg: string) => void;
   onLayerClick?: (layerId: StackLayerPill["id"]) => void;
-  /** SSR / permanent-mount hydration — never leave the strip empty. */
   initialLayers?: StackLayerPill[] | null;
+  onDrawerAction?: (
+    layerId: StackLayerPill["id"],
+    actionId: string,
+  ) => void | Promise<void>;
+  drawerExtras?: React.ReactNode;
 };
 
 export default function ExecutiveStackHealthStrip({
   onToast,
   onLayerClick,
   initialLayers = null,
+  onDrawerAction,
+  drawerExtras,
 }: Props) {
   const [layers, setLayers] = useState<StackLayerPill[]>(
     () => initialLayers ?? probeFailedStackLayers("Probing full stack…"),
   );
   const [loading, setLoading] = useState(!initialLayers?.length);
   const [busy, setBusy] = useState<string | null>(null);
+  const [openLayer, setOpenLayer] = useState<StackLayerPill["id"] | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -46,7 +60,6 @@ export default function ExecutiveStackHealthStrip({
         setLayers(res.health.layers);
       } else {
         onToast(res.error);
-        // Keep all 7 pills mounted — never unmount on 401/500/probe failure.
         setLayers(probeFailedStackLayers());
       }
     } catch (err) {
@@ -61,6 +74,15 @@ export default function ExecutiveStackHealthStrip({
     void refresh();
   }, [refresh]);
 
+  function toggleDrawer(id: StackLayerPill["id"]) {
+    const next = openLayer === id ? null : id;
+    setOpenLayer(next);
+    if (next) onLayerClick?.(next);
+  }
+
+  const selectedLayer = layers.find((l) => l.id === openLayer) ?? null;
+
+  /* ── Internal action handlers (existing wired actions) ── */
   async function runAction(layerId: StackLayerPill["id"], actionId: string) {
     setBusy(`${layerId}-${actionId}`);
     try {
@@ -90,6 +112,8 @@ export default function ExecutiveStackHealthStrip({
             onToast("Could not copy — select diagnostic from toast log");
           }
         }
+      } else if (onDrawerAction) {
+        await onDrawerAction(layerId, actionId);
       }
     } finally {
       setBusy(null);
@@ -97,59 +121,98 @@ export default function ExecutiveStackHealthStrip({
   }
 
   return (
-    <div
-      className="mb-6 grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-7"
-      data-testid="executive-stack-health-strip"
-      data-probing={loading ? "true" : "false"}
-    >
-      {layers.map((layer) => (
-        <button
-          key={layer.id}
-          type="button"
-          data-testid={`stack-layer-${layer.id}`}
-          title={layer.detail}
-          onClick={() => onLayerClick?.(layer.id)}
-          className={`flex min-h-[4.5rem] flex-col items-start rounded-xl px-3 py-2 text-left ring-1 transition hover:brightness-110 ${LAMP_CLASS[layer.status]}`}
+    <div className="mb-4">
+      {/* ───── Compact pill bar ───── */}
+      <div
+        className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1"
+        data-testid="executive-stack-health-strip"
+        data-collapsed-height="true"
+        data-probing={loading ? "true" : "false"}
+        style={{ maxHeight: openLayer ? undefined : 90 }}
+      >
+        {layers.map((layer) => (
+          <button
+            key={layer.id}
+            type="button"
+            data-testid={`stack-layer-${layer.id}`}
+            title={layer.detail}
+            onClick={() => toggleDrawer(layer.id)}
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[11px] font-semibold ring-1 transition hover:brightness-110 ${LAMP_CLASS[layer.status]} ${
+              openLayer === layer.id ? "ring-2 brightness-125" : ""
+            }`}
+          >
+            <span
+              className={`inline-block h-2 w-2 shrink-0 rounded-full ${LAMP_DOT[layer.status]}`}
+              aria-hidden="true"
+            />
+            <span className="leading-tight">
+              {layer.label}
+              {loading ? " …" : ""}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* ───── Diagnostic drawer ───── */}
+      {selectedLayer && (
+        <div
+          data-testid="stack-diagnostic-drawer"
+          className="mt-2 rounded-xl border border-white/10 bg-[#0d1117] px-4 py-3"
         >
-          <span className="text-[10px] font-bold uppercase tracking-wide opacity-90">
-            {layer.label}
-          </span>
-          <span className="mt-0.5 text-[11px] font-semibold leading-tight">
-            {loading ? "Probing…" : layer.status}
-          </span>
-          <span className="mt-1 line-clamp-2 text-[10px] opacity-80">{layer.detail}</span>
-          {layer.errorSnippet ? (
-            <span className="mt-1 line-clamp-2 font-mono text-[9px] opacity-70">
-              {layer.errorSnippet}
-            </span>
-          ) : null}
-          {layer.actions?.length ? (
-            <span className="mt-2 flex flex-wrap gap-1">
-              {layer.actions.map((a) => (
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-white">
+                {selectedLayer.label}
                 <span
-                  key={a.id}
-                  role="button"
-                  tabIndex={0}
-                  data-testid={`stack-action-${layer.id}-${a.id}`}
-                  className="rounded bg-black/25 px-1.5 py-0.5 text-[9px] font-semibold uppercase hover:bg-black/40"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void runAction(layer.id, a.id);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.stopPropagation();
-                      void runAction(layer.id, a.id);
-                    }
-                  }}
+                  className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${LAMP_CLASS[selectedLayer.status]}`}
                 >
-                  {busy === `${layer.id}-${a.id}` ? "…" : a.label}
+                  <span
+                    className={`inline-block h-1.5 w-1.5 rounded-full ${LAMP_DOT[selectedLayer.status]}`}
+                  />
+                  {selectedLayer.status}
                 </span>
+              </h3>
+              <p className="mt-1 text-xs text-slate-400">{selectedLayer.detail}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpenLayer(null)}
+              className="rounded p-1 text-slate-500 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close drawer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          {selectedLayer.errorSnippet && (
+            <pre className="mt-2 max-h-24 overflow-auto rounded-md bg-black/40 px-3 py-2 font-mono text-[10px] leading-relaxed text-rose-300">
+              {selectedLayer.errorSnippet}
+            </pre>
+          )}
+
+          {selectedLayer.actions?.length ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {selectedLayer.actions.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  data-testid={`stack-action-${selectedLayer.id}-${a.id}`}
+                  disabled={busy === `${selectedLayer.id}-${a.id}`}
+                  onClick={() => void runAction(selectedLayer.id, a.id)}
+                  className="rounded-md bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase text-slate-200 transition hover:bg-white/20 disabled:opacity-50"
+                >
+                  {busy === `${selectedLayer.id}-${a.id}` ? "…" : a.label}
+                </button>
               ))}
-            </span>
+            </div>
           ) : null}
-        </button>
-      ))}
+
+          {/* Render drawerExtras when inngest DLQ layer is open */}
+          {openLayer === "inngest_dlq" && drawerExtras ? (
+            <div className="mt-3 border-t border-white/10 pt-3">{drawerExtras}</div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

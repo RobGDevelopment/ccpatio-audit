@@ -8,6 +8,7 @@ import {
   sku_mappings,
   quarantine_catalog,
   ecommerce_listings,
+  ecommerce_finish_assets,
   ecommerce_roster_gaps,
   cad_uploads,
   product_bom,
@@ -3092,6 +3093,11 @@ export interface FinishAssetView {
   sampleHeightIn: number | null;
   patternRepeatWIn: number | null;
   patternRepeatHIn: number | null;
+  textureSha256: string | null;
+  sourceType: "studio_photo" | "synthetic_fallback" | null;
+  sourceFilename: string | null;
+  textureWidthPx: number | null;
+  textureHeightPx: number | null;
   qualityStatus: "placeholder_lowres" | "photoshoot_verified";
   uploadedBy: string | null;
   updatedAt: string;
@@ -3112,6 +3118,11 @@ function toFinishAssetView(r: Awaited<ReturnType<typeof listFinishAssets>>[numbe
     sampleHeightIn: n(r.sample_height_in),
     patternRepeatWIn: n(r.pattern_repeat_w_in),
     patternRepeatHIn: n(r.pattern_repeat_h_in),
+    textureSha256: r.texture_sha256 ?? null,
+    sourceType: r.source_type ?? null,
+    sourceFilename: r.source_filename ?? null,
+    textureWidthPx: r.texture_width_px ?? null,
+    textureHeightPx: r.texture_height_px ?? null,
     qualityStatus: r.quality_status,
     uploadedBy: r.uploaded_by,
     updatedAt: r.updated_at.toISOString(),
@@ -4175,11 +4186,25 @@ export async function getExecutiveStackHealthAction(): Promise<
         (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
           process.env.SUPABASE_ANON_KEY?.trim()),
     );
+    let finishAssetReady = 0;
+    try {
+      const finishRows = await db
+        .select({
+          n: sql<number>`cast(count(*) filter (where ${ecommerce_finish_assets.texture_2k_url} is not null and ${ecommerce_finish_assets.texture_2k_url} <> '') as int)`,
+        })
+        .from(ecommerce_finish_assets);
+      finishAssetReady = Number(finishRows[0]?.n ?? 0);
+    } catch {
+      finishAssetReady = 0;
+    }
     const supabaseLayer: StackLayerPill = {
       id: "supabase",
       label: "Supabase",
       status: storageReady ? "Healthy" : "Degraded",
-      detail: storageReady ? "PostgreSQL reachable · Storage env present" : "Storage env incomplete",
+      detail: storageReady
+        ? `PostgreSQL reachable · ${finishAssetReady}/32 Storage assets`
+        : "Storage env incomplete",
+      actions: [{ id: "layer_reprobe", label: "Re-Probe" }],
     };
 
     const { getKatanaBucketHealth } = await import("@/server/sre/katana-throttle");
@@ -4234,7 +4259,10 @@ export async function getExecutiveStackHealthAction(): Promise<
       label: "QuickBooks",
       status: lampFromState(snapshot.qbo.state),
       detail: `${snapshot.qbo.detail} · QBO_LEDGER_MODE=${qboLedgerMode} (read-only)`,
-      actions: [{ id: "qbo_reconnect", label: "Reconnect QuickBooks" }],
+      actions: [
+        { id: "qbo_reconnect", label: "Reconnect QuickBooks" },
+        { id: "qbo_verify_token", label: "Verify Live QBO Token" },
+      ],
     };
 
     const wooProbe = await testWooConnection();
@@ -4245,7 +4273,10 @@ export async function getExecutiveStackHealthAction(): Promise<
             label: "WooCommerce",
             status: "Healthy",
             detail: `Connected to ${wooProbe.host}`,
-            actions: [{ id: "woo_retest", label: "Re-Test" }],
+            actions: [
+              { id: "woo_retest", label: "Re-Test Connection" },
+              { id: "woo_held_orders", label: "Held Orders" },
+            ],
           }
         : {
             id: "woocommerce",
@@ -4254,10 +4285,11 @@ export async function getExecutiveStackHealthAction(): Promise<
             detail: wooProbe.reason,
             errorSnippet: wooProbe.snippet ?? null,
             actions: [
-              { id: "woo_retest", label: "Re-Test" },
+              { id: "woo_retest", label: "Re-Test Connection" },
               ...(wooProbe.diagnosticReport
-                ? [{ id: "woo_copy_diagnostic", label: "Copy Diagnostic" }]
+                ? [{ id: "woo_copy_diagnostic", label: "Copy Diagnostic Report for PrimeView" }]
                 : []),
+              { id: "woo_held_orders", label: "Held Orders" },
             ],
           };
 
@@ -4274,10 +4306,11 @@ export async function getExecutiveStackHealthAction(): Promise<
       detail: !ghl.configured
         ? "GHL token / location not configured"
         : ghl.ok
-          ? "Connected"
+          ? `Connected · Location ${process.env.GHL_LOCATION_ID?.trim() || "configured"} · ${session.email ?? "operator"}`
           : ghl.authFailed
             ? `Token rejected (HTTP ${ghl.status ?? "?"})`
             : `HTTP ${ghl.status ?? "unreachable"}`,
+      actions: [{ id: "layer_reprobe", label: "Re-Probe" }],
     };
 
     const fedexConfigured = isFedExFreightConfigured();
@@ -4312,8 +4345,19 @@ export async function getExecutiveStackHealthAction(): Promise<
           : "Healthy"
         : "Action Required",
       detail: fedexConfigured
-        ? `${missingDimsSkuCount} listing(s) missing freight dims`
+        ? missingDimsSkuCount > 0
+          ? `${missingDimsSkuCount} SKUs Missing Freight Dims`
+          : "Freight dims complete"
         : "FedEx Freight credentials incomplete",
+      actions:
+        fedexConfigured && missingDimsSkuCount > 0
+          ? [
+              {
+                id: "fedex_view_missing_dims",
+                label: `View ${missingDimsSkuCount} SKUs Missing Dims →`,
+              },
+            ]
+          : undefined,
     };
 
     const dlqLamp =
@@ -4329,7 +4373,13 @@ export async function getExecutiveStackHealthAction(): Promise<
       detail:
         dlq.open === 0
           ? "DLQ empty"
-          : `${dlq.open} open DLQ event(s)${dlq.unalerted ? ` · ${dlq.unalerted} unalerted` : ""}`,
+          : `${dlq.open} open DLQ failure(s)${dlq.unalerted ? ` · ${dlq.unalerted} unalerted` : ""}`,
+      actions:
+        dlq.open > 0
+          ? [
+              { id: "dlq_archive_stale", label: "Resolve / Archive Stale Test Failures" },
+            ]
+          : undefined,
     };
 
     const health: ExecutiveStackHealth = {
@@ -4358,19 +4408,35 @@ export async function getExecutiveStackHealthAction(): Promise<
   }
 }
 
+/**
+ * Inbound read-only Katana → Hub inventory pull.
+ * NEVER gated by DOWNSTREAM_MUTATIONS (that flag only blocks outbound writes).
+ */
 export async function runKatanaSyncNowAction(): Promise<
-  { ok: true; message: string; eventIds?: string[] } | { ok: false; error: string }
+  { ok: true; message: string; eventIds?: string[]; rowCount?: number } | { ok: false; error: string }
 > {
-  const queued = await requestKatanaSelfHealAction();
-  if (!queued.ok) return queued;
-  return {
-    ok: true,
-    message: "Katana catalog reconcile queued (read-only until downstream flags allow writes).",
-    eventIds: queued.eventIds,
-  };
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const { refreshShowroomSnapshotFromKatana } = await import("@/server/stock/showroom-snapshot");
+    const { runWithKatanaPriorityLane } = await import("@/lib/katana");
+    const snap = await runWithKatanaPriorityLane(() =>
+      refreshShowroomSnapshotFromKatana({ force: true, priority: true, checkpoint: true }),
+    );
+    return {
+      ok: true,
+      message: `Inbound Katana inventory pull complete (${snap.rowCount} rows). Outbound writes still blocked by DOWNSTREAM_MUTATIONS=false.`,
+      rowCount: snap.rowCount,
+    };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Katana inbound inventory pull failed",
+    };
+  }
 }
 
-/** Reset wedged shared bucket/lock, then enqueue priority Hub inventory sync. */
+/** Reset wedged shared bucket/lock, then enqueue priority Hub inventory sync (read-only GET). */
 export async function resetKatanaBucketAndSyncAction(): Promise<
   { ok: true; message: string; clearedKeys?: string[] } | { ok: false; error: string }
 > {
@@ -4378,7 +4444,199 @@ export async function resetKatanaBucketAndSyncAction(): Promise<
   if (!session) return { ok: false, error: "Unauthorized embed session." };
   const { resetBucketAndSyncKatanaNow } = await import("@/server/stock/showroom-snapshot");
   const { runWithKatanaPriorityLane } = await import("@/lib/katana");
+  // Inbound GET pull — must not be blocked by DOWNSTREAM_MUTATIONS=false.
   return runWithKatanaPriorityLane(() => resetBucketAndSyncKatanaNow());
+}
+
+/** Live QBO CompanyInfo / token validity probe (never flips QBO_LEDGER_MODE). */
+export async function verifyLiveQboTokenAction(): Promise<
+  | { ok: true; message: string; companyName?: string }
+  | { ok: false; error: string; reconnectRequired?: boolean }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const {
+      createDefaultQboFetchDeps,
+      qboFetchWithRefresh,
+      QboAuthError,
+    } = await import("@/server/integrations/qbo/token-refresh");
+    const {
+      getQboEnvironment,
+      getQboTokenId,
+      getQboBaseUrl,
+    } = await import("@/server/integrations/qbo/client");
+    const { getDb } = await import("@/server/db/client");
+    const { qbo_auth_tokens } = await import("@/server/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const qboEnv = getQboEnvironment();
+    const targetId = getQboTokenId(qboEnv);
+    const [tokenRow] = await getDb()
+      .select({ realm_id: qbo_auth_tokens.realm_id, refresh_token: qbo_auth_tokens.refresh_token })
+      .from(qbo_auth_tokens)
+      .where(eq(qbo_auth_tokens.id, targetId))
+      .limit(1);
+    if (!tokenRow?.refresh_token) {
+      return {
+        ok: false,
+        reconnectRequired: true,
+        error: "No QBO refresh token stored — Reconnect Required.",
+      };
+    }
+    if (!tokenRow.realm_id) {
+      return {
+        ok: false,
+        reconnectRequired: true,
+        error: "QBO realm missing — Reconnect Required.",
+      };
+    }
+    const realmId = tokenRow.realm_id;
+    const body = (await qboFetchWithRefresh(
+      `/v3/company/${realmId}/companyinfo/${realmId}`,
+      { method: "GET" },
+      createDefaultQboFetchDeps({
+        env: qboEnv,
+        targetId,
+        baseUrl: getQboBaseUrl(),
+      }),
+    )) as { CompanyInfo?: { CompanyName?: string } } | null;
+    const companyName = body?.CompanyInfo?.CompanyName ?? "QuickBooks Company";
+    return { ok: true, message: `Live QBO token valid · ${companyName}`, companyName };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "QBO verify failed — Reconnect Required";
+    const reconnectRequired =
+      (error instanceof Error && error.name === "QboAuthError") ||
+      /401|auth|refresh|reconnect/i.test(msg);
+    return { ok: false, reconnectRequired, error: msg };
+  }
+}
+
+export type DlqOpenRow = {
+  id: string;
+  runId: string;
+  functionId: string;
+  eventName: string;
+  errorMessage: string;
+  createdAt: string;
+};
+
+export async function listOpenDlqEventsAction(): Promise<
+  { ok: true; rows: DlqOpenRow[] } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const { dlq_events } = await import("@/server/db/schema");
+    const { desc, eq } = await import("drizzle-orm");
+    const rows = await getDb()
+      .select({
+        id: dlq_events.id,
+        runId: dlq_events.run_id,
+        functionId: dlq_events.function_id,
+        eventName: dlq_events.event_name,
+        errorMessage: dlq_events.error_message,
+        createdAt: dlq_events.created_at,
+      })
+      .from(dlq_events)
+      .where(eq(dlq_events.status, "open"))
+      .orderBy(desc(dlq_events.created_at))
+      .limit(50);
+    return {
+      ok: true,
+      rows: rows.map((r) => ({
+        id: r.id,
+        runId: r.runId,
+        functionId: r.functionId,
+        eventName: r.eventName,
+        errorMessage: r.errorMessage,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not list DLQ events",
+    };
+  }
+}
+
+/** Mark a single open DLQ row resolved (operator archive / clear stale test failure). */
+export async function resolveDlqEventAction(
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const { dlq_events } = await import("@/server/db/schema");
+    const { eq } = await import("drizzle-orm");
+    await getDb()
+      .update(dlq_events)
+      .set({ status: "resolved", updated_at: new Date() })
+      .where(eq(dlq_events.id, id));
+    return { ok: true };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not resolve DLQ event",
+    };
+  }
+}
+
+/** Resolve all currently open DLQ rows (stale test failures). */
+export async function archiveOpenDlqEventsAction(): Promise<
+  { ok: true; resolved: number } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const { dlq_events } = await import("@/server/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const updated = await getDb()
+      .update(dlq_events)
+      .set({ status: "resolved", updated_at: new Date() })
+      .where(eq(dlq_events.status, "open"))
+      .returning({ id: dlq_events.id });
+    return { ok: true, resolved: updated.length };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not archive DLQ events",
+    };
+  }
+}
+
+/** Best-effort re-send of the original Inngest event for an open DLQ row. */
+export async function retryDlqEventAction(
+  id: string,
+): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const { dlq_events } = await import("@/server/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const [row] = await getDb()
+      .select()
+      .from(dlq_events)
+      .where(eq(dlq_events.id, id))
+      .limit(1);
+    if (!row) return { ok: false, error: "DLQ row not found" };
+    const { inngest } = await import("@/server/inngest/client");
+    const original = row.original_event as { name?: string; data?: unknown } | null;
+    if (!original?.name) {
+      return { ok: false, error: "DLQ row has no original event payload to retry" };
+    }
+    await inngest.send({
+      name: original.name as `${string}/${string}`,
+      data: (original.data as Record<string, unknown>) ?? {},
+    });
+    return { ok: true, message: `Re-queued ${original.name} for ${row.function_id}` };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "DLQ retry failed",
+    };
+  }
 }
 
 export async function buildWooDiagnosticReportAction(): Promise<

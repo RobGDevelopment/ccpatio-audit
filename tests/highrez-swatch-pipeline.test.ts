@@ -35,12 +35,33 @@ describe("highrez-swatch-pipeline", () => {
     const scale = deriveFinishPhysicalScale({
       croppedWidthIn: 6.2,
       sku: "FAB-CAB-CLA",
-      patternRepeatIn: { w: 54, h: 25.25 },
+      patternRepeatIn: { w: 7, h: 7 },
     });
     expect(scale.repeat_inches).toBe(7);
     expect(scale.texture_scale).toBe(7);
     expect(scale.sample_width_in).toBe(6.2);
-    expect(scale.pattern_repeat_w_in).toBe(54);
+    expect(scale.pattern_repeat_w_in).toBe(7);
+    expect(scale.pattern_repeat_h_in).toBe(7);
+  });
+
+  it("scrubs bolt-width 54 from solid Sunbrella pattern repeats", () => {
+    const solids = [
+      "FAB-MET-CLO",
+      "FAB-HER-PAP",
+      "FAB-SHE-LIN",
+      "FAB-POS-SAP",
+      "FAB-CRU-ASH",
+      "FAB-DUM-STU",
+      "FAB-RUE-COS",
+      "FAB-PRE-FAW",
+      "FAB-KIN-SIL",
+    ];
+    for (const sku of solids) {
+      const def = ECOMMERCE_32_FINISHES.find((f) => f.sku === sku);
+      expect(def?.patternRepeatIn, sku).toBeNull();
+    }
+    const cabana = ECOMMERCE_32_FINISHES.find((f) => f.sku === "FAB-CAB-CLA");
+    expect(cabana?.patternRepeatIn?.h).toBe(7);
   });
 
   it("maps storage paths under finishes/{sku}/", () => {
