@@ -83,7 +83,8 @@ export const ECOMMERCE_32_FINISHES: readonly EcommerceFinishDefinition[] = [
 
   // ── Dekton (6) — DKT-* e-commerce SKUs ───────────────────────────────
   { sku: "DKT-ALDEM", displayName: "Aldem", family: "dekton", category: "dekton", hex: "#8C867D", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-ALDEM", "D-ALDEM-1.2CM", "D-ALDEM-2CM", "STN-DKT-ALD"] },
-  { sku: "DKT-EDORA", displayName: "Edora", family: "dekton", category: "dekton", hex: "#5E5A56", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-EDORA", "D-EDORA-1.2CM", "D-EDORA-2CM"] },
+  // Cosentino color is Entzo; keep SKU key DKT-EDORA for certified-roster continuity + bridge ENTZO aliases.
+  { sku: "DKT-EDORA", displayName: "Entzo", family: "dekton", category: "dekton", hex: "#5E5A56", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DKT-ENTZO", "DEC-EDORA", "DEC-ENTZO", "D-EDORA-1.2CM", "D-EDORA-2CM", "D-ENTZO-1.2CM", "D-ENTZO-2CM"] },
   { sku: "DKT-AURA", displayName: "Aura", family: "dekton", category: "dekton", hex: "#9A978F", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-AURA", "D-AURA-1.2CM", "D-AURA-2CM"] },
   { sku: "DKT-LUMINA", displayName: "Lumina", family: "dekton", category: "dekton", hex: "#B8B4A8", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-LUMINA", "D-LUMINA-1.2CM", "D-LUMINA-2CM"] },
   { sku: "DKT-NILIUM", displayName: "Nilium", family: "dekton", category: "dekton", hex: "#4A4D52", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-NILIUM", "D-NILIUM-1.2CM", "D-NILIUM-2CM", "STN-DKT-NIL1.2", "STN-DKT-NIL2.0"] },

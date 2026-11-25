@@ -102,6 +102,7 @@ import {
   enableEcommerceFinishAsset,
   filterActiveEcommerceFinishes,
   listFinishAssets,
+  isStaleFinishDisplayName,
   resolveListing3dTarget,
   seedEcommerceFinishAssets,
   updateFinishAsset,
@@ -109,6 +110,7 @@ import {
 import {
   canAccessEcommercePortal,
   canAccessFullMasterCatalog,
+  ecommerceFinishBySku,
   ECOMMERCE_FINISH_DISABLED_SENTINEL,
   isEcommerce32FinishSku,
   isFinishSkuLocked,
@@ -3203,6 +3205,349 @@ export async function listFinishAssetsForPortal(): Promise<
   }
 }
 
+/* ───────────────────────── Tab 1 · Intake & Media Studio ───────────────────────── */
+
+import {
+  apfTargetGroupForMaterial,
+  defaultUvScale,
+  getFinishIntakeById,
+  listFinishIntake,
+  mintCanonicalFinishSku,
+  promoteFinishIntake,
+  reCropFinishFromBuffer,
+  resolveFinishDefBySkuOrAlias,
+  searchFinishSkuMatches,
+  updateFinishIntakeMeta,
+  type FinishIntakeView,
+  type MaterialClass,
+} from "@/server/ecommerce/finish-intake";
+import { finish_intake } from "@/server/db/schema";
+import sharp from "sharp";
+import {
+  getPublicObjectUrl,
+  getSupabaseAdmin,
+  PRODUCT_IMAGES_BUCKET,
+} from "@/lib/supabase-storage";
+
+export type FinishIntakeListOptions = Parameters<typeof listFinishIntake>[0];
+export type FinishIntakePatchInput = Parameters<typeof updateFinishIntakeMeta>[1];
+export type FinishSkuSearchResult = {
+  matches: ReturnType<typeof searchFinishSkuMatches>;
+  /** Deterministic canonical SKU minted from display name + material class (null until both set). */
+  mintedSku: string | null;
+  /** Existing roster SKU the proposed/minted SKU binds to (alias / STN-DKT bridge aware). */
+  boundExistingSku: string | null;
+  apfGroup: ReturnType<typeof apfTargetGroupForMaterial> | null;
+  uvScale: number | null;
+};
+
+const INTAKE_MATERIAL_CLASSES = ["sunbrella", "ultraleather", "dekton", "powder", "addon"] as const;
+
+const intakePatchSchema = z
+  .object({
+    materialClass: z.enum(INTAKE_MATERIAL_CLASSES).nullable().optional(),
+    displayName: z.string().max(120).nullable().optional(),
+    vendorSku: z.string().max(80).nullable().optional(),
+    materialDescription: z.string().max(500).nullable().optional(),
+    patternMode: z.enum(["solid", "striped"]).nullable().optional(),
+    repeatWIn: z.number().nonnegative().nullable().optional(),
+    repeatHIn: z.number().nonnegative().nullable().optional(),
+    proposedSku: z.string().max(64).nullable().optional(),
+    cropX: z.number().int().nonnegative().nullable().optional(),
+    cropY: z.number().int().nonnegative().nullable().optional(),
+    cropSidePx: z.number().int().positive().nullable().optional(),
+    sourceWidth: z.number().int().positive().nullable().optional(),
+    sourceHeight: z.number().int().positive().nullable().optional(),
+    // "certified" is only ever set by promoteFinishIntakeAction.
+    status: z.enum(["pending", "crop_verified", "classified"]).optional(),
+  })
+  .strict();
+
+const intakeCropSchema = z.object({
+  id: z.string().uuid(),
+  cropX: z.number().int().nonnegative(),
+  cropY: z.number().int().nonnegative(),
+  cropSidePx: z.number().int().min(64),
+  sourceWidth: z.number().int().positive(),
+  sourceHeight: z.number().int().positive(),
+});
+
+/** Powder coats whose roster display name was shortened to Gray / Beige / Bronze. */
+const POWDER_SOFT_PATCH_SKUS = ["PWD-FANUC-GRAY", "PWD-LITE-BEIGE", "PWD-OIL-RUB-BRONZE"] as const;
+
+/**
+ * Soft-patch powder display names (Gray / Beige / Bronze) to the roster name.
+ * Only writes when the stored name is empty or a known stale roster variant
+ * (`isStaleFinishDisplayName`) — a customized name is NEVER overwritten.
+ * Throws on DB failure so callers surface it.
+ */
+async function ensurePowderDisplayNamesCore(operatorEmail: string): Promise<string[]> {
+  const rows = await listFinishAssets({ category: "powder" });
+  const patched: string[] = [];
+  for (const sku of POWDER_SOFT_PATCH_SKUS) {
+    const row = rows.find((r) => r.sku === sku);
+    const def = ecommerceFinishBySku(sku);
+    if (!row || !def) continue;
+    if (!isStaleFinishDisplayName(sku, row.display_name)) continue;
+    const updated = await updateFinishAsset(sku, { display_name: def.displayName });
+    if (!updated) continue;
+    patched.push(sku);
+    await logPimAudit({
+      operatorEmail,
+      globalSku: sku,
+      action: "ecommerce_finish_powder_display_soft_patch",
+      field: "ecommerce_finish_assets.display_name",
+      oldValue: row.display_name,
+      newValue: updated.display_name,
+    });
+  }
+  return patched;
+}
+
+export async function ensurePowderDisplayNamesAction(): Promise<
+  { ok: true; patched: string[] } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    return { ok: true, patched: await ensurePowderDisplayNamesCore(session.email) };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not patch powder display names",
+    };
+  }
+}
+
+/** Intake queue (27 photoshoot finishes + ad-hoc). Runs the powder soft-patch first. */
+export async function listFinishIntakeAction(opts?: FinishIntakeListOptions): Promise<
+  | {
+      ok: true;
+      items: FinishIntakeView[];
+      powderPatched: string[];
+      /** Non-fatal: queue loaded but the powder soft-patch failed. Surface to the operator. */
+      powderWarning: string | null;
+    }
+  | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    let powderPatched: string[] = [];
+    let powderWarning: string | null = null;
+    try {
+      powderPatched = await ensurePowderDisplayNamesCore(session.email);
+    } catch (error: unknown) {
+      powderWarning = `Powder display-name soft-patch failed: ${
+        error instanceof Error ? error.message : "unknown error"
+      }`;
+    }
+    const items = await listFinishIntake(opts);
+    return { ok: true, items, powderPatched, powderWarning };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not load finish intake queue",
+    };
+  }
+}
+
+export async function updateFinishIntakeAction(
+  id: string,
+  patch: FinishIntakePatchInput,
+): Promise<{ ok: true; view: FinishIntakeView } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const idOk = z.string().uuid().safeParse(id);
+  if (!idOk.success) return { ok: false, error: "Invalid intake id" };
+  const parsed = intakePatchSchema.safeParse(patch);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid intake patch" };
+  }
+  try {
+    const view = await updateFinishIntakeMeta(id, parsed.data as FinishIntakePatchInput);
+    return { ok: true, view };
+  } catch (error: unknown) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not update intake item" };
+  }
+}
+
+/** Persist the crop square, re-crop the reference to 2048 + 512 drafts and store them. */
+export async function applyFinishIntakeCropAction(input: {
+  id: string;
+  cropX: number;
+  cropY: number;
+  cropSidePx: number;
+  sourceWidth: number;
+  sourceHeight: number;
+}): Promise<{ ok: true; view: FinishIntakeView } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const parsed = intakeCropSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid crop box" };
+  }
+  const crop = parsed.data;
+  if (
+    crop.cropX + crop.cropSidePx > crop.sourceWidth ||
+    crop.cropY + crop.cropSidePx > crop.sourceHeight
+  ) {
+    return { ok: false, error: "Crop square extends outside the source image" };
+  }
+  try {
+    const current = await getFinishIntakeById(crop.id);
+    if (!current) return { ok: false, error: "Intake item not found" };
+    if (current.status === "certified") {
+      return { ok: false, error: "Item is already certified — crop is locked" };
+    }
+    if (!current.rawReferenceUrl) {
+      return { ok: false, error: "No uncropped reference image available for this item" };
+    }
+
+    await updateFinishIntakeMeta(crop.id, {
+      cropX: crop.cropX,
+      cropY: crop.cropY,
+      cropSidePx: crop.cropSidePx,
+      sourceWidth: crop.sourceWidth,
+      sourceHeight: crop.sourceHeight,
+    });
+
+    const refRes = await fetch(current.rawReferenceUrl.split("?")[0]!, { cache: "no-store" });
+    if (!refRes.ok) {
+      return { ok: false, error: `Could not fetch reference image (HTTP ${refRes.status})` };
+    }
+    const refBytes = Buffer.from(await refRes.arrayBuffer());
+
+    // The reference is a downscaled copy (max ~1400px); crop coords are in SOURCE pixels.
+    const refMeta = await sharp(refBytes).metadata();
+    const swap = (refMeta.orientation ?? 1) >= 5;
+    const refW = (swap ? refMeta.height : refMeta.width) ?? 0;
+    const refH = (swap ? refMeta.width : refMeta.height) ?? 0;
+    if (refW <= 0 || refH <= 0) return { ok: false, error: "Reference image has no readable size" };
+    const scaleX = refW / crop.sourceWidth;
+    const scaleY = refH / crop.sourceHeight;
+    if (Math.abs(scaleX - scaleY) / Math.max(scaleX, scaleY) > 0.015) {
+      return {
+        ok: false,
+        error: "Reference aspect ratio does not match the source dimensions — re-seed this item",
+      };
+    }
+    const refSide = Math.max(8, Math.round(crop.cropSidePx * scaleX));
+    const refX = Math.min(Math.round(crop.cropX * scaleX), Math.max(0, refW - refSide));
+    const refY = Math.min(Math.round(crop.cropY * scaleY), Math.max(0, refH - refSide));
+
+    const cropped = await reCropFinishFromBuffer({
+      sourceBytes: refBytes,
+      cropX: refX,
+      cropY: refY,
+      cropSidePx: refSide,
+      patternMode: current.patternMode,
+      materialClass: current.materialClass,
+    });
+
+    const supabase = getSupabaseAdmin();
+    const sha8 = cropped.sha256.slice(0, 8);
+    const put = async (objectPath: string, buf: Buffer): Promise<string> => {
+      const { error } = await supabase.storage
+        .from(PRODUCT_IMAGES_BUCKET)
+        .upload(objectPath, buf, { contentType: "image/jpeg", upsert: true });
+      if (error) throw new Error(error.message);
+      const base = getPublicObjectUrl(PRODUCT_IMAGES_BUCKET, objectPath);
+      return `${base}${base.includes("?") ? "&" : "?"}v=${sha8}`;
+    };
+    const textureUrl = await put(`intake/crops/${crop.id}/${crop.id}-2048.jpg`, cropped.texture2048);
+    const thumbUrl = await put(`intake/crops/${crop.id}/${crop.id}-512.jpg`, cropped.thumb512);
+
+    await getDb()
+      .update(finish_intake)
+      .set({
+        texture_2048_url: textureUrl,
+        thumb_512_url: thumbUrl,
+        texture_sha256: cropped.sha256,
+        ...(current.status === "pending" ? { status: "crop_verified" as const } : {}),
+        updated_at: new Date(),
+      })
+      .where(eq(finish_intake.id, crop.id));
+
+    await logPimAudit({
+      operatorEmail: session.email,
+      globalSku: current.canonicalSku ?? current.proposedSku ?? null,
+      action: "finish_intake_crop_applied",
+      field: "finish_intake.crop",
+      newValue: JSON.stringify({
+        id: crop.id,
+        cropX: crop.cropX,
+        cropY: crop.cropY,
+        cropSidePx: crop.cropSidePx,
+        sha256: cropped.sha256,
+      }),
+    });
+
+    const view = await getFinishIntakeById(crop.id);
+    if (!view) return { ok: false, error: "Intake item vanished after crop" };
+    return { ok: true, view };
+  } catch (error: unknown) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not apply crop" };
+  }
+}
+
+/** Approve & Promote to Certified — delegates to promoteFinishIntake (never clobbers customized names). */
+export async function promoteFinishIntakeAction(
+  id: string,
+): Promise<
+  { ok: true; view: FinishIntakeView; canonicalSku: string } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const idOk = z.string().uuid().safeParse(id);
+  if (!idOk.success) return { ok: false, error: "Invalid intake id" };
+  try {
+    const result = await promoteFinishIntake({ id, actor: session.email });
+    if (!result.ok) return { ok: false, error: result.error };
+    await logPimAudit({
+      operatorEmail: session.email,
+      globalSku: result.canonicalSku,
+      action: "finish_intake_promoted",
+      field: "finish_intake.status",
+      newValue: "certified",
+    });
+    revalidatePath("/embed/admin/master-catalog");
+    return { ok: true, view: result.view, canonicalSku: result.canonicalSku };
+  } catch (error: unknown) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not promote intake item" };
+  }
+}
+
+/** Live SKU preview — roster/alias search + the SKU promote would mint/bind. */
+export async function searchFinishSkuAction(input: {
+  query?: string;
+  displayName?: string | null;
+  materialClass?: MaterialClass | null;
+  proposedSku?: string | null;
+}): Promise<({ ok: true } & FinishSkuSearchResult) | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const query = (input.query ?? "").trim().slice(0, 80);
+    const displayName = (input.displayName ?? "").trim();
+    const materialClass = input.materialClass ?? null;
+    const mintedSku =
+      displayName && materialClass ? mintCanonicalFinishSku(displayName, materialClass) : null;
+    const candidate = (input.proposedSku ?? "").trim() || mintedSku;
+    const bound = candidate ? resolveFinishDefBySkuOrAlias(candidate) : null;
+    return {
+      ok: true,
+      matches: searchFinishSkuMatches(query),
+      mintedSku,
+      boundExistingSku: bound?.sku ?? null,
+      apfGroup: materialClass ? apfTargetGroupForMaterial(materialClass) : null,
+      uvScale: materialClass ? defaultUvScale(materialClass) : null,
+    };
+  } catch (error: unknown) {
+    return { ok: false, error: error instanceof Error ? error.message : "SKU search failed" };
+  }
+}
+
 /** Soft-archived storefront listings for the Tab 2 Archived (N) vault. */
 export async function listArchivedEcommerceListingsForPortal(): Promise<
   | {
@@ -4085,19 +4430,17 @@ export async function runPortalStagingPush(input: {
     };
   }
 
-  // Catalog / single-SKU path — never fail the whole batch on one missing SKU.
+  // Catalog / single-SKU path — HARD GATE: only Mia-certified products (never unapproved Intake).
   const roster = await getPhase1PortalRows("phase1_flat");
   const certified = roster.listings.filter((l) => l.miaApproved === true);
   const targets =
     mode === "sku" && input.sku
-      ? roster.listings.filter(
+      ? certified.filter(
           (l) =>
             l.globalSku === input.sku!.trim().toUpperCase() ||
             (l.wooSku || "").toUpperCase() === input.sku!.trim().toUpperCase(),
         )
-      : certified.length > 0
-        ? certified
-        : roster.listings;
+      : certified;
 
   let variationsCount = 0;
   let wpGalleryPreservedCount = 0;

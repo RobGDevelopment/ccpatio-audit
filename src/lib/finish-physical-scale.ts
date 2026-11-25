@@ -3,6 +3,7 @@
  */
 import {
   ecommerceFinishBySku,
+  resolveEcommerceFinishSku,
   type EcommerceFinishFamily,
 } from "@/server/ecommerce/ecommerce-32-finish-roster";
 
@@ -24,7 +25,8 @@ export const CANVAS_SOLID_SKUS = [
 
 export function uniformFinishPhysicalScale(sku: string): FinishPhysicalScale {
   const key = sku.trim().toUpperCase();
-  const def = ecommerceFinishBySku(key);
+  const canonical = resolveEcommerceFinishSku(key) ?? key;
+  const def = ecommerceFinishBySku(canonical);
   const family = def?.family;
 
   if (key === "FAB-CAB-CLA") {

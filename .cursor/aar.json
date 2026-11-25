@@ -1,62 +1,92 @@
 {
-  "phase_id": "swatch-cv-recrop-scale-lightbox",
+  "phase_id": "intake-media-certification-studio",
   "base_ref": "HEAD",
-  "blast_radius": 18,
+  "blast_radius": 31,
   "counts": {
-    "files": 18,
-    "tracked": 11,
-    "untracked": 7,
-    "insertions": 752,
-    "deletions": 493
+    "files": 31,
+    "tracked": 19,
+    "untracked": 12,
+    "insertions": 1023,
+    "deletions": 281
   },
   "files": [
     {
       "status": "??",
-      "path": "scripts/ops/lib/swatch-cv-pipeline.ts",
+      "path": "scripts/ops/pull-approved-finishes.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "scripts/ops/lib/swatch-pixel-qa.ts",
+      "path": "scripts/ops/seed-intake-photoshoot.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "scripts/ops/postfix-swatch-qa.ts",
+      "path": "src/app/api/ecommerce/intake-upload-commit/route.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "scripts/ops/reprocess-dekton.ts",
+      "path": "src/app/api/ecommerce/intake-upload-sign/route.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/lib/finish-physical-scale.ts",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/IntakeCropOverlay.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/e2e/swatch-cv-lightbox.spec.ts",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/IntakeMediaStudio.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/swatch-cv-quality-and-lightbox.test.ts",
+      "path": "src/lib/intake-crop-math.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/db/migrations/0063_finish_intake_and_product_media.sql",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/ecommerce/finish-intake.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/ecommerce/intake-upload-policy.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-crop-math.test.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/intake-media-certification-studio.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 4,
-      "deletions": 3
+      "insertions": 26,
+      "deletions": 24
     },
     {
       "status": "M",
@@ -67,67 +97,120 @@
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 37,
-      "deletions": 37
+      "insertions": 128,
+      "deletions": 40
+    },
+    {
+      "status": "M",
+      "path": "package.json",
+      "insertions": 3,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "scripts/ops/lib/swatch-cv-pipeline.ts",
+      "insertions": 210,
+      "deletions": 192
+    },
+    {
+      "status": "M",
+      "path": "scripts/ops/lib/swatch-pixel-qa.ts",
+      "insertions": 1,
+      "deletions": 0
     },
     {
       "status": "M",
       "path": "scripts/ops/process-highrez-finishes.ts",
-      "insertions": 329,
-      "deletions": 203
+      "insertions": 10,
+      "deletions": 1
     },
     {
       "status": "M",
-      "path": "scripts/ops/upload-highrez-finishes.ts",
-      "insertions": 48,
-      "deletions": 18
+      "path": "src/app/embed/admin/master-catalog/MasterCatalogClient.tsx",
+      "insertions": 4,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/actions.ts",
+      "insertions": 348,
+      "deletions": 5
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx",
-      "insertions": 65,
-      "deletions": 20
+      "insertions": 172,
+      "deletions": 8
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/FullResImageLightbox.tsx",
-      "insertions": 201,
-      "deletions": 151
+      "path": "src/app/embed/admin/master-catalog/page.tsx",
+      "insertions": 12,
+      "deletions": 1
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/SwatchesFinishesDrawer.tsx",
-      "insertions": 15,
+      "path": "src/lib/finish-physical-scale.ts",
+      "insertions": 3,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/db/schema.ts",
+      "insertions": 72,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/ecommerce/ecommerce-32-finish-roster.ts",
+      "insertions": 2,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "tests/e2e/ecommerce-portal-scroll-drawer.spec.ts",
+      "insertions": 4,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/e2e/ecommerce-two-tab.spec.ts",
+      "insertions": 16,
       "deletions": 3
     },
     {
       "status": "M",
-      "path": "src/app/showroom/stock/InventoryCard.tsx",
-      "insertions": 25,
+      "path": "tests/e2e/embed-auth-ssr-stack-bar.spec.ts",
+      "insertions": 2,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "tests/e2e/swatch-cv-lightbox.spec.ts",
+      "insertions": 6,
       "deletions": 2
     },
     {
       "status": "M",
-      "path": "src/server/assets/finish-assets.ts",
-      "insertions": 10,
-      "deletions": 48
-    },
-    {
-      "status": "M",
-      "path": "tests/highrez-swatch-pipeline.test.ts",
-      "insertions": 16,
-      "deletions": 6
+      "path": "tests/ghl-ecommerce-32-finish-portal.test.ts",
+      "insertions": 2,
+      "deletions": 0
     }
   ],
   "untracked": [
-    "scripts/ops/lib/swatch-cv-pipeline.ts",
-    "scripts/ops/lib/swatch-pixel-qa.ts",
-    "scripts/ops/postfix-swatch-qa.ts",
-    "scripts/ops/reprocess-dekton.ts",
-    "src/lib/finish-physical-scale.ts",
-    "tests/e2e/swatch-cv-lightbox.spec.ts",
-    "tests/swatch-cv-quality-and-lightbox.test.ts"
+    "scripts/ops/pull-approved-finishes.ts",
+    "scripts/ops/seed-intake-photoshoot.ts",
+    "src/app/api/ecommerce/intake-upload-commit/route.ts",
+    "src/app/api/ecommerce/intake-upload-sign/route.ts",
+    "src/app/embed/admin/master-catalog/ecommerce/IntakeCropOverlay.tsx",
+    "src/app/embed/admin/master-catalog/ecommerce/IntakeMediaStudio.tsx",
+    "src/lib/intake-crop-math.ts",
+    "src/server/db/migrations/0063_finish_intake_and_product_media.sql",
+    "src/server/ecommerce/finish-intake.ts",
+    "src/server/ecommerce/intake-upload-policy.ts",
+    "tests/intake-crop-math.test.ts",
+    "tests/intake-media-certification-studio.test.ts"
   ],
-  "file_list_sha256": "365571c033de9c0608ed2660acafd841d0716510c401be552d376bfff27ab519",
+  "file_list_sha256": "2d22b134a70b2b2d6736293b183a824acf89f9c7c357cf2b410e30b41d6287d5",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }

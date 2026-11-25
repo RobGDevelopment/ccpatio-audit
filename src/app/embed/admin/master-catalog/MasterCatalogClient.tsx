@@ -74,6 +74,7 @@ import EcommerceGrid from "./ecommerce/EcommerceGrid";
 import NewProductDrawer from "./ecommerce/NewProductDrawer";
 import SwatchesFinishesDrawer from "./ecommerce/SwatchesFinishesDrawer";
 import EcommerceCertificationPortal from "./ecommerce/EcommerceCertificationPortal";
+import type { FinishIntakeView } from "@/server/ecommerce/finish-intake";
 import Product3dMediaDrawer from "./ecommerce/Product3dMediaDrawer";
 import ProductDrawer from "./ecommerce/ProductDrawer";
 import PortalProductDrawer from "./ecommerce/PortalProductDrawer";
@@ -239,6 +240,7 @@ export type MasterCatalogClientProps = {
   initialCanFullCatalog?: boolean;
   initialAssets?: FinishAssetView[];
   initialStackLayers?: StackLayerPill[];
+  initialIntake?: FinishIntakeView[];
 };
 
 /* ───────────────────────── page ───────────────────────── */
@@ -262,6 +264,7 @@ function MasterCatalogAdminInner({
   initialCanFullCatalog = false,
   initialAssets,
   initialStackLayers,
+  initialIntake,
 }: MasterCatalogClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -847,6 +850,7 @@ function MasterCatalogAdminInner({
         }}
         initialAssets={initialAssets}
         initialStackLayers={initialStackLayers}
+        initialIntake={initialIntake}
       />
       {portalEditListing ? (
         <PortalProductDrawer

@@ -1517,6 +1517,18 @@ export const ecommerce_listings = pgTable(
     model_3d_file_size: integer("model_3d_file_size"),
     model_3d_uploaded_by: text("model_3d_uploaded_by"),
     model_3d_updated_at: timestamp("model_3d_updated_at", { withTimezone: true }),
+    /** Gallery / lifestyle renders (ordered public URLs). Additive intake-media phase. */
+    gallery_image_urls: jsonb("gallery_image_urls")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    /** Supabase CDN product video (.mp4 / .webm). */
+    product_video_url: text("product_video_url"),
+    /** Optional external YouTube / Vimeo URL. */
+    product_video_external_url: text("product_video_external_url"),
+    /** Intake certification timestamp (null = not yet certified via Tab 1). */
+    media_certified_at: timestamp("media_certified_at", { withTimezone: true }),
+    media_certified_by: text("media_certified_by"),
   },
   (table) => [
     index("ecommerce_listings_global_sku_idx").on(table.global_sku),
@@ -1594,6 +1606,66 @@ export const ecommerce_finish_assets = pgTable(
 export type EcommerceFinishAssetRow = typeof ecommerce_finish_assets.$inferSelect;
 export type EcommerceListingRow = typeof ecommerce_listings.$inferSelect;
 export type EcommerceRosterGapRow = typeof ecommerce_roster_gaps.$inferSelect;
+
+/**
+ * Tab 1 Intake & Media Studio — finish photoshoot queue (27 raw studio shoots + ad-hoc uploads).
+ * Additive only; never drops. Certified rows promote into ecommerce_finish_assets.
+ */
+export const finish_intake = pgTable(
+  "finish_intake",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** Stable staging key e.g. Fabrics/PV205084.JPG */
+    source_key: text("source_key").notNull(),
+    category_folder: text("category_folder").notNull(),
+    original_filename: text("original_filename").notNull(),
+    /** Uncropped reference (max 1400px) for Mia visual ID. */
+    raw_reference_url: text("raw_reference_url"),
+    texture_2048_url: text("texture_2048_url"),
+    thumb_512_url: text("thumb_512_url"),
+    source_width: integer("source_width"),
+    source_height: integer("source_height"),
+    crop_x: integer("crop_x"),
+    crop_y: integer("crop_y"),
+    crop_side_px: integer("crop_side_px"),
+    crop_x_norm: numeric("crop_x_norm", { precision: 12, scale: 8 }),
+    crop_y_norm: numeric("crop_y_norm", { precision: 12, scale: 8 }),
+    crop_side_norm: numeric("crop_side_norm", { precision: 12, scale: 8 }),
+    material_class: text("material_class").$type<
+      | "sunbrella"
+      | "ultraleather"
+      | "dekton"
+      | "powder"
+      | "addon"
+      | null
+    >(),
+    display_name: text("display_name"),
+    vendor_sku: text("vendor_sku"),
+    material_description: text("material_description"),
+    pattern_mode: text("pattern_mode").$type<"solid" | "striped" | null>(),
+    repeat_w_in: numeric("repeat_w_in", { precision: 10, scale: 3 }),
+    repeat_h_in: numeric("repeat_h_in", { precision: 10, scale: 3 }),
+    proposed_sku: text("proposed_sku"),
+    canonical_sku: text("canonical_sku"),
+    status: text("status")
+      .$type<"pending" | "crop_verified" | "classified" | "certified">()
+      .notNull()
+      .default("pending"),
+    texture_sha256: text("texture_sha256"),
+    raw_source_file: text("raw_source_file"),
+    certified_at: timestamp("certified_at", { withTimezone: true }),
+    certified_by: text("certified_by"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("finish_intake_source_key_uidx").on(table.source_key),
+    index("finish_intake_status_idx").on(table.status),
+    index("finish_intake_canonical_sku_idx").on(table.canonical_sku),
+  ],
+);
+
+export type FinishIntakeRow = typeof finish_intake.$inferSelect;
 
 export const productAssetKindEnum = pgEnum("product_asset_kind", [
   "shop_drawing",

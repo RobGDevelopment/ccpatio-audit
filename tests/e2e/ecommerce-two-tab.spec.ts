@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Default `/embed/admin/master-catalog` is the dark 3-tab Handoff Portal.
+ * Default `/embed/admin/master-catalog` is the dark 4-tab Handoff Portal (Tab 1 = Intake & Media Studio).
  * Legacy spreadsheet is retired — `?view=legacy-admin` still lands on the dark portal.
  * Auth may gate the embed; soft-skip when the session cookie is absent.
  */
 test.describe("ecommerce handoff portal (default route)", () => {
-  test("renders dark 3-tab portal with zero legacy Upcharge / duplicate search chrome", async ({
+  test("renders dark 4-tab portal with zero legacy Upcharge / duplicate search chrome", async ({
     page,
   }) => {
     await page.goto("/embed/admin/master-catalog");
@@ -16,14 +16,25 @@ test.describe("ecommerce handoff portal (default route)", () => {
 
     await expect(portal).toBeVisible();
     await expect(page.getByTestId("portal-pill-tabs")).toBeVisible();
+    // 4 tabs: Intake & Media Studio (default) · Certified Finishes & Add-Ons · Certified Products · WooCommerce Sync & Handoff
+    await expect(page.getByTestId("portal-pill-tabs").getByRole("tab")).toHaveCount(4);
+    await expect(page.getByTestId("portal-tab-intake")).toBeVisible();
     await expect(page.getByTestId("portal-tab-finishes")).toBeVisible();
     await expect(page.getByTestId("portal-tab-products")).toBeVisible();
     await expect(page.getByTestId("portal-tab-sync")).toBeVisible();
     await expect(page.getByTestId("mia-approved-pill")).toBeVisible();
     await expect(page.getByTestId("portal-kpi-cards")).toBeVisible();
 
-    // Default tab = finishes panel (inline, not modal-only)
+    // Default tab = Intake & Media Studio (inline, not modal-only)
+    await expect(page.getByTestId("portal-tab-intake")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("portal-panel-intake")).toBeVisible();
+    await expect(page.getByTestId("portal-intake-subfilters")).toBeVisible();
+    await expect(page.getByTestId("portal-panel-finishes")).toHaveCount(0);
+
+    // Certified Finishes & Add-Ons is one click away
+    await page.getByTestId("portal-tab-finishes").click();
     await expect(page.getByTestId("portal-panel-finishes")).toBeVisible();
+    await expect(page.getByTestId("portal-panel-intake")).toHaveCount(0);
 
     // Legacy clutter must stay off the default route
     await expect(page.getByTestId("recalculate-upcharge-btn")).toHaveCount(0);
@@ -41,6 +52,8 @@ test.describe("ecommerce handoff portal (default route)", () => {
     await page.getByTestId("portal-tab-sync").click();
     await expect(page.getByTestId("portal-panel-sync")).toBeVisible();
     await expect(page.getByTestId("test-woo-connection")).toBeVisible();
+    await expect(page.getByTestId("sync-sku-combobox")).toBeVisible();
+    await expect(page.getByTestId("certified-gate-note")).toBeVisible();
   });
 
   test("legacy-admin query must NOT expose Upcharge — dark portal only", async ({ page }) => {

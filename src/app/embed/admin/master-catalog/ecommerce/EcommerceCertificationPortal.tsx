@@ -7,6 +7,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  ImagePlus,
   Loader2,
   Lock,
   Archive,
@@ -67,9 +68,12 @@ import {
   retryDlqEventAction,
   resolveDlqEventAction,
   verifyLiveQboTokenAction,
+  listFinishIntakeAction,
   type DlqOpenRow,
 } from "../actions";
+import type { FinishIntakeView } from "@/server/ecommerce/finish-intake";
 import { DropButton, uploadEmbedAsset } from "./SwatchesFinishesDrawer";
+import IntakeMediaStudio from "./IntakeMediaStudio";
 import { Model3dCell, type Phase1Listing } from "./Phase1PortalViews";
 import FullResImageLightbox from "./FullResImageLightbox";
 import ExecutiveStackHealthStrip from "./ExecutiveStackHealthStrip";
@@ -78,7 +82,7 @@ import PendingCommitBar, { type StagedPortalChange } from "./PendingCommitBar";
 import type { StackLayerPill } from "@/server/ecommerce/executive-stack-health";
 import { formatFinishRepeatScaleLabel } from "@/lib/finish-physical-scale";
 
-type PortalTab = "finishes" | "products" | "sync";
+type PortalTab = "intake" | "finishes" | "products" | "sync";
 type StatusFilter = "all" | "spot_check" | "approved";
 type FinishSubFilter =
   | "all_active"
@@ -121,6 +125,8 @@ type Props = {
   initialAssets?: FinishAssetView[];
   /** SSR-hydrated 7-pill stack so Katana MRP never unmounts. */
   initialStackLayers?: StackLayerPill[];
+  /** SSR-hydrated Tab 1 intake queue (27 photoshoot finishes + ad-hoc). */
+  initialIntake?: FinishIntakeView[];
 };
 
 const FAMILY_GROUPS = [
@@ -659,9 +665,16 @@ export default function EcommerceCertificationPortal({
   onOpenProductEdit,
   initialAssets,
   initialStackLayers,
+  initialIntake,
 }: Props) {
   const { embedToken } = useEmbedSession();
-  const [tab, setTab] = useState<PortalTab>("finishes");
+  const [tab, setTab] = useState<PortalTab>("intake");
+  const [intakeItems, setIntakeItems] = useState<FinishIntakeView[]>(() => initialIntake ?? []);
+  const [intakeError, setIntakeError] = useState<string | null>(null);
+  const [intakeLoading, setIntakeLoading] = useState(false);
+  const [syncSkuQuery, setSyncSkuQuery] = useState("");
+  const [syncSkuOpen, setSyncSkuOpen] = useState(false);
+  const [syncSku, setSyncSku] = useState("");
   const [finishSubFilter, setFinishSubFilter] = useState<FinishSubFilter>("all_active");
   const [archivedAssets, setArchivedAssets] = useState<FinishAssetView[]>([]);
   const [archivedProducts, setArchivedProducts] = useState<
@@ -732,6 +745,64 @@ export default function EcommerceCertificationPortal({
   useEffect(() => {
     void loadAssets();
   }, [loadAssets]);
+
+  const refreshIntake = useCallback(async () => {
+    setIntakeLoading(true);
+    const res = await listFinishIntakeAction();
+    if (res.ok) {
+      setIntakeItems(res.items);
+      setIntakeError(res.powderWarning);
+      if (res.powderPatched.length > 0) void loadAssets();
+    } else {
+      setIntakeError(res.error);
+    }
+    setIntakeLoading(false);
+  }, [loadAssets]);
+
+  // SSR normally hydrates the queue; fetch only when it did not (or came back empty).
+  useEffect(() => {
+    if (!initialIntake || initialIntake.length === 0) void refreshIntake();
+  }, [initialIntake, refreshIntake]);
+
+  /** Products missing media OR freight dims — Tab 1 Mode B queue. */
+  const productsNeedingMedia = useMemo(
+    () =>
+      listings
+        .filter((l) => {
+          const dimsReady =
+            freightDimsBadge({
+              weightLb: l.hubWeight,
+              lengthIn: l.hubLength,
+              widthIn: l.hubDepth,
+              heightIn: l.hubHeight,
+            }) === "Ready";
+          const hasMedia = Boolean(l.model3dGlbUrl || l.imageUrl);
+          return !dimsReady || !hasMedia;
+        })
+        .map((l) => ({
+          wooSku: (l.wooSku || l.globalSku).toUpperCase(),
+          title: stripFinBracketsFromTitle(l.productName) || l.productName,
+        })),
+    [listings],
+  );
+
+  const syncSkuOptions = useMemo(() => {
+    const q = syncSkuQuery.trim().toLowerCase();
+    return listings
+      .map((l) => ({
+        sku: l.globalSku,
+        label: stripFinBracketsFromTitle(l.productName) || l.productName,
+        woo: (l.wooSku ?? "").toUpperCase(),
+      }))
+      .filter(
+        (o) =>
+          !q ||
+          o.sku.toLowerCase().includes(q) ||
+          o.woo.toLowerCase().includes(q) ||
+          o.label.toLowerCase().includes(q),
+      )
+      .slice(0, 40);
+  }, [listings, syncSkuQuery]);
 
   const handleDrawerAction = useCallback(
     async (_layerId: string, actionId: string) => {
@@ -1080,7 +1151,7 @@ export default function EcommerceCertificationPortal({
                   className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-200 ring-1 ring-amber-500/20 cursor-pointer hover:bg-amber-500/20"
                 >
                   <Shield className="h-3.5 w-3.5" />
-                  Mia · Kian · Superadmin
+                  Rob · Mia · Kian · Executive
                 </button>
                 {operatorInfoOpen ? (
                   <div
@@ -1089,9 +1160,10 @@ export default function EcommerceCertificationPortal({
                   >
                     <p className="font-semibold text-white">Operator Roles</p>
                     <ul className="mt-2 space-y-1">
+                      <li><span className="font-semibold text-amber-300">Rob</span> — Owner / executive sign-off</li>
                       <li><span className="font-semibold text-amber-300">Mia</span> — Catalog QA & spot-check approvals</li>
                       <li><span className="font-semibold text-amber-300">Kian</span> — 3D asset pipeline & finish calibration</li>
-                      <li><span className="font-semibold text-amber-300">Superadmin</span> — Full portal access, staging push, archive</li>
+                      <li><span className="font-semibold text-amber-300">Executive</span> — Authorized GHL embed sessions &amp; Superadmin: full portal access, staging push, archive</li>
                     </ul>
                     <button
                       type="button"
@@ -1199,6 +1271,19 @@ export default function EcommerceCertificationPortal({
           <button
             type="button"
             role="tab"
+            aria-selected={tab === "intake"}
+            data-testid="portal-tab-intake"
+            onClick={() => setTab("intake")}
+            className={chip(tab === "intake")}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <ImagePlus className="h-3.5 w-3.5" />
+              Intake &amp; Media Studio
+            </span>
+          </button>
+          <button
+            type="button"
+            role="tab"
             aria-selected={tab === "finishes"}
             data-testid="portal-tab-finishes"
             onClick={() => setTab("finishes")}
@@ -1206,7 +1291,7 @@ export default function EcommerceCertificationPortal({
           >
             <span className="inline-flex items-center gap-1.5">
               <Palette className="h-3.5 w-3.5" />
-              {ECOMMERCE_32_FINISH_COUNT} Finishes &amp; Swatches
+              Certified Finishes &amp; Add-Ons
             </span>
           </button>
           <button
@@ -1217,7 +1302,7 @@ export default function EcommerceCertificationPortal({
             onClick={() => setTab("products")}
             className={chip(tab === "products")}
           >
-            {PHASE1_PURCHASABLE_SKU_COUNT} E-Commerce Products
+            Certified Products
           </button>
           <button
             type="button"
@@ -1227,9 +1312,32 @@ export default function EcommerceCertificationPortal({
             onClick={() => setTab("sync")}
             className={chip(tab === "sync")}
           >
-            PrimeView Sync &amp; Downloads
+            WooCommerce Sync &amp; Handoff
           </button>
         </nav>
+
+        {tab === "intake" ? (
+          <>
+            {intakeError ? (
+              <p
+                className="mt-6 rounded-lg bg-rose-500/10 p-3 text-xs text-rose-300"
+                data-testid="intake-load-error"
+              >
+                {intakeError}
+              </p>
+            ) : null}
+            {intakeLoading ? (
+              <p className="mt-4 flex items-center gap-2 text-xs text-slate-400">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Refreshing intake queue…
+              </p>
+            ) : null}
+            <IntakeMediaStudio
+              initialItems={intakeItems}
+              onRefresh={() => void refreshIntake()}
+              productsNeedingMedia={productsNeedingMedia}
+            />
+          </>
+        ) : null}
 
         {tab === "finishes" ? (
           <div className="mt-6 space-y-6" data-testid="portal-panel-finishes">
@@ -1906,6 +2014,62 @@ export default function EcommerceCertificationPortal({
               >
                 {stagingPushGuardrailMessage().label}
               </p>
+              <p
+                className="mt-1 text-[11px] font-semibold text-amber-200/90"
+                data-testid="certified-gate-note"
+              >
+                Certified-only gate: only Certified finishes and Mia-approved products are pushed to
+                WooCommerce. Items still in Intake never sync.
+              </p>
+              <div className="relative mt-3 max-w-md">
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  Dry-run product SKU
+                  <input
+                    value={syncSkuQuery || syncSku}
+                    onChange={(e) => {
+                      setSyncSkuQuery(e.target.value);
+                      setSyncSku("");
+                      setSyncSkuOpen(true);
+                    }}
+                    onFocus={() => setSyncSkuOpen(true)}
+                    placeholder="Search by title or SKU…"
+                    data-testid="sync-sku-combobox"
+                    role="combobox"
+                    aria-expanded={syncSkuOpen}
+                    aria-controls="sync-sku-combobox-list"
+                    className={`mt-0.5 block w-full rounded px-2 py-1.5 font-mono text-xs ${FINISH_INPUT}`}
+                  />
+                </label>
+                {syncSkuOpen ? (
+                  <ul
+                    id="sync-sku-combobox-list"
+                    role="listbox"
+                    data-testid="sync-sku-combobox-list"
+                    className="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-600 bg-slate-900 py-1 shadow-xl"
+                  >
+                    {syncSkuOptions.length === 0 ? (
+                      <li className="px-3 py-2 text-[11px] text-slate-500">No matching products.</li>
+                    ) : (
+                      syncSkuOptions.map((o) => (
+                        <li key={o.sku} role="option" aria-selected={syncSku === o.sku}>
+                          <button
+                            type="button"
+                            className="flex w-full flex-col px-3 py-1.5 text-left hover:bg-amber-500/15"
+                            onClick={() => {
+                              setSyncSku(o.sku);
+                              setSyncSkuQuery("");
+                              setSyncSkuOpen(false);
+                            }}
+                          >
+                            <span className="font-mono text-[11px] text-amber-300">{o.sku}</span>
+                            <span className="text-[10px] text-slate-400">{o.label}</span>
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                ) : null}
+              </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -1993,7 +2157,7 @@ export default function EcommerceCertificationPortal({
                   type="button"
                   data-testid="dry-run-payload"
                   onClick={async () => {
-                    const sample = listings[0]?.globalSku;
+                    const sample = syncSku || listings[0]?.globalSku;
                     if (!sample) {
                       onToast("No Phase 1 rows loaded yet.");
                       return;

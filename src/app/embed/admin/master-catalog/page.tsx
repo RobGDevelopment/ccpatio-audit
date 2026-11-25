@@ -15,8 +15,10 @@ import MasterCatalogClient from "./MasterCatalogClient";
 import {
   getExecutiveStackHealthAction,
   listFinishAssetsForPortal,
+  listFinishIntakeAction,
   type FinishAssetView,
 } from "./actions";
+import type { FinishIntakeView } from "@/server/ecommerce/finish-intake";
 
 export const dynamic = "force-dynamic";
 
@@ -51,12 +53,20 @@ export default async function MasterCatalogPage({
   let initialAssets: FinishAssetView[] = [];
   let initialStackLayers: StackLayerPill[] = probeFailedStackLayers("Probing full stack…");
 
-  const [finishes, stack] = await Promise.all([
+  let initialIntake: FinishIntakeView[] = [];
+
+  const [finishes, stack, intake] = await Promise.all([
     listFinishAssetsForPortal().catch(() => null),
     getExecutiveStackHealthAction().catch(() => null),
+    // Also runs the powder Gray/Beige/Bronze soft-patch. On failure the portal re-fetches
+    // client-side and surfaces the error in Tab 1 (initialIntake stays empty).
+    listFinishIntakeAction().catch(() => null),
   ]);
   if (finishes && finishes.ok) {
     initialAssets = finishes.assets;
+  }
+  if (intake && intake.ok) {
+    initialIntake = intake.items;
   }
   if (stack && stack.ok) {
     initialStackLayers = stack.health.layers;
@@ -71,6 +81,7 @@ export default async function MasterCatalogPage({
         initialCanFullCatalog={auth.canFullCatalog}
         initialAssets={initialAssets}
         initialStackLayers={initialStackLayers}
+        initialIntake={initialIntake}
       />
     </EmbedSessionProvider>
   );

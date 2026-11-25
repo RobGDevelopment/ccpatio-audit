@@ -162,7 +162,9 @@
     "ecom:price-audit": "npx tsx scripts/audit-price-update.ts",
     "vendor:handoff-workbook": "npx dotenv -e .env.local -- tsx scripts/generate-vendor-handoff-workbook.ts",
     "finishes:process": "tsx scripts/ops/process-highrez-finishes.ts",
-    "finishes:upload": "tsx scripts/ops/upload-highrez-finishes.ts"
+    "finishes:upload": "tsx scripts/ops/upload-highrez-finishes.ts",
+    "intake:seed-photoshoot": "npx dotenv -e .env.local -e .env.test.local -- tsx scripts/ops/seed-intake-photoshoot.ts",
+    "finishes:pull-approved": "npx dotenv -e .env.local -e .env.test.local -- tsx scripts/ops/pull-approved-finishes.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -246,9 +246,11 @@ describe("default GHL route is dark Executive Control Center (no legacy chrome)"
     expect(layout).toContain("bg-[#0b0f17]");
     expect(loading).toContain("bg-[#0b0f17]");
 
+    expect(portal).toContain("portal-tab-intake");
     expect(portal).toContain("portal-tab-finishes");
     expect(portal).toContain("portal-tab-products");
     expect(portal).toContain("portal-tab-sync");
+    expect(portal).toMatch(/useState<PortalTab>\("intake"\)|useState\("intake"\)/);
     expect(portal).toContain("portal-search-input");
     expect(portal).toContain("Executive Control Center");
     expect(portal).toContain("max-w-none");

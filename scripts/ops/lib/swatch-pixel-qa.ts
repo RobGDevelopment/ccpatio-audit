@@ -25,6 +25,7 @@ const DARK_SKUS = new Set([
   "PWD-BLACK",
   "PWD-OIL-RUB-BRONZE",
   "DKT-NILIUM",
+  "DKT-ENTZO",
   "DKT-EDORA",
 ]);
 

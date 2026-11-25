@@ -17,12 +17,30 @@ export const OVERLAY_DIR = path.join(OUT_ROOT, "overlays");
 const WORK_W = 600;
 const VEINED_DEKTON = new Set([
   "DKT-AURA",
-  "DKT-EDORA",
+  "DKT-ENTZO",
+  "DKT-EDORA", // legacy alias for Entzo typo
   "DKT-LUMINA",
   "DKT-NILIUM",
   "DKT-STRATO",
   "DKT-ALDEM",
 ]);
+
+export type CvCropBox = {
+  /** Full-res pixel origin after EXIF rotate (matches sharp.extract left). */
+  x: number;
+  /** Full-res pixel origin after EXIF rotate (matches sharp.extract top). */
+  y: number;
+  /** Exact square side in source pixels (matches sharp.extract width & height). */
+  side: number;
+  /** Oriented source width (sourceW) for 1:1 overlay math on non-square photos. */
+  sourceWidth: number;
+  /** Oriented source height (sourceH). */
+  sourceHeight: number;
+  /** Normalized 0..1 fractions of source space. */
+  cropX: number;
+  cropY: number;
+  cropSide: number;
+};
 
 export type CvProcessResult = {
   source_file: string;
@@ -33,7 +51,7 @@ export type CvProcessResult = {
   pixels_per_inch: number | null;
   ppi_method: string;
   deskew_deg: number;
-  crop_box: { x: number; y: number; side: number };
+  crop_box: CvCropBox;
   cropped_width_in: number | null;
   overlay_path: string;
   tmp_id: string;
@@ -396,6 +414,11 @@ function buildTapeMask(
   return dilateMask(mask, w, h, Math.round(w * 0.06));
 }
 
+/**
+ * Bug A fix: do NOT punch holes via per-pixel dBg inside the sample.
+ * Build an outer sample bbox clear of tape, then fill a solid interior mask.
+ * Folder-specific hardware insets are applied later in `hardwareSafeCropSquare`.
+ */
 function buildValidMask(
   L: Float32Array,
   a: Float32Array,
@@ -403,99 +426,147 @@ function buildValidMask(
   tapeMask: Uint8Array,
   w: number,
   h: number,
-  opts: { striped?: boolean; veined?: boolean },
+  _opts: { striped?: boolean; veined?: boolean },
 ): Uint8Array {
-  const peri = Math.max(2, Math.floor(Math.min(w, h) * 0.03));
-  const bgSamples: Array<[number, number, number]> = [];
-  const coreSamples: Array<[number, number, number]> = [];
-  const coreDeltas: number[] = [];
-
+  void L;
+  void a;
+  void b;
+  const V = new Uint8Array(w * h);
+  let minX = w;
+  let minY = h;
+  let maxX = -1;
+  let maxY = -1;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x;
       if (tapeMask[i]) continue;
-      const lab: [number, number, number] = [L[i]!, a[i]!, b[i]!];
-      const onPeri = x < peri || y < peri || x >= w - peri || y >= h - peri;
-      if (onPeri) bgSamples.push(lab);
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
     }
   }
-
-  const cx0 = Math.floor(w * 0.35);
-  const cx1 = Math.floor(w * 0.65);
-  const cy0 = Math.floor(h * 0.35);
-  const cy1 = Math.floor(h * 0.65);
-  for (let y = cy0; y < cy1; y++) {
-    for (let x = cx0; x < cx1; x++) {
+  if (maxX < minX || maxY < minY) {
+    // Fallback: full frame minus thin perimeter
+    const frame = Math.max(2, Math.floor(Math.min(w, h) * 0.05));
+    for (let y = frame; y < h - frame; y++) {
+      for (let x = frame; x < w - frame; x++) V[y * w + x] = 1;
+    }
+    return V;
+  }
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
       const i = y * w + x;
-      if (tapeMask[i]) continue;
-      coreSamples.push([L[i]!, a[i]!, b[i]!]);
+      if (!tapeMask[i]) V[i] = 1;
     }
   }
-
-  const avg = (samples: Array<[number, number, number]>): [number, number, number] => {
-    if (!samples.length) return [50, 0, 0];
-    let Lsum = 0;
-    let asum = 0;
-    let bsum = 0;
-    for (const s of samples) {
-      Lsum += s[0];
-      asum += s[1];
-      bsum += s[2];
-    }
-    const n = samples.length;
-    return [Lsum / n, asum / n, bsum / n];
-  };
-
-  const bg = avg(bgSamples);
-  const core = avg(coreSamples);
-  for (const s of coreSamples) coreDeltas.push(deltaE(s, core));
-  coreDeltas.sort((u, v) => u - v);
-  const coreP90 = percentile(coreDeltas, 90);
-  const dCoreBg = deltaE(core, bg);
-
-  const V = new Uint8Array(w * h);
-  if (dCoreBg > 14) {
-    const bgThresh = Math.max(12, 0.4 * dCoreBg);
-    const outlierThresh = Math.max(26, 2.8 * coreP90);
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const i = y * w + x;
-        if (tapeMask[i]) {
-          V[i] = 0;
-          continue;
-        }
-        const lab: [number, number, number] = [L[i]!, a[i]!, b[i]!];
-        const dBg = deltaE(lab, bg);
-        const dCore = deltaE(lab, core);
-        const darkRamp =
-          core[0] > 28 && L[i]! < bg[0] + 0.35 * (core[0] - bg[0]);
-        let invalid = dBg < bgThresh || darkRamp;
-        if (!opts.striped && !opts.veined && dCore > outlierThresh) invalid = true;
-        V[i] = invalid ? 0 : 1;
-      }
-    }
-  } else {
-    // Dark finishes: exclude tape, specular outliers, outer 18% perimeter
-    const frame = Math.floor(Math.min(w, h) * 0.18);
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const i = y * w + x;
-        if (tapeMask[i]) {
-          V[i] = 0;
-          continue;
-        }
-        if (x < frame || y < frame || x >= w - frame || y >= h - frame) {
-          V[i] = 0;
-          continue;
-        }
-        const dCore = deltaE([L[i]!, a[i]!, b[i]!], core);
-        V[i] = dCore > 16 ? 0 : 1;
-      }
-    }
-  }
-
-  const erodeR = Math.round(Math.min(w, h) * 0.1);
+  // Light erode only — preserve dark stripe bands (no dBg hole-punch)
+  const erodeR = Math.max(1, Math.round(Math.min(w, h) * 0.02));
   return erodeMask(V, w, h, erodeR);
+}
+
+/** Bounding box of non-zero mask pixels. */
+function maskBoundingBox(
+  V: Uint8Array,
+  w: number,
+  h: number,
+): { left: number; top: number; right: number; bottom: number } | null {
+  let left = w;
+  let top = h;
+  let right = -1;
+  let bottom = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!V[y * w + x]) continue;
+      if (x < left) left = x;
+      if (y < top) top = y;
+      if (x > right) right = x;
+      if (y > bottom) bottom = y;
+    }
+  }
+  if (right < left || bottom < top) return null;
+  return { left, top, right, bottom };
+}
+
+/**
+ * Hardware-safe inscribed square per folder rules (working-grid coords).
+ * Fabrics: below grommet band (+22% from sampleTop), 7% L/R/B inset.
+ * Dekton: above bottom clips (−12% from sampleBottom), 6% T/L/R inset.
+ * PowderCoat: below tape (+6%), exclude punched hole third, largest centered square.
+ */
+export function hardwareSafeCropSquare(
+  V: Uint8Array,
+  L: Float32Array,
+  w: number,
+  h: number,
+  categoryFolder: string,
+): { x: number; y: number; side: number } {
+  const bb = maskBoundingBox(V, w, h) ?? { left: 0, top: 0, right: w - 1, bottom: h - 1 };
+  const sampleLeft = bb.left;
+  const sampleTop = bb.top;
+  const sampleRight = bb.right;
+  const sampleBottom = bb.bottom;
+  const sampleW = Math.max(1, sampleRight - sampleLeft + 1);
+  const sampleH = Math.max(1, sampleBottom - sampleTop + 1);
+  const folder = categoryFolder.toLowerCase();
+
+  let x0 = sampleLeft;
+  let y0 = sampleTop;
+  let x1 = sampleRight;
+  let y1 = sampleBottom;
+
+  if (folder.includes("fabric")) {
+    y0 = Math.floor(sampleTop + 0.22 * sampleH);
+    x0 = Math.floor(sampleLeft + 0.07 * sampleW);
+    x1 = Math.floor(sampleRight - 0.07 * sampleW);
+    y1 = Math.floor(sampleBottom - 0.07 * sampleH);
+  } else if (folder.includes("dekton")) {
+    y1 = Math.floor(sampleBottom - 0.12 * sampleH);
+    y0 = Math.floor(sampleTop + 0.06 * sampleH);
+    x0 = Math.floor(sampleLeft + 0.06 * sampleW);
+    x1 = Math.floor(sampleRight - 0.06 * sampleW);
+  } else if (folder.includes("powder")) {
+    // Plate below top tape band (~ tapeBottom + 6%)
+    y0 = Math.floor(sampleTop + 0.06 * sampleH);
+    y1 = sampleBottom;
+    x0 = sampleLeft;
+    x1 = sampleRight;
+    const plateW = Math.max(1, x1 - x0 + 1);
+    const plateH = Math.max(1, y1 - y0 + 1);
+    // Detect dark circular hole in left vs right third via darkest mean L
+    const third = Math.floor(plateW / 3);
+    const meanL = (lx0: number, lx1: number) => {
+      let sum = 0;
+      let n = 0;
+      for (let y = y0; y <= y1; y++) {
+        for (let x = lx0; x <= lx1; x++) {
+          sum += L[y * w + x]!;
+          n++;
+        }
+      }
+      return n ? sum / n : 100;
+    };
+    const leftMean = meanL(x0, x0 + third);
+    const rightMean = meanL(x1 - third, x1);
+    if (leftMean < rightMean - 4) {
+      x0 = x0 + third; // hole on left — keep center+right
+    } else if (rightMean < leftMean - 4) {
+      x1 = x1 - third; // hole on right — keep left+center
+    }
+    void plateH;
+  }
+
+  x0 = clamp(x0, 0, w - 1);
+  y0 = clamp(y0, 0, h - 1);
+  x1 = clamp(x1, x0, w - 1);
+  y1 = clamp(y1, y0, h - 1);
+
+  const regionW = x1 - x0 + 1;
+  const regionH = y1 - y0 + 1;
+  const side = Math.max(8, Math.min(regionW, regionH));
+  const x = x0 + Math.floor((regionW - side) / 2);
+  const y = y0 + Math.floor((regionH - side) / 2);
+  return { x, y, side };
 }
 
 function downsampleFloat(src: Float32Array, w: number, h: number, dw: number, dh: number): Float32Array {
@@ -687,49 +758,14 @@ export function replicateInteriorRingToBorder(rgb: Buffer, size: number, bandFra
   return out;
 }
 
-/** Force outer rim Lab within ΔE≈5 of center while keeping fine grain. */
-export function forceBorderNearCenter(rgb: Buffer, size: number, bandFrac = 0.03): Buffer {
-  const out = Buffer.from(rgb);
-  const band = Math.max(2, Math.round(size * bandFrac));
-  let cL = 0;
-  let cA = 0;
-  let cB = 0;
-  let cn = 0;
-  const x0 = Math.floor(size * 0.35);
-  const x1 = Math.floor(size * 0.65);
-  for (let y = x0; y < x1; y++) {
-    for (let x = x0; x < x1; x++) {
-      const i = (y * size + x) * 3;
-      const lab = rgbToLab(out[i]!, out[i + 1]!, out[i + 2]!);
-      cL += lab[0];
-      cA += lab[1];
-      cB += lab[2];
-      cn++;
-    }
-  }
-  cL /= cn || 1;
-  cA /= cn || 1;
-  cB /= cn || 1;
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const edgeDist = Math.min(x, y, size - 1 - x, size - 1 - y);
-      if (edgeDist >= band) continue;
-      const i = (y * size + x) * 3;
-      const [L, a, b] = rgbToLab(out[i]!, out[i + 1]!, out[i + 2]!);
-      const t = 1 - edgeDist / band;
-      // Outer half of band → pure center Lab; fade grain back in toward interior.
-      const keep = t > 0.5 ? 0 : 0.25 * (1 - t / 0.5);
-      const L2 = cL * (1 - keep) + L * keep;
-      const a2 = cA * (1 - keep) + a * keep;
-      const b2 = cB * (1 - keep) + b * keep;
-      const [r, g, bv] = labToRgb(clamp(L2, 0, 100), a2, b2);
-      out[i] = r;
-      out[i + 1] = g;
-      out[i + 2] = bv;
-    }
-  }
-  return out;
+/**
+ * Bug B: `forceBorderNearCenter` with keep=0 painted a flat solid ~46px rim.
+ * Kept as a no-op export so legacy imports compile; do not call in the pipeline.
+ */
+export function forceBorderNearCenter(rgb: Buffer, _size: number, _bandFrac = 0.03): Buffer {
+  void _size;
+  void _bandFrac;
+  return Buffer.from(rgb);
 }
 
 /** Hard-lock opposite edge pixels equal without re-blending the rim band. */
@@ -752,14 +788,26 @@ function lockOppositeEdges(rgb: Buffer, size: number): Buffer {
   return out;
 }
 
-/** Final QA hardening for fabric / leather / powder tiles. */
-export function finalizeSeamlessTexture(rgb: Buffer, size: number): Buffer {
+/**
+ * Final QA hardening for fabric / leather / powder tiles.
+ * Relies on flattenIllumination for vignette; skips toroidal wrap on striped/bimodal
+ * so directional patterns never smear grey at tile edges.
+ */
+export function finalizeSeamlessTexture(
+  rgb: Buffer,
+  size: number,
+  opts?: { striped?: boolean; bimodal?: boolean; patternMode?: "solid" | "striped" },
+): Buffer {
   let out = inpaintDarkBorderWedges(rgb, size, 0.08);
   out = flattenIllumination(out, size, "gaussian");
-  out = seamlessToroidalWrap(out, size, 0.1);
-  // Rim correction MUST be last so wrap doesn't reintroduce border ΔE.
-  out = forceBorderNearCenter(out, size, 0.045);
-  out = lockOppositeEdges(out, size);
+  const skipWrap =
+    opts?.striped === true ||
+    opts?.bimodal === true ||
+    opts?.patternMode === "striped";
+  if (!skipWrap) {
+    out = seamlessToroidalWrap(out, size, 0.1);
+    out = lockOppositeEdges(out, size);
+  }
   return out;
 }
 
@@ -965,73 +1013,24 @@ export async function processStudioPhoto(opts: {
     striped: opts.stripedHint,
     veined,
   });
-  const square = largestInscribedSquare(V, w, h);
+  // Hardware-safe crop (folder rules) — preserves multi-band stripes / avoids grommets & clips
+  const square = hardwareSafeCropSquare(V, L, w, h, opts.categoryFolder);
+  let sx = square.x;
+  let sy = square.y;
+  let side = square.side;
 
-  // Additional 8% safety inset (spec 6% + extra margin against frayed/table wedges)
-  const inset = Math.floor(square.side * 0.08);
-  let sx = square.x + inset;
-  let sy = square.y + inset;
-  let side = square.side - 2 * inset;
-  if (side < 16) {
-    sx = square.x;
-    sy = square.y;
-    side = square.side;
-  }
-
-  // Shrink working-grid square until outer 4% strips are free of dark studio wedges
-  const darkFrac = (x0: number, y0: number, sidePx: number, which: "t" | "b" | "l" | "r") => {
-    const band = Math.max(1, Math.floor(sidePx * 0.04));
-    let dark = 0;
-    let total = 0;
-    const visit = (x: number, y: number) => {
-      if (x < 0 || y < 0 || x >= w || y >= h) return;
-      if (L[y * w + x]! < 16) dark++;
-      total++;
-    };
-    if (which === "t") {
-      for (let yy = y0; yy < y0 + band; yy++) for (let xx = x0; xx < x0 + sidePx; xx++) visit(xx, yy);
-    } else if (which === "b") {
-      for (let yy = y0 + sidePx - band; yy < y0 + sidePx; yy++)
-        for (let xx = x0; xx < x0 + sidePx; xx++) visit(xx, yy);
-    } else if (which === "l") {
-      for (let yy = y0; yy < y0 + sidePx; yy++) for (let xx = x0; xx < x0 + band; xx++) visit(xx, yy);
-    } else {
-      for (let yy = y0; yy < y0 + sidePx; yy++)
-        for (let xx = x0 + sidePx - band; xx < x0 + sidePx; xx++) visit(xx, yy);
-    }
-    return total ? dark / total : 0;
-  };
-  const coreL = (() => {
-    const samples: number[] = [];
-    for (let yy = sy + Math.floor(side * 0.35); yy < sy + Math.floor(side * 0.65); yy++) {
-      for (let xx = sx + Math.floor(side * 0.35); xx < sx + Math.floor(side * 0.65); xx++) {
-        if (xx >= 0 && yy >= 0 && xx < w && yy < h) samples.push(L[yy * w + xx]!);
-      }
-    }
-    return mean(samples);
-  })();
-  if (coreL > 28) {
-    for (let iter = 0; iter < 12; iter++) {
-      const bad =
-        darkFrac(sx, sy, side, "t") >= 0.003 ||
-        darkFrac(sx, sy, side, "b") >= 0.003 ||
-        darkFrac(sx, sy, side, "l") >= 0.003 ||
-        darkFrac(sx, sy, side, "r") >= 0.003;
-      if (!bad || side < 32) break;
-      const shrink = Math.max(2, Math.floor(side * 0.04));
-      sx += shrink;
-      sy += shrink;
-      side -= 2 * shrink;
-    }
-  }
-
-  // Map to full-res — prefer exact safe square (no expand that reintroduces table wedges)
+  // Map to full-res with independent scaleX/scaleY so non-square (3:2 / 4:3) photos
+  // extract an exact pixel square matching the overlay box Mia drags.
   const scaleX = fullW / w;
   const scaleY = fullH / h;
   let fx = Math.round(sx * scaleX);
   let fy = Math.round(sy * scaleY);
+  // Use min scale so the square stays square in source pixels (1:1 extract).
   let fside = Math.round(side * Math.min(scaleX, scaleY));
-  fside = Math.min(fside, fullW - fx, fullH - fy);
+  fside = Math.max(8, Math.min(fside, fullW - fx, fullH - fy));
+  // Re-anchor if rounding pushed past edges
+  if (fx + fside > fullW) fx = Math.max(0, fullW - fside);
+  if (fy + fside > fullH) fy = Math.max(0, fullH - fside);
 
   const extract = await sharp(buf)
     .rotate()
@@ -1041,13 +1040,23 @@ export async function processStudioPhoto(opts: {
     .raw()
     .toBuffer();
 
+  // Stripe probe on raw extract BEFORE seamless (gates toroidal wrap)
+  const preStripe = stripeMetrics(extract, 2048);
+  const striped =
+    opts.stripedHint === true ||
+    preStripe.is_striped ||
+    preStripe.bimodal ||
+    /PV205022|PV205037|PV205012/i.test(opts.relative);
+
   const family = opts.familyHint ?? "sunbrella";
-  const flatMode = family === "dekton" || veined ? "plane" : "gaussian";
   let processed =
     family === "dekton" || veined
       ? flattenIllumination(extract, 2048, "plane")
-      : finalizeSeamlessTexture(extract, 2048);
-  void flatMode;
+      : finalizeSeamlessTexture(extract, 2048, {
+          striped,
+          bimodal: preStripe.bimodal,
+          patternMode: striped ? "striped" : "solid",
+        });
 
   fs.mkdirSync(TEXTURE_DIR, { recursive: true });
   fs.mkdirSync(THUMB_DIR, { recursive: true });
@@ -1089,7 +1098,16 @@ export async function processStudioPhoto(opts: {
     pixels_per_inch: null,
     ppi_method: "uniform_family_scale",
     deskew_deg: 0,
-    crop_box: { x: fx, y: fy, side: fside },
+    crop_box: {
+      x: fx,
+      y: fy,
+      side: fside,
+      sourceWidth: fullW,
+      sourceHeight: fullH,
+      cropX: fullW ? fx / fullW : 0,
+      cropY: fullH ? fy / fullH : 0,
+      cropSide: fullW ? fside / fullW : 0,
+    },
     cropped_width_in: 8,
     overlay_path: overlayBuf,
     tmp_id: opts.tmpId,

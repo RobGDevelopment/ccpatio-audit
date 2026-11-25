@@ -94,7 +94,11 @@ test.describe("swatch-cv-recrop-scale-lightbox", () => {
     test.skip(!hasPhoto, "No populated showroom photos in this environment");
 
     await openLb.click();
-    await expect(page.getByTestId("full-res-lightbox")).toBeVisible();
-    await expect(page.getByText("Add photo")).toHaveCount(0);
+    const lightbox = page.getByTestId("full-res-lightbox");
+    await expect(lightbox).toBeVisible();
+    // Populated photo opens the 1:1 lightbox — not the Add-photo upload modal.
+    // Empty inventory slots may still render "Add photo" behind the overlay; scope to lightbox + modal.
+    await expect(page.getByTestId("image-upload-modal")).toHaveCount(0);
+    await expect(lightbox.getByText("Add photo")).toHaveCount(0);
   });
 });

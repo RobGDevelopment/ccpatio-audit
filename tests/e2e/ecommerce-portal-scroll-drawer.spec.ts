@@ -29,6 +29,10 @@ test.describe("ecommerce portal scroll + cookie-cleared drawer", () => {
 
     await expect(portal).toBeVisible();
 
+    // Default tab is Intake & Media Studio — switch to Certified Finishes before the powder scroll.
+    await page.getByTestId("portal-tab-finishes").click();
+    await expect(page.getByTestId("portal-panel-finishes")).toBeVisible();
+
     const scrollMetrics = await portal.evaluate((el) => ({
       scrollHeight: el.scrollHeight,
       clientHeight: el.clientHeight,

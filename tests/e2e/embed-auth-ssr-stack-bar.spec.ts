@@ -76,6 +76,8 @@ test.describe("embed-auth-ssr-stack-bar-hardening", () => {
     });
     await expect(page.getByTestId("stack-layer-katana")).toBeVisible();
 
+    // Default tab is Intake & Media Studio — open Certified Finishes first.
+    await page.getByTestId("portal-tab-finishes").click();
     const sunbrella = page.getByTestId("finish-group-sunbrella");
     if (await sunbrella.isVisible().catch(() => false)) {
       const rows = sunbrella.locator("tbody tr[data-testid^='finish-row-']");
