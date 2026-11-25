@@ -19,6 +19,11 @@ import {
   type ShowroomSalesTab,
 } from "@/server/showroom/sales-projection";
 import {
+  resolveHubSyncBadge,
+  type HubSyncBadge,
+  type HubSyncBadgeTone,
+} from "@/server/stock/hub-sync-freshness";
+import {
   listActiveShowroomHolds,
   loadShowroomSalesInventoryAction,
   resolveShowroomHoldActor,
@@ -28,11 +33,16 @@ import { eyebrow, softField } from "../showroom-ui";
 import { InventoryCard } from "./InventoryCard";
 import type { ViewMode } from "./ViewModeToggle";
 import { ViewModeToggle } from "./ViewModeToggle";
-
 const softControl =
   "border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]";
 const tactileIdle = "border-b-2 border-slate-200 bg-white text-slate-600";
 const tactileActive = "translate-y-0.5 bg-slate-50 text-slate-900 shadow-inner";
+
+const BADGE_TONE_CLASS: Record<HubSyncBadgeTone, string> = {
+  green: "bg-emerald-50 text-emerald-800",
+  amber: "bg-amber-50 text-amber-800",
+  red: "bg-rose-50 text-rose-800",
+};
 
 function GoldBeam() {
   return (
@@ -66,7 +76,7 @@ export function SalesStockView({
   ghlUserId?: string;
   ghlUserEmail?: string;
 } = {}) {
-  const { embedToken } = useEmbedSession();
+  const { embedToken, embedFetch } = useEmbedSession();
   const flags = featureFlagsProp ?? getShowroomFeatureFlags();
   const visibleTabs = useMemo(
     () => visibleShowroomSalesTabs(flags.enableMtoCatalog),
@@ -79,7 +89,8 @@ export function SalesStockView({
   const [message, setMessage] = useState<string | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [syncedAt, setSyncedAt] = useState<string | null>(initialSyncedAt ?? null);
-  const [stale, setStale] = useState(false);
+  const [badge, setBadge] = useState<HubSyncBadge>(() => resolveHubSyncBadge(initialSyncedAt ?? null));
+  const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [salesperson, setSalesperson] = useState<string | null>(null);
   const [holdActorError, setHoldActorError] = useState<string | null>(null);
@@ -120,7 +131,7 @@ export function SalesStockView({
         }
         setCards(result.cards);
         setSyncedAt(result.syncedAt);
-        setStale(result.stale);
+        setBadge(result.badge ?? resolveHubSyncBadge(result.syncedAt));
         setMessage(
           result.cards.length === 0
             ? nextTab === "active_holds"
@@ -130,7 +141,8 @@ export function SalesStockView({
                 : "Nothing matches this sales tab."
             : result.warning,
         );
-        setErrorBanner(result.warning && result.stale ? result.warning : null);
+        // Never surface raw rate-limit developer strings; badge status carries staleness.
+        setErrorBanner(null);
       } catch (error: unknown) {
         if (id !== request.current) return;
         const msg = error instanceof Error ? error.message : "Could not load sales inventory.";
@@ -140,6 +152,18 @@ export function SalesStockView({
     },
     [embedToken, tab, inStockOnly, query],
   );
+
+  const queueBackgroundRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await embedFetch("/api/katana/showroom-inventory", { method: "POST" });
+      await reload(tab, inStockOnly, query);
+    } catch {
+      // Hub reload still available; badge already shows stale state.
+    } finally {
+      setRefreshing(false);
+    }
+  }, [embedFetch, reload, tab, inStockOnly, query]);
 
   const refreshActiveHoldCount = useCallback(async () => {
     try {
@@ -254,12 +278,28 @@ export function SalesStockView({
             <p className={eyebrow}>Showroom Sales · Live Stock</p>
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
-                  stale ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"
-                }`}
+                data-testid="hub-synced-badge"
+                data-tone={badge.tone}
+                className={`rounded-full px-3 py-1 text-[11px] font-semibold ${BADGE_TONE_CLASS[badge.tone]}`}
               >
-                Hub synced: {formatSyncedAt(syncedAt)}
+                {badge.tone === "green"
+                  ? `Hub synced: ${formatSyncedAt(syncedAt)}`
+                  : badge.statusLabel}
               </span>
+              {badge.tone !== "green" && syncedAt ? (
+                <span className="text-[10px] text-slate-500">{formatSyncedAt(syncedAt)}</span>
+              ) : null}
+              {badge.showRefreshButton ? (
+                <button
+                  type="button"
+                  data-testid="hub-sync-refresh"
+                  disabled={refreshing}
+                  onClick={() => void queueBackgroundRefresh()}
+                  className={`${softControl} rounded-full px-3 py-1 text-[11px] font-semibold text-slate-800`}
+                >
+                  {refreshing ? "Queuing…" : "Refresh"}
+                </button>
+              ) : null}
               {pending ? (
                 <span className="text-[11px] text-slate-500">Updating…</span>
               ) : null}

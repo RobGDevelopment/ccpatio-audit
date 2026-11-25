@@ -23,6 +23,7 @@ import {
   catalog_ship_profiles,
   product_relations,
   logistics_profiles,
+  katana_sync_meta,
 } from "@/server/db/schema";
 import { eq, desc, asc, count, and, inArray, sql, max, or, not, like, isNull } from "drizzle-orm";
 import {
@@ -4181,13 +4182,51 @@ export async function getExecutiveStackHealthAction(): Promise<
       detail: storageReady ? "PostgreSQL reachable · Storage env present" : "Storage env incomplete",
     };
 
+    const { getKatanaBucketHealth } = await import("@/server/sre/katana-throttle");
+    const { resolveHubSyncBadge, HUB_SYNC_STALE_MS } = await import(
+      "@/server/stock/hub-sync-freshness"
+    );
+    const { SHOWROOM_SYNC_META_ID } = await import("@/server/stock/showroom-snapshot");
+    const [syncMeta] = await db
+      .select()
+      .from(katana_sync_meta)
+      .where(eq(katana_sync_meta.id, SHOWROOM_SYNC_META_ID))
+      .limit(1);
+    const lastSyncedAt = syncMeta?.last_synced_at?.toISOString?.() ?? null;
+    const badge = resolveHubSyncBadge(lastSyncedAt);
+    let bucketHealth: {
+      tokensAvailable: number;
+      cooldownMs: number;
+      throttled: boolean;
+    } = { tokensAvailable: 0, cooldownMs: 0, throttled: false };
+    try {
+      bucketHealth = await getKatanaBucketHealth();
+    } catch {
+      bucketHealth = { tokensAvailable: 0, cooldownMs: 0, throttled: true };
+    }
     const katanaAge = snapshot.katanaSyncAge;
+    const hubStale = badge.tone === "red" || badge.ageMs > HUB_SYNC_STALE_MS;
+    const katanaLamp = bucketHealth.throttled || hubStale
+      ? "Action Required"
+      : badge.tone === "amber" || katanaAge.state === "degraded"
+        ? "Degraded"
+        : lampFromState(katanaAge.state === "critical" ? "critical" : "healthy");
     const katanaLayer: StackLayerPill = {
       id: "katana",
       label: "Katana MRP",
-      status: lampFromState(katanaAge.state),
-      detail: katanaAge.detail,
-      actions: [{ id: "katana_sync_now", label: "Run Katana Sync Now" }],
+      status: katanaLamp,
+      detail: [
+        badge.statusLabel,
+        lastSyncedAt ? `lastSyncedAt=${lastSyncedAt}` : "lastSyncedAt=never",
+        `tokens=${bucketHealth.tokensAvailable.toFixed(2)}`,
+        bucketHealth.throttled ? `cooldownMs=${bucketHealth.cooldownMs}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      actions: [
+        { id: "katana_sync_now", label: "Run Katana Sync Now" },
+        { id: "katana_reset_bucket_sync", label: "Reset Bucket & Sync Katana Now" },
+      ],
     };
 
     const qboLayer: StackLayerPill = {
@@ -4329,6 +4368,17 @@ export async function runKatanaSyncNowAction(): Promise<
     message: "Katana catalog reconcile queued (read-only until downstream flags allow writes).",
     eventIds: queued.eventIds,
   };
+}
+
+/** Reset wedged shared bucket/lock, then enqueue priority Hub inventory sync. */
+export async function resetKatanaBucketAndSyncAction(): Promise<
+  { ok: true; message: string; clearedKeys?: string[] } | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const { resetBucketAndSyncKatanaNow } = await import("@/server/stock/showroom-snapshot");
+  const { runWithKatanaPriorityLane } = await import("@/lib/katana");
+  return runWithKatanaPriorityLane(() => resetBucketAndSyncKatanaNow());
 }
 
 export async function buildWooDiagnosticReportAction(): Promise<

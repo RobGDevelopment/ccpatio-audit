@@ -19,9 +19,14 @@ import {
   type KatanaInventoryRow,
 } from "@/server/stock/katana-inventory";
 import {
+  enqueueBackgroundShowroomSync,
   readShowroomSnapshotFromHub,
-  refreshShowroomSnapshotFromKatana,
 } from "@/server/stock/showroom-snapshot";
+import {
+  resolveHubSyncBadge,
+  sanitizeShowroomSyncWarning,
+  type HubSyncBadge,
+} from "@/server/stock/hub-sync-freshness";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { inventory_holds } from "@/server/db/schema";
 import { displayStockUom } from "@/lib/hold-quantity";
@@ -196,9 +201,17 @@ export async function loadOpsKatanaInventory(input?: {
   const session = await resolveStockSession(input?.embedToken);
   if (!session) return { ok: false, error: "Sign in to view live stock." };
   try {
-    const snapshot = input?.force
-      ? await refreshShowroomSnapshotFromKatana({ force: true })
-      : await readShowroomSnapshotFromHub();
+    // `force` enqueues a non-blocking sync and still returns Hub cache immediately
+    // so ops UI never blocks on the shared Katana bucket.
+    if (input?.force) {
+      await enqueueBackgroundShowroomSync({
+        force: true,
+        priority: true,
+        reason: "ops-force-refresh",
+      });
+    }
+    const snapshot = await readShowroomSnapshotFromHub();
+    const badge = resolveHubSyncBadge(snapshot.lastSyncedAt);
     const filter = input?.typeFilter ?? "all";
     const rows = snapshot.rows
       .filter((row) => matchesTypeFilter(row.itemType, filter))
@@ -207,8 +220,8 @@ export async function loadOpsKatanaInventory(input?: {
       ok: true,
       rows: await overlayPimImages(rows),
       syncedAt: snapshot.lastSyncedAt ?? new Date(0).toISOString(),
-      stale: snapshot.stale || !snapshot.lastSyncedAt,
-      warning: snapshot.error,
+      stale: badge.tone !== "green",
+      warning: sanitizeShowroomSyncWarning(snapshot.error),
     };
   } catch (error: unknown) {
     return {
@@ -227,6 +240,8 @@ export type SalesInventoryResult =
       stale: boolean;
       warning: string | null;
       elapsedMs: number;
+      badge: HubSyncBadge;
+      backgroundSyncQueued: boolean;
     }
   | { ok: false; error: string; elapsedMs?: number };
 
@@ -282,6 +297,15 @@ export async function loadShowroomSalesInventory(input?: {
       readShowroomSnapshotFromHub(),
       loadActiveHoldsForSales(),
     ]);
+    const badge = resolveHubSyncBadge(snapshot.lastSyncedAt);
+    let backgroundSyncQueued = false;
+    if (badge.shouldQueueBackgroundSync) {
+      // Never await Katana — fire-and-forget deduped sync only.
+      const queued = await enqueueBackgroundShowroomSync({
+        reason: "showroom-sales-read",
+      });
+      backgroundSyncQueued = queued.queued;
+    }
     const projectInput: ProjectShowroomSalesInput = {
       rows: snapshot.rows,
       holds,
@@ -301,14 +325,17 @@ export async function loadShowroomSalesInventory(input?: {
       cards: merged,
       rows: merged,
       syncedAt: snapshot.lastSyncedAt ?? new Date(0).toISOString(),
-      stale: snapshot.stale || !snapshot.lastSyncedAt,
-      warning: snapshot.error,
+      stale: badge.tone !== "green",
+      warning: sanitizeShowroomSyncWarning(snapshot.error),
       elapsedMs: Date.now() - started,
+      badge,
+      backgroundSyncQueued,
     };
   } catch (error: unknown) {
+    const raw = error instanceof Error ? error.message : "Could not project sales inventory.";
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "Could not project sales inventory.",
+      error: sanitizeShowroomSyncWarning(raw) ?? "Could not load Hub inventory snapshot.",
       elapsedMs: Date.now() - started,
     };
   }

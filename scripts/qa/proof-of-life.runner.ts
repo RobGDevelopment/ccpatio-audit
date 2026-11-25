@@ -53,10 +53,13 @@ async function run() {
 
   function spawnProdServer() {
     const cmd = process.platform === "win32" ? "npm.cmd" : "npm";
+    // Windows: avoid detached+unref — libuv aborts the parent with
+    // UV_HANDLE_CLOSING (async.c) when shell:true children are unref'd.
+    const win = process.platform === "win32";
     const child = spawn(cmd, ["run", "start"], {
       stdio: "ignore",
       shell: true,
-      detached: true,
+      detached: !win,
       windowsHide: true,
       env: {
         ...process.env,
@@ -79,7 +82,7 @@ async function run() {
           process.env.KATANA_WEBHOOK_SECRET || "qa-katana-webhook-secret",
       },
     });
-    child.unref();
+    if (!win) child.unref();
     return child;
   }
 

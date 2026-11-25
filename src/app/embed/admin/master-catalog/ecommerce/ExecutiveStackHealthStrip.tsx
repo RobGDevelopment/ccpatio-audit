@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import {
   buildWooDiagnosticReportAction,
   getExecutiveStackHealthAction,
+  resetKatanaBucketAndSyncAction,
   runKatanaSyncNowAction,
   testWooConnectionAction,
 } from "../actions";
@@ -47,6 +48,10 @@ export default function ExecutiveStackHealthStrip({ onToast, onLayerClick }: Pro
     try {
       if (actionId === "katana_sync_now") {
         const res = await runKatanaSyncNowAction();
+        onToast(res.ok ? res.message : res.error);
+        if (res.ok) await refresh();
+      } else if (actionId === "katana_reset_bucket_sync") {
+        const res = await resetKatanaBucketAndSyncAction();
         onToast(res.ok ? res.message : res.error);
         if (res.ok) await refresh();
       } else if (actionId === "qbo_reconnect") {

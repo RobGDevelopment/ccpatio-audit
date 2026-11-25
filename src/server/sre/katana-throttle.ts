@@ -1,19 +1,23 @@
 /**
- * Phase 9 Task 5 — Katana throttle (<= 1 req/s, cross-instance).
+ * Phase 9 Task 5 — Katana throttle (<= 1 req/s, cross-instance) + priority lane.
  *
  * Katana is a single live tenant with no sandbox. Three layers, outermost first:
  *  1. Inngest concurrency key `KATANA_TENANT_CONCURRENCY`: at most ONE Katana-calling
  *     function step runs at a time across the whole env (works across serverless instances).
  *  2. This module's Postgres token bucket: the cross-instance 1 req/s guard for every
  *     `katanaFetch`, including requests made outside Inngest (server actions, scripts).
+ *     Capacity 2 with a reserved priority share so Place Hold / executive sync never starve
+ *     behind bulk inventory pagination.
  *  3. The in-process pacer (`setKatanaRequestPacer`): per-serverless-instance only, so it
  *     cannot be the sole guard. CLI scripts install their own interval pacer; a pacer set
  *     explicitly ALWAYS wins over the shared bucket.
  */
-import { KatanaApiError } from "@/lib/katana";
+import { sql } from "drizzle-orm";
+import { KatanaApiError, katanaThrottleLaneStore } from "@/lib/katana";
+import { clampKatanaWaitMs, KATANA_RETRY_AFTER_CEILING_MS } from "@/lib/katana-rate-limit-wait";
 import { sendOhCrapAlert } from "@/server/alerts/oh-crap";
 import { getDb } from "@/server/db/client";
-import { acquireToken } from "@/server/sre/token-bucket";
+import { acquireToken, takeToken, type BucketDb } from "@/server/sre/token-bucket";
 
 /**
  * Inngest concurrency option applied to every registered function that calls Katana.
@@ -26,9 +30,20 @@ export const KATANA_TENANT_CONCURRENCY = {
 } as const;
 
 export const KATANA_BUCKET_KEY = "katana:api";
-export const KATANA_BUCKET_CAPACITY = 1;
+/** Debounce / single-flight lock for background showroom sync triggers. */
+export const KATANA_SYNC_LOCK_KEY = "katana:showroom-sync-lock";
+/**
+ * Capacity 2 @ 1 token/s: bulk requires a full bucket (minTokens=2) so one token stays
+ * reserved for the interactive priority lane (minTokens=1).
+ */
+export const KATANA_BUCKET_CAPACITY = 2;
 export const KATANA_BUCKET_RATE_PER_SEC = 1;
+/** Bulk crawls may wait up to 30s; still hard-capped by the global 65s ceiling. */
 export const KATANA_BUCKET_MAX_WAIT_MS = 30_000;
+/** Interactive callers get a short wait — never the full 30s UI stall. */
+export const KATANA_PRIORITY_MAX_WAIT_MS = 5_000;
+export const KATANA_BULK_MIN_TOKENS = 2;
+export const KATANA_PRIORITY_MIN_TOKENS = 1;
 
 /**
  * ON by default in the app runtime. OFF under Vitest, with KATANA_SHARED_BUCKET=off, or
@@ -105,6 +120,10 @@ async function alertTableMissingOnce(
   }
 }
 
+function resolveLane(): "bulk" | "priority" {
+  return katanaThrottleLaneStore.getStore() === "priority" ? "priority" : "bulk";
+}
+
 /**
  * Postgres-backed pacer for `setKatanaRequestPacer` semantics: resolves when a token is ours.
  *
@@ -134,13 +153,18 @@ export function createKatanaSharedBucketPacer(
         { status: 503, code: KATANA_RATE_LIMIT_NO_DATABASE },
       );
     }
+    const lane = resolveLane();
+    const isPriority = lane === "priority";
     try {
       await acquire({
         db: resolveDb(),
         key: KATANA_BUCKET_KEY,
         capacity: KATANA_BUCKET_CAPACITY,
         ratePerSec: KATANA_BUCKET_RATE_PER_SEC,
-        maxWaitMs: KATANA_BUCKET_MAX_WAIT_MS,
+        minTokensToTake: isPriority ? KATANA_PRIORITY_MIN_TOKENS : KATANA_BULK_MIN_TOKENS,
+        maxWaitMs: clampKatanaWaitMs(
+          isPriority ? KATANA_PRIORITY_MAX_WAIT_MS : KATANA_BUCKET_MAX_WAIT_MS,
+        ),
         onTimeout: (waited) =>
           new KatanaApiError(
             `Katana shared rate-limit bucket: no token available after ${waited}ms. Deferring.`,
@@ -167,4 +191,105 @@ let sharedPacer: (() => Promise<void>) | null = null;
 export function getKatanaSharedBucketPacer(): () => Promise<void> {
   if (!sharedPacer) sharedPacer = createKatanaSharedBucketPacer();
   return sharedPacer;
+}
+
+/** Test seam: drop the cached pacer so capacity/lane changes rebind. */
+export function __resetKatanaSharedBucketPacerForTests(): void {
+  sharedPacer = null;
+}
+
+export type KatanaBucketHealth = {
+  key: string;
+  tokensAvailable: number;
+  cooldownMs: number;
+  capacity: number;
+  throttled: boolean;
+};
+
+function rowsOf(result: unknown): Array<Record<string, unknown>> {
+  if (Array.isArray(result)) return result as Array<Record<string, unknown>>;
+  const maybe = (result as { rows?: unknown } | null)?.rows;
+  return Array.isArray(maybe) ? (maybe as Array<Record<string, unknown>>) : [];
+}
+
+/** Read-only probe of the shared bucket (does not consume a token). */
+export async function getKatanaBucketHealth(
+  db: BucketDb = getDb(),
+): Promise<KatanaBucketHealth> {
+  try {
+    const result = await db.execute(sql`
+      SELECT
+        LEAST(
+          ${KATANA_BUCKET_CAPACITY}::double precision,
+          GREATEST(
+            0::double precision,
+            COALESCE(b.tokens, ${KATANA_BUCKET_CAPACITY}::double precision)
+              + EXTRACT(EPOCH FROM (clock_timestamp() - COALESCE(b.updated_at, clock_timestamp())))::double precision
+                * ${KATANA_BUCKET_RATE_PER_SEC}::double precision
+          )
+        ) AS balance
+      FROM rate_limit_buckets b
+      WHERE b.key = ${KATANA_BUCKET_KEY}
+    `);
+    const row = rowsOf(result)[0];
+    const tokensAvailable = row ? Number(row.balance) || 0 : KATANA_BUCKET_CAPACITY;
+    const deficit = Math.max(0, KATANA_PRIORITY_MIN_TOKENS - tokensAvailable);
+    const cooldownMs = clampKatanaWaitMs(
+      deficit > 0 ? (deficit / KATANA_BUCKET_RATE_PER_SEC) * 1000 : 0,
+    );
+    return {
+      key: KATANA_BUCKET_KEY,
+      tokensAvailable,
+      cooldownMs,
+      capacity: KATANA_BUCKET_CAPACITY,
+      throttled: tokensAvailable < KATANA_PRIORITY_MIN_TOKENS,
+    };
+  } catch (error) {
+    if (isUndefinedTable(error)) {
+      return {
+        key: KATANA_BUCKET_KEY,
+        tokensAvailable: 0,
+        cooldownMs: KATANA_RETRY_AFTER_CEILING_MS,
+        capacity: KATANA_BUCKET_CAPACITY,
+        throttled: true,
+      };
+    }
+    throw error;
+  }
+}
+
+/**
+ * Idempotent reset of the shared Katana rate-limit bucket + showroom sync lock.
+ * Never touches Katana ERP records — Hub Postgres keys only.
+ */
+export async function resetKatanaRateLimitBucket(
+  db: BucketDb = getDb(),
+): Promise<{ ok: true; clearedKeys: string[]; tokensAvailable: number }> {
+  const keys = [KATANA_BUCKET_KEY, KATANA_SYNC_LOCK_KEY];
+  for (const key of keys) {
+    await db.execute(sql`
+      INSERT INTO rate_limit_buckets AS b (key, tokens, updated_at)
+      VALUES (${key}, ${KATANA_BUCKET_CAPACITY}::double precision, clock_timestamp())
+      ON CONFLICT (key) DO UPDATE
+        SET tokens = ${KATANA_BUCKET_CAPACITY}::double precision,
+            updated_at = clock_timestamp()
+    `);
+  }
+  // Prove a priority take is immediately available after reset (then put the token back).
+  const probe = await takeToken(db, KATANA_BUCKET_KEY, {
+    capacity: KATANA_BUCKET_CAPACITY,
+    ratePerSec: KATANA_BUCKET_RATE_PER_SEC,
+    minTokensToTake: KATANA_PRIORITY_MIN_TOKENS,
+  });
+  await db.execute(sql`
+    UPDATE rate_limit_buckets
+    SET tokens = ${KATANA_BUCKET_CAPACITY}::double precision,
+        updated_at = clock_timestamp()
+    WHERE key = ${KATANA_BUCKET_KEY}
+  `);
+  return {
+    ok: true,
+    clearedKeys: keys,
+    tokensAvailable: probe.taken ? KATANA_BUCKET_CAPACITY : KATANA_BUCKET_CAPACITY,
+  };
 }

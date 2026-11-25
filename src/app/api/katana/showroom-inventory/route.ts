@@ -10,29 +10,36 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { authorizeEmbedRequest } from "@/server/showroom/embed-route-auth";
 import {
+  enqueueBackgroundShowroomSync,
   readShowroomSnapshotFromHub,
-  refreshShowroomSnapshotFromKatana,
 } from "@/server/stock/showroom-snapshot";
 import { matchesTypeFilter } from "@/server/stock/katana-inventory";
 import { loadShowroomSalesInventory } from "@/server/showroom/stock";
 import type { ShowroomSalesTab } from "@/server/showroom/sales-projection";
 import { SHOWROOM_SALES_TABS } from "@/server/showroom/sales-projection";
+import {
+  resolveHubSyncBadge,
+  sanitizeShowroomSyncWarning,
+} from "@/server/stock/hub-sync-freshness";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 function toOpsPayload(hub: Awaited<ReturnType<typeof readShowroomSnapshotFromHub>>) {
+  const badge = resolveHubSyncBadge(hub.lastSyncedAt);
+  const warning = sanitizeShowroomSyncWarning(hub.error);
   return {
     ok: true as const,
     items: hub.rows,
     rows: hub.rows,
     lastSyncedAt: hub.lastSyncedAt,
     syncedAt: hub.lastSyncedAt,
-    stale: hub.stale,
-    error: hub.error,
-    warning: hub.error,
+    stale: badge.tone !== "green",
+    error: warning,
+    warning,
     rowCount: hub.rowCount,
+    badge,
     mode: "ops" as const,
   };
 }
@@ -94,10 +101,15 @@ export async function GET(request: Request) {
       metSkuCount: metCount,
       activeHoldCount: sales.cards.filter((c) => c.heldQty > 0).length,
       elapsedMs: sales.elapsedMs,
+      badge: sales.badge,
+      backgroundSyncQueued: sales.backgroundSyncQueued,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Could not read Hub inventory snapshot.";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: sanitizeShowroomSyncWarning(message) ?? "Could not read Hub inventory snapshot." },
+      { status: 500 },
+    );
   }
 }
 
@@ -107,14 +119,27 @@ export async function POST(request: Request) {
   }
 
   try {
-    const hub = await refreshShowroomSnapshotFromKatana({ force: true });
+    // Non-blocking: return Hub cache immediately; sync runs in background with priority.
+    const queued = await enqueueBackgroundShowroomSync({
+      force: true,
+      priority: true,
+      reason: "showroom-inventory-post",
+    });
+    const hub = await readShowroomSnapshotFromHub();
     revalidatePath("/embed/showroom");
     revalidatePath("/embed/ops-inventory");
     revalidatePath("/admin/ops-inventory");
     revalidatePath("/showroom");
-    return NextResponse.json(toOpsPayload(hub));
+    return NextResponse.json({
+      ...toOpsPayload(hub),
+      backgroundSyncQueued: queued.queued,
+      syncStatus: queued.reason,
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Could not sync Katana inventory.";
-    return NextResponse.json({ ok: false, error: message }, { status: 502 });
+    return NextResponse.json(
+      { ok: false, error: sanitizeShowroomSyncWarning(message) ?? "Could not queue inventory sync." },
+      { status: 502 },
+    );
   }
 }

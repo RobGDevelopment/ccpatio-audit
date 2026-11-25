@@ -1,5 +1,6 @@
 import { NonRetriableError, RetryAfterError } from "inngest";
 import { KatanaApiError, katanaRateLimitStore } from "@/lib/katana";
+import { resolveKatanaRetryWaitMs } from "@/lib/katana-rate-limit-wait";
 
 /**
  * Throttle infrastructure codes (src/server/sre/katana-throttle.ts). Retrying cannot fix a
@@ -33,10 +34,7 @@ export async function runKatanaStep<T>(
         throw new NonRetriableError(error.message, { cause: error });
       }
       if (error instanceof KatanaApiError && error.status === 429) {
-        let waitMs = 65000;
-        if (error.rateLimitReset) {
-          waitMs = Math.max(0, error.rateLimitReset * 1000 - Date.now()) + 250;
-        }
+        const waitMs = resolveKatanaRetryWaitMs(error.rateLimitReset);
         throw new RetryAfterError(error.message, waitMs);
       }
       throw error;

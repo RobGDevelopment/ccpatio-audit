@@ -1,157 +1,130 @@
-# BUILD_PLAN — `woocommerce-payload-pricing-integrity`
+# BUILD_PLAN — `katana-inventory-resilience-fix`
 
 **Base:** `HEAD`  
 **Mode:** edit (Track 2 locked)  
 **Blast cap override:** true  
-**Expected blast radius:** 21 (QCA excludes `.cursor/aar.json`; `tolerance: 0`)
+**Expected blast radius:** 22 (QCA excludes `.cursor/aar.json`; `tolerance: 0`)
 
 ## Intent
 
-Enforce **single-price Aluminum storefront truth** across Tab 2, Dark Product
-Drawer, Partner Handoff, CSV export, and WooCommerce REST/Dry-Run payloads;
-purge legacy showroom swatches from `acf_*_swatches_json` and export feeds so
-only the active 32-finish e-commerce roster ships; fix bulk
-`Push Certified Catalog to Staging [Preserve WP Images]` so catalog/finishes
-batch modes no longer return `"Listing not found."`; emit clean Title-Cased
-storefront names, protect `Simple` SKU integrity (no fake `-LS`/`-RS`), and
-auto-derive accurate Surface Profiles; complete residual Tab 2 product-row
-Archive/Restore wiring and real SHA-256 asset digests.
+Eliminate 30s Katana rate-limit hangs on Current Inventory (`/embed/showroom`) via
+instant Supabase-only UI reads; fix shared Katana rate-limit bucket
+starvation / TTL deadlocks; add priority token reserve + checkpointed sync
+recovery; wire bucket reset + live staleness into Executive Stack Health.
 
 Do **not** flip any `*_MODE` or `DOWNSTREAM_MUTATIONS` flags (`log` / `false`).
 
+## Diagnosed root cause (pre-fix)
+
+The exact emitter is `src/server/sre/katana-throttle.ts` →
+`createKatanaSharedBucketPacer` → `acquireToken(..., maxWaitMs: 30_000)` throwing:
+
+> `Katana shared rate-limit bucket: no token available after ${waited}ms. Deferring.`
+
+Contributing mechanisms:
+
+1. **Bucket monopolization:** Postgres token bucket is capacity `1` / `1 req/s`
+   (`KATANA_BUCKET_*`). Bulk inventory pagination
+   (`src/server/stock/katana-inventory.ts` → `listResource`, up to 40 pages ×
+   materials/products/variants/locations/inventory) consumes 100% of tokens for
+   minutes. Interactive callers block the full `30_000ms` then throw — matching
+   production `30221ms`.
+2. **Unclamped 429 backoff:** `src/lib/katana.ts` computes
+   `waitMs = resetAt * 1000 - Date.now()` assuming `X-Ratelimit-Reset` is epoch
+   **seconds**. Poisoned / ms-scale / huge values (and the twin path in
+   `src/inngest/katana-step.ts`) are not clamped to `≤ 65_000ms`, so a single
+   429 can sleep far beyond the intended Katana window and keep the bucket
+   starved.
+3. **Showroom still surfaces the throw:** Failed
+   `refreshShowroomSnapshotFromKatana` writes the raw `KatanaApiError` message
+   into `katana_sync_meta.last_error`. Sales UI renders that string as the
+   message / banner. Hub reads never call Katana, but the **badge ignores age**
+   (`stale` is only set on missing `last_synced_at` / in-flight failure), so a
+   48h-old `Hub synced` stays **green**.
+4. **All-or-nothing persist:** Snapshot replace is one transaction after the
+   full Katana crawl; serverless timeout mid-crawl leaves `last_synced_at`
+   frozen for days with no incremental checkpoint.
+
 ## Workstreams
 
-### 1. Enforce Single-Price Aluminum Storefront Truth (`resolveCanonicalStorefrontPrice`)
+### 1. Harden `Katana shared rate-limit bucket` (self-healing)
 
-**Bug:** SKU `FIN-BRV-CLB-CHA-34X34` simultaneously showed `$2,080` in Tab 2,
-`$2,300` in the `Edit Details` drawer, and `"regular_price": "2680.00"` in the
-WooCommerce Dry Run JSON.
+**Files:** `src/server/sre/token-bucket.ts`, `src/server/sre/katana-throttle.ts`,
+`src/lib/katana.ts`, `src/inngest/katana-step.ts`, `scripts/`
 
-**Fix:** Route every Aluminum storefront price surface through ONE shared
-canonical resolver:
+- Clamp every `retryAfter` / `waitMs` / `blockedUntil` derivation to a hard
+  ceiling of **`≤ 65_000ms`** (normalize epoch-seconds vs epoch-ms vs delta-ms).
+- Enforce short self-heal semantics on bucket state:
+  - Prefer atomic refill that cannot leave tokens permanently `< 1`
+    (clamp negative balances; treat absurd `updated_at` skew as full refill).
+  - Idempotent **`resetKatanaRateLimitBucket()`** helper that resets
+    `rate_limit_buckets` row for `katana:api` (and any sync-lock key) without
+    touching Katana ERP records.
+  - Ops script under `scripts/` to clear wedged bucket/lock state via
+    `.env.local` `POSTGRES_URL` when reachable.
+- **Priority Lane:** reserve interactive tokens so `Place Hold` and executive
+  `Run Katana Sync Now` / `Reset Bucket & Sync Katana Now` never starve behind
+  bulk pagination. Bulk callers use the standard lane; interactive callers use
+  `priority: true` (or a dedicated priority key) with short / zero blocking wait
+  for reads and a reserved capacity share for mutations.
+- Interactive **read** paths that accidentally hit the pacer must fail fast
+  (`maxWaitMs: 0` or tiny) — never block UI for 30s.
 
-```
-resolveCanonicalStorefrontPrice:
-  1. explicit storefront Aluminum override
-  2. certified Mia Aluminum PDF price
-  3. base Aluminum MSRP
-  (strictly exclude legacy steel / +10% upcharges)
-```
+### 2. Decouple `/embed/showroom` from live Katana (`0ms` blocking)
 
-Surfaces that MUST call the same resolver (exact dollar/cent parity):
+**Files:** `src/app/embed/showroom/`, `src/app/showroom/stock/`,
+`src/server/showroom/`, `src/server/stock/showroom-snapshot.ts`,
+`src/app/api/katana/`, `src/app/api/embed/`
 
-- Tab 2 (`Catalog`) price column
-- `PortalProductDrawer` / Edit Details
-- Partner Handoff (`/partner/primeview-handoff`)
-- Live WooCommerce CSV export
-- WooCommerce REST / Dry-Run payload builder (`regular_price`)
+- Showroom page loads, tab switches, and GET read APIs serve **only** from
+  Supabase Postgres Hub cache (`readShowroomSnapshotFromHub`) — target
+  **`< 200ms`**, hard assert **`< 1s`**, **zero** `30_000ms` token waits.
+- When `last_synced_at` exceeds freshness threshold, fire a **non-blocking**,
+  **deduplicated** background sync trigger (debounce/lock key so N pageviews
+  enqueue ONE sync). Never await Katana on the request path.
+- Sanitize operator-facing copy: never expose raw developer strings such as
+  `Katana shared rate-limit bucket: no token available after 30221ms`.
+- Fix `Hub synced` badge semantics on `/embed/showroom`:
+  - **Green:** age `< 30 minutes`
+  - **Amber:** `30m – 2h` → label `Refreshing in background…`
+  - **Red:** `> 2h` → `Snapshot Stale — Background Sync Queued` + manual
+    non-blocking `Refresh` button
 
-Assert exact parity for `FIN-BRV-CLB-CHA-34X34` across all five surfaces.
+### 3. Checkpointed background sync + Executive Control Center
 
-### 2. Purge Legacy Showroom Swatches from `acf_*_swatches_json` & Export Feeds
+**Files:** `src/server/stock/`, `src/server/ecommerce/executive-stack-health.ts`,
+`src/app/embed/admin/master-catalog/`, Inngest/cron callers already in
+`allowed_files`
 
-**Bug:** Woo Dry Run JSON (`acf_fabric_swatches_json`) still emitted legacy
-showroom swatches (`FAB-ACT-ASH` / `Action_Ash_LOW.jpg`) instead of the active
-32-finish roster.
+- Persist stock rows + sync telemetry **incrementally per chunk/page** so a
+  serverless timeout never discards progress or leaves `Hub synced` days behind.
+- Wire Katana bucket health (`tokensAvailable`, `cooldownMs`, `lastSyncedAt`,
+  staleness threshold) into the **Katana MRP** pill on
+  `/embed/admin/master-catalog` Executive Control Center:
+  - Pill **Amber/Red** when Hub synced `> 2h` stale **or** bucket throttled.
+  - Diagnostic drawer action: **`Reset Bucket & Sync Katana Now`** (reset
+    bucket/lock → enqueue/dedupe sync; still honor `*_MODE` /
+    `DOWNSTREAM_MUTATIONS` — no flag flips, no ERP mutations beyond existing
+    read/sync paths).
 
-**Fix:** Filter these emitters strictly through the **active (non-archived)
-e-commerce finish roster**:
-
-- `acf_fabric_swatches_json`
-- `acf_powder_swatches_json`
-- `acf_dekton_swatches_json`
-- CSV swatch columns
-- 3D finish manifests
-
-Roster contract: `16 Sunbrella + 4 Ultraleather + 6 Dekton + 6 Aluminum Powder
-Coats` (+ any operator-added active e-commerce finishes). Include calibrated
-`repeat_inches` / `repeat_w_in` / `repeat_h_in` and `texture_scale`. Exclude
-steel frame options and `+10%` upcharges. Legacy codes such as `FAB-ACT-ASH`
-must be absent; active codes such as `FAB-CAB-CLA` (`Cabana Classic`) must be
-present.
-
-### 3. Fix Bulk `Push Certified Catalog to Staging [Preserve WP Images]`
-
-**Bug:** Clicking `Push Certified Catalog to Staging` failed with
-`{ "ok": false, "error": "Listing not found." }` because
-`/api/ecommerce/portal-staging-push` attempted a single-SKU lookup when invoked
-for the full catalog.
-
-**Fix:**
-
-- Support batch modes:
-  - `mode: "catalog"` → all active certified SOW products
-  - `mode: "finishes"` → all active e-commerce finishes
-  - plus single-SKU push (existing path)
-- Enforce `"preserveWpGalleryWhenEmpty": true` by omitting destructive empty
-  `images: []` overwrites when Hub gallery media is empty
-- Run pre-flight readiness checks
-- Return a clear batch summary:
-  - `totalProducts`
-  - `variationsCount`
-  - `wpGalleryPreservedCount`
-  - `missingDimsCount`
-  - `mutationMode: "simulated" | "live"`
-- Honor `DOWNSTREAM_MUTATIONS=false` (simulated writes; never live Woo mutate
-  under current flags)
-- Zero `"Listing not found."` when invoked for full certified catalog
-
-### 4. Clean Storefront Titles, `Simple` SKU Integrity & Accurate Surface Profiles
-
-**Titles:** Emit clean Title-Cased Storefront Display Titles in Woo Dry Run
-JSON `"name"` and CSV exports:
-
-- Strip raw `[FIN-...]` bracket suffixes
-- Never export raw ALL-CAPS factory names unless explicitly saved by operator
-- Preserve uppercase acronyms: `BH`, `SH`, `AH`, `OD`, `ID`, `LED`, `UV`,
-  `LP`, `NG`, `BBQ`, `3D`, `II`, `III`
-
-**Simple SKU integrity:** Products such as `FIN-BRV-CLB-CHA-34X34` must never
-display or emit synthetic `-LS` / `-RS` variation SKUs in the drawer, CSV, or
-Woo payloads.
-
-**Surface Profiles (auto-derive when not explicitly overridden):**
-
-| Product class | Default profile |
-|---|---|
-| Dining / Coffee / Side / Chat / Bar Tables | `Dekton Tabletop + Frame` (never `Cushion`) |
-| Umbrellas (`CANTILEVER UMBRELLA`, etc.) | `Umbrella Canopy + Frame` |
-| Heaters, Lamps & Non-Cushion Pool Loungers (`KINDLE LIVING HEATER`, `KINDLE LIVING LAMP`, `TROPICS` pool items) | `Finish / Hardware Only` |
-
-### 5. Complete Residual Polish (Tab 2 Product-Row Archive + Real SHA-256)
-
-**Archive wiring:** Wire Tab 2 product-row `Archive` and `Restore` end-to-end
-through:
-
-1. Dark **Impact Warning Modal**
-2. Sticky **Staged Commit Bar**
-3. `Archived (N)` filter vault
-
-Strict soft-archive only — zero hard deletes in Hub or WooCommerce.
-
-**SHA-256 digests:** Compute and persist real `crypto.createHash("sha256")` hex
-digests on `.glb`, `.usdz`, and swatch/texture asset commits/uploads. Dark 3D
-studio must display the real digest or `Pending upload` — never fake
-placeholder hashes.
-
-### 6. Verification (`qa:lifecycle` + Vitest/Playwright + QCA)
-
-**Vitest + Playwright assertions:**
-
-1. `FIN-BRV-CLB-CHA-34X34` price matches identically across Tab 2, Dark Drawer,
-   CSV export, and Woo Dry Run JSON
-2. `acf_fabric_swatches_json` contains `FAB-CAB-CLA` (`Cabana Classic`) and
-   ZERO legacy showroom swatches (`FAB-ACT-ASH` absent)
-3. `Push Certified Catalog to Staging` returns `ok: true` batch summary
-   (zero `"Listing not found"`) under `DOWNSTREAM_MUTATIONS=false`
-4. Tab 2 product `Archive` → Warning Modal → Staged Commit → `Archived` view
-   → `Restore` round-trip works cleanly
+### 4. Verification
 
 **Target Vitest:**
 
 ```bash
-npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts
+npx vitest run tests/katana-inventory-resilience.test.ts
 ```
+
+Assertions:
+
+1. `/embed/showroom` (and sales inventory loader) returns cached stock
+   immediately (`< 1s`) with zero `30221ms` wait and zero raw rate-limit error
+   banner even when the Katana bucket is 100% exhausted.
+2. Poisoned / huge `Retry-After` / `X-Ratelimit-Reset` values clamp to
+   `≤ 65_000ms`; expired / wedged locks self-heal via reset helper.
+3. Priority tokens succeed for interactive callers during bulk background load.
+4. `Hub synced` badge turns Amber/Red at `>30m` / `>2h`; Executive Control
+   Center `Katana MRP` pill reflects staleness + throttled bucket accurately.
 
 **Gate sequence:**
 
@@ -161,7 +134,7 @@ npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts
    (`tolerance: 0`, exclude `.cursor/aar.json`)
 4. `node .cursor/skills/aar/scripts/emit.mjs`
 5. `node .cursor/skills/qca/scripts/qca.mjs` → `CERTIFIED` (`audit_exit: 0`);
-   paste verbatim QCA JSON
+   paste verbatim QCA JSON + brief summary of the `30221ms` wedge cause
 
 ## Allowed files
 
@@ -169,30 +142,34 @@ npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts
 2. `.cursor/session-stamp.json`
 3. `.cursor/aar.json`
 4. `BUILD_PLAN.md`
-5. `src/app/embed/`
-6. `src/app/api/`
-7. `src/app/partner/primeview-handoff/`
-8. `src/components/`
-9. `src/lib/`
-10. `src/server/`
-11. `tests/`
-12. `e2e/`
+5. `src/app/embed/showroom/`
+6. `src/app/embed/admin/master-catalog/`
+7. `src/app/showroom/`
+8. `src/app/api/`
+9. `src/components/`
+10. `src/lib/`
+11. `src/server/`
+12. `src/inngest/`
+13. `scripts/`
+14. `tests/`
+15. `e2e/`
 
 ## Target test
 
 ```bash
-npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts
+npx vitest run tests/katana-inventory-resilience.test.ts
 ```
 
 ## Hard constraints
 
 - No `*_MODE` / `DOWNSTREAM_MUTATIONS` flag flips (`log` / `false` stay)
-- No hard-deletes of middleware DB rows; no destructive WooCommerce `DELETE`
-- No schema drops; additive only if any schema touch (prefer none)
+- Reset helpers may clear Hub Redis/Postgres **rate-limit & sync-lock** state
+  only — **NEVER** mutate Katana ERP records
+- No hard-deletes of middleware DB business rows; snapshot upserts are additive
+  / replace-within-sync only
+- No schema drops; additive only if a column/table is required for checkpoint
+  telemetry
 - Never modify tests to fake Phase 2 DB proof
 - Never delete a paid order; ledger failure is retried, not rolled back
 - Katana remains single live tenant — no sandbox writes from this phase
-- Staging / sync actions must clearly distinguish simulation vs live write under
-  existing guardrails (`mutationMode: "simulated" | "live"`)
 - Edits strictly inside `allowed_files` (Track 2)
-- Soft-archive only for products and finishes

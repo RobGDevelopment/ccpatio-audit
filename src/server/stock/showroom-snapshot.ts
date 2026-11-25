@@ -1,8 +1,9 @@
 /**
  * Hub Postgres persistence for Katana showroom inventory.
- * Reads are local-only (&lt;300ms). Writes come from seed / POST sync / webhooks.
+ * Reads are local-only (&lt;300ms). Writes come from seed / POST sync / webhooks /
+ * deduplicated background triggers — never block `/embed/showroom` SSR on Katana.
  */
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, lt } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import {
   katana_showroom_snapshot,
@@ -11,12 +12,22 @@ import {
 import {
   getKatanaInventorySnapshot,
   KATANA_HUB_SYNC_TIMEOUT_MS,
+  loadKatanaInventoryWithCheckpoints,
   type KatanaInventoryRow,
   type KatanaInventorySnapshot,
   type KatanaItemType,
 } from "@/server/stock/katana-inventory";
+import { resolveHubSyncBadge } from "@/server/stock/hub-sync-freshness";
+import {
+  KATANA_SYNC_LOCK_KEY,
+  resetKatanaRateLimitBucket,
+} from "@/server/sre/katana-throttle";
+import { runWithKatanaPriorityLane } from "@/lib/katana";
 
 export const SHOWROOM_SYNC_META_ID = "showroom_inventory";
+
+/** Background sync lock TTL — expired locks self-heal so a crashed worker cannot wedge forever. */
+export const SHOWROOM_SYNC_LOCK_TTL_MS = 5 * 60 * 1000;
 
 const SYNC_CONCURRENCY = 1; // serialize full refreshes; page fetches use katanaFetch 429 backoff
 
@@ -62,65 +73,107 @@ export async function readShowroomSnapshotFromHub(): Promise<HubShowroomSnapshot
     .where(eq(katana_sync_meta.id, SHOWROOM_SYNC_META_ID))
     .limit(1);
   const rows = await db.select().from(katana_showroom_snapshot);
+  const lastSyncedAt = meta?.last_synced_at?.toISOString?.() ?? null;
+  const badge = resolveHubSyncBadge(lastSyncedAt);
   return {
     rows: rows.map(rowFromDb),
-    lastSyncedAt: meta?.last_synced_at?.toISOString?.() ?? null,
-    stale: false,
+    lastSyncedAt,
+    stale: badge.tone !== "green" || !lastSyncedAt,
     error: meta?.last_error ?? null,
     rowCount: rows.length,
   };
 }
 
+async function upsertSnapshotRows(
+  rows: KatanaInventoryRow[],
+  now: Date,
+): Promise<void> {
+  if (rows.length === 0) return;
+  const db = getDb();
+  const chunkSize = 250;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize);
+    await db
+      .insert(katana_showroom_snapshot)
+      .values(
+        chunk.map((row) => ({
+          variant_id: row.variantId,
+          location_id: row.locationId ?? 0,
+          sku: row.sku,
+          name: row.name,
+          item_type: row.itemType,
+          category: row.category,
+          uom: row.uom,
+          location_name: row.locationName,
+          in_stock: String(row.inStock),
+          committed: String(row.committed),
+          expected: String(row.expected),
+          available: String(row.available),
+          updated_at: now,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [katana_showroom_snapshot.variant_id, katana_showroom_snapshot.location_id],
+        set: {
+          sku: sql`excluded.sku`,
+          name: sql`excluded.name`,
+          item_type: sql`excluded.item_type`,
+          category: sql`excluded.category`,
+          uom: sql`excluded.uom`,
+          location_name: sql`excluded.location_name`,
+          in_stock: sql`excluded.in_stock`,
+          committed: sql`excluded.committed`,
+          expected: sql`excluded.expected`,
+          available: sql`excluded.available`,
+          updated_at: sql`excluded.updated_at`,
+        },
+      });
+  }
+}
+
+async function bumpSyncMeta(input: {
+  lastSyncedAt?: Date;
+  lastError?: string | null;
+  rowCount?: number;
+}): Promise<void> {
+  const db = getDb();
+  const now = new Date();
+  await db
+    .insert(katana_sync_meta)
+    .values({
+      id: SHOWROOM_SYNC_META_ID,
+      last_synced_at: input.lastSyncedAt ?? null,
+      last_error: input.lastError ?? null,
+      row_count: input.rowCount ?? 0,
+      updated_at: now,
+    })
+    .onConflictDoUpdate({
+      target: katana_sync_meta.id,
+      set: {
+        ...(input.lastSyncedAt !== undefined
+          ? { last_synced_at: input.lastSyncedAt }
+          : {}),
+        ...(input.lastError !== undefined ? { last_error: input.lastError } : {}),
+        ...(input.rowCount !== undefined ? { row_count: input.rowCount } : {}),
+        updated_at: now,
+      },
+    });
+}
+
 export async function persistShowroomSnapshot(
   snapshot: KatanaInventorySnapshot,
 ): Promise<HubShowroomSnapshot> {
+  const now = new Date(snapshot.syncedAt);
+  await upsertSnapshotRows(snapshot.rows, now);
+  // Prune rows not touched by this sync pass.
   const db = getDb();
-  const now = new Date();
-
-  await db.transaction(async (tx) => {
-    await tx.delete(katana_showroom_snapshot);
-    if (snapshot.rows.length > 0) {
-      const chunkSize = 500;
-      for (let i = 0; i < snapshot.rows.length; i += chunkSize) {
-        const chunk = snapshot.rows.slice(i, i + chunkSize);
-        await tx.insert(katana_showroom_snapshot).values(
-          chunk.map((row) => ({
-            variant_id: row.variantId,
-            // Coalesce null location to 0 so the unique index is deterministic.
-            location_id: row.locationId ?? 0,
-            sku: row.sku,
-            name: row.name,
-            item_type: row.itemType,
-            category: row.category,
-            uom: row.uom,
-            location_name: row.locationName,
-            in_stock: String(row.inStock),
-            committed: String(row.committed),
-            expected: String(row.expected),
-            available: String(row.available),
-            updated_at: now,
-          })),
-        );
-      }
-    }
-    await tx
-      .insert(katana_sync_meta)
-      .values({
-        id: SHOWROOM_SYNC_META_ID,
-        last_synced_at: new Date(snapshot.syncedAt),
-        last_error: snapshot.error,
-        row_count: snapshot.rows.length,
-        updated_at: now,
-      })
-      .onConflictDoUpdate({
-        target: katana_sync_meta.id,
-        set: {
-          last_synced_at: new Date(snapshot.syncedAt),
-          last_error: snapshot.error,
-          row_count: snapshot.rows.length,
-          updated_at: now,
-        },
-      });
+  await db
+    .delete(katana_showroom_snapshot)
+    .where(lt(katana_showroom_snapshot.updated_at, now));
+  await bumpSyncMeta({
+    lastSyncedAt: now,
+    lastError: snapshot.error,
+    rowCount: snapshot.rows.length,
   });
 
   return {
@@ -132,38 +185,139 @@ export async function persistShowroomSnapshot(
   };
 }
 
+/** Persist a checkpoint chunk and advance `last_synced_at` so Hub never freezes for days. */
+export async function persistShowroomCheckpoint(
+  rows: KatanaInventoryRow[],
+  syncedAt: string = new Date().toISOString(),
+): Promise<void> {
+  const now = new Date(syncedAt);
+  await upsertSnapshotRows(rows, now);
+  const db = getDb();
+  const [{ n }] = await db
+    .select({ n: sql<number>`cast(count(*) as int)` })
+    .from(katana_showroom_snapshot);
+  await bumpSyncMeta({
+    lastSyncedAt: now,
+    lastError: null,
+    rowCount: Number(n ?? rows.length),
+  });
+}
+
+/**
+ * Try to claim the background sync lock (short TTL). Returns false if another
+ * worker already holds a fresh lock — so 10 showroom pageviews enqueue ONE sync.
+ */
+export async function tryClaimShowroomSyncLock(
+  ttlMs: number = SHOWROOM_SYNC_LOCK_TTL_MS,
+): Promise<boolean> {
+  const db = getDb();
+  const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000));
+  const result = await db.execute(sql`
+    INSERT INTO rate_limit_buckets AS b (key, tokens, updated_at)
+    VALUES (${KATANA_SYNC_LOCK_KEY}, 0, clock_timestamp())
+    ON CONFLICT (key) DO UPDATE
+      SET tokens = 0,
+          updated_at = clock_timestamp()
+      WHERE b.updated_at < clock_timestamp() - make_interval(secs => ${ttlSeconds})
+    RETURNING 1
+  `);
+  const rows = Array.isArray(result)
+    ? result
+    : ((result as { rows?: unknown[] })?.rows ?? []);
+  return rows.length > 0;
+}
+
+export async function releaseShowroomSyncLock(): Promise<void> {
+  const db = getDb();
+  await db.execute(sql`
+    UPDATE rate_limit_buckets
+    SET tokens = 1,
+        updated_at = clock_timestamp() - interval '1 hour'
+    WHERE key = ${KATANA_SYNC_LOCK_KEY}
+  `);
+}
+
+/**
+ * Non-blocking, deduplicated background sync. Never awaited by showroom SSR/GET.
+ */
+export async function enqueueBackgroundShowroomSync(options?: {
+  force?: boolean;
+  priority?: boolean;
+  reason?: string;
+}): Promise<{ queued: boolean; reason: string }> {
+  const hub = await readShowroomSnapshotFromHub();
+  const badge = resolveHubSyncBadge(hub.lastSyncedAt);
+  if (!options?.force && !badge.shouldQueueBackgroundSync) {
+    return { queued: false, reason: "fresh" };
+  }
+
+  const claimed = await tryClaimShowroomSyncLock();
+  if (!claimed) {
+    return { queued: false, reason: "lock-held" };
+  }
+
+  const run = async () => {
+    try {
+      await refreshShowroomSnapshotFromKatana({
+        force: true,
+        priority: options?.priority === true,
+        checkpoint: true,
+      });
+    } catch (err) {
+      console.error(
+        "[showroom-sync] background refresh failed:",
+        err instanceof Error ? err.message : String(err),
+        options?.reason ?? "",
+      );
+    } finally {
+      await releaseShowroomSyncLock().catch(() => undefined);
+    }
+  };
+
+  // Fire-and-forget on the request path.
+  void run();
+  return { queued: true, reason: options?.reason ?? "stale" };
+}
+
 /**
  * Pull live Katana (with built-in 429 backoff) and upsert Hub snapshot.
  * Single-flight so concurrent POST / webhook calls collapse.
+ * When `checkpoint: true`, stock rows + telemetry land incrementally per page.
  */
 export async function refreshShowroomSnapshotFromKatana(options?: {
   force?: boolean;
+  priority?: boolean;
+  checkpoint?: boolean;
 }): Promise<HubShowroomSnapshot> {
   if (refreshInflight) return refreshInflight;
-  // concurrency gate kept explicit for tests / future multi-resource fan-out
   void SYNC_CONCURRENCY;
 
   refreshInflight = (async () => {
-    try {
+    const runBody = async () => {
+      if (options?.checkpoint) {
+        const live = await loadKatanaInventoryWithCheckpoints({
+          timeoutMs: KATANA_HUB_SYNC_TIMEOUT_MS,
+          onCheckpoint: async (rows, syncedAt) => {
+            await persistShowroomCheckpoint(rows, syncedAt);
+          },
+        });
+        return await persistShowroomSnapshot(live);
+      }
       const live = await getKatanaInventorySnapshot({
         force: options?.force ?? true,
         timeoutMs: KATANA_HUB_SYNC_TIMEOUT_MS,
       });
       return await persistShowroomSnapshot(live);
+    };
+
+    try {
+      if (options?.priority) {
+        return await runWithKatanaPriorityLane(runBody);
+      }
+      return await runBody();
     } catch (err) {
-      const db = getDb();
       const message = err instanceof Error ? err.message : "Katana showroom sync failed.";
-      await db
-        .insert(katana_sync_meta)
-        .values({
-          id: SHOWROOM_SYNC_META_ID,
-          last_error: message,
-          updated_at: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: katana_sync_meta.id,
-          set: { last_error: message, updated_at: new Date() },
-        });
+      await bumpSyncMeta({ lastError: message });
       const hub = await readShowroomSnapshotFromHub();
       if (hub.rows.length > 0) {
         return { ...hub, stale: true, error: message };
@@ -175,6 +329,38 @@ export async function refreshShowroomSnapshotFromKatana(options?: {
   })();
 
   return refreshInflight;
+}
+
+/**
+ * Executive CTA: reset wedged bucket/lock then kick a priority checkpointed sync.
+ * Never mutates Katana ERP beyond the existing read/sync inventory path.
+ */
+export async function resetBucketAndSyncKatanaNow(): Promise<{
+  ok: true;
+  message: string;
+  clearedKeys: string[];
+} | { ok: false; error: string }> {
+  try {
+    const reset = await resetKatanaRateLimitBucket();
+    await releaseShowroomSyncLock().catch(() => undefined);
+    const queued = await enqueueBackgroundShowroomSync({
+      force: true,
+      priority: true,
+      reason: "reset-bucket-and-sync",
+    });
+    return {
+      ok: true,
+      clearedKeys: reset.clearedKeys,
+      message: queued.queued
+        ? "Katana bucket reset; priority inventory sync queued."
+        : `Katana bucket reset (${queued.reason}).`,
+    };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not reset Katana bucket.",
+    };
+  }
 }
 
 /** Ensure migration tables exist (idempotent) for seed / first deploy. */

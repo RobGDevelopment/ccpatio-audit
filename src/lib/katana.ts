@@ -74,6 +74,7 @@ import {
   catalogPublishModeLabel,
   getCatalogPublishMode,
 } from "@/server/pipeline/catalog-mode";
+import { resolveKatanaRetryWaitMs } from "@/lib/katana-rate-limit-wait";
 
 const KATANA_API_BASE_DEFAULT = "https://api.katanamrp.com/v1";
 const MAX_RATE_LIMIT_RETRIES = 3;
@@ -313,6 +314,15 @@ type KatanaFetchOptions = {
 export type KatanaRateLimitPolicy = "sleep" | "defer";
 export const katanaRateLimitStore = new AsyncLocalStorage<KatanaRateLimitPolicy>();
 
+/** Interactive (Place Hold / executive sync) vs bulk pagination crawls. */
+export type KatanaThrottleLane = "bulk" | "priority";
+export const katanaThrottleLaneStore = new AsyncLocalStorage<KatanaThrottleLane>();
+
+/** Run Katana calls on the reserved priority token lane. */
+export function runWithKatanaPriorityLane<T>(fn: () => Promise<T>): Promise<T> {
+  return katanaThrottleLaneStore.run("priority", fn);
+}
+
 function resolveKatanaToken(): string {
   const token =
     process.env.KATANA_PERSONAL_ACCESS_TOKEN?.trim() ??
@@ -475,9 +485,7 @@ export async function katanaFetch<T = unknown>(
 
   if (response.status === 429) {
     const resetAt = readRateLimitReset(response.headers);
-    const waitMs = resetAt
-      ? Math.max(0, resetAt * 1000 - Date.now()) + 250
-      : 65000;
+    const waitMs = resolveKatanaRetryWaitMs(resetAt);
 
     const policy = katanaRateLimitStore.getStore() ?? "sleep";
 

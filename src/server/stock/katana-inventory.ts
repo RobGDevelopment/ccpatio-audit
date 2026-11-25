@@ -69,6 +69,7 @@ function listPayload(data: unknown): Record<string, unknown>[] {
 
 async function listResource(
   path: "/materials" | "/products" | "/variants" | "/locations" | "/inventory",
+  onPage?: (pageRows: Record<string, unknown>[], page: number) => Promise<void>,
 ): Promise<Record<string, unknown>[]> {
   const rows: Record<string, unknown>[] = [];
   let previousFirstId: number | null = null;
@@ -83,6 +84,7 @@ async function listResource(
     if (page > 1 && firstId > 0 && firstId === previousFirstId) break;
     previousFirstId = firstId > 0 ? firstId : previousFirstId;
     rows.push(...pageRows);
+    if (onPage) await onPage(pageRows, page);
     if (pageRows.length < PAGE_SIZE) break;
   }
   return rows;
@@ -187,31 +189,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
-async function loadFreshSnapshot(timeoutMs = FETCH_TIMEOUT_MS): Promise<KatanaInventorySnapshot> {
-  const [materials, products, locations, inventory] = await withTimeout(
-    Promise.all([
-      listResource("/materials"),
-      listResource("/products").catch(() => [] as Record<string, unknown>[]),
-      listResource("/locations").catch(() => [] as Record<string, unknown>[]),
-      listResource("/inventory"),
-    ]),
-    timeoutMs,
-    "Katana inventory sync",
-  );
+type VariantMeta = {
+  sku: string;
+  name: string;
+  itemType: KatanaItemType;
+  category: string | null;
+  uom: string | null;
+};
 
-  const locationNames = new Map<number, string>();
-  for (const loc of locations) {
-    if (isDeletedRecord(loc)) continue;
-    const id = Number(loc.id);
-    if (!Number.isFinite(id) || id <= 0) continue;
-    locationNames.set(id, String(loc.name ?? loc.display_name ?? `Location ${id}`).trim() || `Location ${id}`);
-  }
-
-  const variantMeta = new Map<
-    number,
-    { sku: string; name: string; itemType: KatanaItemType; category: string | null; uom: string | null }
-  >();
-
+function collectVariantMeta(
+  materials: Record<string, unknown>[],
+  products: Record<string, unknown>[],
+): Map<number, VariantMeta> {
+  const variantMeta = new Map<number, VariantMeta>();
   for (const parent of [...materials, ...products]) {
     if (isDeletedRecord(parent)) continue;
     const parentName = String(parent.name ?? "").trim();
@@ -240,35 +230,29 @@ async function loadFreshSnapshot(timeoutMs = FETCH_TIMEOUT_MS): Promise<KatanaIn
       });
     }
   }
+  return variantMeta;
+}
 
-  // Standalone /variants fill gaps when parents omit nested variants.
-  try {
-    const variants = await listResource("/variants");
-    for (const record of variants) {
-      if (isDeletedRecord(record)) continue;
-      const variantId = Number(record.id);
-      const sku = String(record.sku ?? "").trim().toUpperCase();
-      if (!Number.isFinite(variantId) || variantId <= 0 || !sku) continue;
-      if (variantMeta.has(variantId)) continue;
-      const parent = asRecord(record.product) ?? asRecord(record.material) ?? {};
-      variantMeta.set(variantId, {
-        sku,
-        name: String(record.name ?? parent.name ?? sku).trim() || sku,
-        itemType: classifyItemType(parent, sku),
-        category:
-          typeof parent.category_name === "string"
-            ? parent.category_name
-            : typeof record.category_name === "string"
-              ? record.category_name
-              : null,
-        uom: typeof record.uom === "string" ? record.uom : null,
-      });
-    }
-  } catch {
-    // variants endpoint optional when parents already nested them
+function buildLocationNames(locations: Record<string, unknown>[]): Map<number, string> {
+  const locationNames = new Map<number, string>();
+  for (const loc of locations) {
+    if (isDeletedRecord(loc)) continue;
+    const id = Number(loc.id);
+    if (!Number.isFinite(id) || id <= 0) continue;
+    locationNames.set(
+      id,
+      String(loc.name ?? loc.display_name ?? `Location ${id}`).trim() || `Location ${id}`,
+    );
   }
+  return locationNames;
+}
 
-  const qty = aggregateInventoryQuantities(inventory);
+function rowsFromInventoryPage(
+  inventoryPage: Record<string, unknown>[],
+  variantMeta: Map<number, VariantMeta>,
+  locationNames: Map<number, string>,
+): KatanaInventoryRow[] {
+  const qty = aggregateInventoryQuantities(inventoryPage);
   const rows: KatanaInventoryRow[] = [];
   for (const entry of qty.values()) {
     const meta = variantMeta.get(entry.variantId);
@@ -292,7 +276,40 @@ async function loadFreshSnapshot(timeoutMs = FETCH_TIMEOUT_MS): Promise<KatanaIn
       deleted: false,
     });
   }
+  return rows;
+}
 
+function assembleSnapshot(
+  materials: Record<string, unknown>[],
+  products: Record<string, unknown>[],
+  locations: Record<string, unknown>[],
+  inventory: Record<string, unknown>[],
+  variantExtras: Record<string, unknown>[],
+): KatanaInventorySnapshot {
+  const locationNames = buildLocationNames(locations);
+  const variantMeta = collectVariantMeta(materials, products);
+  for (const record of variantExtras) {
+    if (isDeletedRecord(record)) continue;
+    const variantId = Number(record.id);
+    const sku = String(record.sku ?? "").trim().toUpperCase();
+    if (!Number.isFinite(variantId) || variantId <= 0 || !sku) continue;
+    if (variantMeta.has(variantId)) continue;
+    const parent = asRecord(record.product) ?? asRecord(record.material) ?? {};
+    variantMeta.set(variantId, {
+      sku,
+      name: String(record.name ?? parent.name ?? sku).trim() || sku,
+      itemType: classifyItemType(parent, sku),
+      category:
+        typeof parent.category_name === "string"
+          ? parent.category_name
+          : typeof record.category_name === "string"
+            ? record.category_name
+            : null,
+      uom: typeof record.uom === "string" ? record.uom : null,
+    });
+  }
+
+  const rows = rowsFromInventoryPage(inventory, variantMeta, locationNames);
   rows.sort(
     (a, b) =>
       a.name.localeCompare(b.name) ||
@@ -306,6 +323,94 @@ async function loadFreshSnapshot(timeoutMs = FETCH_TIMEOUT_MS): Promise<KatanaIn
     stale: false,
     error: null,
   };
+}
+
+async function loadFreshSnapshot(timeoutMs = FETCH_TIMEOUT_MS): Promise<KatanaInventorySnapshot> {
+  // Sequential (not Promise.all) so the shared 1 req/s bucket is not monopolized by
+  // four parallel pagination crawls — the original 30s interactive starvation cause.
+  return withTimeout(
+    (async () => {
+      const materials = await listResource("/materials");
+      const products = await listResource("/products").catch(
+        () => [] as Record<string, unknown>[],
+      );
+      const locations = await listResource("/locations").catch(
+        () => [] as Record<string, unknown>[],
+      );
+      const inventory = await listResource("/inventory");
+      let variantExtras: Record<string, unknown>[] = [];
+      try {
+        variantExtras = await listResource("/variants");
+      } catch {
+        variantExtras = [];
+      }
+      return assembleSnapshot(materials, products, locations, inventory, variantExtras);
+    })(),
+    timeoutMs,
+    "Katana inventory sync",
+  );
+}
+
+/**
+ * Checkpointed inventory pull: persists each inventory page via `onCheckpoint` so a
+ * serverless timeout never discards progress or freezes `Hub synced` for days.
+ */
+export async function loadKatanaInventoryWithCheckpoints(options?: {
+  timeoutMs?: number;
+  onCheckpoint?: (rows: KatanaInventoryRow[], syncedAt: string) => Promise<void>;
+}): Promise<KatanaInventorySnapshot> {
+  const timeoutMs = options?.timeoutMs ?? KATANA_HUB_SYNC_TIMEOUT_MS;
+  return withTimeout(
+    (async () => {
+      const materials = await listResource("/materials");
+      const products = await listResource("/products").catch(
+        () => [] as Record<string, unknown>[],
+      );
+      const locations = await listResource("/locations").catch(
+        () => [] as Record<string, unknown>[],
+      );
+      const locationNames = buildLocationNames(locations);
+      const variantMeta = collectVariantMeta(materials, products);
+      try {
+        const variantExtras = await listResource("/variants");
+        for (const record of variantExtras) {
+          if (isDeletedRecord(record)) continue;
+          const variantId = Number(record.id);
+          const sku = String(record.sku ?? "").trim().toUpperCase();
+          if (!Number.isFinite(variantId) || variantId <= 0 || !sku) continue;
+          if (variantMeta.has(variantId)) continue;
+          const parent = asRecord(record.product) ?? asRecord(record.material) ?? {};
+          variantMeta.set(variantId, {
+            sku,
+            name: String(record.name ?? parent.name ?? sku).trim() || sku,
+            itemType: classifyItemType(parent, sku),
+            category:
+              typeof parent.category_name === "string"
+                ? parent.category_name
+                : typeof record.category_name === "string"
+                  ? record.category_name
+                  : null,
+            uom: typeof record.uom === "string" ? record.uom : null,
+          });
+        }
+      } catch {
+        // variants optional
+      }
+
+      const allInventory: Record<string, unknown>[] = [];
+      await listResource("/inventory", async (pageRows) => {
+        allInventory.push(...pageRows);
+        if (!options?.onCheckpoint) return;
+        const chunkRows = rowsFromInventoryPage(pageRows, variantMeta, locationNames);
+        if (chunkRows.length === 0) return;
+        await options.onCheckpoint(chunkRows, new Date().toISOString());
+      });
+
+      return assembleSnapshot(materials, products, locations, allInventory, []);
+    })(),
+    timeoutMs,
+    "Katana inventory sync",
+  );
 }
 
 /** Hub seed / Sync Live budget — must outlast Katana 429 sleep (~65s) × retries. */

@@ -9,6 +9,7 @@ import {
   findVariantById,
   katanaFetch,
   resolveKatanaVariantId,
+  runWithKatanaPriorityLane,
   type KatanaHoldDocumentKind,
   type KatanaVariantRecord,
 } from "@/lib/katana";
@@ -602,7 +603,10 @@ export async function createHold(input: CreateHoldInput): Promise<CreateHoldResu
   const invalid = validate(input);
   if (invalid) return invalid;
   try {
-    return await withAdvisoryLock(input.variantId, () => createHoldLocked(input));
+    // Priority lane: Place Hold must not starve behind bulk inventory crawls.
+    return await runWithKatanaPriorityLane(() =>
+      withAdvisoryLock(input.variantId, () => createHoldLocked(input)),
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Could not place the hold.";
     return fail(message);
