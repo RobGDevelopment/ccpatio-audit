@@ -1,34 +1,92 @@
-# BUILD_PLAN — `highrez-swatch-crop-match-upload`
+# BUILD_PLAN — `ghl-ecommerce-handoff-portal-unification`
 
-**Base:** `HEAD` (`43273c8`)  
+**Base:** `HEAD` (`bb2feeb`)  
 **Mode:** edit (Track 2 locked)  
 **Blast cap override:** true  
-**Expected blast radius:** 9 (QCA excludes `.cursor/aar.json`)
+**Expected blast radius:** 10 (QCA excludes `.cursor/aar.json`; `tolerance: 0`)
 
 ## Intent
 
-32-finish local image pipeline: tape-measure scale calibration, safe-square crop /
-deskew, illumination flattening, match 26 unique studio photos + synthesize 6 clean
-fallbacks, QA contact sheet + editable `manifest.json`, and a gated Supabase uploader
-defaulting to `--dry-run`. Keep ALL raw inputs and generated media strictly outside
-the git repo under `C:\Workspace\ccpatio-media-staging\`. Do **not** flip any
+Replace the cluttered GHL E-Commerce Master Catalog **default** view with the clean dark
+3-tab Handoff & Certification Portal (parity with `/partner/primeview-handoff`). Gate the
+legacy light-theme spreadsheet strictly behind `?view=legacy-admin` (Superadmin only).
+Reconcile Mia Approved / finish counts across GHL + Partner Handoff. Do **not** flip any
 `*_MODE` or `DOWNSTREAM_MUTATIONS` flags.
 
 ## Workstreams
 
-1. **`finishes:process`** — `scripts/ops/process-highrez-finishes.ts` (+ OpenCV/PIL
-   helper `scripts/ops/process-highrez-finishes-cv.py`): read
-   `HighRezImages/{Dekton,Fabrics,PowderCoat}`, calibrate `pixels_per_inch` from
-   yellow tape, safe interior square crop (8–10% inset), deskew, flatten lighting,
-   write `processed/textures/{sku}.jpg` (2048) + `processed/thumbs/{sku}.jpg` (512),
-   match 26 unique studio shots to the canonical 32 roster, synthesize 6 fallbacks,
-   emit `processed/manifest.json` + `processed/qa-contact-sheet.html`.
-2. **`finishes:upload`** — `scripts/ops/upload-highrez-finishes.ts`: default `--dry-run`
-   validates 32/32 + dimensions + SKUs; `--apply` uploads to Supabase
-   `finishes/{sku}/...` and persists public URLs + `repeat_inches` / `texture_scale`.
-3. **Additive helpers** — `src/server/assets/finish-assets.ts` only if needed for
-   `repeat_inches` / `texture_scale` metadata mapping (no schema drops).
-4. **Vitest** — `tests/highrez-swatch-pipeline.test.ts`.
+### 1. Default view replacement & Superadmin escape hatch
+
+**Route:** `/embed/admin/master-catalog`
+
+- **Default (no query / no legacy flag):** render ONLY the unified dark-theme portal
+  (`#0b0f17` / `#111827` slate surfaces, amber/gold accents) — zero white “Single Source
+  of Truth” banner strip, zero `Upcharge % 10` / `Recalculate Upcharge %` bar, zero
+  duplicate search bars, zero competing finish buttons, zero legacy light-gray spreadsheet
+  chrome.
+- **`?view=legacy-admin`:** Superadmin-only raw Master Catalog spreadsheet. Subtle
+  top-right links on the dark portal: `Raw Catalog Grid →` and `Mission Control →`. On
+  legacy view, show `← Back to E-Commerce Portal` bar.
+- **Role gate (unchanged):** Mia (`mia@ccpatio.com`), Kian (`kian@ccpatio.com`),
+  `SuperAdmin` / `Ops_Manager`, authorized GHL embed sessions.
+
+### 2. Unified header, reconciled KPIs & 3 pill tabs
+
+**Header / KPIs** (match Partner Handoff layout):
+
+- Gold eyebrow: `CC PATIO · E-COMMERCE SINGLE SOURCE OF TRUTH`
+- Title: `E-Commerce Certification & Handoff Portal`
+- ONE canonical green `Mia Approved` pill — reconcile `102 / 102` vs `107 / 107` so
+  `/partner/primeview-handoff` and `/embed/admin/master-catalog` show identical numbers
+- KPI cards: `Parents`, `Variations`, `Simple`, `Purchasable SKUs`, `Active Finishes: 32`
+
+**Tab 1 — `32 Finishes & Swatches`** (default active / 1-click pill):
+
+- Inline dark cards/tables (not modals) for the 4 finish groups:
+  Sunbrella (16), Ultraleather (4), Dekton (6), Aluminum Frame Powder Coats (6)
+  with `Aluminum-Only Storefront Policy — Steel/+10% Excluded` badge
+- Per row: swatch thumb + `2048px` texture badge, **LOCKED** gold monospace SKU
+  (`FAB-*` / `DKT-*` / `PWD-*`), inline `Display Name`, `Pattern Repeat (in)` /
+  `Texture Scale`, Woo/APF metadata, Upload Swatch / 2048px Texture
+  (`finish-assets.ts`), `−` soft-disable
+- `+ Add Finish` per category → SKU engine auto-generates + locks; manual SKU edit
+  impossible
+
+**Tab 2 — `107 E-Commerce Products`:**
+
+- ONE dark search + collection pills + status filter
+  (`All` | `Needs Mia Spot-Check` | `Mia Approved`)
+- Dark product table: name, locked `FIN-*` hub SKU, Variations / `-LS`/`-RS` count,
+  Aluminum MSRP, Media/3D badge, 1-click Mia Approved toggle, `Edit Details` → dark
+  drawer (storefront copy, Aluminum MSRP, weights/dims, add-on labels; `FIN-*` RO)
+
+**Tab 3 — `PrimeView Sync & Downloads`:**
+
+- Artifact buttons (CSV, Technical Spec `.md`, Full 3D Finishes Manifest `.json`,
+  32 Active Finishes Manifest `.json`)
+- Woo staging (`ccpatiodev2.primeview.com`), Test Woo Connection, Dry Run Preview
+- Webhook URL copy box + photoshoot / `.glb` upload dropzone
+
+### 3. Partner Handoff parity (`/partner/primeview-handoff`)
+
+- Replace stale “24 Fabric Swatches” headings/labels with the exact 32-finish breakdown:
+  `20 Upholstery Swatches [16 Sunbrella + 4 Ultraleather]`, `6 Dekton Stones`,
+  `6 Powder-Coat Finishes`
+- Identical `Mia Approved` count logic as GHL portal
+
+### 4. Tests, `qa:lifecycle`, AAR & QCA
+
+- Update legacy Master Catalog Playwright specs to use `?view=legacy-admin` where they
+  assert raw-grid tools
+- Add Playwright + Vitest coverage: default `/embed/admin/master-catalog` renders dark
+  3-tab portal with **zero** legacy `Upcharge %` bar and **zero** duplicate search bars
+- Target Vitest: `npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts`
+- `npm run qa:lifecycle` → `exit_code: 0`
+- Sync `expected_blast_radius` in `.cursor/phase.lock` + this file (`tolerance: 0`,
+  exclude `.cursor/aar.json`)
+- `node .cursor/skills/aar/scripts/emit.mjs`
+- `node .cursor/skills/qca/scripts/qca.mjs` → `CERTIFIED` (`audit_exit: 0`); paste
+  verbatim QCA JSON
 
 ## Allowed files
 
@@ -36,22 +94,25 @@ the git repo under `C:\Workspace\ccpatio-media-staging\`. Do **not** flip any
 2. `.cursor/session-stamp.json`
 3. `.cursor/aar.json`
 4. `BUILD_PLAN.md`
-5. `scripts/ops/process-highrez-finishes.ts`
-6. `scripts/ops/process-highrez-finishes-cv.py`
-7. `scripts/ops/upload-highrez-finishes.ts`
-8. `src/server/assets/finish-assets.ts`
-9. `package.json`
-10. `tests/highrez-swatch-pipeline.test.ts`
+5. `src/app/embed/admin/master-catalog/`
+6. `src/app/partner/primeview-handoff/`
+7. `src/components/`
+8. `src/lib/ecommerce-roster.ts`
+9. `src/server/ecommerce/`
+10. `src/server/assets/finish-assets.ts`
+11. `tests/`
+12. `e2e/`
 
 ## Target test
 
 ```bash
-npx vitest run tests/highrez-swatch-pipeline.test.ts
+npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts
 ```
 
-## Commands
+## Hard constraints
 
-```bash
-npm run finishes:process
-npm run finishes:upload -- --dry-run
-```
+- No `*_MODE` / `DOWNSTREAM_MUTATIONS` flag flips
+- No schema drops; additive only if any schema touch (prefer none)
+- Never modify tests to fake Phase 2 DB proof
+- Do not leave legacy UI on the default route to satisfy old Playwright selectors —
+  update selectors / `?view=legacy-admin` instead

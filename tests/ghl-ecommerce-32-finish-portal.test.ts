@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   assertExact32Roster,
@@ -20,10 +22,15 @@ import {
   PHASE1_FRAME_FINISHES,
   PHASE1_FRAME_FINISHES_FACTORY,
   PHASE1_POWDERS,
+  PHASE1_SOW_ITEM_COUNT,
+  reconcileMiaApprovedCounts,
+  sowKeyFromSku,
 } from "@/server/ecommerce/phase1-portal";
 import { MET_ALUM_SKU, MET_STEEL_SKU } from "@/server/woocommerce/finish-keys";
 import { STEEL_DISCONTINUED_REASON } from "@/server/ecommerce/alu10-pricing";
 import { buildFinishAutoSku as engineBuildFinishSku, isFinishSkuLocked as engineSkuLocked } from "@/server/ecommerce/auto-sku-engine";
+
+const ROOT = process.cwd();
 
 describe("exact 32 e-commerce finish roster", () => {
   it("contains exactly 32 unique finishes (16+4+6+6)", () => {
@@ -134,5 +141,57 @@ describe("E-Commerce portal role access", () => {
     );
     expect(canAccessFullMasterCatalog({ role: "SuperAdmin" })).toBe(true);
     expect(canAccessFullMasterCatalog({ role: "Ops_Manager" })).toBe(false);
+  });
+});
+
+describe("Mia Approved count reconciliation (102 SOW, not 107 variations)", () => {
+  it("collapses -LS/-RS facing pairs into one SOW key", () => {
+    expect(sowKeyFromSku("FIN-BRV-SOFA-84-LS")).toBe("FIN-BRV-SOFA-84");
+    expect(sowKeyFromSku("FIN-BRV-SOFA-84-RS")).toBe("FIN-BRV-SOFA-84");
+    const { miaApprovedCount, sowItemCount } = reconcileMiaApprovedCounts([
+      { globalSku: "FIN-A-LS", miaApproved: true },
+      { globalSku: "FIN-A-RS", miaApproved: true },
+      { globalSku: "FIN-B", miaApproved: false },
+      { globalSku: "FIN-C", miaApproved: true },
+    ]);
+    expect(sowItemCount).toBe(PHASE1_SOW_ITEM_COUNT);
+    expect(miaApprovedCount).toBe(2);
+  });
+});
+
+describe("default GHL route is dark 3-tab portal (no legacy chrome)", () => {
+  it("ships portal tabs + legacy-admin escape hatch; no default Upcharge bar", () => {
+    const page = readFileSync(
+      join(ROOT, "src/app/embed/admin/master-catalog/page.tsx"),
+      "utf8",
+    );
+    const portal = readFileSync(
+      join(ROOT, "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx"),
+      "utf8",
+    );
+    const partner = readFileSync(
+      join(ROOT, "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx"),
+      "utf8",
+    );
+
+    expect(page).toContain('view") === "legacy-admin"');
+    expect(page).toContain("legacy-back-to-portal");
+    expect(page).toContain("EcommerceCertificationPortal");
+    expect(page).toContain("system-health-pill");
+
+    expect(portal).toContain("portal-tab-finishes");
+    expect(portal).toContain("portal-tab-products");
+    expect(portal).toContain("portal-tab-sync");
+    expect(portal).toContain("portal-search-input");
+    expect(portal).toContain("E-Commerce Certification & Handoff Portal");
+    expect(portal).toContain("#0b0f17");
+    expect(portal).not.toContain("Recalculate Upcharge %");
+    expect(portal).not.toContain("upcharge-pct-input");
+
+    expect(partner).toContain("Upholstery Swatches");
+    expect(partner).toContain("Dekton Stones");
+    expect(partner).toContain("Powder-Coat Finishes");
+    expect(partner).toContain("Active Finishes");
+    expect(partner).not.toContain("24 Fabric Swatches");
   });
 });

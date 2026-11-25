@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
   Database,
@@ -72,6 +72,7 @@ import NewProductDrawer from "./ecommerce/NewProductDrawer";
 import SwatchesFinishesDrawer from "./ecommerce/SwatchesFinishesDrawer";
 import EcommerceCertificationPortal from "./ecommerce/EcommerceCertificationPortal";
 import Product3dMediaDrawer from "./ecommerce/Product3dMediaDrawer";
+import ProductDrawer from "./ecommerce/ProductDrawer";
 import {
   Phase1FlatGrid,
   wooDotClass,
@@ -90,6 +91,14 @@ import {
   needsMiaSpotCheck,
   STOREFRONT_POLICY_BANNER,
 } from "@/server/ecommerce/two-tab-portal";
+import {
+  PHASE1_PARENT_COUNT,
+  PHASE1_PURCHASABLE_SKU_COUNT,
+  PHASE1_SIMPLE_COUNT,
+  PHASE1_SOW_ITEM_COUNT,
+  PHASE1_VARIATION_COUNT,
+  reconcileMiaApprovedCounts,
+} from "@/server/ecommerce/phase1-portal";
 import { DEFAULT_ALU_UPCHARGE_PCT } from "@/server/ecommerce/alu10-pricing";
 
 function DrawerLoadingShell() {
@@ -224,7 +233,22 @@ function StatusPill({
 /* ───────────────────────── page ───────────────────────── */
 
 export default function MasterCatalogAdmin() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#0b0f17] text-slate-400">
+          <Loader2 className="h-6 w-6 animate-spin text-amber-400" />
+        </div>
+      }
+    >
+      <MasterCatalogAdminInner />
+    </Suspense>
+  );
+}
+
+function MasterCatalogAdminInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   /** 2-tab command center: Live storefront vs Phase 2 staging. */
   const [activeTab, setActiveTab] = useState<"live" | "phase2" | "quarantine">("live");
   const [view, setView] = useState<ViewMode>("ecommerce");
@@ -238,6 +262,7 @@ export default function MasterCatalogAdmin() {
   const [loading, setLoading] = useState(true);
   const [swatchesOpen, setSwatchesOpen] = useState(false);
   const [model3dTarget, setModel3dTarget] = useState<{ sku: string; name: string } | null>(null);
+  const [portalEditListing, setPortalEditListing] = useState<Phase1Listing | null>(null);
   const [upchargePct, setUpchargePct] = useState(DEFAULT_ALU_UPCHARGE_PCT);
   const [spotCheckOnly, setSpotCheckOnly] = useState(false);
   const [portalAccess, setPortalAccess] = useState<{
@@ -751,11 +776,104 @@ export default function MasterCatalogAdmin() {
 
   const colCount = 6;
 
+  const wantsLegacyAdmin = searchParams.get("view") === "legacy-admin";
+  const isLegacyAdmin = wantsLegacyAdmin && Boolean(portalAccess?.canFullCatalog);
+  const miaCounts = useMemo(
+    () => reconcileMiaApprovedCounts(phase1Listings),
+    [phase1Listings],
+  );
+
+  if (!isLegacyAdmin) {
+    if (loading) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-[#0b0f17] text-slate-400">
+          <Loader2 className="h-6 w-6 animate-spin text-amber-400" />
+        </div>
+      );
+    }
+    if (portalAccess && !portalAccess.canAccess) {
+      return (
+        <div className="min-h-screen bg-[#0b0f17] px-4 py-10 text-slate-100">
+          <div
+            className="mx-auto max-w-lg rounded-2xl border border-amber-500/30 bg-amber-500/10 p-8 text-sm text-amber-100"
+            data-testid="ecommerce-access-denied"
+          >
+            The E-Commerce tab is limited to Mia, Kian, and Superadmin. Ask an admin if you need access.
+          </div>
+        </div>
+      );
+    }
+    return (
+      <>
+        <EcommerceCertificationPortal
+          listings={phase1Listings}
+          listingsLoading={ecommerceLoading || loading}
+          listingsError={ecommerceError}
+          miaApprovedCount={miaCounts.miaApprovedCount}
+          sowItemCount={miaCounts.sowItemCount || PHASE1_SOW_ITEM_COUNT}
+          parentCount={PHASE1_PARENT_COUNT}
+          variationCount={PHASE1_VARIATION_COUNT}
+          simpleCount={PHASE1_SIMPLE_COUNT}
+          purchasableSkuCount={PHASE1_PURCHASABLE_SKU_COUNT}
+          canFullCatalog={portalAccess?.canFullCatalog ?? false}
+          wooBadgeLabel={wooBadge?.label ?? null}
+          wooConfigured={Boolean(wooBadge?.configured)}
+          systemHealth={systemHealth}
+          onOpenSystemHealth={() => setHealthDrawerOpen(true)}
+          onToast={setToast}
+          onListingsChange={setPhase1Listings}
+          onOpenProductEdit={(listing) => setPortalEditListing(listing)}
+          onOpen3d={(sku, name) => setModel3dTarget({ sku, name })}
+        />
+        <Product3dMediaDrawer
+          open={model3dTarget !== null}
+          sku={model3dTarget?.sku ?? null}
+          productName={model3dTarget?.name}
+          onClose={() => setModel3dTarget(null)}
+          onChanged={() => void refresh3dListings()}
+          onToast={setToast}
+        />
+        <SystemHealthDrawer
+          open={healthDrawerOpen}
+          onClose={() => {
+            setHealthDrawerOpen(false);
+            void getSystemHealthAction().then((h) => {
+              if (h.ok) setSystemHealth(h.snapshot.overall);
+            });
+          }}
+        />
+        {portalEditListing ? (
+          <ProductDrawer
+            listing={portalEditListing}
+            onClose={() => setPortalEditListing(null)}
+            onSaveListing={handleEcommerceListingDrawer}
+            onSaveHub={handleEcommerceHubDrawer}
+            onListingPatched={(id, patch) => {
+              handleListingPatched(id, patch);
+              setPhase1Listings((prev) =>
+                prev.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+              );
+              setPortalEditListing((prev) =>
+                prev && prev.id === id ? { ...prev, ...patch } : prev,
+              );
+            }}
+          />
+        ) : null}
+        {toast ? (
+          <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm text-white shadow-xl">
+            {toast}
+          </div>
+        ) : null}
+      </>
+    );
+  }
+
   return (
     <div
       className={`min-h-screen w-full px-4 md:px-8 py-4 md:py-6 text-slate-800 flex flex-col ${
         printMode ? "bg-white" : "bg-slate-900/40"
       } print:bg-white print:p-0 print:min-h-0`}
+      data-testid="legacy-admin-catalog"
     >
       {/* Print-only overrides: white page, hide controls & shadows */}
       <style>{`
@@ -768,6 +886,21 @@ export default function MasterCatalogAdmin() {
           thead { position: static !important; }
         }
       `}</style>
+
+      <div
+        className="print:hidden mb-3 flex items-center justify-between rounded-xl border border-slate-700/60 bg-[#0b0f17] px-4 py-2.5 text-slate-100"
+        data-testid="legacy-back-to-portal"
+      >
+        <a
+          href="/embed/admin/master-catalog"
+          className="text-sm font-semibold text-amber-300 hover:text-amber-200"
+        >
+          ← Back to E-Commerce Portal
+        </a>
+        <span className="text-[11px] uppercase tracking-wide text-slate-500">
+          Superadmin · Raw Catalog Grid
+        </span>
+      </div>
 
       {/* Hidden camera / file input */}
       <input
@@ -1132,39 +1265,8 @@ export default function MasterCatalogAdmin() {
 
         </div>
 
-        {portalAccess && !portalAccess.canAccess ? (
-          <div
-            className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-sm text-amber-950"
-            data-testid="ecommerce-access-denied"
-          >
-            The E-Commerce tab is limited to Mia, Kian, and Superadmin. Ask an admin if you need access.
-          </div>
-        ) : (
-          <EcommerceCertificationPortal
-            miaApprovedCount={phase1Listings.filter((l) => l.miaApproved).length}
-            sowItemCount={phase1Listings.length || 102}
-            canFullCatalog={portalAccess?.canFullCatalog ?? false}
-            onOpenFinishes={() => setSwatchesOpen(true)}
-            onOpenFullCatalog={
-              portalAccess?.canFullCatalog
-                ? () => {
-                    window.open("/admin/mission-control", "_blank", "noopener,noreferrer");
-                  }
-                : undefined
-            }
-            onOpenPrimeviewHandoff={async () => {
-              const link = await getPrimeviewPartnerHandoffLink();
-              if (!link.ok) {
-                setToast(link.error);
-                return;
-              }
-              window.open(link.url, "_blank", "noopener,noreferrer");
-            }}
-          />
-        )}
-
-        {/* Tab 1: Live E-Commerce */}
-        {portalAccess && !portalAccess.canAccess ? null : activeTab === "live" ? (
+        {/* Tab 1: Live E-Commerce (legacy Superadmin spreadsheet only) */}
+        {activeTab === "live" ? (
           <div className="flex-1 min-h-0 flex flex-col gap-3" data-testid="live-ecommerce-panel">
             {ecommerceError ? (
               <div className="rounded-2xl border border-rose-100 bg-white/90 p-8 text-sm text-rose-600">

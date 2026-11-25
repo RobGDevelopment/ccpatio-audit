@@ -2457,6 +2457,7 @@ export async function getPrimeviewHandoffDownloadUrls(): Promise<
       csv: string;
       spec: string;
       swatches: string;
+      finishes: string;
       partnerPath: string;
     }
   | { ok: false; error: string }
@@ -2480,6 +2481,7 @@ export async function getPrimeviewHandoffDownloadUrls(): Promise<
     csv: downloadUrlForArtifact("csv", token),
     spec: downloadUrlForArtifact("spec", token),
     swatches: downloadUrlForArtifact("swatches", token),
+    finishes: downloadUrlForArtifact("finishes", token),
     partnerPath: buildPrimeviewHandoffPath(token),
   };
 }

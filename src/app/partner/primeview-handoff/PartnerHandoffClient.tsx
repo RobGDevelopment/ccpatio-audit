@@ -12,11 +12,20 @@ import {
   UploadCloud,
 } from "lucide-react";
 import type { LiveStorefrontRow } from "@/server/woocommerce/handoff-spec-generator";
-import { PHASE1_FABRICS, PHASE1_POWDERS } from "@/server/ecommerce/phase1-portal";
+import {
+  PHASE1_DEKTONS,
+  PHASE1_FABRICS,
+  PHASE1_POWDERS,
+} from "@/server/ecommerce/phase1-portal";
 import {
   ECOMMERCE_32_FINISH_COUNT,
+  ECOMMERCE_32_FINISHES,
   ecommerceFinishBySku,
 } from "@/server/ecommerce/ecommerce-32-finish-roster";
+
+const SUNBRELLA_COUNT = ECOMMERCE_32_FINISHES.filter((f) => f.family === "sunbrella").length;
+const ULTRALEATHER_COUNT = ECOMMERCE_32_FINISHES.filter((f) => f.family === "ultraleather").length;
+const UPHOLSTERY_COUNT = SUNBRELLA_COUNT + ULTRALEATHER_COUNT;
 
 export type PartnerFinishAsset = {
   sku: string;
@@ -695,7 +704,7 @@ export default function PartnerHandoffClient(props: Props) {
             </span>
           </div>
 
-          <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="partner-kpi-cards">
             <div className="rounded-lg bg-white/5 px-3 py-2">
               <dt className="text-[11px] uppercase tracking-wide text-slate-500">Parents</dt>
               <dd className="text-lg font-semibold text-white">{props.parentCount}</dd>
@@ -711,6 +720,10 @@ export default function PartnerHandoffClient(props: Props) {
             <div className="rounded-lg bg-white/5 px-3 py-2">
               <dt className="text-[11px] uppercase tracking-wide text-slate-500">Purchasable SKUs</dt>
               <dd className="text-lg font-semibold text-white">{props.uniquePurchasableSkus}</dd>
+            </div>
+            <div className="rounded-lg bg-white/5 px-3 py-2">
+              <dt className="text-[11px] uppercase tracking-wide text-slate-500">Active Finishes</dt>
+              <dd className="text-lg font-semibold text-white">{ECOMMERCE_32_FINISH_COUNT}</dd>
             </div>
           </dl>
         </header>
@@ -772,7 +785,7 @@ export default function PartnerHandoffClient(props: Props) {
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 px-4 py-3 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15"
                 >
                   <Download className="h-4 w-4" />
-                  Download {PHASE1_FABRICS.length} Fabric Swatches Manifest (.json)
+                  Download {ECOMMERCE_32_FINISH_COUNT} Active Finishes Manifest (.json)
                 </a>
               </div>
               <p className="mt-3 text-xs text-slate-500">
@@ -783,10 +796,11 @@ export default function PartnerHandoffClient(props: Props) {
               </p>
             </section>
 
-            <section className="mt-10 grid gap-6 lg:grid-cols-2">
+            <section className="mt-10 grid gap-6 lg:grid-cols-3">
               <div>
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-                  {PHASE1_FABRICS.length} Fabric Swatches (exact {ECOMMERCE_32_FINISH_COUNT}-finish roster)
+                  {UPHOLSTERY_COUNT} Upholstery Swatches [{SUNBRELLA_COUNT} Sunbrella +{" "}
+                  {ULTRALEATHER_COUNT} Ultraleather]
                 </h2>
                 <div className="mt-3 max-h-64 overflow-auto rounded-xl border border-white/10">
                   <table className="min-w-full text-left text-xs">
@@ -811,7 +825,32 @@ export default function PartnerHandoffClient(props: Props) {
               </div>
               <div>
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-                  6 Powder-Coat Finishes (Hub SKUs · Aluminum frames)
+                  {PHASE1_DEKTONS.length} Dekton Stones
+                </h2>
+                <div className="mt-3 max-h-64 overflow-auto rounded-xl border border-white/10">
+                  <table className="min-w-full text-left text-xs">
+                    <thead className="bg-white/5 text-slate-500">
+                      <tr>
+                        <th className="px-3 py-2 font-medium">SKU</th>
+                        <th className="px-3 py-2 font-medium">Display Name</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {PHASE1_DEKTONS.map((d) => (
+                        <tr key={d.sku} className="border-t border-white/5">
+                          <td className="px-3 py-1.5 font-mono text-amber-200/90">{d.sku}</td>
+                          <td className="px-3 py-1.5 text-slate-300">
+                            {ecommerceFinishBySku(d.sku)?.displayName ?? d.name}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+                  {PHASE1_POWDERS.length} Powder-Coat Finishes
                 </h2>
                 <div className="mt-3 overflow-auto rounded-xl border border-white/10">
                   <table className="min-w-full text-left text-xs">

@@ -32,6 +32,36 @@ export const PHASE1_VIEW_LABELS: Record<Phase1PortalView, string> = {
 export const PHASE1_LAUNCH_BANNER =
   "Phase 1 Launch (47 Products • 102 SOW Items • 107 Variations • 32 Finishes)";
 
+/** Canonical Phase 1 KPI denominators — shared by GHL portal + Partner Handoff. */
+export const PHASE1_PARENT_COUNT = 47;
+export const PHASE1_VARIATION_COUNT = 100;
+export const PHASE1_SIMPLE_COUNT = 7;
+export const PHASE1_PURCHASABLE_SKU_COUNT = 107;
+export const PHASE1_SOW_ITEM_COUNT = 102;
+
+/**
+ * Collapse -LS/-RS facing siblings into one SOW key so GHL and Partner
+ * Handoff show the same Mia Approved N / 102 pill (never 107 / 107).
+ */
+export function sowKeyFromSku(sku: string): string {
+  return sku.trim().toUpperCase().replace(/-(LS|RS)$/i, "");
+}
+
+export function reconcileMiaApprovedCounts(
+  listings: ReadonlyArray<{ globalSku: string; miaApproved?: boolean | null }>,
+): { miaApprovedCount: number; sowItemCount: number } {
+  const bySow = new Map<string, boolean>();
+  for (const row of listings) {
+    const key = sowKeyFromSku(row.globalSku);
+    if (!key) continue;
+    bySow.set(key, Boolean(bySow.get(key)) || Boolean(row.miaApproved));
+  }
+  return {
+    miaApprovedCount: [...bySow.values()].filter(Boolean).length,
+    sowItemCount: PHASE1_SOW_ITEM_COUNT,
+  };
+}
+
 export { STOREFRONT_POLICY_BANNER } from "./alu10-pricing";
 
 /** Exact 20 e-commerce fabrics (16 Sunbrella + 4 Ultraleather). */
