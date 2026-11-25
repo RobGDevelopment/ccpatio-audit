@@ -26,7 +26,9 @@ export default async function EmbedLayout({
 
   return (
     <EmbedSessionProvider embedToken={embedToken}>
-      <div className="flex h-dvh min-h-0 flex-col overflow-hidden">{children}</div>
+      <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#0b0f17] text-slate-100">
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      </div>
     </EmbedSessionProvider>
   );
 }

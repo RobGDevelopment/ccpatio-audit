@@ -73,6 +73,7 @@ import SwatchesFinishesDrawer from "./ecommerce/SwatchesFinishesDrawer";
 import EcommerceCertificationPortal from "./ecommerce/EcommerceCertificationPortal";
 import Product3dMediaDrawer from "./ecommerce/Product3dMediaDrawer";
 import ProductDrawer from "./ecommerce/ProductDrawer";
+import PortalProductDrawer from "./ecommerce/PortalProductDrawer";
 import {
   Phase1FlatGrid,
   wooDotClass,
@@ -843,20 +844,12 @@ function MasterCatalogAdminInner() {
           }}
         />
         {portalEditListing ? (
-          <ProductDrawer
-            listing={portalEditListing}
+          <PortalProductDrawer
+            open={Boolean(portalEditListing)}
+            sku={portalEditListing.globalSku}
             onClose={() => setPortalEditListing(null)}
-            onSaveListing={handleEcommerceListingDrawer}
-            onSaveHub={handleEcommerceHubDrawer}
-            onListingPatched={(id, patch) => {
-              handleListingPatched(id, patch);
-              setPhase1Listings((prev) =>
-                prev.map((l) => (l.id === id ? { ...l, ...patch } : l)),
-              );
-              setPortalEditListing((prev) =>
-                prev && prev.id === id ? { ...prev, ...patch } : prev,
-              );
-            }}
+            onToast={setToast}
+            onSaved={() => void refresh3dListings()}
           />
         ) : null}
         {toast ? (

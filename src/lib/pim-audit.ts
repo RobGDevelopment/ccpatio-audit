@@ -19,6 +19,18 @@ import {
   verifyEmbedSessionToken,
 } from "@/lib/embed-auth";
 
+/** Inline so unit mocks of `@/lib/embed-auth` need not re-export helpers. */
+function embedTokenFromRequestHeaders(
+  getHeader: ((name: string) => string | null | undefined) | null | undefined,
+): string | null {
+  if (!getHeader) return null;
+  const direct = getHeader(EMBED_TOKEN_HEADER)?.trim();
+  if (direct) return direct;
+  const auth = getHeader("authorization")?.trim() || getHeader("Authorization")?.trim() || "";
+  const match = /^Bearer\s+(.+)$/i.exec(auth);
+  return match?.[1]?.trim() || null;
+}
+
 /** Synthetic principal for a valid GHL iframe. It is not a salesperson name. */
 export const GHL_EMBED_PRINCIPAL_EMAIL = "ghl-embed@ccpatio.com";
 
@@ -73,8 +85,9 @@ export async function getPimSession(): Promise<PimSession | null> {
   try {
     const secret = getGhlEmbedSecret();
     // Cookie-independent HMAC token works even when third-party cookies are blocked.
+    // Accept x-ccpatio-embed-token OR Authorization: Bearer <token>.
     const embedToken =
-      hdrs?.get(EMBED_TOKEN_HEADER) ??
+      embedTokenFromRequestHeaders((n) => hdrs?.get(n) ?? null) ??
       jar?.get(EMBED_TOKEN_HEADER)?.value ??
       null;
     if (await verifyEmbedSessionToken(embedToken, secret)) {

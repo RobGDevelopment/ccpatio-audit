@@ -61,7 +61,10 @@ export function EmbedSessionProvider({
   const getEmbedHeaders = useCallback((): HeadersInit => {
     const token = tokenRef.current;
     if (!token) return {};
-    return { [EMBED_TOKEN_HEADER]: token };
+    return {
+      [EMBED_TOKEN_HEADER]: token,
+      Authorization: `Bearer ${token}`,
+    };
   }, []);
 
   const refreshToken = useCallback(async () => {
@@ -105,6 +108,7 @@ export function EmbedSessionProvider({
     if (!token) return init ?? {};
     const headers = new Headers(init?.headers);
     headers.set(EMBED_TOKEN_HEADER, token);
+    headers.set("Authorization", `Bearer ${token}`);
     return { ...init, headers, credentials: init?.credentials ?? "include" };
   }, []);
 

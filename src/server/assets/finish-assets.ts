@@ -58,7 +58,24 @@ type SeedRow = {
   hex_code: string | null;
   swatch_thumb_url: string | null;
   texture_2k_url: string | null;
+  sample_width_in: string | null;
+  sample_height_in: string | null;
+  pattern_repeat_w_in: string | null;
+  pattern_repeat_h_in: string | null;
 };
+
+/** Stale Hub labels like "Beacon Ultraleather" that should snap back to canonical. */
+export function isStaleFinishDisplayName(sku: string, current: string | null | undefined): boolean {
+  const def = ECOMMERCE_32_FINISHES.find((f) => f.sku === sku);
+  if (!def) return false;
+  const cur = (current ?? "").trim();
+  if (!cur) return true;
+  if (cur.toLowerCase() === def.displayName.toLowerCase()) return false;
+  const suffixes = [" Ultraleather", " Sunbrella", " Dekton", " Powder Coat", " Powder"];
+  return suffixes.some(
+    (s) => cur.toLowerCase() === `${def.displayName}${s}`.toLowerCase(),
+  );
+}
 
 export function buildFinishSeedRows(): SeedRow[] {
   const rows: SeedRow[] = [];
@@ -74,6 +91,12 @@ export function buildFinishSeedRows(): SeedRow[] {
             }
           })()
         : null;
+    const scale = deriveFinishPhysicalScale({
+      croppedWidthIn: def.patternRepeatIn?.w ?? null,
+      patternRepeatIn: def.patternRepeatIn,
+      sku: def.sku,
+      stripePeriodIn: def.sku === "FAB-CAB-CLA" ? 7 : null,
+    });
     rows.push({
       sku: def.sku,
       finish_category: def.category,
@@ -81,6 +104,12 @@ export function buildFinishSeedRows(): SeedRow[] {
       hex_code: meta?.color ?? def.hex,
       swatch_thumb_url: fabricUrl,
       texture_2k_url: fabricUrl,
+      sample_width_in: String(scale.sample_width_in),
+      sample_height_in: String(scale.texture_scale),
+      pattern_repeat_w_in:
+        scale.pattern_repeat_w_in != null ? String(scale.pattern_repeat_w_in) : null,
+      pattern_repeat_h_in:
+        scale.pattern_repeat_h_in != null ? String(scale.pattern_repeat_h_in) : null,
     });
   }
   return rows;
@@ -103,10 +132,18 @@ export async function seedEcommerceFinishAssets(): Promise<SeedFinishAssetsResul
   const db = getDb();
   const rows = buildFinishSeedRows();
   const t = ecommerce_finish_assets;
-  const before = await db.select({ sku: t.sku }).from(t);
+  const before = await db
+    .select({ sku: t.sku, display_name: t.display_name })
+    .from(t);
   const known = new Set(before.map((r) => r.sku));
+  const staleBySku = new Map(
+    before
+      .filter((r) => isStaleFinishDisplayName(r.sku, r.display_name))
+      .map((r) => [r.sku, true] as const),
+  );
 
   for (const row of rows) {
+    const refreshName = staleBySku.has(row.sku);
     await db
       .insert(t)
       .values({ ...row, quality_status: "placeholder_lowres" })
@@ -116,6 +153,11 @@ export async function seedEcommerceFinishAssets(): Promise<SeedFinishAssetsResul
           hex_code: sql`COALESCE(NULLIF(${t.hex_code}, ''), excluded.hex_code)`,
           swatch_thumb_url: sql`COALESCE(NULLIF(${t.swatch_thumb_url}, ''), excluded.swatch_thumb_url)`,
           texture_2k_url: sql`COALESCE(NULLIF(${t.texture_2k_url}, ''), excluded.texture_2k_url)`,
+          sample_width_in: sql`COALESCE(${t.sample_width_in}, excluded.sample_width_in)`,
+          sample_height_in: sql`COALESCE(${t.sample_height_in}, excluded.sample_height_in)`,
+          pattern_repeat_w_in: sql`COALESCE(${t.pattern_repeat_w_in}, excluded.pattern_repeat_w_in)`,
+          pattern_repeat_h_in: sql`COALESCE(${t.pattern_repeat_h_in}, excluded.pattern_repeat_h_in)`,
+          ...(refreshName ? { display_name: row.display_name } : {}),
         },
       });
   }

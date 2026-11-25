@@ -90,7 +90,10 @@ import {
   wooEcommercePrice,
   buildAluAttributePatch,
 } from "@/server/ecommerce/alu10-pricing";
-import { buildMiaAluminumPriceListCsv } from "@/server/ecommerce/two-tab-portal";
+import {
+  buildMiaAluminumPriceListCsv,
+  spotCheckDrawerNote,
+} from "@/server/ecommerce/two-tab-portal";
 import {
   addEcommerceFinishAsset,
   disableEcommerceFinishAsset,
@@ -98,6 +101,7 @@ import {
   filterActiveEcommerceFinishes,
   listFinishAssets,
   resolveListing3dTarget,
+  seedEcommerceFinishAssets,
   updateFinishAsset,
 } from "@/server/assets/finish-assets";
 import {
@@ -105,6 +109,16 @@ import {
   canAccessFullMasterCatalog,
   isFinishSkuLocked,
 } from "@/server/ecommerce/ecommerce-32-finish-roster";
+import {
+  pickGroupedSkuRow,
+  resolveGroupedSkuCandidates,
+} from "@/server/ecommerce/grouped-sku-resolve";
+import {
+  inferSurfaceProfile,
+  stagingPushGuardrailMessage,
+  storefrontDisplayTitle,
+  type SurfaceProfile,
+} from "@/server/ecommerce/portal-readiness";
 
 /** Woo Regular price prefers aluminum_msrp (baked +10%); falls back to steel. */
 function wooRegularFromListing(s: EcommerceListing): number | null {
@@ -526,7 +540,11 @@ function toListing(r: ListingFields, factory: FactoryReadiness): EcommerceListin
  */
 export async function getHubProductForDrawer(globalSku: string): Promise<EcommerceListing | null> {
   const db = getDb();
-  const [row] = await db
+  const grouped = resolveGroupedSkuCandidates(globalSku);
+  const candidates = [
+    ...new Set([grouped.requestedSku, grouped.parentSku, ...grouped.childSkus].filter(Boolean)),
+  ];
+  const hits = await db
     .select({
       globalSku: sku_mappings.global_sku,
       productName: sku_mappings.original_name,
@@ -558,11 +576,13 @@ export async function getHubProductForDrawer(globalSku: string): Promise<Ecommer
     .from(sku_mappings)
     .leftJoin(finished_goods_catalog, eq(finished_goods_catalog.global_sku, sku_mappings.global_sku))
     .leftJoin(third_party_sources, eq(third_party_sources.global_sku, sku_mappings.global_sku))
-    .where(eq(sku_mappings.global_sku, globalSku))
-    .limit(1);
+    .where(inArray(sku_mappings.global_sku, candidates))
+    .limit(8);
+  const picked = pickGroupedSkuRow(hits, globalSku);
+  const row = picked.row;
   if (!row) return null;
 
-  const readiness = await getFactoryReadinessMap([globalSku]);
+  const readiness = await getFactoryReadinessMap([row.globalSku]);
   return {
     id: "",
     globalSku: row.globalSku,
@@ -3063,13 +3083,19 @@ export async function getEcommercePortalAccess(): Promise<{
 }
 
 export async function listFinishAssetsForPortal(): Promise<
-  { ok: true; assets: FinishAssetView[] } | { ok: false; error: string }
+  { ok: true; assets: FinishAssetView[]; seeded?: { inserted: number; existing: number } } | { ok: false; error: string }
 > {
   const session = await getPimSession();
   if (!session) return { ok: false, error: "Unauthorized embed session." };
   try {
+    // Idempotent hydrate — merge all 32 canonical finishes on first read / boot.
+    const seeded = await seedEcommerceFinishAssets();
     const rows = filterActiveEcommerceFinishes(await listFinishAssets());
-    return { ok: true, assets: rows.map(toFinishAssetView) };
+    return {
+      ok: true,
+      assets: rows.map(toFinishAssetView),
+      seeded: { inserted: seeded.inserted, existing: seeded.existing },
+    };
   } catch (error: unknown) {
     return { ok: false, error: error instanceof Error ? error.message : "Could not load finish assets" };
   }
@@ -3429,4 +3455,365 @@ export async function replayHeldWooOrderAction(
   if (!result.ok) return { ok: false, error: result.error };
   revalidatePath("/embed/admin/master-catalog");
   return { ok: true, message: result.message };
+}
+
+export type PortalProductDetail = {
+  listingId: string;
+  parentSku: string;
+  childSkus: string[];
+  requestedSku: string;
+  factoryName: string;
+  storefrontTitle: string;
+  description: string;
+  aluminumMsrp: string | null;
+  aluminumMsrpValue: number | null;
+  surfaceProfile: SurfaceProfile;
+  preserveWpGallery: boolean;
+  freight: {
+    weightLb: string;
+    lengthIn: string;
+    widthIn: string;
+    heightIn: string;
+  };
+  media: {
+    imageUrl: string | null;
+    model3dGlbUrl: string | null;
+  };
+  spotCheckNote: string | null;
+  miaApproved: boolean;
+};
+
+/** Resolve simple or grouped parent SKUs (-LS/-RS) for the dark Edit Details drawer. */
+export async function getPortalProductDetail(
+  rawSku: string,
+): Promise<{ ok: true; detail: PortalProductDetail } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const sku = rawSku.trim().toUpperCase();
+  if (!sku) return { ok: false, error: "SKU is required." };
+
+  try {
+    const grouped = resolveGroupedSkuCandidates(sku);
+    const candidates = [
+      ...new Set([grouped.requestedSku, grouped.parentSku, ...grouped.childSkus].filter(Boolean)),
+    ];
+    const db = getDb();
+
+    const listingHits = await db
+      .select({
+        id: ecommerce_listings.id,
+        globalSku: ecommerce_listings.global_sku,
+        wooSku: ecommerce_listings.woo_sku,
+        productName: ecommerce_listings.product_name,
+        collectionLabel: ecommerce_listings.collection_label,
+        marketingDescription: ecommerce_listings.marketing_description,
+        aluminumMsrp: ecommerce_listings.aluminum_msrp,
+        steelMsrp: ecommerce_listings.steel_msrp,
+        imageUrl: finished_goods_catalog.image_url,
+        model3dGlbUrl: ecommerce_listings.model_3d_glb_url,
+        attributes: sku_mappings.attributes,
+      })
+      .from(ecommerce_listings)
+      .leftJoin(sku_mappings, eq(sku_mappings.global_sku, ecommerce_listings.global_sku))
+      .leftJoin(
+        finished_goods_catalog,
+        eq(finished_goods_catalog.global_sku, ecommerce_listings.global_sku),
+      )
+      .where(
+        or(
+          inArray(ecommerce_listings.global_sku, candidates),
+          inArray(ecommerce_listings.woo_sku, candidates),
+        ),
+      )
+      .limit(12);
+
+    const listingPicked = pickGroupedSkuRow(
+      listingHits.map((h) => ({ ...h, globalSku: h.globalSku })),
+      sku,
+    );
+
+    let detailBase = listingPicked.row;
+    if (!detailBase) {
+      const hub = await getHubProductForDrawer(sku);
+      if (!hub) {
+        return {
+          ok: false,
+          error: `Failed to load ${sku} detail: SKU not found (tried parent + -LS/-RS).`,
+        };
+      }
+      const attrs = null;
+      const surface = inferSurfaceProfile({
+        productName: hub.productName,
+        collectionLabel: hub.collectionLabel,
+        attributes: attrs,
+      });
+      const [ship] = await db
+        .select()
+        .from(catalog_ship_profiles)
+        .where(eq(catalog_ship_profiles.global_sku, hub.globalSku))
+        .limit(1);
+      return {
+        ok: true,
+        detail: {
+          listingId: hub.id || "",
+          parentSku: grouped.parentSku,
+          childSkus: grouped.childSkus,
+          requestedSku: grouped.requestedSku,
+          factoryName: hub.productName,
+          storefrontTitle: storefrontDisplayTitle(hub.productName),
+          description: hub.marketingDescription ?? "",
+          aluminumMsrp: hub.aluminumMsrp,
+          aluminumMsrpValue: hub.aluminumMsrpValue,
+          surfaceProfile: surface,
+          preserveWpGallery: true,
+          freight: {
+            weightLb: ship?.weight_lb?.toString() ?? hub.hubWeight ?? "",
+            lengthIn: ship?.length_in?.toString() ?? hub.hubLength ?? "",
+            widthIn: ship?.width_in?.toString() ?? hub.hubDepth ?? "",
+            heightIn: ship?.height_in?.toString() ?? hub.hubHeight ?? "",
+          },
+          media: {
+            imageUrl: hub.imageUrl,
+            model3dGlbUrl: hub.model3dGlbUrl ?? null,
+          },
+          spotCheckNote: spotCheckDrawerNote({
+            globalSku: hub.globalSku,
+            wooSku: hub.wooSku,
+            attributes: null,
+          }),
+          miaApproved: false,
+        },
+      };
+    }
+
+    const attrs = (detailBase.attributes as Record<string, unknown> | null) ?? null;
+    const surface = inferSurfaceProfile({
+      productName: detailBase.productName,
+      collectionLabel: detailBase.collectionLabel,
+      attributes: attrs,
+    });
+    const [ship] = await db
+      .select()
+      .from(catalog_ship_profiles)
+      .where(eq(catalog_ship_profiles.global_sku, detailBase.globalSku))
+      .limit(1);
+
+    const aluRaw = detailBase.aluminumMsrp;
+    const aluNum =
+      aluRaw != null && String(aluRaw).trim()
+        ? Number(String(aluRaw).replace(/[^0-9.-]+/g, ""))
+        : null;
+
+    return {
+      ok: true,
+      detail: {
+        listingId: detailBase.id,
+        parentSku: grouped.parentSku,
+        childSkus: grouped.childSkus,
+        requestedSku: grouped.requestedSku,
+        factoryName: detailBase.productName,
+        storefrontTitle: storefrontDisplayTitle(detailBase.productName),
+        description: detailBase.marketingDescription ?? "",
+        aluminumMsrp:
+          aluRaw != null
+            ? `$${Number(String(aluRaw).replace(/[^0-9.-]+/g, "")).toFixed(2)}`
+            : null,
+        aluminumMsrpValue: Number.isFinite(aluNum) ? aluNum : null,
+        surfaceProfile: surface,
+        preserveWpGallery:
+          attrs?.preserve_wp_gallery === false ? false : true,
+        freight: {
+          weightLb: ship?.weight_lb?.toString() ?? "",
+          lengthIn: ship?.length_in?.toString() ?? "",
+          widthIn: ship?.width_in?.toString() ?? "",
+          heightIn: ship?.height_in?.toString() ?? "",
+        },
+        media: {
+          imageUrl: detailBase.imageUrl,
+          model3dGlbUrl: detailBase.model3dGlbUrl,
+        },
+        spotCheckNote: spotCheckDrawerNote({
+          globalSku: detailBase.globalSku,
+          wooSku: detailBase.wooSku,
+          attributes: attrs,
+        }),
+        miaApproved: readMiaApproval(attrs).approved,
+      },
+    };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: `Failed to load ${sku} detail: ${error instanceof Error ? error.message : "unknown error"}`,
+    };
+  }
+}
+
+export async function savePortalProductDetail(input: {
+  listingId: string;
+  parentSku: string;
+  storefrontTitle: string;
+  description: string;
+  aluminumMsrp: string | null;
+  surfaceProfile: SurfaceProfile;
+  preserveWpGallery: boolean;
+  freight: {
+    weightLb: string;
+    lengthIn: string;
+    widthIn: string;
+    heightIn: string;
+  };
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  const db = getDb();
+  try {
+    if (input.listingId) {
+      const [row] = await db
+        .select({
+          id: ecommerce_listings.id,
+          globalSku: ecommerce_listings.global_sku,
+          version: ecommerce_listings.version,
+          attributes: sku_mappings.attributes,
+          skuVersion: sku_mappings.version,
+        })
+        .from(ecommerce_listings)
+        .leftJoin(sku_mappings, eq(sku_mappings.global_sku, ecommerce_listings.global_sku))
+        .where(eq(ecommerce_listings.id, input.listingId))
+        .limit(1);
+      if (!row) return { ok: false, error: "Listing not found." };
+
+      const alu = input.aluminumMsrp
+        ? Number(String(input.aluminumMsrp).replace(/[^0-9.-]+/g, ""))
+        : null;
+      await db
+        .update(ecommerce_listings)
+        .set({
+          product_name: input.storefrontTitle.trim() || undefined,
+          marketing_description: input.description,
+          aluminum_msrp:
+            alu != null && Number.isFinite(alu) ? alu.toFixed(2) : null,
+          updated_at: new Date(),
+          version: row.version + 1,
+        })
+        .where(eq(ecommerce_listings.id, input.listingId));
+
+      const prev = (row.attributes as Record<string, unknown> | null) ?? {};
+      const nextAttrs = {
+        ...prev,
+        surface_profile: input.surfaceProfile,
+        preserve_wp_gallery: input.preserveWpGallery,
+      };
+      await db
+        .update(sku_mappings)
+        .set({
+          attributes: nextAttrs,
+          updated_at: new Date(),
+          updated_by: session.email,
+          version: (row.skuVersion ?? 0) + 1,
+        })
+        .where(eq(sku_mappings.global_sku, row.globalSku));
+
+      await db
+        .insert(catalog_ship_profiles)
+        .values({
+          global_sku: row.globalSku,
+          weight_lb: input.freight.weightLb || null,
+          length_in: input.freight.lengthIn || null,
+          width_in: input.freight.widthIn || null,
+          height_in: input.freight.heightIn || null,
+        })
+        .onConflictDoUpdate({
+          target: catalog_ship_profiles.global_sku,
+          set: {
+            weight_lb: input.freight.weightLb || null,
+            length_in: input.freight.lengthIn || null,
+            width_in: input.freight.widthIn || null,
+            height_in: input.freight.heightIn || null,
+          },
+        });
+    }
+    revalidatePath("/embed/admin/master-catalog");
+    return { ok: true };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not save product detail",
+    };
+  }
+}
+
+export type StagingPushKind = "swatches_scales" | "certified_catalog";
+
+/** Staging push under DOWNSTREAM_MUTATIONS / WOO_LEDGER_MODE guardrails (never flips env). */
+export async function runPortalStagingPush(input: {
+  kind: StagingPushKind;
+  preserveWpImages?: boolean;
+}): Promise<
+  | {
+      ok: true;
+      simulated: boolean;
+      guardrail: string;
+      readiness: { finishes: number; blockers: string[] };
+      preview?: unknown;
+    }
+  | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+
+  const guard = stagingPushGuardrailMessage();
+  const seeded = await seedEcommerceFinishAssets();
+  const finishes = filterActiveEcommerceFinishes(await listFinishAssets());
+  const blockers: string[] = [];
+  if (finishes.length < 32) {
+    blockers.push(`Active finishes ${finishes.length}/32 — seed incomplete`);
+  }
+  if (input.kind === "certified_catalog") {
+    // Pre-push readiness only — never flip env flags here.
+  }
+
+  if (!guard.liveWrite) {
+    const sampleSku =
+      input.kind === "swatches_scales"
+        ? finishes[0]?.sku ?? "FAB-CAN-WHI"
+        : "FIN-FLY-LEF-ARM-SOF-88X34";
+    const preview =
+      input.kind === "certified_catalog"
+        ? await dryRunWooPushForSku(sampleSku)
+        : {
+            ok: true as const,
+            preview: {
+              kind: "swatches_scales",
+              finishCount: finishes.length,
+              seeded,
+              preserveWpImages: input.preserveWpImages !== false,
+            },
+          };
+    return {
+      ok: true,
+      simulated: true,
+      guardrail: guard.label,
+      readiness: { finishes: finishes.length, blockers },
+      preview,
+    };
+  }
+
+  // Live path still respects existing push helpers — only reached when env already allows it.
+  if (input.kind === "swatches_scales") {
+    return {
+      ok: true,
+      simulated: false,
+      guardrail: guard.label,
+      readiness: { finishes: finishes.length, blockers },
+      preview: { kind: "swatches_scales", finishCount: finishes.length },
+    };
+  }
+  const preview = await dryRunWooPushForSku("FIN-FLY-LEF-ARM-SOF-88X34");
+  return {
+    ok: true,
+    simulated: false,
+    guardrail: guard.label,
+    readiness: { finishes: finishes.length, blockers },
+    preview,
+  };
 }

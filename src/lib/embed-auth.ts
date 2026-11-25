@@ -162,3 +162,26 @@ export async function verifyEmbedSessionToken(
 export function embedTokenTtlSeconds(): number {
   return EMBED_TOKEN_TTL_SEC;
 }
+
+/**
+ * Read a signed embed session token from either `x-ccpatio-embed-token`
+ * or `Authorization: Bearer <token>` (GHL iframe cookie-independent auth).
+ */
+export function extractEmbedTokenFromHeaders(
+  getHeader: (name: string) => string | null | undefined,
+): string | null {
+  const direct = getHeader(EMBED_TOKEN_HEADER)?.trim();
+  if (direct) return direct;
+  const auth =
+    getHeader("authorization")?.trim() || getHeader("Authorization")?.trim() || "";
+  const match = /^Bearer\s+(.+)$/i.exec(auth);
+  return match?.[1]?.trim() || null;
+}
+
+/** Verify a presented embed token against GHL_EMBED_SECRET. */
+export async function authorizePresentedEmbedToken(
+  token: string | null | undefined,
+  secret = getGhlEmbedSecret(),
+): Promise<boolean> {
+  return Boolean(await verifyEmbedSessionToken(token, secret));
+}

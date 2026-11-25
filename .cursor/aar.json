@@ -1,20 +1,62 @@
 {
-  "phase_id": "ghl-ecommerce-handoff-portal-unification",
+  "phase_id": "ghl-ecommerce-portal-scroll-seed-readiness",
   "base_ref": "HEAD",
-  "blast_radius": 10,
+  "blast_radius": 20,
   "counts": {
-    "files": 10,
-    "tracked": 10,
-    "untracked": 0,
-    "insertions": 1505,
-    "deletions": 194
+    "files": 20,
+    "tracked": 13,
+    "untracked": 7,
+    "insertions": 1188,
+    "deletions": 197
   },
   "files": [
     {
+      "status": "??",
+      "path": "src/app/api/ecommerce/portal-product/route.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/api/ecommerce/portal-staging-push/route.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/PortalProductDrawer.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/app/embed/admin/master-catalog/loading.tsx",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/ecommerce/grouped-sku-resolve.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/ecommerce/portal-readiness.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/e2e/ecommerce-portal-scroll-drawer.spec.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 11,
-      "deletions": 9
+      "insertions": 7,
+      "deletions": 6
     },
     {
       "status": "M",
@@ -25,53 +67,79 @@
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 94,
-      "deletions": 33
+      "insertions": 194,
+      "deletions": 91
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 2,
-      "deletions": 0
+      "insertions": 394,
+      "deletions": 7
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx",
-      "insertions": 1068,
-      "deletions": 87
+      "insertions": 376,
+      "deletions": 73
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/page.tsx",
-      "insertions": 136,
-      "deletions": 34
+      "insertions": 6,
+      "deletions": 13
     },
     {
       "status": "M",
-      "path": "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx",
-      "insertions": 45,
-      "deletions": 6
+      "path": "src/app/embed/layout.tsx",
+      "insertions": 3,
+      "deletions": 1
     },
     {
       "status": "M",
-      "path": "src/server/ecommerce/phase1-portal.ts",
-      "insertions": 30,
+      "path": "src/components/embed/EmbedSessionProvider.tsx",
+      "insertions": 5,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/lib/embed-auth.ts",
+      "insertions": 23,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": "tests/e2e/ecommerce-two-tab.spec.ts",
-      "insertions": 58,
-      "deletions": 23
+      "path": "src/lib/pim-audit.ts",
+      "insertions": 14,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/assets/finish-assets.ts",
+      "insertions": 43,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/server/ecommerce/two-tab-portal.ts",
+      "insertions": 24,
+      "deletions": 0
     },
     {
       "status": "M",
       "path": "tests/ghl-ecommerce-32-finish-portal.test.ts",
-      "insertions": 59,
-      "deletions": 0
+      "insertions": 97,
+      "deletions": 1
     }
   ],
-  "untracked": [],
-  "file_list_sha256": "612988e624f10c3ea4b7ee505d38869ce1aff1833fa1384c61f0c3a3a69594de",
+  "untracked": [
+    "src/app/api/ecommerce/portal-product/route.ts",
+    "src/app/api/ecommerce/portal-staging-push/route.ts",
+    "src/app/embed/admin/master-catalog/ecommerce/PortalProductDrawer.tsx",
+    "src/app/embed/admin/master-catalog/loading.tsx",
+    "src/server/ecommerce/grouped-sku-resolve.ts",
+    "src/server/ecommerce/portal-readiness.ts",
+    "tests/e2e/ecommerce-portal-scroll-drawer.spec.ts"
+  ],
+  "file_list_sha256": "0d12c144b3003dbb8c4296766895f4180ed7fb0bcdf7941b6908a684ef3d7e4a",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }

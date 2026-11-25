@@ -173,11 +173,20 @@ describe("default GHL route is dark 3-tab portal (no legacy chrome)", () => {
       join(ROOT, "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx"),
       "utf8",
     );
+    const layout = readFileSync(join(ROOT, "src/app/embed/layout.tsx"), "utf8");
+    const loading = readFileSync(
+      join(ROOT, "src/app/embed/admin/master-catalog/loading.tsx"),
+      "utf8",
+    );
 
     expect(page).toContain('view") === "legacy-admin"');
     expect(page).toContain("legacy-back-to-portal");
     expect(page).toContain("EcommerceCertificationPortal");
-    expect(page).toContain("system-health-pill");
+    expect(page).toContain("PortalProductDrawer");
+
+    expect(layout).toContain("h-[100dvh]");
+    expect(layout).toContain("bg-[#0b0f17]");
+    expect(loading).toContain("bg-[#0b0f17]");
 
     expect(portal).toContain("portal-tab-finishes");
     expect(portal).toContain("portal-tab-products");
@@ -185,6 +194,13 @@ describe("default GHL route is dark 3-tab portal (no legacy chrome)", () => {
     expect(portal).toContain("portal-search-input");
     expect(portal).toContain("E-Commerce Certification & Handoff Portal");
     expect(portal).toContain("#0b0f17");
+    expect(portal).toContain("overflow-y-auto");
+    expect(portal).toContain("sticky top-0");
+    expect(portal).toContain("storefront-readiness-pill");
+    expect(portal).toContain("push-swatches-staging");
+    expect(portal).toContain("push-catalog-staging");
+    expect(portal).toContain("portal-sku-combobox");
+    expect(portal).toContain("APF Target Group");
     expect(portal).not.toContain("Recalculate Upcharge %");
     expect(portal).not.toContain("upcharge-pct-input");
 
@@ -193,5 +209,85 @@ describe("default GHL route is dark 3-tab portal (no legacy chrome)", () => {
     expect(partner).toContain("Powder-Coat Finishes");
     expect(partner).toContain("Active Finishes");
     expect(partner).not.toContain("24 Fabric Swatches");
+  });
+});
+
+describe("portal readiness + spot-check parity helpers", () => {
+  it("strips FIN brackets and formats variations", async () => {
+    const {
+      stripFinBracketsFromTitle,
+      formatVariationsFacing,
+      storefrontDisplayTitle,
+      stagingPushGuardrailMessage,
+      apfTargetGroupForFamily,
+    } = await import("@/server/ecommerce/portal-readiness");
+    expect(stripFinBracketsFromTitle("Fly Leg Sofa [FIN-FLY-LEF-ARM-SOF-88X34]")).toBe(
+      "Fly Leg Sofa",
+    );
+    expect(storefrontDisplayTitle("fly leg sofa [FIN-X]")).toBe("Fly Leg Sofa");
+    expect(formatVariationsFacing({ globalSku: "FIN-A", hasLsRsPair: false })).toBe("Simple");
+    expect(
+      formatVariationsFacing({ globalSku: "FIN-A-LS", hasLsRsPair: true }),
+    ).toBe("2 Vars (-LS / -RS)");
+    expect(apfTargetGroupForFamily("sunbrella")).toBe("Cushion & Pillow");
+    expect(apfTargetGroupForFamily("dekton")).toBe("Dekton Tabletop");
+    expect(apfTargetGroupForFamily("powder")).toBe("Aluminum Frame");
+    expect(stagingPushGuardrailMessage().liveWrite).toBe(false);
+  });
+
+  it("clears Needs Spot-Check when miaApproved === true", async () => {
+    const { needsMiaSpotCheck } = await import("@/server/ecommerce/two-tab-portal");
+    const sku = "FIN-WFT-FLY-BST-18X18-CNT";
+    expect(
+      needsMiaSpotCheck({
+        globalSku: sku,
+        wooSku: sku,
+        miaApproved: false,
+        attributes: { price_review_flag: "odd_dollar_in_pdf" },
+      }),
+    ).toBe(true);
+    expect(
+      needsMiaSpotCheck({
+        globalSku: sku,
+        wooSku: sku,
+        miaApproved: true,
+        attributes: { price_review_flag: "odd_dollar_in_pdf" },
+      }),
+    ).toBe(false);
+  });
+
+  it("resolves grouped parent + -LS/-RS candidates", async () => {
+    const {
+      resolveGroupedSkuCandidates,
+      pickGroupedSkuRow,
+    } = await import("@/server/ecommerce/grouped-sku-resolve");
+    const r = resolveGroupedSkuCandidates("FIN-FLY-LEF-ARM-SOF-88X34");
+    expect(r.parentSku).toBe("FIN-FLY-LEF-ARM-SOF-88X34");
+    expect(r.childSkus).toEqual([
+      "FIN-FLY-LEF-ARM-SOF-88X34-LS",
+      "FIN-FLY-LEF-ARM-SOF-88X34-RS",
+    ]);
+    const picked = pickGroupedSkuRow(
+      [
+        { globalSku: "FIN-FLY-LEF-ARM-SOF-88X34-LS" },
+        { globalSku: "FIN-FLY-LEF-ARM-SOF-88X34-RS" },
+      ],
+      "FIN-FLY-LEF-ARM-SOF-88X34",
+    );
+    expect(picked.row?.globalSku).toMatch(/FIN-FLY-LEF-ARM-SOF-88X34/);
+  });
+
+  it("extracts embed token from Authorization Bearer", async () => {
+    const { extractEmbedTokenFromHeaders } = await import("@/lib/embed-auth");
+    expect(
+      extractEmbedTokenFromHeaders((n) =>
+        n.toLowerCase() === "authorization" ? "Bearer tok-abc" : null,
+      ),
+    ).toBe("tok-abc");
+    expect(
+      extractEmbedTokenFromHeaders((n) =>
+        n === "x-ccpatio-embed-token" ? "hdr-tok" : null,
+      ),
+    ).toBe("hdr-tok");
   });
 });

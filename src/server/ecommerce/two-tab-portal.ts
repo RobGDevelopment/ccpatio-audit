@@ -200,7 +200,12 @@ export function needsMiaSpotCheck(input: {
   globalSku: string;
   attributes?: Record<string, unknown> | null;
   wooSku?: string | null;
+  /** When true, pending spot-check badge/filter membership is cleared (102/102 parity). */
+  miaApproved?: boolean | null;
 }): boolean {
+  // Approved items never show Needs Spot-Check — odd-dollar PDF notes live in Edit Details.
+  if (input.miaApproved === true) return false;
+
   const sku = input.globalSku.trim().toUpperCase();
   const woo = (input.wooSku ?? "").trim().toUpperCase();
   const identity = woo || sku;
@@ -224,6 +229,25 @@ export function needsMiaSpotCheck(input: {
 
   const base = sku.replace(/-(LS|RS)$/i, "");
   return spot.some((s) => s === base && !s.includes("FLY-BST-18X18"));
+}
+
+/** Odd-dollar / missing-PDF note for Edit Details drawer (not a contradictory row badge). */
+export function spotCheckDrawerNote(input: {
+  globalSku: string;
+  attributes?: Record<string, unknown> | null;
+  wooSku?: string | null;
+}): string | null {
+  const flag = readPriceReviewFlag(input.attributes);
+  if (flag === PRICE_REVIEW_ODD) {
+    return "Odd-dollar PDF reference — confirm Aluminum MSRP matches Mia sheet before storefront push.";
+  }
+  if (flag === PRICE_REVIEW_MISSING) {
+    return "Missing from Mia PDF — confirm Aluminum MSRP before storefront push.";
+  }
+  // Fall back: SKU is on the spot-check list even without a price_review_flag.
+  const withoutApproval = needsMiaSpotCheck({ ...input, miaApproved: false });
+  if (!withoutApproval) return null;
+  return "Flagged for Mia spot-check (odd-dollar / PDF reference). Notes stay in this drawer after approval.";
 }
 
 export function matchesPhase2SubFilter(
