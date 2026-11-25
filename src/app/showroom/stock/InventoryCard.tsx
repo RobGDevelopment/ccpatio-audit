@@ -11,6 +11,8 @@ import type { ActiveShowroomHold } from "../actions";
 import { HoldLifecycleControls } from "./HoldLifecycleControls";
 import { PlaceHoldModal } from "./PlaceHoldModal";
 import { ReleaseHoldModal } from "./ReleaseHoldModal";
+import FullResImageLightbox from "@/app/embed/admin/master-catalog/ecommerce/FullResImageLightbox";
+import { formatFinishRepeatScaleLabel } from "@/lib/finish-physical-scale";
 
 const floatCard =
   "group relative overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]";
@@ -76,6 +78,7 @@ export function InventoryCard({
   const [imageExists, setImageExists] = useState(true);
   const [version, setVersion] = useState(0);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [holdOpen, setHoldOpen] = useState(false);
   const [releaseOpen, setReleaseOpen] = useState(false);
   const uom = displayStockUom(row.sku, row.uom);
@@ -111,9 +114,10 @@ export function InventoryCard({
             />
             <button
               type="button"
+              data-testid="inventory-open-lightbox"
               className="absolute inset-0 cursor-pointer"
-              aria-label={`Replace photo for ${row.name}`}
-              onClick={() => setUploadOpen(true)}
+              aria-label={`Preview photo for ${row.name}`}
+              onClick={() => setLightboxOpen(true)}
             />
           </div>
         ) : (
@@ -320,6 +324,25 @@ export function InventoryCard({
           setVersion((current) => current + 1);
         }}
       />
+      {lightboxOpen && src ? (
+        <FullResImageLightbox
+          open
+          onClose={() => setLightboxOpen(false)}
+          sku={row.sku}
+          displayName={row.name}
+          category={row.category ?? "finish"}
+          apfGroup="Current Inventory"
+          sourceProvenance="Showroom inventory photo"
+          repeatScale={formatFinishRepeatScaleLabel({ sku: row.sku })}
+          sha256={null}
+          thumbUrl={src}
+          fullResUrl={src}
+          onReplace={() => {
+            setLightboxOpen(false);
+            setUploadOpen(true);
+          }}
+        />
+      ) : null}
     </article>
   );
 }

@@ -1,12 +1,12 @@
 {
-  "phase_id": "ecc-compact-stack-highrez-lightbox-polish",
-  "intent": "Upload all 32 high-res 2048x2048 & 512x512 finish assets to Supabase, add Full-Res Lightbox inspector (Fit, 1:1 Zoom, 3x3 Tile, Replace), compact the 7-pill Stack Health strip with live drawers, unblock read-only Katana inventory pulls under DOWNSTREAM_MUTATIONS=false, and fix all 18 GHL walkthrough issues.",
+  "phase_id": "swatch-cv-recrop-scale-lightbox",
+  "intent": "Re-architect the 32-finish CV crop/illumination/seamless-tile pipeline with automated border QA gates, fix Cabana Classic stripe matching and uniform 3D UV texture scales, re-upload cache-busted 2048x2048 & 512x512 square assets to Supabase, and rebuild the 1:1 Square Lightbox + Current Inventory preview.",
   "mode": "edit",
   "base_ref": "HEAD",
   "allow_dirty_base": true,
   "override_blast_cap": true,
   "expected_blast_radius": 18,
-  "target_test": "npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts",
+  "target_test": "npx vitest run tests/swatch-cv-quality-and-lightbox.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",
     ".cursor/session-stamp.json",
@@ -16,6 +16,7 @@
     "src/app/embed/",
     "src/app/api/",
     "src/app/partner/primeview-handoff/",
+    "src/app/showroom/",
     "src/components/",
     "src/lib/",
     "src/server/",

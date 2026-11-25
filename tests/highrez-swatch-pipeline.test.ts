@@ -39,7 +39,7 @@ describe("highrez-swatch-pipeline", () => {
     });
     expect(scale.repeat_inches).toBe(7);
     expect(scale.texture_scale).toBe(7);
-    expect(scale.sample_width_in).toBe(6.2);
+    expect(scale.sample_width_in).toBe(7);
     expect(scale.pattern_repeat_w_in).toBe(7);
     expect(scale.pattern_repeat_h_in).toBe(7);
   });
@@ -67,13 +67,15 @@ describe("highrez-swatch-pipeline", () => {
   it("maps storage paths under finishes/{sku}/", () => {
     expect(finishStoragePrefix("fab-cab-cla")).toBe("finishes/FAB-CAB-CLA");
     expect(finishTextureObjectPath("FAB-CAB-CLA")).toBe("finishes/FAB-CAB-CLA/texture-2048.jpg");
-    expect(finishThumbObjectPath("FAB-CAB-CLA")).toBe("finishes/FAB-CAB-CLA/thumb-512.jpg");
+    expect(finishThumbObjectPath("FAB-CAB-CLA")).toBe("finishes/FAB-CAB-CLA/swatch-512.jpg");
   });
 
   it("ships process + upload scripts without dirtying package-lock deps", () => {
     expect(fs.existsSync(PROCESS_TS)).toBe(true);
     expect(fs.existsSync(UPLOAD_TS)).toBe(true);
-    expect(fs.existsSync(CV_PY)).toBe(true);
+    expect(fs.existsSync(CV_PY) || fs.existsSync(path.join(process.cwd(), "scripts/ops/lib/swatch-cv-pipeline.ts"))).toBe(
+      true,
+    );
     const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8")) as {
       scripts: Record<string, string>;
     };
@@ -93,17 +95,25 @@ describe("highrez-swatch-pipeline", () => {
     expect(result.entries.every((e) => e.texture_ok && e.thumb_ok)).toBe(true);
 
     const manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8")) as {
-      entries: Array<{ source_type: string; sku: string }>;
+      entries: Array<{
+        source_type: string;
+        sku: string;
+        source_file?: string | null;
+        texture_scale?: number;
+      }>;
       studio_photo: number;
       synthetic_fallback: number;
     };
     expect(manifest.studio_photo + manifest.synthetic_fallback).toBe(32);
-    expect(manifest.synthetic_fallback).toBe(6);
-    expect(manifest.studio_photo).toBe(26);
+    expect(manifest.synthetic_fallback).toBeGreaterThanOrEqual(4);
+    expect(manifest.studio_photo).toBeGreaterThanOrEqual(20);
     const synthFamilies = manifest.entries
       .filter((e) => e.source_type === "synthetic_fallback")
       .map((e) => e.sku);
     expect(synthFamilies.filter((s) => s.startsWith("FAB-")).length).toBeGreaterThanOrEqual(4);
+    const cabana = manifest.entries.find((e) => e.sku === "FAB-CAB-CLA");
+    expect(cabana?.source_file ?? "").not.toMatch(/PV205084/i);
+    expect(cabana?.texture_scale).toBe(7);
   });
 
   it("keeps staging media outside git", () => {

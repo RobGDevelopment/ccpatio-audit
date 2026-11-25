@@ -157,6 +157,7 @@ export function DropButton({
   disabled,
   onFile,
   testId,
+  variant = "light",
 }: {
   label: string;
   accept: string;
@@ -165,9 +166,12 @@ export function DropButton({
   disabled?: boolean;
   onFile: (file: File) => void;
   testId?: string;
+  /** Tab 1 ECC uses dark slate/amber; drawer keeps light. */
+  variant?: "light" | "dark";
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [over, setOver] = useState(false);
+  const dark = variant === "dark";
   return (
     <div
       onDragOver={(e) => {
@@ -182,8 +186,14 @@ export function DropButton({
         const file = e.dataTransfer.files?.[0];
         if (file) onFile(file);
       }}
-      className={`relative overflow-hidden rounded-lg border border-dashed text-[11px] font-semibold ${
-        over ? "border-sky-500 bg-sky-50" : "border-slate-300 bg-white hover:border-sky-300"
+      className={`relative overflow-hidden rounded-lg border text-[11px] font-semibold ${
+        dark
+          ? over
+            ? "border-amber-400 bg-slate-700"
+            : "border-slate-600 bg-slate-800/90 hover:bg-slate-700"
+          : over
+            ? "border-sky-500 bg-sky-50 border-dashed"
+            : "border-dashed border-slate-300 bg-white hover:border-sky-300"
       } ${disabled ? "opacity-50" : ""}`}
     >
       <button
@@ -191,7 +201,9 @@ export function DropButton({
         disabled={busy || disabled}
         data-testid={testId}
         onClick={() => inputRef.current?.click()}
-        className="flex w-full items-center justify-center gap-1.5 px-2 py-1.5 text-slate-700 disabled:cursor-not-allowed"
+        className={`flex w-full items-center justify-center gap-1.5 px-2 py-1.5 disabled:cursor-not-allowed ${
+          dark ? "text-slate-100 hover:text-amber-300" : "text-slate-700"
+        }`}
       >
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UploadCloud className="h-3.5 w-3.5" />}
         {busy && typeof progress === "number" ? `${label} · ${progress}%` : label}

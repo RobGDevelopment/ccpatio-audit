@@ -1,7 +1,7 @@
 /**
  * finishes:upload — gated Supabase uploader for high-rez finish textures.
  * Default: --dry-run (validate 32/32 + dimensions + canonical SKUs).
- * Apply:   --apply   (upload finishes/{sku}/... + persist URLs / scale / provenance).
+ * Apply:   --apply   (upload finishes/{sku}/... + persist cache-busted URLs / scale / provenance).
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -15,7 +15,10 @@ import {
 import {
   finishTextureObjectPath,
   finishThumbObjectPath,
+  withCacheBustQuery,
+  deriveFinishPhysicalScale,
 } from "../../src/server/assets/finish-assets";
+import { verifyAllProcessed } from "./lib/swatch-pixel-qa";
 
 const STAGING = "C:\\Workspace\\ccpatio-media-staging";
 const MANIFEST_PATH = path.join(STAGING, "processed", "manifest.json");
@@ -23,6 +26,7 @@ const MANIFEST_PATH = path.join(STAGING, "processed", "manifest.json");
 type ManifestEntry = {
   sku: string;
   display_name: string;
+  family: string;
   source_type: "studio_photo" | "synthetic_fallback";
   source_file?: string | null;
   texture_path: string;
@@ -90,6 +94,12 @@ export async function validateManifest(manifestPath = MANIFEST_PATH): Promise<Dr
       thumbOk = m.width === 512 && m.height === 512;
       if (!thumbOk) errors.push(`${e.sku}: thumb ${m.width}x${m.height}, need 512x512`);
     }
+    const scale = deriveFinishPhysicalScale({ sku: e.sku });
+    if (e.texture_scale !== scale.texture_scale) {
+      errors.push(
+        `${e.sku}: texture_scale ${e.texture_scale} != uniform family scale ${scale.texture_scale}`,
+      );
+    }
     if (!(e.repeat_inches > 0) || !(e.texture_scale > 0)) {
       errors.push(`${e.sku}: invalid repeat_inches/texture_scale`);
     }
@@ -105,6 +115,21 @@ export async function validateManifest(manifestPath = MANIFEST_PATH): Promise<Dr
 
   for (const sku of roster) errors.push(`Missing roster SKU: ${sku}`);
 
+  // Pixel QA gate
+  if (manifest.entries?.length === 32) {
+    const qa = await verifyAllProcessed(
+      manifest.entries.map((e) => ({
+        sku: e.sku,
+        texture_path: e.texture_path,
+        thumb_path: e.thumb_path,
+        family: e.family,
+      })),
+    );
+    for (const issue of qa.issues) {
+      errors.push(`pixel-qa ${issue.sku} ${issue.code}: ${issue.detail}`);
+    }
+  }
+
   return {
     ok: errors.length === 0,
     count: manifest.entries?.length ?? 0,
@@ -119,7 +144,6 @@ async function applyUpload(manifestPath = MANIFEST_PATH): Promise<void> {
     throw new Error(`Dry-run validation failed:\n${dry.errors.join("\n")}`);
   }
 
-  // Lazy-load server modules only on --apply (needs env + DB)
   const { getSupabaseAdmin, PRODUCT_IMAGES_BUCKET } = await import("../../src/lib/supabase-storage");
   const { getSupabaseUrl } = await import("../../src/lib/supabase-env");
   const {
@@ -147,6 +171,7 @@ async function applyUpload(manifestPath = MANIFEST_PATH): Promise<void> {
       display_name: def.displayName,
     });
 
+    const scale = deriveFinishPhysicalScale({ sku: e.sku, family: def.family });
     const texPath = finishTextureObjectPath(e.sku);
     const thPath = finishThumbObjectPath(e.sku);
     const texBuf = fs.readFileSync(e.texture_path);
@@ -165,10 +190,15 @@ async function applyUpload(manifestPath = MANIFEST_PATH): Promise<void> {
       if (error) throw new Error(`Upload ${objectPath}: ${error.message}`);
     }
 
-    const textureUrl = `${base}/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/${texPath}`;
-    const thumbUrl = `${base}/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/${thPath}`;
+    const textureUrl = withCacheBustQuery(
+      `${base}/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/${texPath}`,
+      sha256,
+    );
+    const thumbUrl = withCacheBustQuery(
+      `${base}/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/${thPath}`,
+      sha256,
+    );
 
-    // Studio photoshoot → photoshoot_verified; synthetic still ships 2048px tiles as Ready.
     const quality =
       e.source_type === "studio_photo" || (texMeta.width === 2048 && texMeta.height === 2048)
         ? "photoshoot_verified"
@@ -177,30 +207,31 @@ async function applyUpload(manifestPath = MANIFEST_PATH): Promise<void> {
     await updateFinishAsset(e.sku, {
       texture_2k_url: textureUrl,
       swatch_thumb_url: thumbUrl,
-      sample_width_in: e.sample_width_in,
-      sample_height_in: e.sample_height_in,
-      pattern_repeat_w_in: e.pattern_repeat_w_in,
-      pattern_repeat_h_in: e.pattern_repeat_h_in,
+      sample_width_in: scale.sample_width_in,
+      sample_height_in: scale.sample_height_in,
+      pattern_repeat_w_in: scale.pattern_repeat_w_in,
+      pattern_repeat_h_in: scale.pattern_repeat_h_in,
       texture_sha256: sha256,
       source_type: e.source_type,
       source_filename: e.source_file ?? null,
       texture_width_px: texMeta.width ?? 2048,
       texture_height_px: texMeta.height ?? 2048,
       quality_status: quality,
-      uploaded_by: "highrez-swatch-crop-match-upload",
+      uploaded_by: "swatch-cv-recrop-scale-lightbox",
     });
-    console.log(`[apply] ${e.sku} → ${texPath} sha256=${sha256.slice(0, 12)}… ${texMeta.width}x${texMeta.height}`);
+
+    // /embed/showroom Current Inventory resolves FAB-/DKT- thumbs via ecommerce_finish_assets
+    // (cache-busted swatch_thumb_url / texture_2k_url written above).
+
+    console.log(
+      `[apply] ${e.sku} → ${texPath}?v=${sha256.slice(0, 8)} sha256=${sha256.slice(0, 12)}… ${texMeta.width}x${texMeta.height}`,
+    );
   }
-  console.log(`[apply] uploaded ${manifest.entries.length} finishes`);
+  console.log(`[apply] uploaded ${manifest.entries.length} finishes with cache-bust ?v=`);
 }
 
 async function main(): Promise<void> {
   const apply = process.argv.includes("--apply");
-  const dryRun = !apply || process.argv.includes("--dry-run");
-
-  if (apply && process.argv.includes("--dry-run")) {
-    console.error("Pass either --dry-run (default) or --apply, not both meaningfully; running apply.");
-  }
 
   if (!apply) {
     const result = await validateManifest();
@@ -210,7 +241,6 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Still validate first
   const result = await validateManifest();
   console.log(JSON.stringify({ mode: "pre-apply-validate", ...result }, null, 2));
   if (!result.ok) process.exit(1);

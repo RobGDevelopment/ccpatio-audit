@@ -76,6 +76,7 @@ import ExecutiveStackHealthStrip from "./ExecutiveStackHealthStrip";
 import ArchiveImpactModal, { type ArchiveImpactTarget } from "./ArchiveImpactModal";
 import PendingCommitBar, { type StagedPortalChange } from "./PendingCommitBar";
 import type { StackLayerPill } from "@/server/ecommerce/executive-stack-health";
+import { formatFinishRepeatScaleLabel } from "@/lib/finish-physical-scale";
 
 type PortalTab = "finishes" | "products" | "sync";
 type StatusFilter = "all" | "spot_check" | "approved";
@@ -297,21 +298,23 @@ function DarkFinishRow({
           onClick={() => onInspect?.()}
           aria-label={`Inspect ${asset.displayName}`}
         >
-          {asset.swatchThumbUrl && !imgBroken ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={asset.swatchThumbUrl}
-              alt={asset.displayName}
-              className="h-10 w-10 rounded-lg border border-white/10 object-cover"
-              onError={() => setImgBroken(true)}
-            />
-          ) : (
-            <span
-              className="block h-10 w-10 rounded-lg border border-white/10"
-              style={{ backgroundColor: asset.hexCode ?? "#334155" }}
-              title={asset.hexCode ?? "No swatch"}
-            />
-          )}
+          <span className="block h-12 w-12 min-w-12 aspect-square overflow-hidden rounded-md border border-slate-700 p-0">
+            {asset.swatchThumbUrl && !imgBroken ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={asset.swatchThumbUrl}
+                alt={asset.displayName}
+                className="block h-full w-full object-cover"
+                onError={() => setImgBroken(true)}
+              />
+            ) : (
+              <span
+                className="block h-full w-full"
+                style={{ backgroundColor: asset.hexCode ?? "#334155" }}
+                title={asset.hexCode ?? "No swatch"}
+              />
+            )}
+          </span>
         </button>
       </td>
       <td className="px-3 py-2.5">
@@ -459,6 +462,7 @@ function DarkFinishRow({
             progress={progress.thumb}
             onFile={(f) => void upload("thumb", f)}
             testId={`upload-thumb-${asset.sku}`}
+            variant="dark"
           />
           <DropButton
             label="↑ 2048px"
@@ -468,6 +472,7 @@ function DarkFinishRow({
             progress={progress.texture_2k}
             onFile={(f) => void upload("texture_2k", f)}
             testId={`upload-texture-${asset.sku}`}
+            variant="dark"
           />
         </div>
       </td>
@@ -2116,14 +2121,54 @@ export default function EcommerceCertificationPortal({
                 ? "Synthetic Fallback"
                 : "—"
           }
-          repeatScale={
-            lightboxAsset.patternRepeatWIn != null
-              ? `${lightboxAsset.patternRepeatWIn}″ × ${lightboxAsset.patternRepeatHIn ?? lightboxAsset.patternRepeatWIn}″`
-              : "—"
-          }
+          repeatScale={formatFinishRepeatScaleLabel({
+            sku: lightboxAsset.sku,
+            textureScale: lightboxAsset.sampleWidthIn,
+            patternRepeatWIn: lightboxAsset.patternRepeatWIn,
+            patternRepeatHIn: lightboxAsset.patternRepeatHIn,
+            sampleWidthIn: lightboxAsset.sampleWidthIn,
+            sampleHeightIn: lightboxAsset.sampleHeightIn,
+          })}
           sha256={lightboxAsset.textureSha256 ?? null}
           thumbUrl={lightboxAsset.swatchThumbUrl}
           fullResUrl={lightboxAsset.texture2kUrl}
+          hasPrev={assets.findIndex((a) => a.sku === lightboxAsset.sku) > 0}
+          hasNext={
+            assets.findIndex((a) => a.sku === lightboxAsset.sku) >= 0 &&
+            assets.findIndex((a) => a.sku === lightboxAsset.sku) < assets.length - 1
+          }
+          onPrev={() => {
+            const i = assets.findIndex((a) => a.sku === lightboxAsset.sku);
+            if (i > 0) setLightboxAsset(assets[i - 1]!);
+          }}
+          onNext={() => {
+            const i = assets.findIndex((a) => a.sku === lightboxAsset.sku);
+            if (i >= 0 && i < assets.length - 1) setLightboxAsset(assets[i + 1]!);
+          }}
+          onReplace={(slot) => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = IMAGE_ACCEPT;
+            input.onchange = () => {
+              const file = input.files?.[0];
+              if (!file) return;
+              void uploadEmbedAsset({
+                embedToken,
+                kind: "finish_swatch",
+                slot,
+                sku: lightboxAsset.sku,
+                file,
+              }).then((res) => {
+                if (res.ok) {
+                  void loadAssets();
+                  onToast(`Replaced ${slot} for ${lightboxAsset.sku}`);
+                } else {
+                  onToast(res.error);
+                }
+              });
+            };
+            input.click();
+          }}
         />
       ) : null}
     </div>

@@ -1,38 +1,62 @@
 {
-  "phase_id": "ecc-compact-stack-highrez-lightbox-polish",
+  "phase_id": "swatch-cv-recrop-scale-lightbox",
   "base_ref": "HEAD",
   "blast_radius": 18,
   "counts": {
     "files": 18,
-    "tracked": 15,
-    "untracked": 3,
-    "insertions": 1130,
-    "deletions": 311
+    "tracked": 11,
+    "untracked": 7,
+    "insertions": 752,
+    "deletions": 493
   },
   "files": [
     {
       "status": "??",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/FullResImageLightbox.tsx",
+      "path": "scripts/ops/lib/swatch-cv-pipeline.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/db/migrations/0062_finish_asset_provenance.sql",
+      "path": "scripts/ops/lib/swatch-pixel-qa.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/e2e/ecc-compact-stack-lightbox.spec.ts",
+      "path": "scripts/ops/postfix-swatch-qa.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "scripts/ops/reprocess-dekton.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/lib/finish-physical-scale.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/e2e/swatch-cv-lightbox.spec.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/swatch-cv-quality-and-lightbox.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 5,
-      "deletions": 4
+      "insertions": 4,
+      "deletions": 3
     },
     {
       "status": "M",
@@ -43,87 +67,67 @@
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 61,
-      "deletions": 132
+      "insertions": 37,
+      "deletions": 37
+    },
+    {
+      "status": "M",
+      "path": "scripts/ops/process-highrez-finishes.ts",
+      "insertions": 329,
+      "deletions": 203
     },
     {
       "status": "M",
       "path": "scripts/ops/upload-highrez-finishes.ts",
-      "insertions": 26,
-      "deletions": 6
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 275,
-      "deletions": 17
+      "insertions": 48,
+      "deletions": 18
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx",
-      "insertions": 383,
-      "deletions": 75
+      "insertions": 65,
+      "deletions": 20
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/ExecutiveStackHealthStrip.tsx",
-      "insertions": 112,
-      "deletions": 49
+      "path": "src/app/embed/admin/master-catalog/ecommerce/FullResImageLightbox.tsx",
+      "insertions": 201,
+      "deletions": 151
     },
     {
       "status": "M",
-      "path": "src/server/assets/finish-assets.ts",
-      "insertions": 102,
-      "deletions": 7
-    },
-    {
-      "status": "M",
-      "path": "src/server/db/schema.ts",
-      "insertions": 8,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/server/ecommerce/ecommerce-32-finish-roster.ts",
-      "insertions": 12,
-      "deletions": 10
-    },
-    {
-      "status": "M",
-      "path": "src/server/ecommerce/executive-stack-health.ts",
-      "insertions": 17,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/server/showroom/stock.ts",
-      "insertions": 38,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/server/stock/hub-sync-freshness.ts",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/SwatchesFinishesDrawer.tsx",
       "insertions": 15,
       "deletions": 3
     },
     {
       "status": "M",
-      "path": "tests/ghl-ecommerce-32-finish-portal.test.ts",
-      "insertions": 51,
-      "deletions": 0
+      "path": "src/app/showroom/stock/InventoryCard.tsx",
+      "insertions": 25,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/server/assets/finish-assets.ts",
+      "insertions": 10,
+      "deletions": 48
     },
     {
       "status": "M",
       "path": "tests/highrez-swatch-pipeline.test.ts",
-      "insertions": 23,
-      "deletions": 2
+      "insertions": 16,
+      "deletions": 6
     }
   ],
   "untracked": [
-    "src/app/embed/admin/master-catalog/ecommerce/FullResImageLightbox.tsx",
-    "src/server/db/migrations/0062_finish_asset_provenance.sql",
-    "tests/e2e/ecc-compact-stack-lightbox.spec.ts"
+    "scripts/ops/lib/swatch-cv-pipeline.ts",
+    "scripts/ops/lib/swatch-pixel-qa.ts",
+    "scripts/ops/postfix-swatch-qa.ts",
+    "scripts/ops/reprocess-dekton.ts",
+    "src/lib/finish-physical-scale.ts",
+    "tests/e2e/swatch-cv-lightbox.spec.ts",
+    "tests/swatch-cv-quality-and-lightbox.test.ts"
   ],
-  "file_list_sha256": "bb9e2d5d2f943a5e02682f791acf856d3bd3db6285128ec94ec7ce01d1137f90",
+  "file_list_sha256": "365571c033de9c0608ed2660acafd841d0716510c401be552d376bfff27ab519",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }

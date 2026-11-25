@@ -1,8 +1,7 @@
 /**
- * finishes:process — high-rez studio crop/match/fallback pipeline.
+ * finishes:process — CV safe-square / illumination / seamless-tile + 32-SKU match audit.
  * Raw + processed media live under C:\Workspace\ccpatio-media-staging\ (outside git).
  */
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,44 +12,24 @@ import {
   type EcommerceFinishFamily,
 } from "../../src/server/ecommerce/ecommerce-32-finish-roster";
 import { deriveFinishPhysicalScale } from "../../src/server/assets/finish-assets";
+import {
+  listRawStudioPhotos,
+  processStudioPhoto,
+  synthesizeCabanaClassic,
+  synthesizeSolidTexture,
+  OUT_ROOT,
+  STAGING_ROOT,
+  TEXTURE_DIR,
+  THUMB_DIR,
+  OVERLAY_DIR,
+  type CvProcessResult,
+} from "./lib/swatch-cv-pipeline";
+import { verifyAllProcessed } from "./lib/swatch-pixel-qa";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../..");
-const STAGING = "C:\\Workspace\\ccpatio-media-staging";
-const RAW_ROOT = path.join(STAGING, "HighRezImages");
-const OUT_ROOT = path.join(STAGING, "processed");
-const TEXTURE_DIR = path.join(OUT_ROOT, "textures");
-const THUMB_DIR = path.join(OUT_ROOT, "thumbs");
-const OVERLAY_DIR = path.join(OUT_ROOT, "overlays");
-const CV_PY = path.join(__dirname, "process-highrez-finishes-cv.py");
 const REF_FABRICS = path.join(REPO_ROOT, "docs", "Vividworks", "Handoff", "web-fabrics");
-
-const CABANA_STRIPE_IN = 7;
-
-type CvRow = {
-  source_file?: string;
-  relative?: string;
-  category_folder?: string;
-  sha1?: string;
-  error?: string;
-  pixels_per_inch?: number | null;
-  ppi_method?: string;
-  deskew_deg?: number;
-  crop_box?: { x: number; y: number; side: number };
-  cropped_width_in?: number | null;
-  overlay_path?: string;
-  tmp_id?: string;
-  texture_path?: string;
-  thumb_path?: string;
-  lab?: number[];
-  stripe?: {
-    vertical_energy: number;
-    horizontal_energy: number;
-    vertical_period_px: number;
-    horizontal_period_px: number;
-    is_striped: boolean;
-  };
-};
+const GREY_SUNBRELLA_FALLBACK = "FAB-CRU-ASH";
 
 export type ManifestEntry = {
   sku: string;
@@ -107,13 +86,9 @@ function hexToLab(hex: string): number[] {
   const Y = R * 0.2126 + G * 0.7152 + B * 0.0722;
   const Z = R * 0.0193 + G * 0.1192 + B * 0.9505;
   const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
-  const Xn = 0.95047;
-  const Yn = 1.0;
-  const Zn = 1.08883;
-  const fx = f(X / Xn);
-  const fy = f(Y / Yn);
-  const fz = f(Z / Zn);
-  // OpenCV Lab uses L 0–255, a/b 0–255 with 128 zero — convert to that space for distance
+  const fx = f(X / 0.95047);
+  const fy = f(Y / 1.0);
+  const fz = f(Z / 1.08883);
   const L = (116 * fy - 16) * (255 / 100);
   const a = 500 * (fx - fy) * (255 / 256) + 128;
   const bb = 200 * (fy - fz) * (255 / 256) + 128;
@@ -137,7 +112,6 @@ async function refLab(sku: string): Promise<number[] | null> {
     .removeAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
-  // Approximate mean → hex → lab (good enough for ranking)
   let r = 0;
   let g = 0;
   let b = 0;
@@ -179,6 +153,7 @@ function lookalikesFor(def: EcommerceFinishDefinition): string[] {
     "FAB-CAN-NAV": ["FAB-POS-SAP", "FAB-CAN-BLA"],
     "FAB-RIT-NEC": ["FAB-PRE-FAW", "FAB-CAN-HEN"],
     "FAB-RIT-ROS": ["FAB-RUE-COS"],
+    "FAB-CRU-ASH": ["FAB-MET-CLO", "FAB-DUM-STU"],
   };
   return powderLooks[def.sku] ?? fabricLooks[def.sku] ?? [];
 }
@@ -194,42 +169,13 @@ function confidenceFromDist(d: number, hasRef: boolean): "high" | "medium" | "lo
   return "low";
 }
 
-function runCvProcess(): CvRow[] {
-  const outJson = path.join(OUT_ROOT, "cv-results.json");
-  fs.mkdirSync(OUT_ROOT, { recursive: true });
-  const r = spawnSync("py", ["-3", CV_PY, "--mode", "process", "--out-json", outJson], {
-    cwd: REPO_ROOT,
-    encoding: "utf8",
-    maxBuffer: 32 * 1024 * 1024,
-  });
-  if (r.stderr) process.stderr.write(r.stderr);
-  if (r.status !== 0) {
-    throw new Error(`CV process failed (exit ${r.status}): ${r.stdout}\n${r.stderr}`);
-  }
-  return JSON.parse(fs.readFileSync(outJson, "utf8")) as CvRow[];
+function isCopyName(row: CvProcessResult): boolean {
+  return (row.relative ?? "").toLowerCase().includes("copy");
 }
 
-function runSynthesize(
-  specs: Array<{
-    sku: string;
-    hex: string;
-    kind: string;
-    repeat_inches: number;
-    texture_scale: number;
-  }>,
-): Array<Record<string, unknown>> {
-  const inPath = path.join(OUT_ROOT, "synthesize-specs.json");
-  const outPath = path.join(OUT_ROOT, "synthesize-results.json");
-  fs.writeFileSync(inPath, JSON.stringify(specs, null, 2));
-  const r = spawnSync(
-    "py",
-    ["-3", CV_PY, "--mode", "synthesize", "--json-in", inPath, "--out-json", outPath],
-    { cwd: REPO_ROOT, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
-  );
-  if (r.status !== 0) {
-    throw new Error(`Synthesize failed: ${r.stderr || r.stdout}`);
-  }
-  return JSON.parse(fs.readFileSync(outPath, "utf8")) as Array<Record<string, unknown>>;
+function preferCanonical(a: CvProcessResult, b: CvProcessResult): CvProcessResult {
+  if (isCopyName(a) !== isCopyName(b)) return isCopyName(a) ? b : a;
+  return (a.relative ?? "").localeCompare(b.relative ?? "") <= 0 ? a : b;
 }
 
 async function renameOutputs(tmpId: string, sku: string): Promise<{ texture: string; thumb: string }> {
@@ -241,7 +187,6 @@ async function renameOutputs(tmpId: string, sku: string): Promise<{ texture: str
   if (fs.existsSync(thDst)) fs.unlinkSync(thDst);
   fs.renameSync(texSrc, texDst);
   fs.renameSync(thSrc, thDst);
-  // Verify dimensions
   const meta = await sharp(texDst).metadata();
   if (meta.width !== 2048 || meta.height !== 2048) {
     throw new Error(`${sku} texture not 2048x2048 (${meta.width}x${meta.height})`);
@@ -349,32 +294,75 @@ ${body}
   return out;
 }
 
-function isCopyName(row: CvRow): boolean {
-  return (row.relative ?? "").toLowerCase().includes("copy");
+async function runCvOnAllRaw(): Promise<CvProcessResult[]> {
+  const photos = await listRawStudioPhotos();
+  const rows: CvProcessResult[] = [];
+  let i = 0;
+  for (const p of photos) {
+    i++;
+    const tmpId = `tmp_${String(i).padStart(3, "0")}`;
+    const families = familyForFolder(p.categoryFolder);
+    const familyHint = families[0];
+    console.log(`[cv] ${i}/${photos.length} ${p.relative}`);
+    try {
+      const row = await processStudioPhoto({
+        filePath: p.filePath,
+        relative: p.relative,
+        categoryFolder: p.categoryFolder,
+        tmpId,
+        familyHint,
+      });
+      rows.push(row);
+    } catch (err) {
+      console.warn(`[cv-error] ${p.relative}:`, err);
+      rows.push({
+        source_file: p.filePath,
+        relative: p.relative,
+        category_folder: p.categoryFolder,
+        sha1: "",
+        error: err instanceof Error ? err.message : String(err),
+        pixels_per_inch: null,
+        ppi_method: "error",
+        deskew_deg: 0,
+        crop_box: { x: 0, y: 0, side: 0 },
+        cropped_width_in: null,
+        overlay_path: "",
+        tmp_id: tmpId,
+        texture_path: "",
+        thumb_path: "",
+        lab: [],
+        stripe: {
+          vertical_energy: 0,
+          horizontal_energy: 0,
+          vertical_period_px: 0,
+          horizontal_period_px: 0,
+          is_striped: false,
+          L_p10: 0,
+          L_p90: 0,
+          bimodal: false,
+        },
+      });
+    }
+  }
+  const outJson = path.join(OUT_ROOT, "cv-results.json");
+  fs.writeFileSync(outJson, JSON.stringify(rows, null, 2), "utf8");
+  return rows;
 }
 
-/** Prefer canonical camera names over "*copy*" when collapsing duplicates. */
-function preferCanonical(a: CvRow, b: CvRow): CvRow {
-  if (isCopyName(a) !== isCopyName(b)) return isCopyName(a) ? b : a;
-  return (a.relative ?? "").localeCompare(b.relative ?? "") <= 0 ? a : b;
-}
-
-async function matchAndBuild(cvRows: CvRow[]): Promise<ManifestEntry[]> {
+async function matchAndBuild(cvRows: CvProcessResult[]): Promise<ManifestEntry[]> {
   const valid = cvRows.filter((row) => {
     if (row.error) {
       console.warn(`[cv-error] ${row.relative}: ${row.error}`);
       return false;
     }
-    return Boolean(row.lab && row.tmp_id);
+    return Boolean(row.lab?.length && row.tmp_id);
   });
 
-  // Duplicate detection: exact sha1 OR near-identical Lab within the same folder
   const duplicates: string[] = [];
-  const uniqueRows: CvRow[] = [];
-  const dropped = new Set<CvRow>();
+  const uniqueRows: CvProcessResult[] = [];
+  const dropped = new Set<CvProcessResult>();
 
-  // sha1 groups
-  const byHash = new Map<string, CvRow[]>();
+  const byHash = new Map<string, CvProcessResult[]>();
   for (const row of valid) {
     const list = byHash.get(row.sha1 ?? "") ?? [];
     list.push(row);
@@ -388,78 +376,83 @@ async function matchAndBuild(cvRows: CvRow[]): Promise<ManifestEntry[]> {
       if (g === keep) continue;
       dropped.add(g);
       duplicates.push(g.relative ?? "unknown");
-      console.log(`[dup] sha1 duplicate: ${g.relative} == ${keep.relative}`);
     }
   }
 
-  // Near-duplicate: only when a "*copy*" filename is Lab-near another in the same folder
-  // (e.g. Dekton/PV104825 copy.jpg ≈ PV204994.JPG). Do NOT collapse distinct light neutrals.
   const PERCEPTUAL_LAB_DUP = 15;
   const remaining = valid.filter((r) => !dropped.has(r));
-  const copyRows = remaining.filter(isCopyName);
-  for (const copy of copyRows) {
+  for (const copy of remaining.filter(isCopyName)) {
     if (dropped.has(copy)) continue;
-    let best: { row: CvRow; dist: number } | null = null;
+    let best: { row: CvProcessResult; dist: number } | null = null;
     for (const other of remaining) {
       if (other === copy || dropped.has(other)) continue;
       if ((other.category_folder ?? "") !== (copy.category_folder ?? "")) continue;
-      if (!copy.lab || !other.lab) continue;
+      if (!copy.lab?.length || !other.lab?.length) continue;
       const d = labDist(copy.lab, other.lab);
       if (d > PERCEPTUAL_LAB_DUP) continue;
       if (!best || d < best.dist) best = { row: other, dist: d };
     }
-    if (!best) {
-      // Still drop orphaned "*copy*" when no twin found — treat as non-canonical extra
-      dropped.add(copy);
-      duplicates.push(copy.relative ?? "unknown");
-      console.log(`[dup] flagged copy-named extra (no twin): ${copy.relative}`);
-      continue;
-    }
     dropped.add(copy);
     duplicates.push(copy.relative ?? "unknown");
-    console.log(
-      `[dup] perceptual duplicate (ΔE=${best.dist.toFixed(2)}): ${copy.relative} ≈ ${best.row.relative}`,
-    );
+    if (best) {
+      console.log(
+        `[dup] perceptual duplicate (ΔE=${best.dist.toFixed(2)}): ${copy.relative} ≈ ${best.row.relative}`,
+      );
+    }
   }
 
   for (const row of valid) {
     if (!dropped.has(row)) uniqueRows.push(row);
   }
 
-  // Preload reference labs
+  // Bimodal stripe scan — never bind FAB-CAB-CLA to solid grey (e.g. PV205084)
+  const bimodalRows = uniqueRows.filter(
+    (r) =>
+      r.category_folder === "Fabrics" &&
+      r.stripe?.bimodal &&
+      r.stripe.L_p90 > 75 &&
+      r.stripe.L_p10 < 25 &&
+      r.stripe.is_striped,
+  );
+  const bannedCabanaFiles = new Set(
+    uniqueRows
+      .filter((r) => /PV205084/i.test(r.relative ?? ""))
+      .map((r) => r.relative),
+  );
+
   const refLabs = new Map<string, number[]>();
   for (const def of ECOMMERCE_32_FINISHES) {
     const lab = await refLab(def.sku);
     if (lab) refLabs.set(def.sku, lab);
   }
 
-  type Cand = { def: EcommerceFinishDefinition; row: CvRow; dist: number; hasRef: boolean };
+  type Cand = { def: EcommerceFinishDefinition; row: CvProcessResult; dist: number; hasRef: boolean };
   const candidates: Cand[] = [];
   for (const row of uniqueRows) {
-    if (!row.lab || row.error) continue;
+    if (!row.lab?.length || row.error) continue;
     const families = familyForFolder(row.category_folder ?? "");
     for (const def of ECOMMERCE_32_FINISHES) {
       if (!families.includes(def.family)) continue;
+      // Hard ban: Cabana Classic must never match solid grey PV205084
+      if (def.sku === "FAB-CAB-CLA" && bannedCabanaFiles.has(row.relative)) continue;
+      if (def.sku === "FAB-CAB-CLA" && !(row.stripe?.bimodal && row.stripe.L_p90 > 75 && row.stripe.L_p10 < 25)) {
+        continue;
+      }
       const rosterLab = hexToLab(def.hex);
       let dist = labDist(row.lab, rosterLab);
       const ref = refLabs.get(def.sku);
-      if (ref) {
-        dist = labDist(row.lab, ref) * 0.65 + dist * 0.35;
-      }
-      // Stripe bonus for Cabana / patterned
-      if (row.stripe?.is_striped && def.patternRepeatIn) {
-        dist *= 0.9;
-      }
-      if (!row.stripe?.is_striped && !def.patternRepeatIn) {
-        dist *= 0.95;
-      }
+      if (ref) dist = labDist(row.lab, ref) * 0.65 + dist * 0.35;
+      if (row.stripe?.is_striped && def.patternRepeatIn) dist *= 0.75;
+      if (!row.stripe?.is_striped && !def.patternRepeatIn) dist *= 0.95;
+      // Prefer true cabana photo if present
+      if (def.sku === "FAB-CAB-CLA" && bimodalRows.includes(row)) dist *= 0.5;
       candidates.push({ def, row, dist, hasRef: Boolean(ref) });
     }
   }
   candidates.sort((a, b) => a.dist - b.dist);
 
   const assignedSku = new Set<string>();
-  const assignedRow = new Set<CvRow>();
+  const assignedRow = new Set<CvProcessResult>();
   const matches = new Map<string, Cand>();
 
   for (const c of candidates) {
@@ -469,36 +462,53 @@ async function matchAndBuild(cvRows: CvRow[]): Promise<ManifestEntry[]> {
     matches.set(c.def.sku, c);
   }
 
+  // If PV205084 was not assigned (banned from Cabana), bind it to Crush Ash grey if free
+  const greyRow = uniqueRows.find((r) => /PV205084/i.test(r.relative ?? ""));
+  if (greyRow && !assignedRow.has(greyRow)) {
+    const greySku = GREY_SUNBRELLA_FALLBACK;
+    if (!assignedSku.has(greySku)) {
+      const def = ECOMMERCE_32_FINISHES.find((d) => d.sku === greySku)!;
+      matches.set(greySku, {
+        def,
+        row: greyRow,
+        dist: labDist(greyRow.lab, hexToLab(def.hex)),
+        hasRef: Boolean(refLabs.get(greySku)),
+      });
+      assignedSku.add(greySku);
+      assignedRow.add(greyRow);
+      console.log(`[match] reassigned ${greyRow.relative} → ${greySku} (true grey Sunbrella)`);
+    }
+  }
+
   const entries: ManifestEntry[] = [];
   const missing: EcommerceFinishDefinition[] = [];
+  const matchAudit: Array<Record<string, unknown>> = [];
 
   for (const def of ECOMMERCE_32_FINISHES) {
     const m = matches.get(def.sku);
-    if (!m) {
-      missing.push(def);
-      continue;
+    if (!m || def.sku === "FAB-CAB-CLA") {
+      // Cabana handled specially below unless true bimodal photo matched
+      if (def.sku === "FAB-CAB-CLA" && m && m.row.stripe?.bimodal) {
+        // fall through to studio path
+      } else if (def.sku === "FAB-CAB-CLA") {
+        missing.push(def);
+        continue;
+      } else if (!m) {
+        missing.push(def);
+        continue;
+      }
     }
-    const stripePeriod =
-      def.sku === "FAB-CAB-CLA"
-        ? CABANA_STRIPE_IN
-        : m.row.stripe?.is_striped && m.row.pixels_per_inch && m.row.stripe.vertical_period_px
-          ? m.row.stripe.vertical_period_px / m.row.pixels_per_inch
-          : null;
-    const scale = deriveFinishPhysicalScale({
-      croppedWidthIn: m.row.cropped_width_in,
-      patternRepeatIn: def.patternRepeatIn,
-      stripePeriodIn: stripePeriod,
-      sku: def.sku,
-    });
-    const renamed = await renameOutputs(m.row.tmp_id!, def.sku);
-    // Move overlay to sku name for QA
+    if (!m) continue;
+
+    const scale = deriveFinishPhysicalScale({ sku: def.sku, family: def.family });
+    const renamed = await renameOutputs(m.row.tmp_id, def.sku);
     let overlay = m.row.overlay_path ?? null;
     if (overlay && fs.existsSync(overlay)) {
       const dest = path.join(OVERLAY_DIR, `${def.sku}.jpg`);
       fs.copyFileSync(overlay, dest);
       overlay = dest;
     }
-    entries.push({
+    const entry: ManifestEntry = {
       sku: def.sku,
       display_name: def.displayName,
       family: def.family,
@@ -509,7 +519,7 @@ async function matchAndBuild(cvRows: CvRow[]): Promise<ManifestEntry[]> {
       confidence: confidenceFromDist(m.dist, m.hasRef),
       lookalikes: lookalikesFor(def),
       pixels_per_inch: m.row.pixels_per_inch ?? null,
-      cropped_width_in: m.row.cropped_width_in ?? null,
+      cropped_width_in: scale.sample_width_in,
       ...scale,
       texture_path: renamed.texture,
       thumb_path: renamed.thumb,
@@ -518,67 +528,112 @@ async function matchAndBuild(cvRows: CvRow[]): Promise<ManifestEntry[]> {
       notes: [
         `match_dist=${m.dist.toFixed(2)}`,
         `ppi_method=${m.row.ppi_method ?? ""}`,
-        `deskew_deg=${m.row.deskew_deg ?? 0}`,
+        `uniform_scale=${scale.texture_scale}`,
       ],
+    };
+    entries.push(entry);
+    matchAudit.push({
+      sku: def.sku,
+      display_name: def.displayName,
+      source_file: entry.source_file,
+      source_type: entry.source_type,
+      texture_scale: entry.texture_scale,
+      hex_target: def.hex,
+      lab: entry.lab,
+      confidence: entry.confidence,
     });
+  }
+
+  // Cabana Classic: synthesize if no true B&W stripe photo
+  const cabanaDef = ECOMMERCE_32_FINISHES.find((d) => d.sku === "FAB-CAB-CLA")!;
+  if (!entries.some((e) => e.sku === "FAB-CAB-CLA")) {
+    console.log("[cabana] No bimodal B&W stripe photo — synthesizing woven Cabana Classic 2048²");
+    const synth = await synthesizeCabanaClassic("FAB-CAB-CLA");
+    const scale = deriveFinishPhysicalScale({ sku: "FAB-CAB-CLA" });
+    entries.push({
+      sku: "FAB-CAB-CLA",
+      display_name: cabanaDef.displayName,
+      family: "sunbrella",
+      category: "fabric",
+      hex: cabanaDef.hex,
+      source_type: "synthetic_fallback",
+      source_file: null,
+      confidence: "high",
+      lookalikes: [],
+      pixels_per_inch: null,
+      cropped_width_in: 7,
+      ...scale,
+      texture_path: synth.texture_path,
+      thumb_path: synth.thumb_path,
+      overlay_path: synth.overlay_path,
+      lab: synth.lab,
+      notes: ["synthetic_cabana_classic", "2x7in_vertical_stripe_repeats", "banned_PV205084_grey"],
+    });
+    matchAudit.push({
+      sku: "FAB-CAB-CLA",
+      source_type: "synthetic_fallback",
+      reason: "no_bimodal_stripe_photo_in_batch",
+      banned_files: [...bannedCabanaFiles],
+      texture_scale: 7,
+      stripe: synth.stripe,
+    });
+    // Remove from missing list
+    const idx = missing.findIndex((d) => d.sku === "FAB-CAB-CLA");
+    if (idx >= 0) missing.splice(idx, 1);
   }
 
   console.log(`[match] studio matched ${entries.length}/32; synthesizing ${missing.length} fallbacks`);
   console.log(`[dup] duplicates flagged: ${duplicates.length ? duplicates.join(", ") : "none"}`);
 
-  const synthSpecs = missing.map((def) => {
+  for (const def of missing) {
+    if (def.sku === "FAB-CAB-CLA") continue;
     const kind =
-      def.family === "ultraleather" ? "ultraleather" : def.family === "powder" ? "powder" : "dekton";
-    const scale = deriveFinishPhysicalScale({
-      croppedWidthIn: 8,
-      patternRepeatIn: def.patternRepeatIn,
+      def.family === "ultraleather"
+        ? "ultraleather"
+        : def.family === "powder"
+          ? "powder"
+          : def.family === "dekton"
+            ? "dekton"
+            : "fabric";
+    const synth = await synthesizeSolidTexture({ sku: def.sku, hex: def.hex, kind });
+    const scale = deriveFinishPhysicalScale({ sku: def.sku, family: def.family });
+    entries.push({
       sku: def.sku,
-    });
-    return {
-      sku: def.sku,
+      display_name: def.displayName,
+      family: def.family,
+      category: def.category,
       hex: def.hex,
-      kind,
-      repeat_inches: scale.repeat_inches,
+      source_type: "synthetic_fallback",
+      source_file: null,
+      confidence: "medium",
+      lookalikes: lookalikesFor(def),
+      pixels_per_inch: null,
+      cropped_width_in: scale.sample_width_in,
+      ...scale,
+      texture_path: synth.texture_path,
+      thumb_path: synth.thumb_path,
+      overlay_path: synth.overlay_path,
+      lab: synth.lab,
+      notes: [`synthetic:${kind}`, `missing_from_studio_batch`],
+    });
+    matchAudit.push({
+      sku: def.sku,
+      source_type: "synthetic_fallback",
       texture_scale: scale.texture_scale,
-    };
-  });
-
-  if (synthSpecs.length) {
-    const synth = runSynthesize(synthSpecs);
-    for (const s of synth) {
-      const def = missing.find((d) => d.sku === s.sku)!;
-      const scale = deriveFinishPhysicalScale({
-        croppedWidthIn: Number(s.cropped_width_in) || 8,
-        patternRepeatIn: def.patternRepeatIn,
-        sku: def.sku,
-      });
-      entries.push({
-        sku: def.sku,
-        display_name: def.displayName,
-        family: def.family,
-        category: def.category,
-        hex: def.hex,
-        source_type: "synthetic_fallback",
-        source_file: null,
-        confidence: "medium",
-        lookalikes: lookalikesFor(def),
-        pixels_per_inch: (s.pixels_per_inch as number) ?? null,
-        cropped_width_in: (s.cropped_width_in as number) ?? null,
-        ...scale,
-        texture_path: s.texture_path as string,
-        thumb_path: s.thumb_path as string,
-        overlay_path: (s.overlay_path as string) ?? null,
-        lab: (s.lab as number[]) ?? null,
-        notes: [`synthetic:${s.kind}`, `missing_from_studio_batch`],
-      });
-    }
+      hex_target: def.hex,
+    });
   }
 
-  // Stable roster order
   const order = new Map(ECOMMERCE_32_FINISHES.map((d, i) => [d.sku, i]));
   entries.sort((a, b) => (order.get(a.sku) ?? 0) - (order.get(b.sku) ?? 0));
 
-  // Cleanup tmp textures
+  // Enforce uniform scales on every entry
+  for (const e of entries) {
+    const scale = deriveFinishPhysicalScale({ sku: e.sku, family: e.family });
+    Object.assign(e, scale);
+    e.cropped_width_in = scale.sample_width_in;
+  }
+
   for (const f of fs.readdirSync(TEXTURE_DIR)) {
     if (f.startsWith("tmp_")) fs.unlinkSync(path.join(TEXTURE_DIR, f));
   }
@@ -586,24 +641,21 @@ async function matchAndBuild(cvRows: CvRow[]): Promise<ManifestEntry[]> {
     if (f.startsWith("tmp_")) fs.unlinkSync(path.join(THUMB_DIR, f));
   }
 
+  fs.writeFileSync(path.join(OUT_ROOT, "match-audit.json"), JSON.stringify(matchAudit, null, 2), "utf8");
   return entries;
 }
 
 function printSummary(entries: ManifestEntry[]): void {
   console.log("\n=== 32-Finish Match Summary ===");
   console.log(
-    "SKU".padEnd(22) +
-      "Name".padEnd(22) +
-      "Source".padEnd(20) +
-      "Conf".padEnd(8) +
-      "File",
+    "SKU".padEnd(22) + "Name".padEnd(22) + "Source".padEnd(20) + "Scale".padEnd(8) + "File",
   );
   for (const e of entries) {
     console.log(
       e.sku.padEnd(22) +
         e.display_name.slice(0, 20).padEnd(22) +
         e.source_type.padEnd(20) +
-        e.confidence.padEnd(8) +
+        String(e.texture_scale).padEnd(8) +
         (e.source_file ?? "(synthetic)"),
     );
   }
@@ -612,35 +664,108 @@ function printSummary(entries: ManifestEntry[]): void {
   console.log(`\nTotals: ${entries.length}/32 | studio=${studio} | synthetic=${synth}`);
 }
 
+async function postfixExistingTextures(): Promise<ManifestEntry[]> {
+  const { finalizeSeamlessTexture } = await import("./lib/swatch-cv-pipeline");
+  const manifestPath = path.join(OUT_ROOT, "manifest.json");
+  let prior: ManifestEntry[] | null = null;
+  if (fs.existsSync(manifestPath)) {
+    prior = (JSON.parse(fs.readFileSync(manifestPath, "utf8")) as { entries: ManifestEntry[] }).entries;
+  }
+  const entries: ManifestEntry[] = [];
+  for (const def of ECOMMERCE_32_FINISHES) {
+    const texture_path = path.join(TEXTURE_DIR, `${def.sku}.jpg`);
+    const thumb_path = path.join(THUMB_DIR, `${def.sku}.jpg`);
+    if (!fs.existsSync(texture_path)) {
+      throw new Error(`postfix missing texture ${texture_path}`);
+    }
+    if (def.family !== "dekton" && def.sku !== "FAB-CAB-CLA") {
+      const { data } = await sharp(texture_path).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+      const fixed = finalizeSeamlessTexture(Buffer.from(data), 2048);
+      await sharp(fixed, { raw: { width: 2048, height: 2048, channels: 3 } })
+        .jpeg({ quality: 92, chromaSubsampling: "4:4:4", mozjpeg: true })
+        .toFile(texture_path);
+      const thumbRgb = await sharp(fixed, { raw: { width: 2048, height: 2048, channels: 3 } })
+        .resize(512, 512, { kernel: "lanczos3" })
+        .raw()
+        .toBuffer();
+      await sharp(thumbRgb, { raw: { width: 512, height: 512, channels: 3 } })
+        .jpeg({ quality: 90, chromaSubsampling: "4:4:4", mozjpeg: true })
+        .toFile(thumb_path);
+      console.log(`[postfix] ${def.sku}`);
+    } else {
+      console.log(`[postfix] skip finalize ${def.sku}`);
+    }
+    const scale = deriveFinishPhysicalScale({ sku: def.sku, family: def.family });
+    const prev = prior?.find((e) => e.sku === def.sku);
+    entries.push({
+      sku: def.sku,
+      display_name: def.displayName,
+      family: def.family,
+      category: def.category,
+      hex: def.hex,
+      source_type: prev?.source_type ?? "studio_photo",
+      source_file: prev?.source_file ?? null,
+      confidence: prev?.confidence ?? "medium",
+      lookalikes: lookalikesFor(def),
+      pixels_per_inch: prev?.pixels_per_inch ?? null,
+      cropped_width_in: scale.sample_width_in,
+      ...scale,
+      texture_path,
+      thumb_path,
+      overlay_path: prev?.overlay_path ?? path.join(OVERLAY_DIR, `${def.sku}.jpg`),
+      lab: prev?.lab ?? null,
+      notes: [...(prev?.notes ?? []), "postfix_finalize"],
+    });
+  }
+  return entries;
+}
+
 async function main(): Promise<void> {
-  if (!fs.existsSync(RAW_ROOT)) {
-    throw new Error(`Raw staging missing: ${RAW_ROOT}`);
+  if (!fs.existsSync(path.join(STAGING_ROOT, "HighRezImages"))) {
+    throw new Error(`Raw staging missing: ${path.join(STAGING_ROOT, "HighRezImages")}`);
   }
   fs.mkdirSync(TEXTURE_DIR, { recursive: true });
   fs.mkdirSync(THUMB_DIR, { recursive: true });
   fs.mkdirSync(OVERLAY_DIR, { recursive: true });
 
+  const postfix = process.env.FINISHES_POSTFIX === "1" || process.argv.includes("--postfix");
+  let entries: ManifestEntry[];
+  if (postfix) {
+    console.log("[finishes:process] postfix finalize on existing SKU textures…");
+    entries = await postfixExistingTextures();
+  } else {
   const reuseCv = process.env.FINISHES_REUSE_CV === "1";
   const cvJson = path.join(OUT_ROOT, "cv-results.json");
-  let cvRows: CvRow[];
+  let cvRows: CvProcessResult[];
   if (reuseCv && fs.existsSync(cvJson)) {
     console.log("[finishes:process] reusing existing cv-results.json");
-    cvRows = JSON.parse(fs.readFileSync(cvJson, "utf8")) as CvRow[];
+    cvRows = JSON.parse(fs.readFileSync(cvJson, "utf8")) as CvProcessResult[];
   } else {
-    console.log("[finishes:process] running OpenCV crop/scale pipeline…");
-    cvRows = runCvProcess();
+    console.log("[finishes:process] running sharp/RGB safe-square pipeline…");
+    cvRows = await runCvOnAllRaw();
   }
   console.log(`[finishes:process] CV rows: ${cvRows.length}`);
 
-  const entries = await matchAndBuild(cvRows);
+  entries = await matchAndBuild(cvRows);
+  }
   if (entries.length !== 32) {
     throw new Error(`Expected 32 manifest entries, got ${entries.length}`);
   }
 
+  const qa = await verifyAllProcessed(entries);
+  if (!qa.ok) {
+    console.error("[pixel-qa] FAILED:");
+    for (const issue of qa.issues) {
+      console.error(`  ${issue.sku} ${issue.code}: ${issue.detail}`);
+    }
+    throw new Error(`Pixel QA gate failed with ${qa.issues.length} issue(s)`);
+  }
+  console.log("[pixel-qa] PASS — all 32 textures");
+
   const manifestPath = path.join(OUT_ROOT, "manifest.json");
   const manifest = {
     generated_at: new Date().toISOString(),
-    staging_root: STAGING,
+    staging_root: STAGING_ROOT,
     count: entries.length,
     studio_photo: entries.filter((e) => e.source_type === "studio_photo").length,
     synthetic_fallback: entries.filter((e) => e.source_type === "synthetic_fallback").length,
@@ -651,6 +776,7 @@ async function main(): Promise<void> {
   const qaPath = await writeContactSheet(entries);
   printSummary(entries);
   console.log(`\nmanifest: ${manifestPath}`);
+  console.log(`match-audit: ${path.join(OUT_ROOT, "match-audit.json")}`);
   console.log(`qa-contact-sheet: ${qaPath}`);
 }
 
@@ -662,4 +788,4 @@ if (isMain) {
   });
 }
 
-export { matchAndBuild, CABANA_STRIPE_IN, STAGING, OUT_ROOT };
+export { matchAndBuild, STAGING_ROOT as STAGING, OUT_ROOT };
