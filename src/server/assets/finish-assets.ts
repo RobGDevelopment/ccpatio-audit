@@ -16,6 +16,8 @@ import {
 import {
   ECOMMERCE_32_FINISHES,
   ECOMMERCE_FINISH_DISABLED_SENTINEL,
+  ECOMMERCE_FINISH_OPERATOR_SENTINEL,
+  ecommerceFinishBySku,
   filterActiveEcommerceFinishes,
   isEcommerce32FinishSku,
 } from "@/server/ecommerce/ecommerce-32-finish-roster";
@@ -378,23 +380,42 @@ type ManifestEntry = {
   sample_height_in: number | null;
   pattern_repeat_w_in: number | null;
   pattern_repeat_h_in: number | null;
+  /** Calibrated inches spanned by one texture edge (Cabana ≈ 7). */
+  repeat_inches: number | null;
+  repeat_w_in: number | null;
+  repeat_h_in: number | null;
+  texture_scale: number | null;
   quality_status: FinishQualityStatus;
 };
 
 const num = (v: string | null): number | null => (v == null ? null : Number(v));
 
 function manifestEntry(r: EcommerceFinishAssetRow): ManifestEntry {
+  const def = ecommerceFinishBySku(r.sku);
+  const patternFromRoster = def?.patternRepeatIn ?? null;
+  const w = num(r.pattern_repeat_w_in) ?? patternFromRoster?.w ?? null;
+  const h = num(r.pattern_repeat_h_in) ?? patternFromRoster?.h ?? null;
+  const scale = deriveFinishPhysicalScale({
+    croppedWidthIn: num(r.sample_width_in),
+    patternRepeatIn: w != null && h != null ? { w, h } : patternFromRoster,
+    stripePeriodIn: h,
+    sku: r.sku,
+  });
   return {
     label: r.display_name,
-    color: r.hex_code ?? "#CCCCCC",
+    color: r.hex_code ?? def?.hex ?? "#CCCCCC",
     image_url: r.swatch_thumb_url,
     texture_2k_url: r.texture_2k_url,
     normal_map_url: r.normal_map_url,
     roughness_map_url: r.roughness_map_url,
-    sample_width_in: num(r.sample_width_in),
-    sample_height_in: num(r.sample_height_in),
-    pattern_repeat_w_in: num(r.pattern_repeat_w_in),
-    pattern_repeat_h_in: num(r.pattern_repeat_h_in),
+    sample_width_in: num(r.sample_width_in) ?? scale.sample_width_in,
+    sample_height_in: num(r.sample_height_in) ?? scale.sample_height_in,
+    pattern_repeat_w_in: w,
+    pattern_repeat_h_in: h,
+    repeat_inches: scale.repeat_inches,
+    repeat_w_in: w,
+    repeat_h_in: h,
+    texture_scale: scale.texture_scale,
     quality_status: r.quality_status,
   };
 }
@@ -502,6 +523,7 @@ export async function addEcommerceFinishAsset(input: {
       swatch_thumb_url: fabricUrl,
       texture_2k_url: fabricUrl,
       quality_status: "placeholder_lowres",
+      uploaded_by: ECOMMERCE_FINISH_OPERATOR_SENTINEL,
     })
     .onConflictDoNothing({ target: ecommerce_finish_assets.sku })
     .returning();

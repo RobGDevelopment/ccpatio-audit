@@ -17,6 +17,22 @@ export type StagedPortalChange =
       sku: string;
       label: string;
       stagedAt: string;
+    }
+  | {
+      id: string;
+      kind: "archive_product";
+      sku: string;
+      listingId: string;
+      label: string;
+      stagedAt: string;
+    }
+  | {
+      id: string;
+      kind: "restore_product";
+      sku: string;
+      listingId: string;
+      label: string;
+      stagedAt: string;
     };
 
 type Props = {
@@ -47,8 +63,14 @@ export default function PendingCommitBar({ changes, committing, onCommit, onDisc
           <ul className="mt-1 max-h-20 overflow-y-auto text-[11px] text-slate-400">
             {changes.map((c) => (
               <li key={c.id}>
-                {c.kind === "archive_finish" ? "Archive finish" : "Restore finish"} · {c.sku} ·{" "}
-                {new Date(c.stagedAt).toLocaleString()}
+                {c.kind === "archive_finish"
+                  ? "Archive finish"
+                  : c.kind === "restore_finish"
+                    ? "Restore finish"
+                    : c.kind === "archive_product"
+                      ? "Archive product"
+                      : "Restore product"}{" "}
+                · {c.sku} · {new Date(c.stagedAt).toLocaleString()}
               </li>
             ))}
           </ul>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { authenticateAssetStudioRequest } from "@/server/assets/asset-studio-auth";
 import { validateCommitTarget, maxBytesForSlot } from "@/server/assets/presign-policy";
@@ -9,8 +10,12 @@ import {
   updateFinishAsset,
 } from "@/server/assets/finish-assets";
 import { getDb } from "@/server/db/client";
-import { ecommerce_listings } from "@/server/db/schema";
-import { getPublicObjectUrl, getStorageObjectInfo } from "@/lib/supabase-storage";
+import { ecommerce_listings, sku_mappings } from "@/server/db/schema";
+import {
+  getPublicObjectUrl,
+  getStorageObjectInfo,
+  getVaultStorage,
+} from "@/lib/supabase-storage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -72,6 +77,15 @@ export async function POST(request: Request) {
     const byteSize = info.size ?? (typeof body.byteSize === "number" ? Math.trunc(body.byteSize) : null);
     const publicUrl = getPublicObjectUrl(target.bucket, target.path);
 
+    // Real crypto sha256 of the landed object — never placeholder hashes.
+    let sha256Hex: string | null = null;
+    try {
+      const downloaded = await getVaultStorage().download(target.bucket, target.path);
+      sha256Hex = createHash("sha256").update(downloaded.bytes).digest("hex");
+    } catch {
+      sha256Hex = null;
+    }
+
     if (target.kind === "finish_swatch") {
       const subject = await resolveFinishSubject(String(body.sku));
       if (!subject) return bad(404, `Unknown finish SKU ${String(body.sku)}`);
@@ -91,6 +105,7 @@ export async function POST(request: Request) {
         slot: target.slot,
         publicUrl,
         byteSize,
+        sha256: sha256Hex,
         asset: row,
         auditRow: "skipped: product_asset_kind enum has no swatch/3D kind",
       });
@@ -115,7 +130,8 @@ export async function POST(request: Request) {
     } else {
       set.model_3d_poster_url = publicUrl;
     }
-    const [row] = await getDb()
+    const db = getDb();
+    const [row] = await db
       .update(ecommerce_listings)
       .set(set)
       .where(eq(ecommerce_listings.id, listing.id))
@@ -131,12 +147,35 @@ export async function POST(request: Request) {
         model_3d_updated_at: ecommerce_listings.model_3d_updated_at,
       });
     if (!row) return bad(404, "Listing disappeared during commit");
+
+    if (sha256Hex && (target.slot === "glb" || target.slot === "usdz")) {
+      const [mapping] = await db
+        .select({ attributes: sku_mappings.attributes, version: sku_mappings.version })
+        .from(sku_mappings)
+        .where(eq(sku_mappings.global_sku, listing.global_sku))
+        .limit(1);
+      if (mapping) {
+        const prev = (mapping.attributes as Record<string, unknown> | null) ?? {};
+        const digestKey =
+          target.slot === "glb" ? "model_3d_glb_sha256" : "model_3d_usdz_sha256";
+        await db
+          .update(sku_mappings)
+          .set({
+            attributes: { ...prev, [digestKey]: sha256Hex },
+            updated_at: now,
+            version: (mapping.version ?? 0) + 1,
+          })
+          .where(eq(sku_mappings.global_sku, listing.global_sku));
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       kind: target.kind,
       slot: target.slot,
       publicUrl,
       byteSize,
+      sha256: sha256Hex,
       listing: row,
       auditRow: "skipped: product_asset_kind enum has no swatch/3D kind",
     });

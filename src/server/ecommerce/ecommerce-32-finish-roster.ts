@@ -150,11 +150,58 @@ export type FinishAssetLike = {
   uploadedBy?: string | null;
 };
 
-/** Hide showroom / retired swatches from e-commerce views + Woo manifests. */
+/** Marker written when an operator mints a finish via the portal (+ Add Finish). */
+export const ECOMMERCE_FINISH_OPERATOR_SENTINEL = "ecommerce:operator";
+
+/**
+ * Known legacy showroom fabric codes that must never ship in acf_*_swatches_json
+ * or export feeds (Action Ash, etc.).
+ */
+export const LEGACY_SHOWROOM_FINISH_SKUS: ReadonlySet<string> = new Set([
+  "FAB-ACT-ASH",
+  "FAB-ACT-STO",
+  "FAB-ADA-IND",
+  "FAB-ADA-STO",
+  "FAB-AGR-IND",
+  "FAB-ARI-DEW",
+  "FAB-ARR-CAR",
+  "FAB-ARR-DUN",
+  "FAB-ARR-CAL",
+  "FAB-ASC-SPA",
+  "FAB-ASC-TRO",
+  "FAB-ASS-SAN",
+  "FAB-ASS-IITEA",
+  "FAB-AUT-PEB",
+  "FAB-BER-TUX",
+  "FAB-BLE-IND",
+  "FAB-BLE-LIN",
+  "FAB-BLE-SAN",
+  "FAB-BLI-ALO",
+  "FAB-BLI-DEW",
+  "FAB-BLI-GUA",
+  "FAB-BLI-LIN",
+  "FAB-BLI-SAN",
+  "PWD-WILD-RICE",
+]);
+
+export function isLegacyShowroomFinishSku(sku: string): boolean {
+  return LEGACY_SHOWROOM_FINISH_SKUS.has(sku.trim().toUpperCase());
+}
+
+/**
+ * Hide showroom / retired swatches from e-commerce views + Woo manifests.
+ * Allows the exact 32 roster + operator-minted active finishes; excludes
+ * archived (`ecommerce:disabled`) and legacy showroom codes (FAB-ACT-ASH…).
+ */
 export function isActiveEcommerceFinishAsset(row: FinishAssetLike): boolean {
   const uploaded = (row.uploaded_by ?? row.uploadedBy ?? "").trim().toLowerCase();
   if (uploaded === ECOMMERCE_FINISH_DISABLED_SENTINEL) return false;
-  return isEcommerce32FinishSku(row.sku);
+  const sku = row.sku.trim().toUpperCase();
+  if (isLegacyShowroomFinishSku(sku)) return false;
+  if (isEcommerce32FinishSku(sku)) return true;
+  // Operator-added active e-commerce finishes (portal mint).
+  if (uploaded === ECOMMERCE_FINISH_OPERATOR_SENTINEL) return true;
+  return false;
 }
 
 export function filterActiveEcommerceFinishes<T extends FinishAssetLike>(rows: T[]): T[] {

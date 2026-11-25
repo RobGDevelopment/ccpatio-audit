@@ -20,6 +20,7 @@ export {
   isActiveEcommerceFinishAsset,
   isEcommerce32FinishSku,
   isFinishSkuLocked,
+  isLegacyShowroomFinishSku,
   resolveEcommerceFinishSku,
   tokensFromFinishDisplayName,
   type EcommerceFinishDefinition,

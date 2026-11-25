@@ -1,44 +1,38 @@
 {
-  "phase_id": "executive-dark-control-plane-unification",
+  "phase_id": "woocommerce-payload-pricing-integrity",
   "base_ref": "HEAD",
-  "blast_radius": 18,
+  "blast_radius": 21,
   "counts": {
-    "files": 18,
-    "tracked": 14,
-    "untracked": 4,
-    "insertions": 1319,
-    "deletions": 1232
+    "files": 21,
+    "tracked": 18,
+    "untracked": 3,
+    "insertions": 996,
+    "deletions": 282
   },
   "files": [
     {
       "status": "??",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/ArchiveImpactModal.tsx",
+      "path": "src/server/ecommerce/canonical-storefront-price.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/ExecutiveStackHealthStrip.tsx",
+      "path": "src/server/ecommerce/storefront-swatches.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/PendingCommitBar.tsx",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "src/server/ecommerce/executive-stack-health.ts",
+      "path": "tests/e2e/woocommerce-payload-pricing-integrity.spec.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 4,
-      "deletions": 5
+      "insertions": 3,
+      "deletions": 3
     },
     {
       "status": "M",
@@ -49,82 +43,105 @@
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 159,
-      "deletions": 159
+      "insertions": 133,
+      "deletions": 156
+    },
+    {
+      "status": "M",
+      "path": "src/app/api/assets/commit-upload/route.ts",
+      "insertions": 42,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "src/app/api/ecommerce/portal-staging-push/route.ts",
+      "insertions": 12,
+      "deletions": 1
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 314,
-      "deletions": 4
+      "insertions": 289,
+      "deletions": 66
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/ArchiveImpactModal.tsx",
+      "insertions": 1,
+      "deletions": 1
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx",
-      "insertions": 363,
-      "deletions": 93
+      "insertions": 176,
+      "deletions": 18
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/PendingCommitBar.tsx",
+      "insertions": 24,
+      "deletions": 2
     },
     {
       "status": "M",
       "path": "src/app/embed/admin/master-catalog/ecommerce/PortalProductDrawer.tsx",
-      "insertions": 240,
-      "deletions": 49
+      "insertions": 9,
+      "deletions": 2
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/Product3dMediaDrawer.tsx",
-      "insertions": 3,
+      "path": "src/lib/ecommerce-roster.ts",
+      "insertions": 1,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/page.tsx",
-      "insertions": 64,
-      "deletions": 871
+      "path": "src/server/assets/finish-assets.ts",
+      "insertions": 27,
+      "deletions": 5
     },
     {
       "status": "M",
-      "path": "src/server/assets/finish-assets.ts",
+      "path": "src/server/ecommerce/ecommerce-32-finish-roster.ts",
+      "insertions": 49,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/server/ecommerce/executive-stack-health.ts",
       "insertions": 10,
       "deletions": 1
     },
     {
       "status": "M",
-      "path": "src/server/ecommerce/ecommerce-32-finish-roster.ts",
-      "insertions": 5,
-      "deletions": 6
+      "path": "src/server/ecommerce/grouped-sku-resolve.ts",
+      "insertions": 17,
+      "deletions": 1
     },
     {
       "status": "M",
       "path": "src/server/ecommerce/portal-readiness.ts",
-      "insertions": 25,
-      "deletions": 7
+      "insertions": 21,
+      "deletions": 6
     },
     {
       "status": "M",
-      "path": "src/server/woocommerce/woo-catalog-sync.ts",
-      "insertions": 67,
-      "deletions": 10
-    },
-    {
-      "status": "M",
-      "path": "tests/e2e/ecommerce-two-tab.spec.ts",
-      "insertions": 7,
-      "deletions": 17
+      "path": "src/server/woocommerce/handoff-spec-generator.ts",
+      "insertions": 38,
+      "deletions": 13
     },
     {
       "status": "M",
       "path": "tests/ghl-ecommerce-32-finish-portal.test.ts",
-      "insertions": 56,
-      "deletions": 8
+      "insertions": 142,
+      "deletions": 0
     }
   ],
   "untracked": [
-    "src/app/embed/admin/master-catalog/ecommerce/ArchiveImpactModal.tsx",
-    "src/app/embed/admin/master-catalog/ecommerce/ExecutiveStackHealthStrip.tsx",
-    "src/app/embed/admin/master-catalog/ecommerce/PendingCommitBar.tsx",
-    "src/server/ecommerce/executive-stack-health.ts"
+    "src/server/ecommerce/canonical-storefront-price.ts",
+    "src/server/ecommerce/storefront-swatches.ts",
+    "tests/e2e/woocommerce-payload-pricing-integrity.spec.ts"
   ],
-  "file_list_sha256": "6e710b840f14c1fa78302547aea6c3f71a7096fa8ca25e61a7f4561f071f0057",
+  "file_list_sha256": "ce965b61d0457bd6dbf983693b3e06cf36cf7d0b262af3604417d7c86214663d",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }

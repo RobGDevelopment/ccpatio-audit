@@ -101,16 +101,31 @@ export function inferSurfaceProfile(input: {
   ) {
     return stored;
   }
-  const hay = `${input.productName ?? ""} ${input.collectionLabel ?? ""}`.toLowerCase();
-  if (/umbrella|canopy/.test(hay)) return "Umbrella Canopy + Frame";
-  if (/heater|lamp|pool\b|hardware/.test(hay) && !/cushion|sofa|chair|table/.test(hay)) {
+  const hay = `${input.productName ?? ""} ${input.collectionLabel ?? ""}`.toUpperCase();
+  // Umbrellas (CANTILEVER UMBRELLA, etc.)
+  if (/\bUMBRELLA\b|\bCANOPY\b/.test(hay)) return "Umbrella Canopy + Frame";
+  // Heaters, Lamps & non-cushion pool (KINDLE LIVING HEATER/LAMP, TROPICS pool)
+  if (
+    /\bHEATER\b|\bLAMP\b|\bKINDLE LIVING\b|\bTROPICS\b/.test(hay) &&
+    !/\bCUSHION\b|\bSOFA\b|\bSECTIONAL\b/.test(hay)
+  ) {
     return "Finish / Hardware Only [Heaters, Lamps, Pool]";
   }
-  if (/dekton|table\b|tabletop/.test(hay)) return "Dekton Tabletop + Frame";
-  if (/frame only|powder/.test(hay) && !/cushion|pillow|sofa|chair/.test(hay)) {
+  if (/\bPOOL\b/.test(hay) && !/\bCUSHION\b|\bLOUNGE CHAIR\b|\bCHAISE\b/.test(hay)) {
+    return "Finish / Hardware Only [Heaters, Lamps, Pool]";
+  }
+  // Dining / Coffee / Side / Chat / Bar Tables → Dekton Tabletop + Frame (never Cushion)
+  if (
+    /\bTABLE\b|\bTABLETOP\b|\bDEKTON\b/.test(hay) ||
+    /\b(DINING|COFFEE|SIDE|CHAT|BAR)\b.*\bTAB/.test(hay) ||
+    /\b(DIN|COF|SID|CHA|BAR)[- ].*TAB\b/.test(hay)
+  ) {
+    return "Dekton Tabletop + Frame";
+  }
+  if (/FRAME ONLY|POWDER/.test(hay) && !/CUSHION|PILLOW|SOFA|CHAIR/.test(hay)) {
     return "Frame Only";
   }
-  if (/pillow/.test(hay)) return "Cushion + Pillow + Frame";
+  if (/\bPILLOW\b/.test(hay)) return "Cushion + Pillow + Frame";
   return "Cushion + Frame";
 }
 

@@ -1,174 +1,151 @@
-# BUILD_PLAN — `executive-dark-control-plane-unification`
+# BUILD_PLAN — `woocommerce-payload-pricing-integrity`
 
-**Base:** `HEAD` (`7ea3831`)  
+**Base:** `HEAD`  
 **Mode:** edit (Track 2 locked)  
 **Blast cap override:** true  
-**Expected blast radius:** 18 (QCA excludes `.cursor/aar.json`; `tolerance: 0`)
+**Expected blast radius:** 21 (QCA excludes `.cursor/aar.json`; `tolerance: 0`)
 
 ## Intent
 
-Unify the GHL E-Commerce Storefront Build and CC Patio Middleware Stack into
-**one full-width dark Executive Control Center** at `/embed/admin/master-catalog`,
-restricted to Mia (`mia@ccpatio.com`), Kian (`kian@ccpatio.com`), `SuperAdmin`,
-and authorized executive GHL embed tokens. Retire every remaining white view /
-drawer, restore `FAB-CAB-CLA` so Active Finishes is a live `32`, enforce
-archive-warning → staged-commit → 1-click restore protection, make every KPI /
-pill / stack-health chip clickable with guided actions, and certify via Vitest +
-Playwright + `qa:lifecycle` + QCA.
+Enforce **single-price Aluminum storefront truth** across Tab 2, Dark Product
+Drawer, Partner Handoff, CSV export, and WooCommerce REST/Dry-Run payloads;
+purge legacy showroom swatches from `acf_*_swatches_json` and export feeds so
+only the active 32-finish e-commerce roster ships; fix bulk
+`Push Certified Catalog to Staging [Preserve WP Images]` so catalog/finishes
+batch modes no longer return `"Listing not found."`; emit clean Title-Cased
+storefront names, protect `Simple` SKU integrity (no fake `-LS`/`-RS`), and
+auto-derive accurate Surface Profiles; complete residual Tab 2 product-row
+Archive/Restore wiring and real SHA-256 asset digests.
 
 Do **not** flip any `*_MODE` or `DOWNSTREAM_MUTATIONS` flags (`log` / `false`).
 
 ## Workstreams
 
-### 1. Full-bleed 100% viewport width & single dark page (retire all white views/drawers)
+### 1. Enforce Single-Price Aluminum Storefront Truth (`resolveCanonicalStorefrontPrice`)
 
-**Problem:** Portal still centers content under `max-w-7xl` / `max-w-6xl`,
-leaving unused iframe horizontal space; SKUs wrap; Swatch / 2048px Texture
-controls stack vertically in tall white columns; broken `<img>` icons appear
-when URLs are missing; three white drawers (`3D Media`, `E-Commerce Finishes
-(3D)`, `System Health`) and unstyled white `<option>` menus remain;
-`?view=legacy-admin` still exposes the white spreadsheet; header links
-`Raw Catalog Grid ->` and broken `Mission Control ->` (`/admin/mission-control`
-404) confuse operators.
+**Bug:** SKU `FIN-BRV-CLB-CHA-34X34` simultaneously showed `$2,080` in Tab 2,
+`$2,300` in the `Edit Details` drawer, and `"regular_price": "2680.00"` in the
+WooCommerce Dry Run JSON.
 
-**Fix:**
+**Fix:** Route every Aluminum storefront price surface through ONE shared
+canonical resolver:
 
-- Replace centering constraints with full-bleed layout:
-  `w-full max-w-none px-5 xl:px-8` across the portal shell, tables, and drawers.
-- Keep canonical SKUs on one crisp line (`whitespace-nowrap`).
-- Lay out `Swatch` and `2048px Texture` upload controls **side-by-side**
-  (not tall white vertical stacks).
-- When an image URL is not yet uploaded, render a clean color-swatch fallback
-  chip instead of a broken `<img>` icon.
-- Redirect `?view=legacy-admin` cleanly into the unified dark portal (no
-  spreadsheet escape hatch; no `Upcharge %` surface).
-- Remove header links: `Raw Catalog Grid ->` and `Mission Control ->`.
-- Eliminate **all three** remaining white drawers:
-  - `Product3dMediaDrawer` (`+ Add 3D`)
-  - white `E-Commerce Finishes (3D)` / `SwatchesFinishesDrawer`
-  - white `System HealthDrawer`
-- Style all `<select>` / `<option>` menus dark:
-  `bg-slate-900 text-slate-100`.
+```
+resolveCanonicalStorefrontPrice:
+  1. explicit storefront Aluminum override
+  2. certified Mia Aluminum PDF price
+  3. base Aluminum MSRP
+  (strictly exclude legacy steel / +10% upcharges)
+```
 
-**Migrate every legitimate input into the single dark portal:**
+Surfaces that MUST call the same resolver (exact dollar/cent parity):
 
-#### Merged Dark Product & 3D Drawer
+- Tab 2 (`Catalog`) price column
+- `PortalProductDrawer` / Edit Details
+- Partner Handoff (`/partner/primeview-handoff`)
+- Live WooCommerce CSV export
+- WooCommerce REST / Dry-Run payload builder (`regular_price`)
 
-Opened by `Edit Details`, `+ Add 3D`, or readiness pills. Must include:
+Assert exact parity for `FIN-BRV-CLB-CHA-34X34` across all five surfaces.
 
-- Locked read-only SKU(s) — show `-LS` / `-RS` **only** when the item actually
-  has variation children; never append fake `-LS`/`-RS` to `Simple` items
-- Storefront Title (preserve uppercase acronyms: `BH`, `SH`, `OD`, `LED`) & Copy
-- Aluminum MSRP
-- Expanded **Surface Profile**:
-  - `Cushion + Frame`
-  - `Cushion + Pillow + Frame`
-  - `Dekton Tabletop + Frame`
-  - `Umbrella Canopy + Frame`
-  - `Finish / Hardware Only [Heaters, Lamps, Pool]`
-  - `Frame Only`
-- Visibly labeled **Freight Packaging** (`Weight lbs`, `Length in`, `Width in`,
-  `Height in`)
-- `Legacy SKU`, `Factory Approved` status, `View on Staging` link
-- **3D & Gallery Studio:** `GLB`, `USDZ`, `SHA-256`, Material Slots
-  (`frame_finish` / `cushion_fabric` / `table_top` / `accent_accents`),
-  gallery photos, `Preserve WP Gallery Images` toggle
+### 2. Purge Legacy Showroom Swatches from `acf_*_swatches_json` & Export Feeds
 
-#### Tab 1 — Finishes, Swatches & Add-Ons
+**Bug:** Woo Dry Run JSON (`acf_fabric_swatches_json`) still emitted legacy
+showroom swatches (`FAB-ACT-ASH` / `Action_Ash_LOW.jpg`) instead of the active
+32-finish roster.
 
-- Sub-filter pills: `All 32 Active`, `Sunbrella (16)`, `Ultraleather (4)`,
-  `Dekton (6)`, `Powder Coats (6)`, `Storefront Add-Ons`,
-  `Archived / Disabled (N)`
-- `Repeat W × H (in)` + `Scale`
-- Clear validation messages automatically on input/blur
-- Only trigger row save + toast when a value actually changed (`dirty` check)
+**Fix:** Filter these emitters strictly through the **active (non-archived)
+e-commerce finish roster**:
 
-#### Tab 2 — Catalog & Pipeline
+- `acf_fabric_swatches_json`
+- `acf_powder_swatches_json`
+- `acf_dekton_swatches_json`
+- CSV swatch columns
+- 3D finish manifests
 
-- Product Type pills: `All Types`, `Sofas & Sectionals`, `Chairs & Loungers`,
-  `Tables`, `Ottomans`, `Swings`, `Umbrellas, Heaters & Misc`
-- Readiness filter pills: `Missing Dims`, `Missing 3D/Media`,
-  `Needs Mia Spot-Check`, `Mia Approved`, `Phase 2 / Drafts`, `Archived`
-- `+ New Product` creation drawer (auto-locked SKU via SKU engine)
-- Empty-state card when a filter matches `0` rows
-  (e.g. *"0 items currently need Mia Spot-Check — all 102 SOW items are
-  certified."*)
+Roster contract: `16 Sunbrella + 4 Ultraleather + 6 Dekton + 6 Aluminum Powder
+Coats` (+ any operator-added active e-commerce finishes). Include calibrated
+`repeat_inches` / `repeat_w_in` / `repeat_h_in` and `texture_scale`. Exclude
+steel frame options and `+10%` upcharges. Legacy codes such as `FAB-ACT-ASH`
+must be absent; active codes such as `FAB-CAB-CLA` (`Cabana Classic`) must be
+present.
 
-### 2. Restore `FAB-CAB-CLA` + Warning Modal, Staged Commit Bar & 1-Click Restore
+### 3. Fix Bulk `Push Certified Catalog to Staging [Preserve WP Images]`
 
-**Problem:** `FAB-CAB-CLA` (`Cabana Classic`, `7"` vertical repeat) is inactive,
-so Sunbrella shows less than `16/16` and Active Finishes drifts from live count;
-instant `−` hard-delete risk exists for finishes/products with no confirmation,
-no staged commit, and no restore path.
+**Bug:** Clicking `Push Certified Catalog to Staging` failed with
+`{ "ok": false, "error": "Listing not found." }` because
+`/api/ecommerce/portal-staging-push` attempted a single-SKU lookup when invoked
+for the full catalog.
 
 **Fix:**
 
-- Immediately restore `FAB-CAB-CLA` to active so Sunbrella = **`16/16`** and
-  Active Finishes dynamically reflects **`32`**.
-- Top `ACTIVE FINISHES` KPI card must compute **live active count** (never a
-  hardcoded `32`).
-- **Zero Accidental Deletion Policy** (Finishes AND Products):
-  - Never hard-delete middleware DB rows
-  - Never send destructive `DELETE` calls to WooCommerce
-  - Replace instant `−` with `Archive` that opens a dark **Impact Warning Modal**
-    detailing Hub + WooCommerce impact (variation count affected, storefront
-    visibility change, SKU preservation) and requiring explicit confirmation
-  - Confirmed archive / restore / critical visibility actions stage into a sticky
-    **Pending Commit Bar**:
-    `N Uncommitted Roster/Catalog Changes — [Review & Commit Changes] [Discard]`
-    with actor + timestamp audit logging
-  - Any archived finish or product restores in **1 click** from the
-    `Archived (N)` filter view
+- Support batch modes:
+  - `mode: "catalog"` → all active certified SOW products
+  - `mode: "finishes"` → all active e-commerce finishes
+  - plus single-SKU push (existing path)
+- Enforce `"preserveWpGalleryWhenEmpty": true` by omitting destructive empty
+  `images: []` overwrites when Hub gallery media is empty
+- Run pre-flight readiness checks
+- Return a clear batch summary:
+  - `totalProducts`
+  - `variationsCount`
+  - `wpGalleryPreservedCount`
+  - `missingDimsCount`
+  - `mutationMode: "simulated" | "live"`
+- Honor `DOWNSTREAM_MUTATIONS=false` (simulated writes; never live Woo mutate
+  under current flags)
+- Zero `"Listing not found."` when invoked for full certified catalog
 
-### 3. Interactive Full-Stack System Health Bar & "Every Pill Is Clickable" UX
+### 4. Clean Storefront Titles, `Simple` SKU Integrity & Accurate Surface Profiles
 
-**Problem:** System health is trapped in a white drawer / broken Mission Control
-link; WooCommerce can report fake green while WordPress returns HTML / critical
-PHP errors; KPIs and readiness pills are not actionable.
+**Titles:** Emit clean Title-Cased Storefront Display Titles in Woo Dry Run
+JSON `"name"` and CSV exports:
 
-**Fix — Full-Stack Control Strip** (top of portal; every pill clickable):
+- Strip raw `[FIN-...]` bracket suffixes
+- Never export raw ALL-CAPS factory names unless explicitly saved by operator
+- Preserve uppercase acronyms: `BH`, `SH`, `AH`, `OD`, `ID`, `LED`, `UV`,
+  `LP`, `NG`, `BBQ`, `3D`, `II`, `III`
 
-| # | Layer | Status UX |
-|---|--------|-----------|
-| 1 | **Supabase DB & Storage** | Healthy / Degraded / Action Required |
-| 2 | **Katana MRP** | Sync freshness + inline `Run Katana Sync Now` |
-| 3 | **QuickBooks Online** | `CC Patio Scottsdale LLC` connection status, `QBO_LEDGER_MODE` indicator, inline `Reconnect QuickBooks` → `/api/auth/qbo/connect` |
-| 4 | **WooCommerce (`ccpatiodev2.primeview.com`)** | **FIX FAKE GREEN:** probe real HTTP status + valid JSON; if WP returns HTML / `There has been a critical error on this website` / HTTP 5xx → **Red (`WP Critical Error`)**, show stripped error snippet, `Re-Test Connection`, `Copy Diagnostic Report for PrimeView`, Held/Quarantined Orders inspect |
-| 5 | **GoHighLevel CRM** | Connection / embed session health |
-| 6 | **FedEx LTL Freight** | Credentials status + `N SKUs Missing Dims — Click to Filter` shortcut |
-| 7 | **Inngest Queue / DLQ** | Open DLQ count + inspect/retry control |
+**Simple SKU integrity:** Products such as `FIN-BRV-CLB-CHA-34X34` must never
+display or emit synthetic `-LS` / `-RS` variation SKUs in the drawer, CSV, or
+Woo payloads.
 
-Status colors: `Healthy` Green / `Degraded` Amber / `Action Required` Red.
+**Surface Profiles (auto-derive when not explicitly overridden):**
 
-**Every KPI card, policy banner, and row badge is clickable:**
+| Product class | Default profile |
+|---|---|
+| Dining / Coffee / Side / Chat / Bar Tables | `Dekton Tabletop + Frame` (never `Cushion`) |
+| Umbrellas (`CANTILEVER UMBRELLA`, etc.) | `Umbrella Canopy + Frame` |
+| Heaters, Lamps & Non-Cushion Pool Loungers (`KINDLE LIVING HEATER`, `KINDLE LIVING LAMP`, `TROPICS` pool items) | `Finish / Hardware Only` |
 
-- KPI cards (`Parents`, `Variations`, `Simple`, `Purchasable SKUs`,
-  `Active Finishes`) and header pills (`Mia Approved`, `Storefront Readiness`)
-  → switch to matching tab + filter and show a dismissible dark info strip
-  explaining what is shown and any required action steps
-- Row pills (`Needs 2048px`, `Missing Dims`, `Freight Dims Ready`,
-  `Cushion`/`Tabletop`, `WP Gallery Preserved`/`Hub Media`,
-  `APF Target Group`, `Aluminum-Only Policy`) → open the targeted section of
-  the dark drawer (auto-focused on that exact input) **or** an inline dark
-  action popover explaining meaning + how to complete/change it
+### 5. Complete Residual Polish (Tab 2 Product-Row Archive + Real SHA-256)
 
-### 4. Executive Access Gate, Full `qa:lifecycle` & QCA Certification
+**Archive wiring:** Wire Tab 2 product-row `Archive` and `Restore` end-to-end
+through:
 
-**Access gate:**
+1. Dark **Impact Warning Modal**
+2. Sticky **Staged Commit Bar**
+3. `Archived (N)` filter vault
 
-- Allow: `mia@ccpatio.com`, `kian@ccpatio.com`, `SuperAdmin`, valid executive
-  GHL embed session
-- Deny: non-executive showroom/floor users → clean dark access-restricted card
+Strict soft-archive only — zero hard deletes in Hub or WooCommerce.
 
-**Tests (Vitest + Playwright):**
+**SHA-256 digests:** Compute and persist real `crypto.createHash("sha256")` hex
+digests on `.glb`, `.usdz`, and swatch/texture asset commits/uploads. Dark 3D
+studio must display the real digest or `Pending upload` — never fake
+placeholder hashes.
 
-- Full-bleed layout (`max-w-none`), zero white drawers, `?view=legacy-admin` no
-  longer exposes `Upcharge %` (migrate old legacy-admin assertions)
-- `FAB-CAB-CLA` restored (`16/16` Sunbrella, `32` dynamic active finishes) +
-  Archive Warning Modal → Staged Commit → `Archived` view → 1-click `Restore`
-- Clickable 7-service Stack Health Strip (including red detection when Woo
-  returns HTML/500 PHP error and inline `Reconnect QuickBooks`) + clickable
-  KPI/readiness pills
+### 6. Verification (`qa:lifecycle` + Vitest/Playwright + QCA)
+
+**Vitest + Playwright assertions:**
+
+1. `FIN-BRV-CLB-CHA-34X34` price matches identically across Tab 2, Dark Drawer,
+   CSV export, and Woo Dry Run JSON
+2. `acf_fabric_swatches_json` contains `FAB-CAB-CLA` (`Cabana Classic`) and
+   ZERO legacy showroom swatches (`FAB-ACT-ASH` absent)
+3. `Push Certified Catalog to Staging` returns `ok: true` batch summary
+   (zero `"Listing not found"`) under `DOWNSTREAM_MUTATIONS=false`
+4. Tab 2 product `Archive` → Warning Modal → Staged Commit → `Archived` view
+   → `Restore` round-trip works cleanly
 
 **Target Vitest:**
 
@@ -216,6 +193,6 @@ npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts
 - Never delete a paid order; ledger failure is retried, not rolled back
 - Katana remains single live tenant — no sandbox writes from this phase
 - Staging / sync actions must clearly distinguish simulation vs live write under
-  existing guardrails
+  existing guardrails (`mutationMode: "simulated" | "live"`)
 - Edits strictly inside `allowed_files` (Track 2)
-- Executive-only access for the unified control plane
+- Soft-archive only for products and finishes

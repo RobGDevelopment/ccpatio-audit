@@ -339,3 +339,145 @@ describe("portal readiness + spot-check parity helpers", () => {
     ).toBe("hdr-tok");
   });
 });
+
+describe("woocommerce-payload-pricing-integrity", () => {
+  const SKU = "FIN-BRV-CLB-CHA-34X34";
+
+  it("resolves identical canonical Aluminum price across surfaces for Bravada club chair", async () => {
+    const {
+      loadMiaAluminumFixture,
+      resolveCanonicalStorefrontPrice,
+      canonicalPriceToWooString,
+      formatCanonicalStorefrontPrice,
+    } = await import("@/server/ecommerce/canonical-storefront-price");
+    const fixture = loadMiaAluminumFixture();
+    expect(fixture).not.toBeNull();
+    const common = {
+      sku: SKU,
+      wooSku: SKU,
+      sowName: 'BRAVADA CLUB CHAIR 34" x 34" x 31" BH',
+      aluminumMsrp: 2680, // stale Hub value — Mia PDF must win without override
+      fixture,
+    };
+    const tab2 = resolveCanonicalStorefrontPrice(common);
+    const drawer = resolveCanonicalStorefrontPrice(common);
+    const csv = resolveCanonicalStorefrontPrice(common);
+    const woo = resolveCanonicalStorefrontPrice(common);
+    expect(tab2.price).toBe(2530);
+    expect(drawer.price).toBe(tab2.price);
+    expect(csv.price).toBe(tab2.price);
+    expect(woo.price).toBe(tab2.price);
+    expect(tab2.source).toBe("mia_pdf");
+    expect(canonicalPriceToWooString(woo.price)).toBe("2530.00");
+    expect(formatCanonicalStorefrontPrice(tab2.price)).toContain("2,530");
+    // Explicit override wins over Mia
+    const overridden = resolveCanonicalStorefrontPrice({
+      ...common,
+      storefrontAluminumOverride: 2400,
+    });
+    expect(overridden.price).toBe(2400);
+    expect(overridden.source).toBe("override");
+  });
+
+  it("never falls back to steel MSRP / +10% for canonical price", async () => {
+    const { resolveCanonicalStorefrontPrice } = await import(
+      "@/server/ecommerce/canonical-storefront-price"
+    );
+    const r = resolveCanonicalStorefrontPrice({
+      sku: "FIN-UNKNOWN-SKU-NO-MIA",
+      aluminumMsrp: null,
+      fixture: { sku_price_index: {} } as never,
+    });
+    expect(r.price).toBeNull();
+    expect(r.source).toBe("none");
+  });
+
+  it("acf_fabric_swatches_json contains FAB-CAB-CLA and zero legacy FAB-ACT-ASH", async () => {
+    const {
+      buildActiveFabricSwatchesJson,
+      assertNoLegacyShowroomInFabricJson,
+    } = await import("@/server/ecommerce/storefront-swatches");
+    const json = buildActiveFabricSwatchesJson();
+    assertNoLegacyShowroomInFabricJson(json);
+    const parsed = JSON.parse(json) as Array<{
+      fabric_sku?: string;
+      label?: string;
+      repeat_inches?: number | null;
+      texture_scale?: number | null;
+    }>;
+    expect(parsed.some((r) => r.fabric_sku === "FAB-CAB-CLA")).toBe(true);
+    expect(parsed.some((r) => r.label === "Cabana Classic")).toBe(true);
+    expect(parsed.some((r) => r.fabric_sku === "FAB-ACT-ASH")).toBe(false);
+    const cabana = parsed.find((r) => r.fabric_sku === "FAB-CAB-CLA");
+    expect(cabana?.repeat_inches).toBe(7);
+    expect(cabana?.texture_scale).toBe(7);
+  });
+
+  it("infers Dekton / Umbrella / Hardware surface profiles (never Cushion for tables)", async () => {
+    const { inferSurfaceProfile, storefrontDisplayTitle } = await import(
+      "@/server/ecommerce/portal-readiness"
+    );
+    expect(
+      inferSurfaceProfile({ productName: "BRAVADA DINING TABLE 36X36" }),
+    ).toBe("Dekton Tabletop + Frame");
+    expect(
+      inferSurfaceProfile({ productName: "CANTILEVER UMBRELLA 10FT" }),
+    ).toBe("Umbrella Canopy + Frame");
+    expect(
+      inferSurfaceProfile({ productName: "KINDLE LIVING HEATER" }),
+    ).toBe("Finish / Hardware Only [Heaters, Lamps, Pool]");
+    expect(
+      inferSurfaceProfile({ productName: "TROPICS POOL LOUNGER FRAME" }),
+    ).toBe("Finish / Hardware Only [Heaters, Lamps, Pool]");
+    expect(storefrontDisplayTitle("bravada club chair [FIN-BRV-CLB-CHA-34X34] bh")).toBe(
+      "Bravada Club Chair BH",
+    );
+    expect(storefrontDisplayTitle("CANTILEVER UMBRELLA LED 3D")).toMatch(/LED/);
+    expect(storefrontDisplayTitle("CANTILEVER UMBRELLA LED 3D")).toMatch(/3D/);
+  });
+
+  it("filters Simple SKUs to zero synthetic -LS/-RS children", async () => {
+    const { filterExistingFacingChildren, resolveGroupedSkuCandidates } = await import(
+      "@/server/ecommerce/grouped-sku-resolve"
+    );
+    const candidates = resolveGroupedSkuCandidates(SKU);
+    expect(candidates.childSkus).toEqual([`${SKU}-LS`, `${SKU}-RS`]);
+    expect(filterExistingFacingChildren(SKU, [SKU])).toEqual([]);
+    expect(
+      filterExistingFacingChildren("FIN-FLY-LEF-ARM-SOF-88X34", [
+        "FIN-FLY-LEF-ARM-SOF-88X34-LS",
+        "FIN-FLY-LEF-ARM-SOF-88X34-RS",
+      ]),
+    ).toEqual([
+      "FIN-FLY-LEF-ARM-SOF-88X34-LS",
+      "FIN-FLY-LEF-ARM-SOF-88X34-RS",
+    ]);
+  });
+
+  it("wires product archive modal + staged commit + staging push batch modes in portal sources", () => {
+    const portal = readFileSync(
+      join(ROOT, "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx"),
+      "utf8",
+    );
+    const commitBar = readFileSync(
+      join(ROOT, "src/app/embed/admin/master-catalog/ecommerce/PendingCommitBar.tsx"),
+      "utf8",
+    );
+    const actions = readFileSync(
+      join(ROOT, "src/app/embed/admin/master-catalog/actions.ts"),
+      "utf8",
+    );
+    expect(portal).toContain("archive-product-");
+    expect(portal).toContain("restore-product-");
+    expect(portal).toContain("portal-archived-products");
+    expect(portal).toContain('mode: "catalog"');
+    expect(portal).toContain("stageArchiveProduct");
+    expect(commitBar).toContain("archive_product");
+    expect(commitBar).toContain("restore_product");
+    expect(actions).toContain("StagingPushBatchSummary");
+    expect(actions).toContain("preserveWpGalleryWhenEmpty");
+    expect(actions).toContain("mutationMode");
+    expect(actions).toContain("listArchivedEcommerceListingsForPortal");
+    expect(actions).toContain("resolveCanonicalStorefrontPrice");
+  });
+});

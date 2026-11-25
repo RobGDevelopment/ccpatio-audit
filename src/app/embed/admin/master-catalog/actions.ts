@@ -120,6 +120,7 @@ import {
 import { pingGhl, readDlqSnapshot } from "@/server/mission-control/health-probes";
 import { isFedExFreightConfigured } from "@/lib/freight/fedex-freight";
 import {
+  filterExistingFacingChildren,
   pickGroupedSkuRow,
   resolveGroupedSkuCandidates,
 } from "@/server/ecommerce/grouped-sku-resolve";
@@ -129,11 +130,31 @@ import {
   storefrontDisplayTitle,
   type SurfaceProfile,
 } from "@/server/ecommerce/portal-readiness";
+import {
+  formatCanonicalStorefrontPrice,
+  loadMiaAluminumFixture,
+  parseStorefrontMoney,
+  readStorefrontAluminumOverride,
+  resolveCanonicalStorefrontPrice,
+} from "@/server/ecommerce/canonical-storefront-price";
 
-/** Woo Regular price prefers aluminum_msrp (baked +10%); falls back to steel. */
-function wooRegularFromListing(s: EcommerceListing): number | null {
-  if (s.aluminumMsrpValue != null && s.aluminumMsrpValue > 0) return s.aluminumMsrpValue;
-  return s.msrpValue;
+/**
+ * Woo Regular price via single-price Aluminum truth.
+ * Never falls back to steel MSRP or +10% steel upcharges.
+ */
+function wooRegularFromListing(
+  s: EcommerceListing,
+  attributes?: Record<string, unknown> | null,
+): number | null {
+  const resolved = resolveCanonicalStorefrontPrice({
+    sku: s.globalSku,
+    wooSku: s.wooSku,
+    sowName: s.productName,
+    storefrontAluminumOverride: readStorefrontAluminumOverride(attributes),
+    aluminumMsrp: s.aluminumMsrpValue,
+    fixture: loadMiaAluminumFixture(),
+  });
+  return resolved.price;
 }
 
 export type { WooSyncStatus, Phase1PortalView };
@@ -2213,22 +2234,35 @@ export async function getPhase1PortalRows(view: Phase1PortalView = "phase1_paren
   const attrsBySku = new Map(attrRows.map((r) => [r.sku, r]));
   const syncBySku = new Map(syncRows.map((r) => [r.sku, r]));
 
+  const miaFixture = loadMiaAluminumFixture();
   const enriched = roster.listings.map((listing) => {
     const attr = attrsBySku.get(listing.globalSku);
     const sync = syncBySku.get(listing.globalSku);
-    const mia = readMiaApproval(attr?.attributes as Record<string, unknown> | undefined);
+    const attributes = (attr?.attributes as Record<string, unknown>) ?? {};
+    const mia = readMiaApproval(attributes);
     const wooStatus = deriveWooSyncStatus({
       wooProductId: listing.wooProductId,
       hubUpdatedAt: attr?.updatedAt?.toISOString?.() ?? null,
       lastSyncedAt: sync?.updatedAt?.toISOString?.() ?? null,
       lastError: sync?.lastError ?? null,
     });
+    const canonical = resolveCanonicalStorefrontPrice({
+      sku: listing.globalSku,
+      wooSku: listing.wooSku,
+      sowName: listing.productName,
+      storefrontAluminumOverride: readStorefrontAluminumOverride(attributes),
+      aluminumMsrp: listing.aluminumMsrpValue,
+      fixture: miaFixture,
+    });
     return {
       ...listing,
+      // Single-price Aluminum truth for Tab 2 / drawer / CSV / Woo parity.
+      aluminumMsrpValue: canonical.price,
+      aluminumMsrp: formatCanonicalStorefrontPrice(canonical.price),
       miaApproved: mia.approved,
       miaApprovedAt: mia.approvedAt,
       wooSyncStatus: wooStatus as WooSyncStatus,
-      attributes: (attr?.attributes as Record<string, unknown>) ?? {},
+      attributes,
     };
   });
 
@@ -2295,7 +2329,7 @@ export async function approveAllVisibleSkus(
 export async function dryRunWooPushForSku(globalSku: string) {
   const session = await getPimSession();
   if (!session) return { ok: false as const, error: "Unauthorized embed session." };
-  const roster = await getEcommerceRoster();
+  const roster = await getPhase1PortalRows("phase1_flat");
   const listing = roster.listings.find((l) => l.globalSku === globalSku);
   if (!listing) return { ok: false as const, error: "Listing not found." };
   const siblings = roster.listings.filter(
@@ -2303,6 +2337,18 @@ export async function dryRunWooPushForSku(globalSku: string) {
       (listing.wooProductId && l.wooProductId === listing.wooProductId) ||
       l.globalSku === globalSku,
   );
+  // Simple SKUs: never emit synthetic -LS/-RS variation rows.
+  const realFacing = filterExistingFacingChildren(
+    listing.globalSku,
+    roster.listings.map((l) => l.wooSku || l.globalSku),
+  );
+  const variationRows =
+    realFacing.length >= 2
+      ? siblings.filter((s) => {
+          const sku = (s.wooSku || s.globalSku).toUpperCase();
+          return realFacing.includes(sku) || s.globalSku === listing.globalSku;
+        })
+      : [listing];
   const { buildFabricSwatchesManifestJson, buildPowderSwatchesManifestJson, buildDektonSwatchesManifestJson } =
     await import("@/server/assets/finish-assets");
   const [fabricSwatchesJson, powderSwatchesJson, dektonSwatchesJson] = await Promise.all([
@@ -2313,7 +2359,7 @@ export async function dryRunWooPushForSku(globalSku: string) {
   const parent: HubParentInput = {
     wooProductId: listing.wooProductId,
     sku: listing.globalSku,
-    name: listing.productName,
+    name: storefrontDisplayTitle(listing.productName) || listing.productName,
     shortDescription: listing.marketingDescription,
     description: listing.constructionDetails,
     status: listing.isWebVisible ? "publish" : "draft",
@@ -2324,15 +2370,15 @@ export async function dryRunWooPushForSku(globalSku: string) {
     dektonSwatchesJson,
     model3dGlbUrl: listing.model3dGlbUrl ?? null,
     model3dUsdzUrl: listing.model3dUsdzUrl ?? null,
-    variations: siblings.map((s) => ({
+    variations: variationRows.map((s) => ({
       sku: s.wooSku || s.globalSku,
-      regularPrice: wooRegularFromListing(s),
+      regularPrice: wooRegularFromListing(s, s.attributes),
       salePrice: s.salePrice,
       weightLb: s.hubWeight ? Number(s.hubWeight) : null,
       lengthIn: s.hubLength ? Number(s.hubLength) : null,
       widthIn: s.hubDepth ? Number(s.hubDepth) : null,
       heightIn: s.hubHeight ? Number(s.hubHeight) : null,
-      sizeLabel: s.productName,
+      sizeLabel: storefrontDisplayTitle(s.productName) || s.productName,
       katanaSku: s.globalSku,
       makeOrResale: s.thirdParty ? "Resale" : "Make",
       model3dGlbUrl: s.model3dGlbUrl ?? null,
@@ -2349,7 +2395,7 @@ export async function pushSkuToWoo(globalSku: string) {
   if (!session) return { ok: false as const, error: "Unauthorized embed session." };
   const dry = await dryRunWooPushForSku(globalSku);
   if (!dry.ok) return dry;
-  const roster = await getEcommerceRoster();
+  const roster = await getPhase1PortalRows("phase1_flat");
   const listing = roster.listings.find((l) => l.globalSku === globalSku);
   if (!listing) return { ok: false as const, error: "Listing not found." };
   const siblings = roster.listings.filter(
@@ -2357,6 +2403,17 @@ export async function pushSkuToWoo(globalSku: string) {
       (listing.wooProductId && l.wooProductId === listing.wooProductId) ||
       l.globalSku === globalSku,
   );
+  const realFacing = filterExistingFacingChildren(
+    listing.globalSku,
+    roster.listings.map((l) => l.wooSku || l.globalSku),
+  );
+  const variationRows =
+    realFacing.length >= 2
+      ? siblings.filter((s) => {
+          const sku = (s.wooSku || s.globalSku).toUpperCase();
+          return realFacing.includes(sku) || s.globalSku === listing.globalSku;
+        })
+      : [listing];
   const { buildFabricSwatchesManifestJson, buildPowderSwatchesManifestJson, buildDektonSwatchesManifestJson } =
     await import("@/server/assets/finish-assets");
   const [fabricSwatchesJson, powderSwatchesJson, dektonSwatchesJson] = await Promise.all([
@@ -2367,7 +2424,7 @@ export async function pushSkuToWoo(globalSku: string) {
   const parent: HubParentInput = {
     wooProductId: listing.wooProductId,
     sku: listing.globalSku,
-    name: listing.productName,
+    name: storefrontDisplayTitle(listing.productName) || listing.productName,
     shortDescription: listing.marketingDescription,
     description: listing.constructionDetails,
     status: listing.isWebVisible ? "publish" : "draft",
@@ -2378,15 +2435,15 @@ export async function pushSkuToWoo(globalSku: string) {
     dektonSwatchesJson,
     model3dGlbUrl: listing.model3dGlbUrl ?? null,
     model3dUsdzUrl: listing.model3dUsdzUrl ?? null,
-    variations: siblings.map((s) => ({
+    variations: variationRows.map((s) => ({
       sku: s.wooSku || s.globalSku,
-      regularPrice: wooRegularFromListing(s),
+      regularPrice: wooRegularFromListing(s, s.attributes),
       salePrice: s.salePrice,
       weightLb: s.hubWeight ? Number(s.hubWeight) : null,
       lengthIn: s.hubLength ? Number(s.hubLength) : null,
       widthIn: s.hubDepth ? Number(s.hubDepth) : null,
       heightIn: s.hubHeight ? Number(s.hubHeight) : null,
-      sizeLabel: s.productName,
+      sizeLabel: storefrontDisplayTitle(s.productName) || s.productName,
       katanaSku: s.globalSku,
       makeOrResale: s.thirdParty ? "Resale" : "Make",
       model3dGlbUrl: s.model3dGlbUrl ?? null,
@@ -3134,6 +3191,56 @@ export async function listFinishAssetsForPortal(): Promise<
   }
 }
 
+/** Soft-archived storefront listings for the Tab 2 Archived (N) vault. */
+export async function listArchivedEcommerceListingsForPortal(): Promise<
+  | {
+      ok: true;
+      listings: Array<{
+        id: string;
+        globalSku: string;
+        wooSku: string | null;
+        productName: string;
+        collectionLabel: string;
+        archivedAt: string | null;
+      }>;
+    }
+  | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const rows = await getDb()
+      .select({
+        id: ecommerce_listings.id,
+        globalSku: ecommerce_listings.global_sku,
+        wooSku: ecommerce_listings.woo_sku,
+        productName: ecommerce_listings.product_name,
+        collectionLabel: ecommerce_listings.collection_label,
+        archivedAt: ecommerce_listings.archived_at,
+      })
+      .from(ecommerce_listings)
+      .where(sql`${ecommerce_listings.archived_at} is not null`)
+      .orderBy(desc(ecommerce_listings.archived_at))
+      .limit(500);
+    return {
+      ok: true,
+      listings: rows.map((r) => ({
+        id: r.id,
+        globalSku: r.globalSku,
+        wooSku: r.wooSku,
+        productName: r.productName,
+        collectionLabel: r.collectionLabel,
+        archivedAt: r.archivedAt ? r.archivedAt.toISOString() : null,
+      })),
+    };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not load archived listings",
+    };
+  }
+}
+
 /** Soft-archive a storefront listing in Hub only — never Woo DELETE. */
 export async function archiveEcommerceListingForPortal(
   listingId: string,
@@ -3370,6 +3477,8 @@ export interface Product3dSlots {
   uploadedBy: string | null;
   updatedAt: string | null;
   materialSlots: Product3dMaterialSlot[];
+  /** Real crypto sha256 hex from product_assets, or null when pending upload. */
+  sha256: string | null;
 }
 
 function normalizeMaterialSlots(raw: unknown): Product3dMaterialSlot[] {
@@ -3412,7 +3521,8 @@ export async function getProduct3dSlots(
     const target = await resolveProduct3dListing(wooSkuOrGlobalSku);
     if (!target.ok) return { ok: false, error: target.reason };
     const l = ecommerce_listings;
-    const [row] = await getDb()
+    const db = getDb();
+    const [row] = await db
       .select({
         glb: l.model_3d_glb_url,
         usdz: l.model_3d_usdz_url,
@@ -3426,6 +3536,20 @@ export async function getProduct3dSlots(
       .where(eq(l.id, target.id))
       .limit(1);
     if (!row) return { ok: false, error: "Listing not found." };
+
+    // Real sha256 from commit-upload (attributes); never fabricate placeholder hashes.
+    const [mapping] = await db
+      .select({ attributes: sku_mappings.attributes })
+      .from(sku_mappings)
+      .where(eq(sku_mappings.global_sku, target.global_sku))
+      .limit(1);
+    const attrs = (mapping?.attributes as Record<string, unknown> | null) ?? {};
+    const glbHash =
+      typeof attrs.model_3d_glb_sha256 === "string" ? attrs.model_3d_glb_sha256 : null;
+    const usdzHash =
+      typeof attrs.model_3d_usdz_sha256 === "string" ? attrs.model_3d_usdz_sha256 : null;
+    const sha256 = glbHash || usdzHash || null;
+
     return {
       ok: true,
       slots: {
@@ -3439,6 +3563,7 @@ export async function getProduct3dSlots(
         uploadedBy: row.by,
         updatedAt: row.at ? row.at.toISOString() : null,
         materialSlots: normalizeMaterialSlots(row.slots),
+        sha256,
       },
     };
   } catch (error: unknown) {
@@ -3643,6 +3768,12 @@ export async function getPortalProductDetail(
       sku,
     );
 
+    // Only emit -LS/-RS children that actually exist in Hub — never synthetics.
+    const realChildren = filterExistingFacingChildren(
+      grouped.parentSku,
+      listingHits.map((h) => h.globalSku),
+    );
+
     let detailBase = listingPicked.row;
     if (!detailBase) {
       const hub = await getHubProductForDrawer(sku);
@@ -3663,18 +3794,25 @@ export async function getPortalProductDetail(
         .from(catalog_ship_profiles)
         .where(eq(catalog_ship_profiles.global_sku, hub.globalSku))
         .limit(1);
+      const canonical = resolveCanonicalStorefrontPrice({
+        sku: hub.globalSku,
+        wooSku: hub.wooSku,
+        sowName: hub.productName,
+        aluminumMsrp: hub.aluminumMsrpValue,
+        fixture: loadMiaAluminumFixture(),
+      });
       return {
         ok: true,
         detail: {
           listingId: hub.id || "",
           parentSku: grouped.parentSku,
-          childSkus: grouped.childSkus,
+          childSkus: realChildren,
           requestedSku: grouped.requestedSku,
           factoryName: hub.productName,
           storefrontTitle: storefrontDisplayTitle(hub.productName),
           description: hub.marketingDescription ?? "",
-          aluminumMsrp: hub.aluminumMsrp,
-          aluminumMsrpValue: hub.aluminumMsrpValue,
+          aluminumMsrp: formatCanonicalStorefrontPrice(canonical.price),
+          aluminumMsrpValue: canonical.price,
           surfaceProfile: surface,
           preserveWpGallery: true,
           freight: {
@@ -3709,27 +3847,28 @@ export async function getPortalProductDetail(
       .where(eq(catalog_ship_profiles.global_sku, detailBase.globalSku))
       .limit(1);
 
-    const aluRaw = detailBase.aluminumMsrp;
-    const aluNum =
-      aluRaw != null && String(aluRaw).trim()
-        ? Number(String(aluRaw).replace(/[^0-9.-]+/g, ""))
-        : null;
+    const aluNum = parseStorefrontMoney(detailBase.aluminumMsrp);
+    const canonical = resolveCanonicalStorefrontPrice({
+      sku: detailBase.globalSku,
+      wooSku: detailBase.wooSku,
+      sowName: detailBase.productName,
+      storefrontAluminumOverride: readStorefrontAluminumOverride(attrs),
+      aluminumMsrp: aluNum,
+      fixture: loadMiaAluminumFixture(),
+    });
 
     return {
       ok: true,
       detail: {
         listingId: detailBase.id,
         parentSku: grouped.parentSku,
-        childSkus: grouped.childSkus,
+        childSkus: realChildren,
         requestedSku: grouped.requestedSku,
         factoryName: detailBase.productName,
         storefrontTitle: storefrontDisplayTitle(detailBase.productName),
         description: detailBase.marketingDescription ?? "",
-        aluminumMsrp:
-          aluRaw != null
-            ? `$${Number(String(aluRaw).replace(/[^0-9.-]+/g, "")).toFixed(2)}`
-            : null,
-        aluminumMsrpValue: Number.isFinite(aluNum) ? aluNum : null,
+        aluminumMsrp: formatCanonicalStorefrontPrice(canonical.price),
+        aluminumMsrpValue: canonical.price,
         surfaceProfile: surface,
         preserveWpGallery:
           attrs?.preserve_wp_gallery === false ? false : true,
@@ -3809,11 +3948,15 @@ export async function savePortalProductDetail(input: {
         .where(eq(ecommerce_listings.id, input.listingId));
 
       const prev = (row.attributes as Record<string, unknown> | null) ?? {};
-      const nextAttrs = {
+      const nextAttrs: Record<string, unknown> = {
         ...prev,
         surface_profile: input.surfaceProfile,
         preserve_wp_gallery: input.preserveWpGallery,
       };
+      // Operator-saved Aluminum becomes the explicit storefront override.
+      if (alu != null && Number.isFinite(alu) && alu > 0) {
+        nextAttrs.storefront_aluminum_override = alu;
+      }
       await db
         .update(sku_mappings)
         .set({
@@ -3854,17 +3997,34 @@ export async function savePortalProductDetail(input: {
 }
 
 export type StagingPushKind = "swatches_scales" | "certified_catalog";
+export type StagingPushMode = "catalog" | "finishes" | "sku";
+
+export type StagingPushBatchSummary = {
+  totalProducts: number;
+  variationsCount: number;
+  wpGalleryPreservedCount: number;
+  missingDimsCount: number;
+  mutationMode: "simulated" | "live";
+  preserveWpGalleryWhenEmpty: true;
+  skippedMissing: number;
+  mode: StagingPushMode;
+  sampleSku?: string | null;
+};
 
 /** Staging push under DOWNSTREAM_MUTATIONS / WOO_LEDGER_MODE guardrails (never flips env). */
 export async function runPortalStagingPush(input: {
   kind: StagingPushKind;
   preserveWpImages?: boolean;
+  /** Batch mode: catalog (all certified), finishes, or single sku. */
+  mode?: StagingPushMode;
+  sku?: string | null;
 }): Promise<
   | {
       ok: true;
       simulated: boolean;
       guardrail: string;
       readiness: { finishes: number; blockers: string[] };
+      summary: StagingPushBatchSummary;
       preview?: unknown;
     }
   | { ok: false; error: string }
@@ -3873,59 +4033,122 @@ export async function runPortalStagingPush(input: {
   if (!session) return { ok: false, error: "Unauthorized embed session." };
 
   const guard = stagingPushGuardrailMessage();
+  const mutationMode: "simulated" | "live" = guard.liveWrite ? "live" : "simulated";
+  const preserveWpGalleryWhenEmpty = true as const;
   const seeded = await seedEcommerceFinishAssets();
   const finishes = filterActiveEcommerceFinishes(await listFinishAssets());
   const blockers: string[] = [];
   if (finishes.length < 32) {
     blockers.push(`Active finishes ${finishes.length}/32 — seed incomplete`);
   }
-  if (input.kind === "certified_catalog") {
-    // Pre-push readiness only — never flip env flags here.
-  }
 
-  if (!guard.liveWrite) {
-    const sampleSku =
-      input.kind === "swatches_scales"
-        ? finishes[0]?.sku ?? "FAB-CAN-WHI"
-        : "FIN-FLY-LEF-ARM-SOF-88X34";
-    const preview =
-      input.kind === "certified_catalog"
-        ? await dryRunWooPushForSku(sampleSku)
-        : {
-            ok: true as const,
-            preview: {
-              kind: "swatches_scales",
-              finishCount: finishes.length,
-              seeded,
-              preserveWpImages: input.preserveWpImages !== false,
-            },
-          };
+  const mode: StagingPushMode =
+    input.mode ??
+    (input.kind === "swatches_scales" ? "finishes" : input.sku ? "sku" : "catalog");
+
+  if (mode === "finishes" || input.kind === "swatches_scales") {
+    const summary: StagingPushBatchSummary = {
+      totalProducts: finishes.length,
+      variationsCount: 0,
+      wpGalleryPreservedCount: finishes.length,
+      missingDimsCount: 0,
+      mutationMode,
+      preserveWpGalleryWhenEmpty,
+      skippedMissing: 0,
+      mode: "finishes",
+    };
     return {
       ok: true,
-      simulated: true,
+      simulated: mutationMode === "simulated",
       guardrail: guard.label,
       readiness: { finishes: finishes.length, blockers },
-      preview,
+      summary,
+      preview: {
+        kind: "swatches_scales",
+        finishCount: finishes.length,
+        seeded,
+        preserveWpImages: input.preserveWpImages !== false,
+        mutationMode,
+      },
     };
   }
 
-  // Live path still respects existing push helpers — only reached when env already allows it.
-  if (input.kind === "swatches_scales") {
-    return {
-      ok: true,
-      simulated: false,
-      guardrail: guard.label,
-      readiness: { finishes: finishes.length, blockers },
-      preview: { kind: "swatches_scales", finishCount: finishes.length },
-    };
+  // Catalog / single-SKU path — never fail the whole batch on one missing SKU.
+  const roster = await getPhase1PortalRows("phase1_flat");
+  const certified = roster.listings.filter((l) => l.miaApproved === true);
+  const targets =
+    mode === "sku" && input.sku
+      ? roster.listings.filter(
+          (l) =>
+            l.globalSku === input.sku!.trim().toUpperCase() ||
+            (l.wooSku || "").toUpperCase() === input.sku!.trim().toUpperCase(),
+        )
+      : certified.length > 0
+        ? certified
+        : roster.listings;
+
+  let variationsCount = 0;
+  let wpGalleryPreservedCount = 0;
+  let missingDimsCount = 0;
+  const allSkus = roster.listings.map((l) => l.wooSku || l.globalSku);
+
+  for (const listing of targets) {
+    const hasDims = [listing.hubWeight, listing.hubLength, listing.hubDepth, listing.hubHeight].every(
+      (v) => v != null && Number(v) > 0,
+    );
+    if (!hasDims) missingDimsCount += 1;
+
+    // preserveWpGalleryWhenEmpty: omit destructive empty images[] when Hub gallery is empty.
+    const hasHubGallery = Boolean(listing.imageUrl);
+    if (!hasHubGallery || input.preserveWpImages !== false) {
+      wpGalleryPreservedCount += 1;
+    }
+
+    const facing = filterExistingFacingChildren(listing.globalSku, allSkus);
+    variationsCount += facing.length >= 2 ? facing.length : 1;
   }
-  const preview = await dryRunWooPushForSku("FIN-FLY-LEF-ARM-SOF-88X34");
+
+  // Pre-flight sample dry-run (or live push) — never abort the batch on one miss.
+  let samplePreview: unknown = null;
+  let skippedMissing = 0;
+  const sampleSku = targets[0]?.globalSku ?? null;
+  if (sampleSku) {
+    if (mutationMode === "simulated") {
+      const dry = await dryRunWooPushForSku(sampleSku);
+      if (!dry.ok) skippedMissing += 1;
+      else samplePreview = dry;
+    } else {
+      for (const listing of targets) {
+        const live = await pushSkuToWoo(listing.globalSku);
+        if (!live.ok) skippedMissing += 1;
+        else if (!samplePreview) samplePreview = live;
+      }
+    }
+  }
+
+  const summary: StagingPushBatchSummary = {
+    totalProducts: targets.length,
+    variationsCount,
+    wpGalleryPreservedCount,
+    missingDimsCount,
+    mutationMode,
+    preserveWpGalleryWhenEmpty,
+    skippedMissing,
+    mode,
+    sampleSku,
+  };
+
   return {
     ok: true,
-    simulated: false,
+    simulated: mutationMode === "simulated",
     guardrail: guard.label,
     readiness: { finishes: finishes.length, blockers },
-    preview,
+    summary,
+    preview: {
+      batch: true,
+      summary,
+      sample: samplePreview,
+    },
   };
 }
 

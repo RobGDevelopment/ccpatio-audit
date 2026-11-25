@@ -1,11 +1,11 @@
 {
-  "phase_id": "executive-dark-control-plane-unification",
-  "intent": "Unify GHL E-Commerce & full-stack Mission Control into one full-width dark Executive Control Center for Mia/Kian/SuperAdmin, restore FAB-CAB-CLA, add warning + staged commit + archive/restore protection, make every pill/KPI clickable with guided actions, and retire all white views/drawers.",
+  "phase_id": "woocommerce-payload-pricing-integrity",
+  "intent": "Enforce single-price Aluminum truth across UI/CSV/Woo payloads, purge legacy showroom swatches from acf_*_swatches_json, fix bulk Certified Catalog staging push, clean storefront titles and surface profiles, and complete product-row archive wiring + real SHA-256 asset digests.",
   "mode": "edit",
   "base_ref": "HEAD",
   "allow_dirty_base": true,
   "override_blast_cap": true,
-  "expected_blast_radius": 18,
+  "expected_blast_radius": 21,
   "target_test": "npx vitest run tests/ghl-ecommerce-32-finish-portal.test.ts",
   "allowed_files": [
     ".cursor/phase.lock",

@@ -29,7 +29,8 @@ export function facingSuffix(sku: string): "LS" | "RS" | null {
 
 /**
  * Build parent + child SKU candidates for DB lookup.
- * Always includes the raw SKU, the parent (suffix-stripped), and both -LS/-RS children.
+ * Always includes the raw SKU, the parent (suffix-stripped), and both -LS/-RS children
+ * as *lookup candidates* — callers must filter to rows that actually exist before UI emit.
  */
 export function resolveGroupedSkuCandidates(rawSku: string): GroupedSkuResolution {
   const requestedSku = rawSku.trim().toUpperCase();
@@ -45,6 +46,21 @@ export function resolveGroupedSkuCandidates(rawSku: string): GroupedSkuResolutio
     childSkus,
     isFacingChild: suffix !== null,
   };
+}
+
+/**
+ * Keep only -LS / -RS children that exist in `existingSkus`.
+ * Simple SKUs (no real facing siblings) return [] — never synthetic variations.
+ */
+export function filterExistingFacingChildren(
+  parentSku: string,
+  existingSkus: Iterable<string>,
+): string[] {
+  const parent = stripFacingSuffix(parentSku);
+  const set = new Set(
+    [...existingSkus].map((s) => s.trim().toUpperCase()).filter(Boolean),
+  );
+  return [`${parent}-LS`, `${parent}-RS`].filter((c) => set.has(c));
 }
 
 /**

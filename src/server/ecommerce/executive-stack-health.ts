@@ -133,12 +133,21 @@ export function buildWooDiagnosticReport(input: {
   ].join("\n");
 }
 
-/** Title Case that preserves outdoor-furniture acronyms (BH, SH, OD, LED…). */
+/** Title Case that preserves outdoor-furniture acronyms (BH, SH, AH, OD, LED…). */
 const PRESERVE_ACRONYMS = new Set([
   "BH",
   "SH",
+  "AH",
   "OD",
+  "ID",
   "LED",
+  "UV",
+  "LP",
+  "NG",
+  "BBQ",
+  "3D",
+  "II",
+  "III",
   "LS",
   "RS",
   "L",

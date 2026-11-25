@@ -480,8 +480,15 @@ export default function PortalProductDrawer({
                   </div>
                   <div>
                     <dt className="text-slate-500">SHA-256</dt>
-                    <dd className="truncate font-mono text-slate-200">
-                      {(slots as { sha256?: string | null } | null)?.sha256 ?? "—"}
+                    <dd
+                      className="truncate font-mono text-slate-200"
+                      data-testid="portal-drawer-sha256"
+                    >
+                      {slots?.sha256
+                        ? slots.sha256
+                        : slots?.glbUrl || slots?.usdzUrl
+                          ? "Pending upload"
+                          : "Pending upload"}
                     </dd>
                   </div>
                   <div>

@@ -4,7 +4,7 @@ import { AlertTriangle, X } from "lucide-react";
 
 export type ArchiveImpactTarget =
   | { kind: "finish"; sku: string; displayName: string }
-  | { kind: "product"; sku: string; productName: string };
+  | { kind: "product"; sku: string; productName: string; listingId?: string };
 
 type Props = {
   open: boolean;

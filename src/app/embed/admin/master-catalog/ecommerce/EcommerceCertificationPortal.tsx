@@ -44,12 +44,15 @@ import {
 import { sameGroupedParent } from "@/server/ecommerce/grouped-sku-resolve";
 import {
   addFinishRowForPortal,
+  archiveEcommerceListingForPortal,
   disableFinishRowForPortal,
   reenableFinishRowForPortal,
   dryRunWooPushForSku,
   getPrimeviewHandoffDownloadUrls,
   getPrimeviewPartnerHandoffLink,
+  listArchivedEcommerceListingsForPortal,
   listFinishAssetsForPortal,
+  restoreEcommerceListingForPortal,
   runPortalStagingPush,
   saveFinishCalibration,
   testWooConnectionAction,
@@ -583,9 +586,21 @@ export default function EcommerceCertificationPortal({
   const [tab, setTab] = useState<PortalTab>("finishes");
   const [finishSubFilter, setFinishSubFilter] = useState<FinishSubFilter>("all_active");
   const [archivedAssets, setArchivedAssets] = useState<FinishAssetView[]>([]);
+  const [archivedProducts, setArchivedProducts] = useState<
+    Array<{
+      id: string;
+      globalSku: string;
+      wooSku: string | null;
+      productName: string;
+      collectionLabel: string;
+      archivedAt: string | null;
+    }>
+  >([]);
   const [stagedChanges, setStagedChanges] = useState<StagedPortalChange[]>([]);
   const [committing, setCommitting] = useState(false);
-  const [archiveTarget, setArchiveTarget] = useState<ArchiveImpactTarget | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<
+    (ArchiveImpactTarget & { listingId?: string }) | null
+  >(null);
   const [guidance, setGuidance] = useState<string | null>(null);
   const [productTypeFilter, setProductTypeFilter] = useState<ProductTypeFilter>("all");
   const [readinessFilter, setReadinessFilter] = useState<ReadinessFilter>("none");
@@ -715,6 +730,8 @@ export default function EcommerceCertificationPortal({
           return false;
         }
         if (readinessFilter === "approved" && !l.miaApproved) return false;
+        // Archived vault is a separate list — hide active rows when that filter is on.
+        if (readinessFilter === "archived") return false;
         if (!q) return true;
         return (
           l.productName.toLowerCase().includes(q) ||
@@ -748,6 +765,15 @@ export default function EcommerceCertificationPortal({
     await loadAssets();
   }
 
+  async function loadArchivedProducts() {
+    const res = await listArchivedEcommerceListingsForPortal();
+    if (res.ok) setArchivedProducts(res.listings);
+  }
+
+  useEffect(() => {
+    void loadArchivedProducts();
+  }, []);
+
   function stageArchiveFinish(sku: string, displayName: string) {
     const id = `archive_finish:${sku}:${Date.now()}`;
     setStagedChanges((prev) => [
@@ -755,6 +781,22 @@ export default function EcommerceCertificationPortal({
       { id, kind: "archive_finish", sku, label: displayName, stagedAt: new Date().toISOString() },
     ]);
     onToast(`Staged archive for ${sku}`);
+  }
+
+  function stageArchiveProduct(listingId: string, sku: string, productName: string) {
+    const id = `archive_product:${listingId}:${Date.now()}`;
+    setStagedChanges((prev) => [
+      ...prev.filter((c) => !(c.kind === "archive_product" && c.listingId === listingId)),
+      {
+        id,
+        kind: "archive_product",
+        sku,
+        listingId,
+        label: productName,
+        stagedAt: new Date().toISOString(),
+      },
+    ]);
+    onToast(`Staged product archive for ${sku}`);
   }
 
   async function commitStagedChanges() {
@@ -775,12 +817,28 @@ export default function EcommerceCertificationPortal({
           setCommitting(false);
           return;
         }
+      } else if (change.kind === "archive_product") {
+        const res = await archiveEcommerceListingForPortal(change.listingId);
+        if (!res.ok) {
+          onToast(res.error);
+          setCommitting(false);
+          return;
+        }
+        onListingsChange(listings.filter((l) => l.id !== change.listingId));
+      } else if (change.kind === "restore_product") {
+        const res = await restoreEcommerceListingForPortal(change.listingId);
+        if (!res.ok) {
+          onToast(res.error);
+          setCommitting(false);
+          return;
+        }
       }
     }
     setStagedChanges([]);
     setCommitting(false);
-    onToast("Committed roster changes");
+    onToast("Committed roster/catalog changes");
     await loadAssets();
+    await loadArchivedProducts();
   }
 
   const variationPairSkus = useMemo(() => {
@@ -1205,6 +1263,7 @@ export default function EcommerceCertificationPortal({
                     ["missing_media", "Missing 3D/Media"],
                     ["spot_check", "Needs Mia Spot-Check"],
                     ["approved", "Mia Approved"],
+                    ["archived", `Archived (${archivedProducts.length})`],
                   ] as const
                 ).map(([key, label]) => (
                   <button
@@ -1215,6 +1274,7 @@ export default function EcommerceCertificationPortal({
                       setReadinessFilter(key);
                       if (key === "spot_check") setStatusFilter("spot_check");
                       if (key === "approved") setStatusFilter("approved");
+                      if (key === "archived") void loadArchivedProducts();
                     }}
                     className={chip(readinessFilter === key)}
                   >
@@ -1345,14 +1405,15 @@ export default function EcommerceCertificationPortal({
                           <td className="px-3 py-2.5 text-xs text-slate-300">
                             {variationsLabel}
                           </td>
-                          <td className="px-3 py-2.5 tabular-nums">
+                          <td
+                            className="px-3 py-2.5 tabular-nums"
+                            data-testid={`product-price-${row.globalSku}`}
+                          >
                             {row.aluminumMsrp
                               ? row.aluminumMsrp
                               : row.aluminumMsrpValue != null
                                 ? `$${row.aluminumMsrpValue.toFixed(2)}`
-                                : row.msrpValue != null
-                                  ? `$${row.msrpValue.toFixed(2)}`
-                                  : "—"}
+                                : "—"}
                           </td>
                           <td className="px-3 py-2.5">
                             <div className="flex flex-wrap gap-1">
@@ -1413,14 +1474,32 @@ export default function EcommerceCertificationPortal({
                             </button>
                           </td>
                           <td className="px-3 py-2.5">
-                            <button
-                              type="button"
-                              data-testid={`edit-details-${row.globalSku}`}
-                              onClick={() => onOpenProductEdit(row)}
-                              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-semibold text-slate-200 hover:border-amber-400/40"
-                            >
-                              Edit Details
-                            </button>
+                            <div className="flex flex-wrap gap-1.5">
+                              <button
+                                type="button"
+                                data-testid={`edit-details-${row.globalSku}`}
+                                onClick={() => onOpenProductEdit(row)}
+                                className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-semibold text-slate-200 hover:border-amber-400/40"
+                              >
+                                Edit Details
+                              </button>
+                              <button
+                                type="button"
+                                data-testid={`archive-product-${row.globalSku}`}
+                                onClick={() =>
+                                  setArchiveTarget({
+                                    kind: "product",
+                                    sku: row.globalSku,
+                                    productName: row.productName,
+                                    listingId: row.id,
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-200 hover:bg-rose-500/20"
+                              >
+                                <Archive className="h-3 w-3" />
+                                Archive
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1429,6 +1508,70 @@ export default function EcommerceCertificationPortal({
                 </table>
               </div>
             )}
+            {readinessFilter === "archived" ? (
+              <div
+                className="overflow-x-auto rounded-2xl border border-white/10 bg-[#111827]"
+                data-testid="portal-archived-products"
+              >
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-white/5 text-[10px] uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2.5">Product</th>
+                      <th className="px-3 py-2.5">SKU</th>
+                      <th className="px-3 py-2.5">Archived</th>
+                      <th className="px-3 py-2.5" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {archivedProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-3 py-8 text-center text-slate-500">
+                          No archived products.
+                        </td>
+                      </tr>
+                    ) : (
+                      archivedProducts.map((p) => (
+                        <tr key={p.id} className="border-t border-white/5 text-slate-200">
+                          <td className="px-3 py-2.5">{p.productName}</td>
+                          <td className="px-3 py-2.5 font-mono text-xs text-amber-300">
+                            {p.globalSku}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-slate-400">
+                            {p.archivedAt ? new Date(p.archivedAt).toLocaleString() : "—"}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <button
+                              type="button"
+                              data-testid={`restore-product-${p.globalSku}`}
+                              onClick={() => {
+                                setStagedChanges((prev) => [
+                                  ...prev.filter(
+                                    (c) =>
+                                      !(c.kind === "restore_product" && c.listingId === p.id),
+                                  ),
+                                  {
+                                    id: `restore_product:${p.id}:${Date.now()}`,
+                                    kind: "restore_product",
+                                    sku: p.globalSku,
+                                    listingId: p.id,
+                                    label: p.productName,
+                                    stagedAt: new Date().toISOString(),
+                                  },
+                                ]);
+                                onToast(`Staged restore for ${p.globalSku}`);
+                              }}
+                              className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-200"
+                            >
+                              Restore
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -1510,7 +1653,10 @@ export default function EcommerceCertificationPortal({
                   disabled={stagingBusy !== null}
                   onClick={async () => {
                     setStagingBusy("swatches_scales");
-                    const res = await runPortalStagingPush({ kind: "swatches_scales" });
+                    const res = await runPortalStagingPush({
+                      kind: "swatches_scales",
+                      mode: "finishes",
+                    });
                     setStagingBusy(null);
                     if (!res.ok) {
                       onToast(res.error);
@@ -1538,6 +1684,7 @@ export default function EcommerceCertificationPortal({
                     setStagingBusy("certified_catalog");
                     const res = await runPortalStagingPush({
                       kind: "certified_catalog",
+                      mode: "catalog",
                       preserveWpImages: true,
                     });
                     setStagingBusy(null);
@@ -1545,9 +1692,12 @@ export default function EcommerceCertificationPortal({
                       onToast(res.error);
                       return;
                     }
+                    const summary = res.summary
+                      ? ` · ${res.summary.totalProducts} products · ${res.summary.mutationMode}`
+                      : "";
                     const msg = res.simulated
-                      ? `Simulation OK · Preserve WP Images · ${res.guardrail}`
-                      : `Live certified catalog push · Preserve WP Images`;
+                      ? `Simulation OK · Preserve WP Images · ${res.guardrail}${summary}`
+                      : `Live certified catalog push · Preserve WP Images${summary}`;
                     setStagingNote(msg);
                     setDryRunJson(JSON.stringify(res.preview ?? res, null, 2));
                     onToast(msg);
@@ -1657,8 +1807,16 @@ export default function EcommerceCertificationPortal({
         target={archiveTarget}
         onCancel={() => setArchiveTarget(null)}
         onConfirm={() => {
-          if (!archiveTarget || archiveTarget.kind !== "finish") return;
-          stageArchiveFinish(archiveTarget.sku, archiveTarget.displayName);
+          if (!archiveTarget) return;
+          if (archiveTarget.kind === "finish") {
+            stageArchiveFinish(archiveTarget.sku, archiveTarget.displayName);
+          } else if (archiveTarget.kind === "product" && archiveTarget.listingId) {
+            stageArchiveProduct(
+              archiveTarget.listingId,
+              archiveTarget.sku,
+              archiveTarget.productName,
+            );
+          }
           setArchiveTarget(null);
         }}
       />

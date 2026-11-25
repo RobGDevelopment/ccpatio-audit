@@ -27,7 +27,12 @@ export async function POST(request: Request) {
   if (!(await authorizePortalApi(request))) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
-  let body: { kind?: string; preserveWpImages?: boolean } = {};
+  let body: {
+    kind?: string;
+    preserveWpImages?: boolean;
+    mode?: string;
+    sku?: string;
+  } = {};
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -40,9 +45,15 @@ export async function POST(request: Request) {
   if (!kind) {
     return NextResponse.json({ ok: false, error: "kind_required" }, { status: 400 });
   }
+  const mode =
+    body.mode === "catalog" || body.mode === "finishes" || body.mode === "sku"
+      ? body.mode
+      : undefined;
   const result = await runPortalStagingPush({
     kind,
     preserveWpImages: body.preserveWpImages !== false,
+    mode,
+    sku: typeof body.sku === "string" ? body.sku : null,
   });
   return NextResponse.json(result, { status: result.ok ? 200 : 400 });
 }

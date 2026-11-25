@@ -24,7 +24,6 @@ import {
   PRODUCTION_WOO_WEBHOOK_URL,
 } from "@/lib/primeview-handoff-auth";
 import {
-  buildFabricSwatchesJson,
   buildPhase1ImportBundle,
   csvEscape,
   fabricSwatchPublicUrl,
@@ -35,6 +34,15 @@ import {
   type Phase1ImportBundle,
 } from "../../../scripts/ops/generate-primeview-phase1-csv";
 import { PHASE1_RESALE_SKUS } from "../../../scripts/ops/enable-phase1-hub-data";
+import { buildActiveFabricSwatchesJson } from "@/server/ecommerce/storefront-swatches";
+import {
+  canonicalPriceToWooString,
+  loadMiaAluminumFixture,
+  parseStorefrontMoney,
+  readStorefrontAluminumOverride,
+  resolveCanonicalStorefrontPrice,
+} from "@/server/ecommerce/canonical-storefront-price";
+import { storefrontDisplayTitle } from "@/server/ecommerce/portal-readiness";
 
 export const PHASE1_PARENT_COUNT = 47;
 export const PHASE1_VARIATION_COUNT = 100;
@@ -476,17 +484,31 @@ async function loadLivePortalOverlay(): Promise<{
   for (const row of listings) {
     canonicalCounts.set(row.sku, (canonicalCounts.get(row.sku) ?? 0) + 1);
   }
+  const miaFixture = loadMiaAluminumFixture();
+  const attrsBySku = new Map(attrs.map((a) => [a.sku, a.attributes] as const));
   for (const row of listings) {
     const hub = fgcBySku.get(row.sku);
+    const override = readStorefrontAluminumOverride(
+      (attrsBySku.get(row.sku) as Record<string, unknown> | null | undefined) ?? null,
+    );
+    const canonical = resolveCanonicalStorefrontPrice({
+      sku: row.sku,
+      wooSku: row.wooSku,
+      sowName: row.productName,
+      storefrontAluminumOverride: override,
+      aluminumMsrp: parseStorefrontMoney(row.aluminum),
+      fixture: miaFixture,
+    });
     const entry = {
-      // Mia Aluminum PDF is the storefront Regular price authority — never steel_msrp.
-      regularPrice: row.aluminum != null ? String(row.aluminum) : null,
+      // Single-price Aluminum truth — never steel_msrp / +10% upcharge.
+      regularPrice:
+        canonical.price != null ? canonicalPriceToWooString(canonical.price) : null,
       salePrice: row.sale != null ? String(row.sale) : null,
       weightLb: hub?.weight != null ? String(hub.weight) : null,
       // Default visible for Phase 1 unless FGC explicitly toggled off.
       isWebVisible: hub?.isWebVisible !== false,
       collection: row.collection || "",
-      productName: row.productName || row.sku,
+      productName: storefrontDisplayTitle(row.productName) || row.productName || row.sku,
       options: row.construction?.trim() || "",
     };
     const wooKey = (row.wooSku || "").trim().toUpperCase();
@@ -526,19 +548,22 @@ async function loadLivePortalOverlay(): Promise<{
 function buildSwatchesManifest(
   fabricNames: ReadonlyArray<{ sku: string; name: string }>,
 ): FabricSwatchManifestEntry[] {
-  const json = buildFabricSwatchesJson(fabricNames);
+  const json = buildActiveFabricSwatchesJson(fabricNames);
   const parsed = JSON.parse(json) as Array<{
     label: string;
     color: string;
-    image_url: string;
-    fabric_sku: string;
+    image_url: string | null;
+    fabric_sku?: string;
   }>;
-  return parsed.map((p) => ({
-    sku: p.fabric_sku,
-    label: p.label,
-    color: p.color,
-    image_url: p.image_url || fabricSwatchPublicUrl(p.fabric_sku),
-  }));
+  return parsed.map((p) => {
+    const sku = (p.fabric_sku ?? "").toUpperCase();
+    return {
+      sku,
+      label: p.label,
+      color: p.color,
+      image_url: p.image_url || fabricSwatchPublicUrl(sku),
+    };
+  });
 }
 
 function buildStorefrontRows(
