@@ -57,6 +57,7 @@ export async function loadShowroomSalesInventoryAction(input?: {
   embedToken?: string | null;
   tab?: import("@/server/showroom/sales-projection").ShowroomSalesTab | null;
   inStockOnly?: boolean;
+  ecommerceWebsiteOnly?: boolean;
   query?: string;
 }) {
   const { loadShowroomSalesInventory } = await import("@/server/showroom/stock");

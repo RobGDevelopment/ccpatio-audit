@@ -17,6 +17,12 @@ export type StockRow = {
   /** Katana item classification for ops filter pills. */
   itemType?: string | null;
   category?: string | null;
+  /** E-Commerce SSOT: certified finish/product matched via SKU / STN↔DKT / alias. */
+  ecommerceCertified?: boolean;
+  /** Vendor / mill code subtitle from E-Commerce finish or catalog SSOT. */
+  vendorMillCode?: string | null;
+  /** Full-res lightbox URL (texture_2048 / hero) when distinct from card thumb. */
+  fullResImageUrl?: string | null;
 };
 
 export function roundQty(value: number): number {

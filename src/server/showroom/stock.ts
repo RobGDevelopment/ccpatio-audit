@@ -8,9 +8,22 @@ import { getSupabaseUrl } from "@/lib/supabase-env";
 import { getDb } from "@/server/db/client";
 import {
   ecommerce_finish_assets,
+  ecommerce_listings,
   finished_goods_catalog,
   product_assets,
+  sku_mappings,
 } from "@/server/db/schema";
+import {
+  finishSkuLookupKeys,
+  bridgeDektonSku,
+} from "@/server/ecommerce/katana-ssot-bridge";
+import {
+  isActiveEcommerceFinishAsset,
+  isEcommerce32FinishSku,
+  resolveEcommerceFinishSku,
+  ecommerceFinishBySku,
+} from "@/server/ecommerce/ecommerce-32-finish-roster";
+import { storefrontDisplayTitle } from "@/server/ecommerce/portal-readiness";
 import {
   listCatalogCategoryItems,
   listStockCollections,
@@ -70,30 +83,46 @@ function productAssetPublicUrl(storagePath: string): string | null {
     .join("/")}`;
 }
 
+type SsotOverlay = {
+  imageUrl?: string;
+  fullResImageUrl?: string | null;
+  name?: string;
+  vendorMillCode?: string | null;
+  ecommerceCertified?: boolean;
+};
+
 /**
- * Cross-fill blank imageUrl from finished_goods_catalog, product_assets, then
- * ecommerce_finish_assets (FAB-/DKT-/PWD- high-rez swatches for Current Inventory).
- * ZERO ecommerce_listings coupling — retail Tenjam/Umbrella/Kindle photos only.
+ * Cross-fill image / Title-Case name / vendor mill / E-Commerce Certified badge
+ * from finished_goods_catalog, product_assets, ecommerce_finish_assets, and
+ * ecommerce_listings — resolving via canonical SKU, STN-DKT↔DKT, and aliases.
  */
 async function overlayPimImages(rows: StockRow[]): Promise<StockRow[]> {
   if (rows.length === 0) return rows;
   const db = getDb();
+  const ssot = new Map<string, SsotOverlay>();
+
   const images = await db
     .select({
       sku: finished_goods_catalog.global_sku,
       imageUrl: finished_goods_catalog.image_url,
+      seoTitle: finished_goods_catalog.seo_title,
     })
     .from(finished_goods_catalog);
-  const bySku = new Map<string, string>();
   for (const row of images) {
+    const key = row.sku.toUpperCase();
     const url = row.imageUrl?.trim();
-    if (url) bySku.set(row.sku.toUpperCase(), url);
+    const prev = ssot.get(key) ?? {};
+    if (url) prev.imageUrl = url;
+    if (row.seoTitle?.trim()) {
+      prev.name = storefrontDisplayTitle(row.seoTitle) || row.seoTitle;
+    }
+    ssot.set(key, prev);
   }
 
   const missing = [
     ...new Set(
       rows
-        .filter((row) => !(row.imageUrl?.trim() || bySku.get(row.sku.toUpperCase())))
+        .filter((row) => !(row.imageUrl?.trim() || ssot.get(row.sku.toUpperCase())?.imageUrl))
         .map((row) => row.sku.trim().toUpperCase())
         .filter(Boolean),
     ),
@@ -114,48 +143,119 @@ async function overlayPimImages(rows: StockRow[]): Promise<StockRow[]> {
       );
     for (const asset of assets) {
       const key = asset.sku.trim().toUpperCase();
-      if (bySku.has(key)) continue;
+      const prev = ssot.get(key) ?? {};
+      if (prev.imageUrl) continue;
       const url = productAssetPublicUrl(asset.storagePath);
-      if (url) bySku.set(key, url);
+      if (url) {
+        prev.imageUrl = url;
+        ssot.set(key, prev);
+      }
     }
   }
 
-  const stillMissing = [
-    ...new Set(
-      rows
-        .filter((row) => !(row.imageUrl?.trim() || bySku.get(row.sku.toUpperCase())))
-        .map((row) => row.sku.trim().toUpperCase())
-        .filter(
-          (sku) =>
-            sku.startsWith("FAB-") ||
-            sku.startsWith("DKT-") ||
-            sku.startsWith("DEC-") ||
-            sku.startsWith("PWD-"),
-        ),
-    ),
-  ];
-  if (stillMissing.length > 0) {
-    const finishes = await db
-      .select({
-        sku: ecommerce_finish_assets.sku,
-        thumb: ecommerce_finish_assets.swatch_thumb_url,
-        texture: ecommerce_finish_assets.texture_2k_url,
-      })
-      .from(ecommerce_finish_assets)
-      .where(inArray(ecommerce_finish_assets.sku, stillMissing));
-    for (const f of finishes) {
-      const key = f.sku.toUpperCase();
-      if (bySku.has(key)) continue;
-      const url = (f.thumb ?? f.texture)?.trim();
-      if (url) bySku.set(key, url);
+  // Load all active e-commerce finishes once — join via STN↔DKT / alias keys.
+  const finishRows = await db
+    .select({
+      sku: ecommerce_finish_assets.sku,
+      displayName: ecommerce_finish_assets.display_name,
+      thumb: ecommerce_finish_assets.swatch_thumb_url,
+      texture: ecommerce_finish_assets.texture_2k_url,
+      sourceFilename: ecommerce_finish_assets.source_filename,
+      uploadedBy: ecommerce_finish_assets.uploaded_by,
+    })
+    .from(ecommerce_finish_assets);
+
+  const finishByKey = new Map<string, (typeof finishRows)[number]>();
+  for (const f of finishRows) {
+    if (!isActiveEcommerceFinishAsset({ sku: f.sku, uploaded_by: f.uploadedBy })) continue;
+    for (const k of finishSkuLookupKeys(f.sku)) {
+      if (!finishByKey.has(k)) finishByKey.set(k, f);
     }
   }
 
-  if (bySku.size === 0) return rows;
-  return rows.map((row) => ({
-    ...row,
-    imageUrl: row.imageUrl?.trim() || bySku.get(row.sku.toUpperCase()) || row.imageUrl,
-  }));
+  // Certified products: match by global_sku / woo_sku / katana_variant_id.
+  const listingRows = await db
+    .select({
+      globalSku: ecommerce_listings.global_sku,
+      wooSku: ecommerce_listings.woo_sku,
+      productName: ecommerce_listings.product_name,
+      katanaVariantId: sku_mappings.katana_variant_id,
+    })
+    .from(ecommerce_listings)
+    .innerJoin(sku_mappings, eq(sku_mappings.global_sku, ecommerce_listings.global_sku))
+    .where(sql`${ecommerce_listings.archived_at} IS NULL`);
+
+  const listingBySku = new Map<string, (typeof listingRows)[number]>();
+  const listingByVariant = new Map<number, (typeof listingRows)[number]>();
+  for (const l of listingRows) {
+    listingBySku.set(l.globalSku.toUpperCase(), l);
+    if (l.wooSku) listingBySku.set(l.wooSku.toUpperCase(), l);
+    if (l.katanaVariantId != null) listingByVariant.set(l.katanaVariantId, l);
+  }
+
+  return rows.map((row) => {
+    const upper = row.sku.trim().toUpperCase();
+    const keys = finishSkuLookupKeys(upper);
+    const bridged = bridgeDektonSku(upper) ?? resolveEcommerceFinishSku(upper);
+    if (bridged) keys.push(...finishSkuLookupKeys(bridged));
+
+    let finish: (typeof finishRows)[number] | undefined;
+    for (const k of keys) {
+      finish = finishByKey.get(k);
+      if (finish) break;
+    }
+
+    const listing =
+      listingByVariant.get(row.variantId) ??
+      listingBySku.get(upper) ??
+      (bridged ? listingBySku.get(bridged) : undefined);
+
+    const catalog = ssot.get(upper);
+    const thumb =
+      row.imageUrl?.trim() ||
+      catalog?.imageUrl ||
+      finish?.thumb?.trim() ||
+      finish?.texture?.trim() ||
+      null;
+    const fullRes =
+      finish?.texture?.trim() ||
+      catalog?.imageUrl ||
+      thumb;
+
+    const def = bridged ? ecommerceFinishBySku(bridged) : ecommerceFinishBySku(upper);
+    const canonicalName =
+      (finish?.displayName?.trim()
+        ? storefrontDisplayTitle(finish.displayName) || finish.displayName
+        : null) ||
+      (listing?.productName
+        ? storefrontDisplayTitle(listing.productName) || listing.productName
+        : null) ||
+      def?.displayName ||
+      catalog?.name ||
+      storefrontDisplayTitle(row.name) ||
+      row.name;
+
+    const vendorMillCode =
+      finish?.sourceFilename?.trim() ||
+      (def ? def.sku : null) ||
+      null;
+
+    const ecommerceCertified = Boolean(
+      finish ||
+        listing ||
+        (bridged && isEcommerce32FinishSku(bridged)) ||
+        isEcommerce32FinishSku(upper),
+    );
+
+    return {
+      ...row,
+      imageUrl: thumb,
+      fullResImageUrl: fullRes,
+      name: canonicalName,
+      vendorMillCode,
+      ecommerceCertified,
+    };
+  });
 }
 
 export async function listShowroomCategoryItems(embedToken?: string | null): Promise<ShowroomCategoryResult> {
@@ -321,6 +421,7 @@ export async function loadShowroomSalesInventory(input?: {
   embedToken?: string | null;
   tab?: ShowroomSalesTab | null;
   inStockOnly?: boolean;
+  ecommerceWebsiteOnly?: boolean;
   query?: string;
 }): Promise<SalesInventoryResult> {
   const started = Date.now();
@@ -352,10 +453,20 @@ export async function loadShowroomSalesInventory(input?: {
     };
     const cards = projectShowroomSalesView(projectInput);
     const withImages = await overlayPimImages(cards);
-    const merged: SalesStockCard[] = cards.map((card, i) => ({
-      ...card,
-      imageUrl: withImages[i]?.imageUrl ?? card.imageUrl,
-    }));
+    let merged: SalesStockCard[] = cards.map((card, i) => {
+      const over = withImages[i];
+      return {
+        ...card,
+        imageUrl: over?.imageUrl ?? card.imageUrl,
+        fullResImageUrl: over?.fullResImageUrl ?? card.fullResImageUrl,
+        name: over?.name ?? card.name,
+        vendorMillCode: over?.vendorMillCode ?? card.vendorMillCode,
+        ecommerceCertified: over?.ecommerceCertified ?? card.ecommerceCertified,
+      };
+    });
+    if (input?.ecommerceWebsiteOnly) {
+      merged = merged.filter((c) => c.ecommerceCertified === true);
+    }
     return {
       ok: true,
       cards: merged,

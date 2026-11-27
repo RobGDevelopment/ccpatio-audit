@@ -41,13 +41,23 @@ describe("getSanitizedQboConfig — whitespace / CR/LF / quotes", () => {
     expect(cfg.clientSecretLength).toBe("secret-value".length);
   });
 
-  it("falls back to QBO_OAUTH_REDIRECT_URI and canonical origin callback", () => {
+  it("prefers QBO_OAUTH_REDIRECT_URI over QBO_REDIRECT_URI and canonical origin callback", () => {
     const withAlias = getSanitizedQboConfig({
       QBO_CLIENT_ID: "cid",
       QBO_CLIENT_SECRET: "sec",
       QBO_OAUTH_REDIRECT_URI: "https://hub.ccpatio.com/api/auth/qbo/callback",
     });
     expect(withAlias.redirectUri).toBe(
+      "https://hub.ccpatio.com/api/auth/qbo/callback",
+    );
+
+    const prefersOauthName = getSanitizedQboConfig({
+      QBO_CLIENT_ID: "cid",
+      QBO_CLIENT_SECRET: "sec",
+      QBO_OAUTH_REDIRECT_URI: "https://hub.ccpatio.com/api/auth/qbo/callback",
+      QBO_REDIRECT_URI: "https://legacy.example/api/auth/qbo/callback",
+    });
+    expect(prefersOauthName.redirectUri).toBe(
       "https://hub.ccpatio.com/api/auth/qbo/callback",
     );
 

@@ -21,7 +21,7 @@ import {
 import type { EcommerceListing } from "../actions";
 import type { WooSyncStatus } from "@/server/woocommerce/woo-catalog-sync";
 
-/** Compact 3D status: green when a .glb is stored, else a subtle "+ Add 3D" opener. */
+/** Compact 3D status: green when a .glb is stored, else a subtle "+ Stage Media / 3D" opener. */
 export function Model3dCell({
   glbUrl,
   sku,
@@ -53,7 +53,7 @@ export function Model3dCell({
       data-testid={`model-3d-add-${sku}`}
       className="whitespace-nowrap rounded-full border border-dashed border-slate-300 px-2 py-0.5 text-[10px] font-semibold text-slate-400 hover:border-sky-400 hover:text-sky-700"
     >
-      + Add 3D
+      + Stage Media / 3D
     </button>
   );
 }

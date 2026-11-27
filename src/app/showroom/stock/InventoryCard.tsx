@@ -90,7 +90,10 @@ export function InventoryCard({
       : "Out of Stock"
     : "Place Hold";
   const imageUrl = row.imageUrl?.trim() || variantImagePublicUrl(row.sku);
+  const lightboxUrl = row.fullResImageUrl?.trim() || imageUrl;
   const src = imageUrl && version > 0 ? `${imageUrl}?v=${version}` : imageUrl;
+  const lightboxSrc =
+    lightboxUrl && version > 0 ? `${lightboxUrl}?v=${version}` : lightboxUrl;
 
   useEffect(() => {
     setImageExists(true);
@@ -137,7 +140,22 @@ export function InventoryCard({
       </div>
       <div className="space-y-2 p-3">
         <div>
-          <h3 className="text-sm font-semibold tracking-tight text-slate-900">{row.name}</h3>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <h3 className="text-sm font-semibold tracking-tight text-slate-900">{row.name}</h3>
+            {row.ecommerceCertified ? (
+              <span
+                data-testid="ecommerce-certified-badge"
+                className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800"
+              >
+                E-Commerce Certified
+              </span>
+            ) : null}
+          </div>
+          {row.vendorMillCode ? (
+            <p className="mt-0.5 text-[11px] text-slate-500" data-testid="vendor-mill-subtitle">
+              {row.vendorMillCode}
+            </p>
+          ) : null}
           {row.variantLabel ? (
             <p className="break-words line-clamp-3 text-xs text-slate-600">{row.variantLabel}</p>
           ) : null}
@@ -324,7 +342,7 @@ export function InventoryCard({
           setVersion((current) => current + 1);
         }}
       />
-      {lightboxOpen && src ? (
+      {lightboxOpen && lightboxSrc ? (
         <FullResImageLightbox
           open
           onClose={() => setLightboxOpen(false)}
@@ -336,7 +354,7 @@ export function InventoryCard({
           repeatScale={formatFinishRepeatScaleLabel({ sku: row.sku })}
           sha256={null}
           thumbUrl={src}
-          fullResUrl={src}
+          fullResUrl={lightboxSrc ?? src}
           onReplace={() => {
             setLightboxOpen(false);
             setUploadOpen(true);

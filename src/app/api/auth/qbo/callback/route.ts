@@ -62,6 +62,10 @@ export async function GET(req: Request) {
 
   const jar = await cookies();
   const cookieState = jar.get(QBO_OAUTH_STATE_COOKIE)?.value ?? null;
+  const embedKey = (jar.get("qbo_oauth_embed_key")?.value ?? "").trim();
+  const returnHref = embedKey
+    ? `/embed/admin/master-catalog?key=${encodeURIComponent(embedKey)}`
+    : "/embed/admin/master-catalog";
 
   if (!oauthStateMatches(state, cookieState)) {
     console.error("[QBO OAUTH] state mismatch or missing cookie");
@@ -74,6 +78,7 @@ export async function GET(req: Request) {
         message:
           "OAuth state mismatch — the login session cookie did not match Intuit’s callback. Close this window and try Reconnect again.",
         config,
+        returnHref,
       }),
     });
   }
@@ -87,6 +92,7 @@ export async function GET(req: Request) {
         oauthError: "missing_params",
         message: "Intuit did not return an authorization code or realmId.",
         config,
+        returnHref,
       }),
     });
   }
@@ -103,6 +109,7 @@ export async function GET(req: Request) {
         oauthError: "realm_rejected",
         message: "This QuickBooks company (realm) is not allowed for this environment.",
         config,
+        returnHref,
       }),
     });
   }
@@ -123,11 +130,12 @@ export async function GET(req: Request) {
         oauthError: "misconfigured",
         message: "QBO Client ID, Client Secret, or Redirect URI is missing after sanitization.",
         config,
+        returnHref,
       }),
     });
   }
 
-  const authHeader = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
+  const authHeader = `Basic ${Buffer.from(`${clientId}:${clientSecret}`, "utf8").toString("base64")}`;
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
@@ -165,6 +173,7 @@ export async function GET(req: Request) {
         message:
           "Intuit rejected the token exchange (often invalid_client from whitespace/quotes on Client ID/Secret, or a redirect_uri mismatch).",
         config,
+        returnHref,
       }),
     });
   }
@@ -185,6 +194,7 @@ export async function GET(req: Request) {
         oauthError: "token_incomplete",
         message: "Intuit returned an incomplete token payload.",
         config,
+        returnHref,
       }),
     });
   }
@@ -216,6 +226,6 @@ export async function GET(req: Request) {
     status: 200,
     secure,
     json: { success: true, message: "QBO OAuth Successful" },
-    html: renderQboOAuthSuccessHtml(),
+    html: renderQboOAuthSuccessHtml({ returnHref }),
   });
 }

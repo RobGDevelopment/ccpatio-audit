@@ -1,56 +1,50 @@
 {
-  "phase_id": "stack-live-sync-qbo-dlq-completion",
+  "phase_id": "katana-sync-meta-ssot-and-catalog-truth",
   "base_ref": "HEAD",
-  "blast_radius": 28,
+  "blast_radius": 26,
   "counts": {
-    "files": 28,
-    "tracked": 22,
-    "untracked": 6,
-    "insertions": 689,
-    "deletions": 300
+    "files": 26,
+    "tracked": 21,
+    "untracked": 5,
+    "insertions": 834,
+    "deletions": 224
   },
   "files": [
     {
       "status": "??",
-      "path": "src/app/api/stack/katana-sync/route.ts",
+      "path": "scripts/retire-pwd-beige-alias.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/integrations/qbo/live-token-probe.ts",
+      "path": "scripts/soft-patch-powder-display-names.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/integrations/qbo/oauth-callback-html.ts",
+      "path": "src/server/ecommerce/katana-ssot-bridge.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/sre/dlq-open.ts",
+      "path": "tests/e2e/katana-ssot-and-catalog-truth.spec.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/e2e/stack-live-sync-qbo-dlq.spec.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/stack-live-sync-qbo-dlq.test.ts",
+      "path": "tests/katana-ssot-and-catalog-truth.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 22,
-      "deletions": 26
+      "insertions": 7,
+      "deletions": 4
     },
     {
       "status": "M",
@@ -61,132 +55,125 @@
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 86,
-      "deletions": 118
+      "insertions": 137,
+      "deletions": 70
     },
     {
       "status": "M",
       "path": "src/app/api/auth/qbo/callback/route.ts",
-      "insertions": 97,
-      "deletions": 47
+      "insertions": 12,
+      "deletions": 2
     },
     {
       "status": "M",
       "path": "src/app/api/auth/qbo/connect/route.ts",
-      "insertions": 9,
-      "deletions": 5
-    },
-    {
-      "status": "M",
-      "path": "src/app/api/embed/katana-inventory/route.ts",
-      "insertions": 18,
-      "deletions": 8
-    },
-    {
-      "status": "M",
-      "path": "src/app/api/katana/showroom-inventory/route.ts",
-      "insertions": 20,
-      "deletions": 9
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 53,
-      "deletions": 22
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx",
-      "insertions": 5,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/ExecutiveStackHealthStrip.tsx",
-      "insertions": 89,
-      "deletions": 9
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/page.tsx",
-      "insertions": 2,
+      "insertions": 11,
       "deletions": 0
     },
     {
       "status": "M",
-      "path": "src/app/showroom/stock/SalesStockView.tsx",
-      "insertions": 1,
-      "deletions": 1
+      "path": "src/app/embed/admin/master-catalog/actions.ts",
+      "insertions": 102,
+      "deletions": 3
     },
     {
       "status": "M",
-      "path": "src/server/ecommerce/executive-stack-health.ts",
-      "insertions": 34,
+      "path": "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx",
+      "insertions": 112,
+      "deletions": 54
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/ExecutiveStackHealthStrip.tsx",
+      "insertions": 10,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/Phase1PortalViews.tsx",
+      "insertions": 2,
+      "deletions": 2
+    },
+    {
+      "status": "M",
+      "path": "src/app/showroom/actions.ts",
+      "insertions": 1,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/app/showroom/stock/InventoryCard.tsx",
+      "insertions": 21,
+      "deletions": 3
+    },
+    {
+      "status": "M",
+      "path": "src/app/showroom/stock/SalesStockView.tsx",
+      "insertions": 43,
       "deletions": 8
     },
     {
       "status": "M",
-      "path": "src/server/integrations/qbo/client.ts",
+      "path": "src/lib/stock-display.ts",
       "insertions": 6,
-      "deletions": 5
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/assets/finish-assets.ts",
+      "insertions": 32,
+      "deletions": 8
+    },
+    {
+      "status": "M",
+      "path": "src/server/ecommerce/ecommerce-32-finish-roster.ts",
+      "insertions": 8,
+      "deletions": 6
+    },
+    {
+      "status": "M",
+      "path": "src/server/ecommerce/executive-stack-health.ts",
+      "insertions": 56,
+      "deletions": 7
+    },
+    {
+      "status": "M",
+      "path": "src/server/ecommerce/portal-readiness.ts",
+      "insertions": 14,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/integrations/qbo/oauth-callback-html.ts",
+      "insertions": 3,
+      "deletions": 2
     },
     {
       "status": "M",
       "path": "src/server/integrations/qbo/oauth.ts",
-      "insertions": 116,
-      "deletions": 1
-    },
-    {
-      "status": "M",
-      "path": "src/server/integrations/qbo/token-refresh.ts",
-      "insertions": 5,
-      "deletions": 4
-    },
-    {
-      "status": "M",
-      "path": "src/server/mission-control/health-probes.ts",
-      "insertions": 5,
-      "deletions": 3
-    },
-    {
-      "status": "M",
-      "path": "src/server/ops/keepalive.ts",
-      "insertions": 4,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "src/server/stock/hub-sync-freshness.ts",
-      "insertions": 8,
+      "insertions": 88,
       "deletions": 5
     },
     {
       "status": "M",
-      "path": "src/server/stock/showroom-snapshot.ts",
-      "insertions": 90,
-      "deletions": 19
+      "path": "src/server/showroom/stock.ts",
+      "insertions": 156,
+      "deletions": 45
     },
     {
       "status": "M",
-      "path": "src/server/woocommerce/woo-catalog-sync.ts",
-      "insertions": 14,
-      "deletions": 2
-    },
-    {
-      "status": "M",
-      "path": "tests/showroom-snapshot-and-refresh.test.ts",
-      "insertions": 3,
-      "deletions": 3
+      "path": "tests/stack-live-sync-qbo-dlq.test.ts",
+      "insertions": 11,
+      "deletions": 1
     }
   ],
   "untracked": [
-    "src/app/api/stack/katana-sync/route.ts",
-    "src/server/integrations/qbo/live-token-probe.ts",
-    "src/server/integrations/qbo/oauth-callback-html.ts",
-    "src/server/sre/dlq-open.ts",
-    "tests/e2e/stack-live-sync-qbo-dlq.spec.ts",
-    "tests/stack-live-sync-qbo-dlq.test.ts"
+    "scripts/retire-pwd-beige-alias.ts",
+    "scripts/soft-patch-powder-display-names.ts",
+    "src/server/ecommerce/katana-ssot-bridge.ts",
+    "tests/e2e/katana-ssot-and-catalog-truth.spec.ts",
+    "tests/katana-ssot-and-catalog-truth.test.ts"
   ],
-  "file_list_sha256": "c09854555ae84efb1f895312526bb0e525b12c1f1d8691b56b6271b75ff57f3f",
+  "file_list_sha256": "3741d91589c4548f9a6cef0b7dea98880df5c37b1e80fbe2b0d2f371fe684c0c",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }

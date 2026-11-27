@@ -12,7 +12,6 @@ import {
   Lock,
   Archive,
   Palette,
-  Plus,
   Search,
   Shield,
   UploadCloud,
@@ -41,10 +40,15 @@ import {
   inferSurfaceProfile,
   mediaBadge,
   stagingPushGuardrailMessage,
+  storefrontDisplayTitle,
   stripFinBracketsFromTitle,
   surfaceBadgeFromProfile,
 } from "@/server/ecommerce/portal-readiness";
 import { sameGroupedParent } from "@/server/ecommerce/grouped-sku-resolve";
+import {
+  isAllCapsFactoryTitle,
+  powderFactorySubtitle,
+} from "@/server/ecommerce/katana-ssot-bridge";
 import {
   addFinishRowForPortal,
   archiveEcommerceListingForPortal,
@@ -59,6 +63,7 @@ import {
   runPortalStagingPush,
   saveFinishCalibration,
   testWooConnectionAction,
+  buildWooDiagnosticReportAction,
   toggleMiaApproval,
   updateFinishDisplayForPortal,
   type FinishAssetCategory,
@@ -68,6 +73,7 @@ import {
   retryDlqEventAction,
   resolveDlqEventAction,
   verifyLiveQboTokenAction,
+  verifyQboCredentialsPairAction,
   listFinishIntakeAction,
   type DlqOpenRow,
 } from "../actions";
@@ -453,8 +459,12 @@ function DarkFinishRow({
           </span>
         )}
         {asset.finishCategory === "powder" && finishDef ? (
-          <span className="mt-0.5 block text-[9px] text-slate-500" title={`Factory SKU: ${asset.sku}`}>
-            {asset.sku}
+          <span
+            className="mt-0.5 block text-[9px] text-slate-500"
+            title={`Factory SKU: ${asset.sku}`}
+            data-testid={`finish-factory-subtitle-${asset.sku}`}
+          >
+            {powderFactorySubtitle(asset.sku) ?? asset.sku}
           </span>
         ) : null}
       </td>
@@ -721,6 +731,38 @@ export default function EcommerceCertificationPortal({
   const [operatorInfoOpen, setOperatorInfoOpen] = useState(false);
   const [policyInfoOpen, setPolicyInfoOpen] = useState(false);
   const [dlqRows, setDlqRows] = useState<DlqOpenRow[]>([]);
+  /** Live Woo probe for Tab 4 — never trust env-only `wooConfigured` for a green badge. */
+  const [wooProbe, setWooProbe] = useState<
+    | { state: "probing" }
+    | { state: "ok"; host: string }
+    | { state: "failed"; reason: string; httpStatus?: number }
+  >({ state: "probing" });
+
+  const runWooProbe = useCallback(async () => {
+    setWooProbe({ state: "probing" });
+    try {
+      const result = await testWooConnectionAction();
+      if (result.ok) {
+        setWooProbe({ state: "ok", host: result.host });
+      } else {
+        setWooProbe({
+          state: "failed",
+          reason: result.reason,
+          httpStatus: result.httpStatus,
+        });
+      }
+      return result;
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "Woo probe threw";
+      setWooProbe({ state: "failed", reason, httpStatus: 500 });
+      return { ok: false as const, reason };
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab !== "sync") return;
+    void runWooProbe();
+  }, [tab, runWooProbe]);
 
   const reconciled = useMemo(
     () => reconcileMiaApprovedCounts(listings),
@@ -809,6 +851,13 @@ export default function EcommerceCertificationPortal({
       if (actionId === "qbo_verify_token") {
         const res = await verifyLiveQboTokenAction();
         onToast(res.ok ? `QBO token valid — ${res.companyName ?? "OK"}` : res.error);
+      } else if (actionId === "qbo_verify_credentials_pair") {
+        const res = await verifyQboCredentialsPairAction();
+        onToast(
+          res.ok
+            ? `${res.label} · secretSha256Prefix8=${res.secretSha256Prefix8} · oauth_error=${res.oauthError ?? "n/a"}`
+            : res.error,
+        );
       } else if (actionId === "fedex_view_missing_dims") {
         setTab("products");
         setReadinessFilter("missing_dims");
@@ -992,6 +1041,8 @@ export default function EcommerceCertificationPortal({
           wooSku: l.wooSku,
           hasLsRsPair: false,
           variationCount: 1,
+          productName: l.productName,
+          collectionLabel: l.collectionLabel,
         });
         return vLabel === "Simple";
       });
@@ -1521,46 +1572,14 @@ export default function EcommerceCertificationPortal({
                         ) : null}
                       </div>
                       <div className="flex flex-wrap items-end gap-2" data-testid={`finish-add-${group.category}`}>
-                        <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                          Display name
-                          <input
-                            value={addName[group.category] ?? ""}
-                            onChange={(e) => {
-                              setAddName((prev) => ({
-                                ...prev,
-                                [group.category]: e.target.value,
-                              }));
-                              setAddErrors((prev) => ({
-                                ...prev,
-                                [group.category]: undefined,
-                              }));
-                            }}
-                            placeholder="e.g. Canvas Ivory"
-                            className={`mt-0.5 block w-44 rounded px-2 py-1.5 text-[12px] font-medium normal-case ${FINISH_INPUT}`}
-                          />
-                        </label>
                         <button
                           type="button"
-                          data-testid={`finish-add-btn-${group.category}`}
-                          disabled={adding === group.category}
-                          onClick={() => void handleAdd(group.category)}
-                          className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-[11px] font-semibold text-slate-950 disabled:opacity-50"
+                          data-testid={`finish-stage-intake-${group.category}`}
+                          onClick={() => setTab("intake")}
+                          className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-[11px] font-semibold text-slate-950"
                         >
-                          {adding === group.category ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Plus className="h-3.5 w-3.5" />
-                          )}
-                          + Add Finish
+                          {`+ Stage New ${group.title} in Intake →`}
                         </button>
-                        {addErrors[group.category] ? (
-                          <span
-                            className="text-[11px] font-semibold text-rose-300"
-                            data-testid={`finish-add-error-${group.category}`}
-                          >
-                            {addErrors[group.category]}
-                          </span>
-                        ) : null}
                       </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -1582,7 +1601,7 @@ export default function EcommerceCertificationPortal({
                           {shown.length === 0 ? (
                             <tr>
                               <td colSpan={9} className="px-3 py-8 text-center text-slate-500">
-                                No active rows — use + Add Finish (SKU auto-locks).
+                                No active rows — stage a new finish in Tab 1 Intake (SKU auto-locks).
                               </td>
                             </tr>
                           ) : (
@@ -1744,6 +1763,8 @@ export default function EcommerceCertificationPortal({
                         wooSku: row.wooSku,
                         hasLsRsPair: hasLsRs,
                         variationCount: pairSize,
+                        productName: row.productName,
+                        collectionLabel: row.collectionLabel,
                       });
                       const surface = inferSurfaceProfile({
                         productName: row.productName,
@@ -1776,8 +1797,16 @@ export default function EcommerceCertificationPortal({
                         >
                           <td className="px-3 py-2.5">
                             <div className="font-medium text-white">
-                              {stripFinBracketsFromTitle(row.productName) || row.productName}
+                              {storefrontDisplayTitle(row.productName) || row.productName}
                             </div>
+                            {isAllCapsFactoryTitle(row.productName) ? (
+                              <div
+                                className="text-[11px] text-slate-500"
+                                data-testid={`product-factory-title-${row.globalSku}`}
+                              >
+                                {row.productName}
+                              </div>
+                            ) : null}
                             <div className="text-[11px] text-slate-500">{row.collectionLabel}</div>
                             {needsSpot ? (
                               <span
@@ -1830,7 +1859,10 @@ export default function EcommerceCertificationPortal({
                             <Model3dCell
                               glbUrl={row.model3dGlbUrl}
                               sku={row.globalSku}
-                              onOpen={() => onOpenProductEdit(row, "media")}
+                              onOpen={() => {
+                                // Stage media/3D through Tab 1 Intake (single SSOT lane), not the product drawer.
+                                setTab("intake");
+                              }}
                             />
                           </td>
                           <td className="px-3 py-2.5">
@@ -1990,14 +2022,6 @@ export default function EcommerceCertificationPortal({
                   Download Live Technical Handoff Spec (.md)
                 </a>
                 <a
-                  href={downloadUrls?.finishes ?? "#"}
-                  data-testid="download-finishes-manifest"
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 px-4 py-3 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15"
-                >
-                  <Download className="h-4 w-4" />
-                  Download Full 3D Finishes &amp; Swatches Manifest (.json)
-                </a>
-                <a
                   href={downloadUrls?.swatches ?? "#"}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 px-4 py-3 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15"
                 >
@@ -2076,24 +2100,58 @@ export default function EcommerceCertificationPortal({
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span
+                  data-testid="woo-live-badge"
+                  data-woo-probe={wooProbe.state}
                   className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    wooConfigured
+                    wooProbe.state === "ok"
                       ? "bg-emerald-500/15 text-emerald-300"
-                      : "bg-amber-500/15 text-amber-200"
+                      : wooProbe.state === "probing"
+                        ? "bg-amber-500/15 text-amber-200"
+                        : "bg-rose-500/15 text-rose-200 ring-1 ring-rose-500/40"
                   }`}
                 >
-                  {wooBadgeLabel ?? "Checking Woo…"}
+                  {wooProbe.state === "ok"
+                    ? `Connected · ${wooProbe.host}`
+                    : wooProbe.state === "probing"
+                      ? "Checking Woo…"
+                      : `Action Required — ${
+                          wooProbe.httpStatus ? `HTTP ${wooProbe.httpStatus} · ` : ""
+                        }${wooProbe.reason}`}
                 </span>
+                {wooProbe.state === "failed" && !wooConfigured && wooBadgeLabel ? (
+                  <span className="text-[10px] text-slate-500">{wooBadgeLabel}</span>
+                ) : null}
                 <button
                   type="button"
                   data-testid="test-woo-connection"
                   onClick={async () => {
-                    const result = await testWooConnectionAction();
+                    const result = await runWooProbe();
                     onToast(result.ok ? `Connected to ${result.host}` : result.reason);
                   }}
                   className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200"
                 >
                   Test Woo Connection
+                </button>
+                <button
+                  type="button"
+                  data-testid="copy-woo-diagnostic-primeview"
+                  onClick={async () => {
+                    const res = await buildWooDiagnosticReportAction();
+                    if (!res.ok) {
+                      onToast(res.error);
+                      return;
+                    }
+                    try {
+                      await navigator.clipboard.writeText(res.report);
+                      onToast("Woo diagnostic copied for PrimeView");
+                    } catch {
+                      onToast("Could not copy diagnostic — clipboard blocked");
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy Diagnostic Report for PrimeView
                 </button>
                 <button
                   type="button"

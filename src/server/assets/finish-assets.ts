@@ -21,6 +21,7 @@ import {
   filterActiveEcommerceFinishes,
   isEcommerce32FinishSku,
 } from "@/server/ecommerce/ecommerce-32-finish-roster";
+import { isStalePowderFactoryDisplayName } from "@/server/ecommerce/katana-ssot-bridge";
 import { deriveFinishPhysicalScale } from "@/lib/finish-physical-scale";
 
 export { PHASE1_DEKTONS };
@@ -83,7 +84,14 @@ export function finishCategoryForSku(sku: string): FinishCategory | null {
   const upper = sku.trim().toUpperCase();
   if (upper.startsWith("FAB-")) return "fabric";
   if (upper.startsWith("PWD-")) return "powder";
-  if (upper.startsWith("DEC-") || upper.startsWith("DKT-")) return "dekton";
+  if (
+    upper.startsWith("DEC-") ||
+    upper.startsWith("DKT-") ||
+    upper.startsWith("STN-DKT-") ||
+    upper.startsWith("STN-")
+  ) {
+    return "dekton";
+  }
   return null;
 }
 
@@ -100,17 +108,23 @@ type SeedRow = {
   pattern_repeat_h_in: string | null;
 };
 
-/** Stale Hub labels like "Beacon Ultraleather" that should snap back to canonical. */
+/** Stale Hub labels like "Beacon Ultraleather" / "Fanuc Gray" that should snap back to canonical. */
 export function isStaleFinishDisplayName(sku: string, current: string | null | undefined): boolean {
   const def = ECOMMERCE_32_FINISHES.find((f) => f.sku === sku);
   if (!def) return false;
   const cur = (current ?? "").trim();
   if (!cur) return true;
   if (cur.toLowerCase() === def.displayName.toLowerCase()) return false;
+  if (def.family === "powder" && isStalePowderFactoryDisplayName(sku, cur)) return true;
   const suffixes = [" Ultraleather", " Sunbrella", " Dekton", " Powder Coat", " Powder"];
   return suffixes.some(
     (s) => cur.toLowerCase() === `${def.displayName}${s}`.toLowerCase(),
   );
+}
+
+function defHasNullRepeat(sku: string): boolean {
+  const def = ecommerceFinishBySku(sku);
+  return Boolean(def && def.patternRepeatIn == null);
 }
 
 export function buildFinishSeedRows(): SeedRow[] {
@@ -210,9 +224,15 @@ export async function seedEcommerceFinishAssets(): Promise<SeedFinishAssetsResul
       isHighRezFinishStorageUrl(existing?.texture_2k_url) ||
       (!isStaleLegacyFinishUrl(existing?.texture_2k_url) &&
         Boolean(existing?.texture_2k_url?.trim()));
+    const existingW = Number(existing?.pattern_repeat_w_in);
     const scrubBoltWidth =
-      BOLT_WIDTH_SCRUB.has(row.sku.toUpperCase()) &&
-      Number(existing?.pattern_repeat_w_in) === 54;
+      BOLT_WIDTH_SCRUB.has(row.sku.toUpperCase()) && existingW === 54;
+    // Solid / textured weaves (Rue Coastal, etc.): scrub bogus 27|27|27 repeats → roster null / 8×8.
+    const isSolidRoster = defHasNullRepeat(row.sku);
+    const scrubBogus27 =
+      isSolidRoster &&
+      (existingW === 27 || Number(existing?.pattern_repeat_w_in) === 27);
+    const scrubRepeat = scrubBoltWidth || scrubBogus27;
     await db
       .insert(t)
       .values({ ...row, quality_status: "placeholder_lowres" })
@@ -227,17 +247,21 @@ export async function seedEcommerceFinishAssets(): Promise<SeedFinishAssetsResul
           texture_2k_url: keepTexture
             ? sql`${t.texture_2k_url}`
             : sql`COALESCE(NULLIF(${t.texture_2k_url}, ''), excluded.texture_2k_url)`,
-          sample_width_in: sql`COALESCE(${t.sample_width_in}, excluded.sample_width_in)`,
-          sample_height_in: sql`COALESCE(${t.sample_height_in}, excluded.sample_height_in)`,
+          sample_width_in: scrubBogus27
+            ? sql`excluded.sample_width_in`
+            : sql`COALESCE(${t.sample_width_in}, excluded.sample_width_in)`,
+          sample_height_in: scrubBogus27
+            ? sql`excluded.sample_height_in`
+            : sql`COALESCE(${t.sample_height_in}, excluded.sample_height_in)`,
           pattern_repeat_w_in: isCabana
             ? sql`excluded.pattern_repeat_w_in`
-            : scrubBoltWidth
+            : scrubRepeat
               ? sql`excluded.pattern_repeat_w_in`
               : sql`COALESCE(${t.pattern_repeat_w_in}, excluded.pattern_repeat_w_in)`,
           // Cabana Classic canonical vertical repeat is 7" — always restore.
           pattern_repeat_h_in: isCabana
             ? sql`excluded.pattern_repeat_h_in`
-            : scrubBoltWidth
+            : scrubRepeat
               ? sql`excluded.pattern_repeat_h_in`
               : sql`COALESCE(${t.pattern_repeat_h_in}, excluded.pattern_repeat_h_in)`,
           ...(refreshName ? { display_name: row.display_name } : {}),

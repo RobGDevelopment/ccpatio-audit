@@ -77,5 +77,16 @@ export async function GET(req: Request) {
 
   const res = NextResponse.redirect(authorizeUrl, 302);
   res.cookies.set(QBO_OAUTH_STATE_COOKIE, state, qboOAuthStateCookieOptions(secure));
+  // Preserve GHL embed ?key= across the Intuit round-trip for the callback return link.
+  const embedKey = (url.searchParams.get("key") ?? "").trim();
+  if (embedKey) {
+    res.cookies.set("qbo_oauth_embed_key", embedKey, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure,
+      path: "/",
+      maxAge: 600,
+    });
+  }
   return res;
 }

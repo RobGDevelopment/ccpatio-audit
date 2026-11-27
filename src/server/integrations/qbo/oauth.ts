@@ -165,6 +165,8 @@ export type SanitizedQboConfig = {
   clientIdPrefix: string;
   clientIdLength: number;
   clientSecretLength: number;
+  /** First 8 hex chars of SHA-256(clientSecret) — safe fingerprint, never the secret. */
+  secretSha256Prefix8: string;
 };
 
 function rawEnvDiffered(raw: string | undefined, sanitized: string): boolean {
@@ -174,10 +176,10 @@ function rawEnvDiffered(raw: string | undefined, sanitized: string): boolean {
 
 /**
  * Shared QBO env sanitizer — strips Windows/`vercel env add` whitespace, CR/LF,
- * and accidental surrounding quotes. Prefer `QBO_REDIRECT_URI`, fall back to
- * `QBO_OAUTH_REDIRECT_URI`. When `origin` is provided and no redirect env is set
- * (or it does not match the request origin host), uses
- * `${origin}/api/auth/qbo/callback`.
+ * and accidental surrounding quotes. Prefer Vercel Production name
+ * `QBO_OAUTH_REDIRECT_URI`, fall back to `QBO_REDIRECT_URI`. When `origin` is
+ * provided and no redirect env is set (or it does not match the request origin
+ * host), uses `${origin}/api/auth/qbo/callback`.
  */
 export function getSanitizedQboConfig(
   env: Record<string, string | undefined> = process.env,
@@ -185,8 +187,9 @@ export function getSanitizedQboConfig(
 ): SanitizedQboConfig {
   const rawClientId = env.QBO_CLIENT_ID;
   const rawClientSecret = env.QBO_CLIENT_SECRET;
+  // Vercel Production uses QBO_OAUTH_REDIRECT_URI — prefer it over legacy alias.
   const rawRedirect =
-    env.QBO_REDIRECT_URI ?? env.QBO_OAUTH_REDIRECT_URI ?? undefined;
+    env.QBO_OAUTH_REDIRECT_URI ?? env.QBO_REDIRECT_URI ?? undefined;
   const rawEnvironment = env.QBO_ENVIRONMENT;
 
   const clientId = stripEnvQuotes(rawClientId);
@@ -220,6 +223,10 @@ export function getSanitizedQboConfig(
     rawEnvDiffered(rawRedirect, configuredRedirect) ||
     rawEnvDiffered(rawEnvironment, stripEnvQuotes(rawEnvironment));
 
+  const secretSha256Prefix8 = clientSecret
+    ? createHash("sha256").update(clientSecret, "utf8").digest("hex").slice(0, 8)
+    : "";
+
   return {
     clientId,
     clientSecret,
@@ -229,6 +236,7 @@ export function getSanitizedQboConfig(
     clientIdPrefix: clientId.slice(0, 6),
     clientIdLength: clientId.length,
     clientSecretLength: clientSecret.length,
+    secretSha256Prefix8,
   };
 }
 
@@ -240,6 +248,7 @@ export function qboSafeCredentialDiagnostics(config: SanitizedQboConfig): {
   clientIdLength: number;
   clientSecretLength: number;
   trimmedWhitespaceOrQuotes: boolean;
+  secretSha256Prefix8: string;
 } {
   return {
     environment: config.environment,
@@ -248,6 +257,80 @@ export function qboSafeCredentialDiagnostics(config: SanitizedQboConfig): {
     clientIdLength: config.clientIdLength,
     clientSecretLength: config.clientSecretLength,
     trimmedWhitespaceOrQuotes: config.trimmedWhitespaceOrQuotes,
+    secretSha256Prefix8: config.secretSha256Prefix8,
+  };
+}
+
+export type QboCredentialPairProbeResult = {
+  oauthError: string | null;
+  verdict: "valid_pair" | "mismatch" | "other";
+  label: string;
+  secretSha256Prefix8: string;
+  httpStatus: number;
+};
+
+/**
+ * Zero-side-effect RFC 6749 probe: exchange a deliberately invalid auth code.
+ * `invalid_grant` ⇒ Client ID/Secret pair is accepted by Intuit.
+ * `invalid_client` ⇒ Client ID / Secret mismatch (or whitespace/encoding).
+ */
+export async function probeQboCredentialPair(
+  env: Record<string, string | undefined> = process.env,
+  origin?: string | null,
+  fetchImpl: typeof fetch = fetch,
+): Promise<QboCredentialPairProbeResult> {
+  const config = getSanitizedQboConfig(env, origin);
+  const { clientId, clientSecret, redirectUri, secretSha256Prefix8 } = config;
+  if (!clientId || !clientSecret || !redirectUri) {
+    return {
+      oauthError: "misconfigured",
+      verdict: "other",
+      label: "Missing QBO Client ID / Secret / Redirect URI",
+      secretSha256Prefix8,
+      httpStatus: 0,
+    };
+  }
+  const authHeader = `Basic ${Buffer.from(`${clientId}:${clientSecret}`, "utf8").toString("base64")}`;
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code: "ccpatio_credential_pair_probe_invalid",
+    redirect_uri: redirectUri,
+  });
+  const res = await fetchImpl("https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: authHeader,
+    },
+    body: body.toString(),
+  });
+  const text = await res.text();
+  const oauthError = parseIntuitOAuthErrorCode(text);
+  if (oauthError === "invalid_grant") {
+    return {
+      oauthError,
+      verdict: "valid_pair",
+      label: "Credentials Pair Valid — Ready to Authorize",
+      secretSha256Prefix8,
+      httpStatus: res.status,
+    };
+  }
+  if (oauthError === "invalid_client") {
+    return {
+      oauthError,
+      verdict: "mismatch",
+      label: "Client ID / Secret Mismatch",
+      secretSha256Prefix8,
+      httpStatus: res.status,
+    };
+  }
+  return {
+    oauthError,
+    verdict: "other",
+    label: `Unexpected probe result (${oauthError ?? `HTTP ${res.status}`})`,
+    secretSha256Prefix8,
+    httpStatus: res.status,
   };
 }
 

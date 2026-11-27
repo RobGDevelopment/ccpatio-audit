@@ -132,7 +132,14 @@ export default function ExecutiveStackHealthStrip({
         );
         if (res.ok) await refresh();
       } else if (actionId === "qbo_reconnect") {
-        window.open("/api/auth/qbo/connect", "_blank", "noopener,noreferrer");
+        const embedKey =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("key")
+            : null;
+        const connectUrl = embedKey
+          ? `/api/auth/qbo/connect?key=${encodeURIComponent(embedKey)}`
+          : "/api/auth/qbo/connect";
+        window.open(connectUrl, "ccpatio_qbo_oauth", "popup,width=680,height=780");
       } else if (actionId === "woo_retest") {
         const res = await testWooConnectionAction();
         onToast(res.ok ? `Connected to ${res.host}` : res.reason);
@@ -155,7 +162,8 @@ export default function ExecutiveStackHealthStrip({
         if (
           actionId.startsWith("dlq_") ||
           actionId === "layer_reprobe" ||
-          actionId === "qbo_verify_token"
+          actionId === "qbo_verify_token" ||
+          actionId === "qbo_verify_credentials_pair"
         ) {
           await refresh();
         }

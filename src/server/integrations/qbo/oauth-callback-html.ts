@@ -113,13 +113,14 @@ export function renderQboOAuthFailureHtml(input: {
     <div><span>clientIdPrefix</span><span>${escapeHtml(diag.clientIdPrefix)}</span></div>
     <div><span>clientIdLength</span><span>${diag.clientIdLength}</span></div>
     <div><span>clientSecretLength</span><span>${diag.clientSecretLength}</span></div>
+    <div><span>secretSha256Prefix8</span><span>${escapeHtml(diag.secretSha256Prefix8 || "n/a")}</span></div>
     <div><span>trimmedWhitespaceOrQuotes</span><span>${diag.trimmedWhitespaceOrQuotes ? "true" : "false"}</span></div>
   </div>
   <ol>
     <li>Open Vercel → Project → Settings → Environment Variables.</li>
     <li>Confirm Production vs Sandbox Client ID/Secret match the Intuit Developer Portal app.</li>
-    <li>Remove accidental quotes, spaces, or Windows CR/LF from <code>QBO_CLIENT_ID</code> / <code>QBO_CLIENT_SECRET</code> / <code>QBO_REDIRECT_URI</code>.</li>
-    <li>Ensure <code>QBO_ENVIRONMENT</code> matches the Intuit app (production vs sandbox).</li>
+    <li>Remove accidental quotes, spaces, or Windows CR/LF from <code>QBO_CLIENT_ID</code> / <code>QBO_CLIENT_SECRET</code> / <code>QBO_OAUTH_REDIRECT_URI</code> (legacy alias <code>QBO_REDIRECT_URI</code>).</li>
+    <li>Ensure <code>QBO_ENVIRONMENT</code> matches the Intuit app (production vs sandbox; case-insensitive).</li>
     <li>Confirm the redirect URI is exactly registered in Intuit and equals the value above.</li>
   </ol>
   <div class="actions">

@@ -84,17 +84,18 @@ export const ECOMMERCE_32_FINISHES: readonly EcommerceFinishDefinition[] = [
   // ── Dekton (6) — DKT-* e-commerce SKUs ───────────────────────────────
   { sku: "DKT-ALDEM", displayName: "Aldem", family: "dekton", category: "dekton", hex: "#8C867D", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-ALDEM", "D-ALDEM-1.2CM", "D-ALDEM-2CM", "STN-DKT-ALD"] },
   // Cosentino color is Entzo; keep SKU key DKT-EDORA for certified-roster continuity + bridge ENTZO aliases.
-  { sku: "DKT-EDORA", displayName: "Entzo", family: "dekton", category: "dekton", hex: "#5E5A56", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DKT-ENTZO", "DEC-EDORA", "DEC-ENTZO", "D-EDORA-1.2CM", "D-EDORA-2CM", "D-ENTZO-1.2CM", "D-ENTZO-2CM"] },
-  { sku: "DKT-AURA", displayName: "Aura", family: "dekton", category: "dekton", hex: "#9A978F", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-AURA", "D-AURA-1.2CM", "D-AURA-2CM"] },
-  { sku: "DKT-LUMINA", displayName: "Lumina", family: "dekton", category: "dekton", hex: "#B8B4A8", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-LUMINA", "D-LUMINA-1.2CM", "D-LUMINA-2CM"] },
-  { sku: "DKT-NILIUM", displayName: "Nilium", family: "dekton", category: "dekton", hex: "#4A4D52", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-NILIUM", "D-NILIUM-1.2CM", "D-NILIUM-2CM", "STN-DKT-NIL1.2", "STN-DKT-NIL2.0"] },
-  { sku: "DKT-STRATO", displayName: "Strato", family: "dekton", category: "dekton", hex: "#7A7D7B", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-STRATO", "D-STRATO-1.2CM", "D-STRATO-2CM"] },
+  { sku: "DKT-EDORA", displayName: "Entzo", family: "dekton", category: "dekton", hex: "#5E5A56", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DKT-ENTZO", "DEC-EDORA", "DEC-ENTZO", "D-EDORA-1.2CM", "D-EDORA-2CM", "D-ENTZO-1.2CM", "D-ENTZO-2CM", "STN-DKT-EDO", "STN-DKT-ENT"] },
+  { sku: "DKT-AURA", displayName: "Aura", family: "dekton", category: "dekton", hex: "#9A978F", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-AURA", "D-AURA-1.2CM", "D-AURA-2CM", "STN-DKT-AUR"] },
+  { sku: "DKT-LUMINA", displayName: "Lumina", family: "dekton", category: "dekton", hex: "#B8B4A8", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-LUMINA", "D-LUMINA-1.2CM", "D-LUMINA-2CM", "STN-DKT-LUM"] },
+  { sku: "DKT-NILIUM", displayName: "Nilium", family: "dekton", category: "dekton", hex: "#4A4D52", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-NILIUM", "D-NILIUM-1.2CM", "D-NILIUM-2CM", "STN-DKT-NIL1.2", "STN-DKT-NIL2.0", "STN-DKT-NIL"] },
+  { sku: "DKT-STRATO", displayName: "Strato", family: "dekton", category: "dekton", hex: "#7A7D7B", patternRepeatIn: null, wooMetaKey: "dekton", aliases: ["DEC-STRATO", "D-STRATO-1.2CM", "D-STRATO-2CM", "STN-DKT-STR"] },
 
   // ── Frame Powder Coat (6) — Aluminum frames only on storefront ───────
+  // Canonical beige is PWD-LITE-BEIGE; PWD-BEIGE is retired into aliases (never a 7th active).
   { sku: "PWD-BLACK", displayName: "Black", family: "powder", category: "powder", hex: "#1A1A1A", patternRepeatIn: null, wooMetaKey: "powder_coat", aliases: [] },
   { sku: "PWD-WHITE", displayName: "White", family: "powder", category: "powder", hex: "#F4F1EA", patternRepeatIn: null, wooMetaKey: "powder_coat", aliases: ["PWD-WILD-RICE"] },
   { sku: "PWD-OIL-RUB-BRONZE", displayName: "Bronze", family: "powder", category: "powder", hex: "#3B2F27", patternRepeatIn: null, wooMetaKey: "powder_coat", aliases: [] },
-  { sku: "PWD-LITE-BEIGE", displayName: "Beige", family: "powder", category: "powder", hex: "#CDBFA6", patternRepeatIn: null, wooMetaKey: "powder_coat", aliases: [] },
+  { sku: "PWD-LITE-BEIGE", displayName: "Beige", family: "powder", category: "powder", hex: "#CDBFA6", patternRepeatIn: null, wooMetaKey: "powder_coat", aliases: ["PWD-BEIGE"] },
   { sku: "PWD-BONE", displayName: "Bone", family: "powder", category: "powder", hex: "#E3DAC9", patternRepeatIn: null, wooMetaKey: "powder_coat", aliases: [] },
   { sku: "PWD-FANUC-GRAY", displayName: "Gray", family: "powder", category: "powder", hex: "#7C7F82", patternRepeatIn: null, wooMetaKey: "powder_coat", aliases: [] },
 ] as const;
@@ -192,6 +193,7 @@ export const LEGACY_SHOWROOM_FINISH_SKUS: ReadonlySet<string> = new Set([
   "FAB-BLI-LIN",
   "FAB-BLI-SAN",
   "PWD-WILD-RICE",
+  "PWD-BEIGE",
 ]);
 
 export function isLegacyShowroomFinishSku(sku: string): boolean {

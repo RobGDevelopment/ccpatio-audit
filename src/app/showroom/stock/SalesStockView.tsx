@@ -85,6 +85,7 @@ export function SalesStockView({
   const [tab, setTab] = useState<ShowroomSalesTab>(initialTab);
   const [query, setQuery] = useState("");
   const [inStockOnly, setInStockOnly] = useState(true);
+  const [ecommerceWebsiteOnly, setEcommerceWebsiteOnly] = useState(false);
   const [cards, setCards] = useState<SalesStockCard[]>(initialCards ?? []);
   const [message, setMessage] = useState<string | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
@@ -113,7 +114,12 @@ export function SalesStockView({
   }, [flags.enableMtoCatalog, tab]);
 
   const reload = useCallback(
-    async (nextTab: ShowroomSalesTab = tab, nextInStock = inStockOnly, nextQuery = query) => {
+    async (
+      nextTab: ShowroomSalesTab = tab,
+      nextInStock = inStockOnly,
+      nextQuery = query,
+      nextWebsiteOnly = ecommerceWebsiteOnly,
+    ) => {
       const id = ++request.current;
       setErrorBanner(null);
       try {
@@ -121,6 +127,7 @@ export function SalesStockView({
           embedToken,
           tab: nextTab,
           inStockOnly: nextTab === "mto_catalog" || nextTab === "active_holds" ? false : nextInStock,
+          ecommerceWebsiteOnly: nextWebsiteOnly,
           query: nextQuery,
         });
         if (id !== request.current) return;
@@ -150,20 +157,27 @@ export function SalesStockView({
         setMessage(msg);
       }
     },
-    [embedToken, tab, inStockOnly, query],
+    [embedToken, tab, inStockOnly, ecommerceWebsiteOnly, query],
+  );
+
+  const ecommerceWebsiteCount = useMemo(
+    () => cards.filter((c) => c.ecommerceCertified).length,
+    [cards],
   );
 
   const queueBackgroundRefresh = useCallback(async () => {
+    // Snapshot already fresh (<30m) — never leave a stuck "Updating…" beside Green.
+    if (badge.tone === "green" && !badge.shouldQueueBackgroundSync) return;
     setRefreshing(true);
     try {
       await embedFetch("/api/katana/showroom-inventory", { method: "POST" });
-      await reload(tab, inStockOnly, query);
+      await reload(tab, inStockOnly, query, ecommerceWebsiteOnly);
     } catch {
       // Hub reload still available; badge already shows stale state.
     } finally {
       setRefreshing(false);
     }
-  }, [embedFetch, reload, tab, inStockOnly, query]);
+  }, [embedFetch, reload, tab, inStockOnly, ecommerceWebsiteOnly, query, badge]);
 
   const refreshActiveHoldCount = useCallback(async () => {
     try {
@@ -214,16 +228,16 @@ export function SalesStockView({
     }
     hydrated.current = true;
     startTransition(() => {
-      void reload(tab, inStockOnly, query);
+      void reload(tab, inStockOnly, query, ecommerceWebsiteOnly);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional tab/filter driven reload
-  }, [tab, inStockOnly]);
+  }, [tab, inStockOnly, ecommerceWebsiteOnly]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (!hydrated.current) return;
       startTransition(() => {
-        void reload(tab, inStockOnly, query);
+        void reload(tab, inStockOnly, query, ecommerceWebsiteOnly);
       });
     }, 250);
     return () => window.clearTimeout(timer);
@@ -300,7 +314,7 @@ export function SalesStockView({
                   {refreshing ? "Syncing…" : "Refresh"}
                 </button>
               ) : null}
-              {pending ? (
+              {pending && !(badge.tone === "green" && !badge.shouldQueueBackgroundSync) ? (
                 <span className="text-[11px] text-slate-500">Updating…</span>
               ) : null}
             </div>
@@ -341,6 +355,27 @@ export function SalesStockView({
                 In stock only
               </button>
             ) : null}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={ecommerceWebsiteOnly}
+              data-testid="ecommerce-website-filter"
+              onClick={() => setEcommerceWebsiteOnly((current) => !current)}
+              className={`${softControl} inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs text-slate-700`}
+            >
+              <span
+                className={`relative h-5 w-9 rounded-full transition-colors duration-300 ${
+                  ecommerceWebsiteOnly ? "bg-slate-900" : "bg-slate-200"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all duration-300 ${
+                    ecommerceWebsiteOnly ? "left-4" : "left-0.5"
+                  }`}
+                />
+              </span>
+              E-Commerce Website ({ecommerceWebsiteCount})
+            </button>
             <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
           </div>
           <div className="flex flex-wrap gap-2" role="tablist" aria-label="Sales category">

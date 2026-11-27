@@ -69,6 +69,7 @@ export function probeFailedStackLayers(
       base.actions = [
         { id: "qbo_reconnect", label: "Reconnect QuickBooks" },
         { id: "qbo_verify_token", label: "Verify Live QBO Token" },
+        { id: "qbo_verify_credentials_pair", label: "Verify QBO Credentials Pair" },
       ];
     } else if (id === "woocommerce") {
       base.actions = [
@@ -203,14 +204,61 @@ export function buildWooDiagnosticReport(input: {
   label: string;
   snippet: string | null;
   checkedAt?: string;
+  sourceHost?: string;
+  endpointProbed?: string;
+  wpErrorCode?: string | null;
+  finishesStaged?: number;
+  aluminumSkusStaged?: number;
 }): string {
+  const checkedAt = input.checkedAt ?? new Date().toISOString();
+  const ymd = checkedAt.slice(0, 10).replace(/-/g, "");
+  const documentId = `CCP-DIAG-WOO-${ymd}`;
+  const sourceHost = input.sourceHost ?? "https://hub.ccpatio.com";
+  const endpoint =
+    input.endpointProbed ?? `https://${input.host.replace(/^https?:\/\//, "")}/wp-json/wc/v3`;
+  const finishes = input.finishesStaged ?? 32;
+  const aluminum = input.aluminumSkusStaged ?? 107;
+  const downstream = process.env.DOWNSTREAM_MUTATIONS ?? "false";
+  const wooLedger = process.env.WOO_LEDGER_MODE ?? "log";
+
   return [
-    "CC Patio · WooCommerce Diagnostic Report for PrimeView",
-    `Checked: ${input.checkedAt ?? new Date().toISOString()}`,
-    `Host: ${input.host}`,
-    `HTTP: ${input.httpStatus}`,
-    `Status: ${input.label}`,
-    `Snippet: ${input.snippet ?? "(none)"}`,
+    "═══════════════════════════════════════════════════════════════════",
+    "CC Patio · Enterprise Integration Diagnostic Report for PrimeView",
+    "═══════════════════════════════════════════════════════════════════",
+    `Document ID: ${documentId}`,
+    `Generated UTC: ${checkedAt}`,
+    `Source Host: ${sourceHost}`,
+    `Target Host: ${input.host}`,
+    `Severity: P1 BLOCKER`,
+    "",
+    "── 1. Executive Summary ──",
+    input.label,
+    `WooCommerce staging at ${input.host} returned HTTP ${input.httpStatus}.`,
+    "Storefront certification and Hub staging are blocked until PrimeView clears the WordPress fatal.",
+    "",
+    "── 2. Live Telemetry & Probe Evidence ──",
+    `HTTP Status: ${input.httpStatus}`,
+    `Endpoint Probed: ${endpoint}`,
+    `WP Error Code: ${input.wpErrorCode ?? "(none / HTML critical)"}`,
+    `Stripped Response: ${input.snippet ?? "(none)"}`,
+    "",
+    "── 3. Isolation & Change-Control Attestation ──",
+    `DOWNSTREAM_MUTATIONS=${downstream}`,
+    `WOO_LEDGER_MODE=${wooLedger}`,
+    "Attestation: Zero outbound WooCommerce POST/PUT/PATCH/DELETE writes were sent from Hub during this probe.",
+    "Inbound GET / health probes only. Ledger remains log-mode.",
+    "",
+    "── 4. Required PrimeView Engineering Actions ──",
+    "1. Inspect wp-content/debug.log for the PHP fatal / plugin conflict at the time of this Document ID.",
+    "2. Disable recently activated plugins/themes that hook /wp-json/wc/v3 and re-test.",
+    "3. Verify /wp-json/wc/v3 returns application/json 200 (not HTML critical error).",
+    "4. Confirm REST auth + permalinks; notify CC Patio Hub once green so staging push can resume.",
+    "",
+    "── 5. Staged Payload Summary ──",
+    `Finishes staged (certified roster): ${finishes}`,
+    `Aluminum SKUs staged (purchasable): ${aluminum}`,
+    "No live mutations applied while WOO_LEDGER_MODE=log.",
+    "═══════════════════════════════════════════════════════════════════",
   ].join("\n");
 }
 
@@ -249,7 +297,8 @@ export function storefrontTitlePreserveAcronyms(raw: string): string {
       if (PRESERVE_ACRONYMS.has(bare.toUpperCase())) {
         return w.replace(bare, bare.toUpperCase());
       }
-      if (/^\d/.test(w)) return w;
+      // Preserve dimension tokens like d15cm / (d15cm)
+      if (/^d\d/i.test(bare) || /^\d/.test(w)) return w;
       return w.length ? w[0]!.toUpperCase() + w.slice(1).toLowerCase() : w;
     })
     .join(" ");

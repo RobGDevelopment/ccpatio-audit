@@ -5,6 +5,7 @@
  */
 
 import { storefrontTitlePreserveAcronyms } from "@/server/ecommerce/executive-stack-health";
+import { isFreestandingNonSectionalProduct } from "@/server/ecommerce/katana-ssot-bridge";
 
 export type SurfaceProfile =
   | "Cushion + Frame"
@@ -49,7 +50,20 @@ export function formatVariationsFacing(input: {
   wooSku?: string | null;
   variationCount?: number | null;
   hasLsRsPair?: boolean;
+  productName?: string | null;
+  collectionLabel?: string | null;
 }): string {
+  // Heaters / lamps / loungers are freestanding Simple — never sectional facing badges.
+  if (
+    isFreestandingNonSectionalProduct({
+      productName: input.productName,
+      globalSku: input.globalSku,
+      wooSku: input.wooSku,
+      collectionLabel: input.collectionLabel,
+    })
+  ) {
+    return "Simple";
+  }
   const sku = (input.wooSku || input.globalSku || "").toUpperCase();
   const isFacing = /-(LS|RS)$/i.test(sku);
   const pair = input.hasLsRsPair === true || isFacing || (input.variationCount ?? 0) >= 2;

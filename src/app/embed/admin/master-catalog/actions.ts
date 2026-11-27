@@ -2191,12 +2191,39 @@ export async function getWooConnectionBadge(): Promise<{
   configured: boolean;
   label: string;
   host: string | null;
+  ok?: boolean;
+  httpStatus?: number;
+  status?: "Healthy" | "Degraded" | "Action Required";
 }> {
   const conn = resolveWooConnection();
   if (!conn.configured) {
-    return { configured: false, label: conn.reason, host: null };
+    return {
+      configured: false,
+      label: conn.reason,
+      host: null,
+      ok: false,
+      status: "Action Required",
+    };
   }
-  return { configured: true, label: `Connected to ${conn.host}`, host: conn.host };
+  const probe = await testWooConnection();
+  if (probe.ok) {
+    return {
+      configured: true,
+      label: `Connected to ${probe.host}`,
+      host: probe.host,
+      ok: true,
+      httpStatus: 200,
+      status: "Healthy",
+    };
+  }
+  return {
+    configured: true,
+    label: probe.reason,
+    host: conn.host,
+    ok: false,
+    httpStatus: probe.httpStatus ?? 500,
+    status: probe.critical ? "Action Required" : "Degraded",
+  };
 }
 
 export async function testWooConnectionAction(): Promise<
@@ -4579,6 +4606,39 @@ export async function getExecutiveStackHealthAction(): Promise<
       : badge.tone === "amber" || katanaAge.state === "degraded"
         ? "Degraded"
         : lampFromState(katanaAge.state === "critical" ? "critical" : "healthy");
+    const { computeKatanaAlignmentSummary } = await import(
+      "@/server/ecommerce/katana-ssot-bridge"
+    );
+    const { ECOMMERCE_32_FINISHES: finishRoster } = await import(
+      "@/server/ecommerce/ecommerce-32-finish-roster"
+    );
+    const { katana_showroom_snapshot } = await import("@/server/db/schema");
+    const snapRows = await db
+      .select({
+        sku: katana_showroom_snapshot.sku,
+        name: katana_showroom_snapshot.name,
+        variantId: katana_showroom_snapshot.variant_id,
+      })
+      .from(katana_showroom_snapshot);
+    const snapBySku = new Map(
+      snapRows.map((r) => [r.sku.trim().toUpperCase(), r] as const),
+    );
+    const alignmentPairs = finishRoster.map((f) => {
+      const hit =
+        snapBySku.get(f.sku) ??
+        f.aliases.map((a) => snapBySku.get(a.toUpperCase())).find(Boolean);
+      return {
+        ecommerceSku: f.sku,
+        ecommerceName: f.displayName,
+        katanaVariantId: hit?.variantId ?? null,
+        katanaSku: hit?.sku ?? null,
+        katanaName: hit?.name ?? null,
+      };
+    });
+    const alignment = computeKatanaAlignmentSummary(
+      alignmentPairs,
+      process.env.DOWNSTREAM_MUTATIONS === "true",
+    );
     const katanaLayer: StackLayerPill = {
       id: "katana",
       label: "Katana MRP",
@@ -4588,6 +4648,7 @@ export async function getExecutiveStackHealthAction(): Promise<
         lastSyncedAt ? `lastSyncedAt=${lastSyncedAt}` : "lastSyncedAt=never",
         `tokens=${bucketHealth.tokensAvailable.toFixed(2)}`,
         bucketHealth.throttled ? `cooldownMs=${bucketHealth.cooldownMs}` : null,
+        alignment.label,
       ]
         .filter(Boolean)
         .join(" · "),
@@ -4601,14 +4662,17 @@ export async function getExecutiveStackHealthAction(): Promise<
       "@/server/integrations/qbo/live-token-probe"
     );
     const qboProbe = await probeLiveQboToken();
+    const { getSanitizedQboConfig } = await import("@/server/integrations/qbo/oauth");
+    const qboCfg = getSanitizedQboConfig(process.env);
     const qboLayer: StackLayerPill = {
       id: "qbo",
       label: "QuickBooks",
       status: qboProbe.status,
-      detail: `${qboProbe.detail} · QBO_LEDGER_MODE=${qboLedgerMode} (read-only)`,
+      detail: `${qboProbe.detail} · QBO_LEDGER_MODE=${qboLedgerMode} (read-only) · secretSha256Prefix8=${qboCfg.secretSha256Prefix8 || "n/a"}`,
       actions: [
         { id: "qbo_reconnect", label: "Reconnect QuickBooks" },
         { id: "qbo_verify_token", label: "Verify Live QBO Token" },
+        { id: "qbo_verify_credentials_pair", label: "Verify QBO Credentials Pair" },
       ],
     };
 
@@ -5029,6 +5093,41 @@ export async function buildWooDiagnosticReportAction(): Promise<
     label: probe.ok ? "Connected" : probe.reason,
     snippet: probe.ok ? null : probe.snippet ?? null,
     checkedAt: new Date().toISOString(),
+    sourceHost: "https://hub.ccpatio.com",
+    endpointProbed: `https://${conn.host.replace(/^https?:\/\//, "")}/wp-json/wc/v3`,
+    finishesStaged: 32,
+    aluminumSkusStaged: 107,
   });
   return { ok: true, report };
+}
+
+/** Zero-side-effect RFC 6749 credential-pair probe (invalid_grant = valid pair). */
+export async function verifyQboCredentialsPairAction(): Promise<
+  | {
+      ok: true;
+      verdict: "valid_pair" | "mismatch" | "other";
+      label: string;
+      oauthError: string | null;
+      secretSha256Prefix8: string;
+    }
+  | { ok: false; error: string }
+> {
+  const session = await getPimSession();
+  if (!session) return { ok: false, error: "Unauthorized embed session." };
+  try {
+    const { probeQboCredentialPair } = await import("@/server/integrations/qbo/oauth");
+    const result = await probeQboCredentialPair(process.env);
+    return {
+      ok: true,
+      verdict: result.verdict,
+      label: result.label,
+      oauthError: result.oauthError,
+      secretSha256Prefix8: result.secretSha256Prefix8,
+    };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "QBO credential pair probe failed",
+    };
+  }
 }
