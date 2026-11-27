@@ -113,6 +113,26 @@ export const STOREFRONT_UPPERCASE_TOKENS: ReadonlySet<string> = new Set([
   "III",
 ]);
 
+/** Category-accurate Display Name placeholders — never "Canvas Ivory" on Dekton/Powder. */
+export function displayNamePlaceholderForMaterial(
+  materialClass: "sunbrella" | "ultraleather" | "dekton" | "powder" | "addon" | "" | null | undefined,
+): string {
+  switch (materialClass) {
+    case "sunbrella":
+      return "e.g. Cabana Classic";
+    case "ultraleather":
+      return "e.g. Beacon";
+    case "dekton":
+      return "e.g. Aura 15";
+    case "powder":
+      return "e.g. Gray";
+    case "addon":
+      return "e.g. Canvas Ivory";
+    default:
+      return "e.g. Storefront name";
+  }
+}
+
 /**
  * Storefront Title Case: "canvas ivory" → "Canvas Ivory"; "BH ii" → "BH II".
  * BH / SH / OD / LED / II / III are always upper-cased. Hyphen/slash-separated parts

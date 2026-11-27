@@ -604,7 +604,7 @@ function upsampleFloat(src: Float32Array, sw: number, sh: number, w: number, h: 
   return out;
 }
 
-function flattenIllumination(
+export function flattenIllumination(
   rgb: Buffer,
   size: number,
   mode: "gaussian" | "plane",
@@ -947,6 +947,99 @@ function meanLabOpenCvStyle(rgb: Buffer, size: number): number[] {
     b += (lab[2] * 255) / 256 + 128;
   }
   return [L / n, a / n, b / n];
+}
+
+/**
+ * Non-black / no-border-wedge gate for auto-crops.
+ * Intentionally dark finishes skip the mean-L floor.
+ * Striped / bimodal patterns skip the dark-border wedge check (black stripes are real).
+ */
+export function assertNonBlackSwatch(
+  rgb: Buffer,
+  size: number,
+  opts?: {
+    intentionallyDark?: boolean;
+    striped?: boolean;
+    meanLMin?: number;
+    darkLThresh?: number;
+    maxDarkBorderFrac?: number;
+  },
+): { ok: true; meanL: number; darkBorderFrac: number } | { ok: false; reason: string; meanL: number; darkBorderFrac: number } {
+  const meanLMin = opts?.meanLMin ?? 22;
+  const darkLThresh = opts?.darkLThresh ?? 14;
+  const maxDarkBorderFrac = opts?.maxDarkBorderFrac ?? 0.005;
+  const band = Math.max(2, Math.round(size * 0.04));
+  let sumL = 0;
+  let darkBorder = 0;
+  let borderTotal = 0;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 3;
+      const [L] = rgbToLab(rgb[i]!, rgb[i + 1]!, rgb[i + 2]!);
+      sumL += L;
+      const onBorder = x < band || y < band || x >= size - band || y >= size - band;
+      if (onBorder) {
+        borderTotal++;
+        if (L < darkLThresh) darkBorder++;
+      }
+    }
+  }
+  const meanL = sumL / (size * size);
+  const darkBorderFrac = borderTotal ? darkBorder / borderTotal : 0;
+  if (!opts?.intentionallyDark && meanL < meanLMin) {
+    return {
+      ok: false,
+      reason: `mean L* ${meanL.toFixed(1)} < ${meanLMin} (black / empty crop)`,
+      meanL,
+      darkBorderFrac,
+    };
+  }
+  if (!opts?.striped && darkBorderFrac > maxDarkBorderFrac) {
+    return {
+      ok: false,
+      reason: `dark border fraction ${(darkBorderFrac * 100).toFixed(2)}% > ${(maxDarkBorderFrac * 100).toFixed(2)}%`,
+      meanL,
+      darkBorderFrac,
+    };
+  }
+  return { ok: true, meanL, darkBorderFrac };
+}
+
+/**
+ * Re-extract a square from an EXIF-baked master, post-process, and JPEG-encode.
+ * Used by seed refine loop when the initial CV crop still catches tape / letterbox.
+ */
+export async function extractProcessedSquareFromMaster(opts: {
+  masterPathOrBuf: string | Buffer;
+  cropX: number;
+  cropY: number;
+  cropSide: number;
+  familyHint?: "sunbrella" | "ultraleather" | "dekton" | "powder";
+  striped?: boolean;
+}): Promise<{ rgb: Buffer; textureJpeg: Buffer; thumbJpeg: Buffer }> {
+  const side = Math.max(8, Math.floor(opts.cropSide));
+  const left = Math.max(0, Math.floor(opts.cropX));
+  const top = Math.max(0, Math.floor(opts.cropY));
+  const extract = await sharp(opts.masterPathOrBuf)
+    .rotate()
+    .extract({ left, top, width: side, height: side })
+    .resize(2048, 2048, { fit: "fill", kernel: "lanczos3" })
+    .removeAlpha()
+    .raw()
+    .toBuffer();
+  const family = opts.familyHint ?? "sunbrella";
+  const processed =
+    family === "dekton"
+      ? flattenIllumination(extract, 2048, "plane")
+      : finalizeSeamlessTexture(extract, 2048, {
+          striped: opts.striped === true,
+          patternMode: opts.striped ? "striped" : "solid",
+        });
+  const textureJpeg = await sharp(processed, { raw: { width: 2048, height: 2048, channels: 3 } })
+    .jpeg({ quality: 92, chromaSubsampling: "4:4:4", mozjpeg: true })
+    .toBuffer();
+  const thumbJpeg = await sharp(textureJpeg).resize(512, 512).jpeg({ quality: 90 }).toBuffer();
+  return { rgb: processed, textureJpeg, thumbJpeg };
 }
 
 async function writeJpegSquare(

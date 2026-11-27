@@ -3237,24 +3237,15 @@ export async function listFinishAssetsForPortal(): Promise<
 import {
   apfTargetGroupForMaterial,
   defaultUvScale,
-  getFinishIntakeById,
   listFinishIntake,
   mintCanonicalFinishSku,
   promoteFinishIntake,
-  reCropFinishFromBuffer,
   resolveFinishDefBySkuOrAlias,
   searchFinishSkuMatches,
   updateFinishIntakeMeta,
   type FinishIntakeView,
   type MaterialClass,
 } from "@/server/ecommerce/finish-intake";
-import { finish_intake } from "@/server/db/schema";
-import sharp from "sharp";
-import {
-  getPublicObjectUrl,
-  getSupabaseAdmin,
-  PRODUCT_IMAGES_BUCKET,
-} from "@/lib/supabase-storage";
 
 export type FinishIntakeListOptions = Parameters<typeof listFinishIntake>[0];
 export type FinishIntakePatchInput = Parameters<typeof updateFinishIntakeMeta>[1];
@@ -3399,7 +3390,7 @@ export async function updateFinishIntakeAction(
   }
 }
 
-/** Persist the crop square, re-crop the reference to 2048 + 512 drafts and store them. */
+/** Persist the crop square via cloud-backed Apply Crop (same path as /api/ecommerce/intake-crop). */
 export async function applyFinishIntakeCropAction(input: {
   id: string;
   cropX: number;
@@ -3415,90 +3406,14 @@ export async function applyFinishIntakeCropAction(input: {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid crop box" };
   }
   const crop = parsed.data;
-  if (
-    crop.cropX + crop.cropSidePx > crop.sourceWidth ||
-    crop.cropY + crop.cropSidePx > crop.sourceHeight
-  ) {
-    return { ok: false, error: "Crop square extends outside the source image" };
-  }
   try {
-    const current = await getFinishIntakeById(crop.id);
-    if (!current) return { ok: false, error: "Intake item not found" };
-    if (current.status === "certified") {
-      return { ok: false, error: "Item is already certified — crop is locked" };
-    }
-    if (!current.rawReferenceUrl) {
-      return { ok: false, error: "No uncropped reference image available for this item" };
-    }
-
-    await updateFinishIntakeMeta(crop.id, {
-      cropX: crop.cropX,
-      cropY: crop.cropY,
-      cropSidePx: crop.cropSidePx,
-      sourceWidth: crop.sourceWidth,
-      sourceHeight: crop.sourceHeight,
-    });
-
-    const refRes = await fetch(current.rawReferenceUrl.split("?")[0]!, { cache: "no-store" });
-    if (!refRes.ok) {
-      return { ok: false, error: `Could not fetch reference image (HTTP ${refRes.status})` };
-    }
-    const refBytes = Buffer.from(await refRes.arrayBuffer());
-
-    // The reference is a downscaled copy (max ~1400px); crop coords are in SOURCE pixels.
-    const refMeta = await sharp(refBytes).metadata();
-    const swap = (refMeta.orientation ?? 1) >= 5;
-    const refW = (swap ? refMeta.height : refMeta.width) ?? 0;
-    const refH = (swap ? refMeta.width : refMeta.height) ?? 0;
-    if (refW <= 0 || refH <= 0) return { ok: false, error: "Reference image has no readable size" };
-    const scaleX = refW / crop.sourceWidth;
-    const scaleY = refH / crop.sourceHeight;
-    if (Math.abs(scaleX - scaleY) / Math.max(scaleX, scaleY) > 0.015) {
-      return {
-        ok: false,
-        error: "Reference aspect ratio does not match the source dimensions — re-seed this item",
-      };
-    }
-    const refSide = Math.max(8, Math.round(crop.cropSidePx * scaleX));
-    const refX = Math.min(Math.round(crop.cropX * scaleX), Math.max(0, refW - refSide));
-    const refY = Math.min(Math.round(crop.cropY * scaleY), Math.max(0, refH - refSide));
-
-    const cropped = await reCropFinishFromBuffer({
-      sourceBytes: refBytes,
-      cropX: refX,
-      cropY: refY,
-      cropSidePx: refSide,
-      patternMode: current.patternMode,
-      materialClass: current.materialClass,
-    });
-
-    const supabase = getSupabaseAdmin();
-    const sha8 = cropped.sha256.slice(0, 8);
-    const put = async (objectPath: string, buf: Buffer): Promise<string> => {
-      const { error } = await supabase.storage
-        .from(PRODUCT_IMAGES_BUCKET)
-        .upload(objectPath, buf, { contentType: "image/jpeg", upsert: true });
-      if (error) throw new Error(error.message);
-      const base = getPublicObjectUrl(PRODUCT_IMAGES_BUCKET, objectPath);
-      return `${base}${base.includes("?") ? "&" : "?"}v=${sha8}`;
-    };
-    const textureUrl = await put(`intake/crops/${crop.id}/${crop.id}-2048.jpg`, cropped.texture2048);
-    const thumbUrl = await put(`intake/crops/${crop.id}/${crop.id}-512.jpg`, cropped.thumb512);
-
-    await getDb()
-      .update(finish_intake)
-      .set({
-        texture_2048_url: textureUrl,
-        thumb_512_url: thumbUrl,
-        texture_sha256: cropped.sha256,
-        ...(current.status === "pending" ? { status: "crop_verified" as const } : {}),
-        updated_at: new Date(),
-      })
-      .where(eq(finish_intake.id, crop.id));
+    const { applyIntakeCropFromCloud } = await import("@/server/ecommerce/apply-intake-crop");
+    const result = await applyIntakeCropFromCloud(crop);
+    if (!result.ok) return result;
 
     await logPimAudit({
       operatorEmail: session.email,
-      globalSku: current.canonicalSku ?? current.proposedSku ?? null,
+      globalSku: result.view.canonicalSku ?? result.view.proposedSku ?? null,
       action: "finish_intake_crop_applied",
       field: "finish_intake.crop",
       newValue: JSON.stringify({
@@ -3506,13 +3421,12 @@ export async function applyFinishIntakeCropAction(input: {
         cropX: crop.cropX,
         cropY: crop.cropY,
         cropSidePx: crop.cropSidePx,
-        sha256: cropped.sha256,
+        sha256: result.view.textureSha256,
+        source: result.source,
       }),
     });
 
-    const view = await getFinishIntakeById(crop.id);
-    if (!view) return { ok: false, error: "Intake item vanished after crop" };
-    return { ok: true, view };
+    return { ok: true, view: result.view };
   } catch (error: unknown) {
     return { ok: false, error: error instanceof Error ? error.message : "Could not apply crop" };
   }

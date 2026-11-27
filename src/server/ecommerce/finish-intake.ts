@@ -336,12 +336,25 @@ export async function reCropFinishFromBuffer(input: {
   const side = Math.max(8, Math.min(input.cropSidePx, w - input.cropX, h - input.cropY));
   const left = Math.max(0, Math.min(input.cropX, w - side));
   const top = Math.max(0, Math.min(input.cropY, h - side));
-  void input.patternMode;
-  void input.materialClass;
-  const texture2048 = await sharp(input.sourceBytes)
+
+  const extractRgb = await sharp(input.sourceBytes)
     .rotate()
     .extract({ left, top, width: side, height: side })
     .resize(2048, 2048, { fit: "fill", kernel: "lanczos3" })
+    .removeAlpha()
+    .raw()
+    .toBuffer();
+
+  // Lazy-import so unit tests that only need mint/search helpers stay light.
+  const { postprocessCroppedRgb } = await import("@/server/ecommerce/swatch-postprocess");
+  const processed = postprocessCroppedRgb(extractRgb, 2048, {
+    materialClass: input.materialClass,
+    patternMode: input.patternMode,
+  });
+
+  const texture2048 = await sharp(processed, {
+    raw: { width: 2048, height: 2048, channels: 3 },
+  })
     .jpeg({ quality: 92, chromaSubsampling: "4:4:4", mozjpeg: true })
     .toBuffer();
   const thumb512 = await sharp(texture2048).resize(512, 512).jpeg({ quality: 90 }).toBuffer();
