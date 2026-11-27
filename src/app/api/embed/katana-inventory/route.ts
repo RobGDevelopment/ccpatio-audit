@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { authorizeEmbedRequest } from "@/server/showroom/embed-route-auth";
 import {
-  enqueueBackgroundShowroomSync,
+  awaitShowroomSyncUnderLock,
   readShowroomSnapshotFromHub,
 } from "@/server/stock/showroom-snapshot";
 import { matchesTypeFilter } from "@/server/stock/katana-inventory";
@@ -71,23 +71,33 @@ export async function POST(request: Request) {
   }
 
   try {
-    const queued = await enqueueBackgroundShowroomSync({
-      force: true,
+    const result = await awaitShowroomSyncUnderLock({
       priority: true,
       reason: "embed-katana-inventory-post",
     });
-    const hub = await readShowroomSnapshotFromHub();
+    if (!result.ok) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            sanitizeShowroomSyncWarning(result.error) ?? "Could not sync Katana inventory.",
+        },
+        { status: 502 },
+      );
+    }
     revalidatePath("/embed/showroom");
     revalidatePath("/showroom");
     return NextResponse.json({
-      ...toPayload(hub),
-      backgroundSyncQueued: queued.queued,
-      syncStatus: queued.reason,
+      ...toPayload(result.hub),
+      backgroundSyncQueued: false,
+      syncStatus: result.reason,
+      syncedItemsCount: result.hub.rowCount,
+      claimed: result.claimed,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Could not sync Katana inventory.";
     return NextResponse.json(
-      { ok: false, error: sanitizeShowroomSyncWarning(message) ?? "Could not queue inventory sync." },
+      { ok: false, error: sanitizeShowroomSyncWarning(message) ?? "Could not sync inventory." },
       { status: 502 },
     );
   }

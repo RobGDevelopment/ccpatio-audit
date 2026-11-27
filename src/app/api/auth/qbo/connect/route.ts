@@ -6,12 +6,12 @@ import { user_roles } from "@/server/db/schema";
 import {
   buildQboAuthorizeUrl,
   canInitiateQboOAuth,
+  getSanitizedQboConfig,
   isValidQboConnectSecret,
   mintQboOAuthState,
   QBO_OAUTH_STATE_COOKIE,
   qboOAuthStateCookieOptions,
   sanitizedQboOAuthError,
-  stripEnvQuotes,
 } from "@/server/integrations/qbo/oauth";
 
 export const runtime = "nodejs";
@@ -40,6 +40,7 @@ async function hasMissionControlQboSession(): Promise<boolean> {
  * OAuth initiation — SuperAdmin / IT_Admin session OR `QBO_CONNECT_SECRET`
  * (header `x-qbo-connect-secret` or query `secret`).
  * Sets HttpOnly SameSite=Lax `qbo_oauth_state` then redirects to Intuit.
+ * Uses the same sanitized redirect_uri as `/api/auth/qbo/callback`.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -58,9 +59,8 @@ export async function GET(req: Request) {
     );
   }
 
-  const clientId = stripEnvQuotes(process.env.QBO_CLIENT_ID);
-  const redirectUri = stripEnvQuotes(process.env.QBO_OAUTH_REDIRECT_URI);
-  if (!clientId || !redirectUri) {
+  const config = getSanitizedQboConfig(process.env, url.origin);
+  if (!config.clientId || !config.redirectUri) {
     return NextResponse.json(
       sanitizedQboOAuthError("misconfigured", "Missing QBO OAuth configuration"),
       { status: 500 },
@@ -68,7 +68,11 @@ export async function GET(req: Request) {
   }
 
   const state = mintQboOAuthState();
-  const authorizeUrl = buildQboAuthorizeUrl({ clientId, redirectUri, state });
+  const authorizeUrl = buildQboAuthorizeUrl({
+    clientId: config.clientId,
+    redirectUri: config.redirectUri,
+    state,
+  });
   const secure = url.protocol === "https:";
 
   const res = NextResponse.redirect(authorizeUrl, 302);

@@ -203,11 +203,13 @@ export function deriveDlqVerdict(snapshot: DlqSnapshot, now: Date): Verdict {
 
 export async function readDlqSnapshot(): Promise<DlqSnapshot> {
   const db = getDb();
+  // Same open predicate as listOpenDlqEventsAction (`openDlqStatusPredicate` / status='open').
+  const { DLQ_STATUS_OPEN } = await import("@/server/sre/dlq-open");
   const [row] = await db
     .select({
-      open: sql<number>`cast(count(*) filter (where ${dlq_events.status} = 'open') as int)`,
-      unalerted: sql<number>`cast(count(*) filter (where ${dlq_events.status} = 'open' and ${dlq_events.alert_sent} = false) as int)`,
-      oldest: sql<Date | null>`min(${dlq_events.created_at}) filter (where ${dlq_events.status} = 'open')`,
+      open: sql<number>`cast(count(*) filter (where ${dlq_events.status} = ${DLQ_STATUS_OPEN}) as int)`,
+      unalerted: sql<number>`cast(count(*) filter (where ${dlq_events.status} = ${DLQ_STATUS_OPEN} and ${dlq_events.alert_sent} = false) as int)`,
+      oldest: sql<Date | null>`min(${dlq_events.created_at}) filter (where ${dlq_events.status} = ${DLQ_STATUS_OPEN})`,
     })
     .from(dlq_events);
   return {

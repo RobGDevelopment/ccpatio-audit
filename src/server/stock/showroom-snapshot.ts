@@ -238,7 +238,10 @@ export async function releaseShowroomSyncLock(): Promise<void> {
 }
 
 /**
- * Non-blocking, deduplicated background sync. Never awaited by showroom SSR/GET.
+ * Non-blocking, deduplicated background sync for showroom SSR/GET.
+ * Uses Next.js `after()` so the inbound GET survives the response on serverless
+ * (plain `void run()` was the `last_synced_at` black hole). Concurrent viewers
+ * share one lock so Katana is not stampeded.
  */
 export async function enqueueBackgroundShowroomSync(options?: {
   force?: boolean;
@@ -274,9 +277,54 @@ export async function enqueueBackgroundShowroomSync(options?: {
     }
   };
 
-  // Fire-and-forget on the request path.
-  void run();
+  try {
+    const { after } = await import("next/server");
+    after(() => {
+      void run();
+    });
+  } catch {
+    // Outside a Next request context (unit tests / scripts) — best-effort.
+    void run();
+  }
   return { queued: true, reason: options?.reason ?? "stale" };
+}
+
+/**
+ * Awaited inbound pull under the short sync lock — used by showroom Refresh POST
+ * so the client receives a fresh `last_synced_at` (not a dead queue toast).
+ */
+export async function awaitShowroomSyncUnderLock(options?: {
+  priority?: boolean;
+  reason?: string;
+}): Promise<
+  | { ok: true; hub: HubShowroomSnapshot; claimed: boolean; reason: string }
+  | { ok: false; error: string }
+> {
+  const claimed = await tryClaimShowroomSyncLock();
+  if (!claimed) {
+    const hub = await readShowroomSnapshotFromHub();
+    return { ok: true, hub, claimed: false, reason: "lock-held" };
+  }
+  try {
+    const hub = await refreshShowroomSnapshotFromKatana({
+      force: true,
+      priority: options?.priority !== false,
+      checkpoint: true,
+    });
+    return {
+      ok: true,
+      hub,
+      claimed: true,
+      reason: options?.reason ?? "awaited-sync",
+    };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Katana showroom sync failed.",
+    };
+  } finally {
+    await releaseShowroomSyncLock().catch(() => undefined);
+  }
 }
 
 /**
@@ -331,36 +379,59 @@ export async function refreshShowroomSnapshotFromKatana(options?: {
   return refreshInflight;
 }
 
+export type KatanaManualSyncResult =
+  | {
+      ok: true;
+      message: string;
+      syncedItemsCount: number;
+      lastSyncedAt: string;
+      durationMs: number;
+      clearedKeys?: string[];
+    }
+  | { ok: false; error: string };
+
 /**
- * Executive CTA: reset wedged bucket/lock then kick a priority checkpointed sync.
- * Never mutates Katana ERP beyond the existing read/sync inventory path.
+ * Executive CTA: optional bucket/lock reset, then **direct awaited** inbound
+ * Katana GET → Hub upsert. Never fire-and-forget on serverless (that black-holes
+ * `last_synced_at`). Never mutates Katana ERP beyond the read/sync inventory path.
+ * Not gated by DOWNSTREAM_MUTATIONS (inbound GET only).
  */
-export async function resetBucketAndSyncKatanaNow(): Promise<{
-  ok: true;
-  message: string;
-  clearedKeys: string[];
-} | { ok: false; error: string }> {
+export async function resetBucketAndSyncKatanaNow(options?: {
+  resetBucket?: boolean;
+}): Promise<KatanaManualSyncResult> {
+  const started = Date.now();
   try {
-    const reset = await resetKatanaRateLimitBucket();
-    await releaseShowroomSyncLock().catch(() => undefined);
-    const queued = await enqueueBackgroundShowroomSync({
+    let clearedKeys: string[] = [];
+    if (options?.resetBucket !== false) {
+      const reset = await resetKatanaRateLimitBucket();
+      clearedKeys = reset.clearedKeys;
+      await releaseShowroomSyncLock().catch(() => undefined);
+    }
+    const snap = await refreshShowroomSnapshotFromKatana({
       force: true,
       priority: true,
-      reason: "reset-bucket-and-sync",
+      checkpoint: true,
     });
+    const lastSyncedAt = snap.lastSyncedAt ?? new Date().toISOString();
     return {
       ok: true,
-      clearedKeys: reset.clearedKeys,
-      message: queued.queued
-        ? "Katana bucket reset; priority inventory sync queued."
-        : `Katana bucket reset (${queued.reason}).`,
+      clearedKeys,
+      syncedItemsCount: snap.rowCount,
+      lastSyncedAt,
+      durationMs: Date.now() - started,
+      message: `Synced ${snap.rowCount} Katana inventory rows · ${lastSyncedAt}`,
     };
   } catch (error: unknown) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "Could not reset Katana bucket.",
+      error: error instanceof Error ? error.message : "Could not sync Katana inventory.",
     };
   }
+}
+
+/** Alias for Executive "Run Katana Sync Now" (no bucket reset). */
+export async function syncKatanaInventoryNow(): Promise<KatanaManualSyncResult> {
+  return resetBucketAndSyncKatanaNow({ resetBucket: false });
 }
 
 /** Ensure migration tables exist (idempotent) for seed / first deploy. */

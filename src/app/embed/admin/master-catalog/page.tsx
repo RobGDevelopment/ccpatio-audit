@@ -21,6 +21,8 @@ import {
 import type { FinishIntakeView } from "@/server/ecommerce/finish-intake";
 
 export const dynamic = "force-dynamic";
+/** Katana inbound sync Server Actions need headroom on Vercel. */
+export const maxDuration = 60;
 
 export default async function MasterCatalogPage({
   searchParams,

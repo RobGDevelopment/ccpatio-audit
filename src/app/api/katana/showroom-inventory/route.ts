@@ -10,7 +10,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { authorizeEmbedRequest } from "@/server/showroom/embed-route-auth";
 import {
-  enqueueBackgroundShowroomSync,
+  awaitShowroomSyncUnderLock,
   readShowroomSnapshotFromHub,
 } from "@/server/stock/showroom-snapshot";
 import { matchesTypeFilter } from "@/server/stock/katana-inventory";
@@ -119,26 +119,37 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Non-blocking: return Hub cache immediately; sync runs in background with priority.
-    const queued = await enqueueBackgroundShowroomSync({
-      force: true,
+    // Awaited inbound GET under short lock — concurrent viewers share one pull.
+    // (Fire-and-forget on serverless previously froze last_synced_at.)
+    const result = await awaitShowroomSyncUnderLock({
       priority: true,
       reason: "showroom-inventory-post",
     });
-    const hub = await readShowroomSnapshotFromHub();
+    if (!result.ok) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            sanitizeShowroomSyncWarning(result.error) ?? "Could not sync Katana inventory.",
+        },
+        { status: 502 },
+      );
+    }
     revalidatePath("/embed/showroom");
     revalidatePath("/embed/ops-inventory");
     revalidatePath("/admin/ops-inventory");
     revalidatePath("/showroom");
     return NextResponse.json({
-      ...toOpsPayload(hub),
-      backgroundSyncQueued: queued.queued,
-      syncStatus: queued.reason,
+      ...toOpsPayload(result.hub),
+      backgroundSyncQueued: false,
+      syncStatus: result.reason,
+      syncedItemsCount: result.hub.rowCount,
+      claimed: result.claimed,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Could not sync Katana inventory.";
     return NextResponse.json(
-      { ok: false, error: sanitizeShowroomSyncWarning(message) ?? "Could not queue inventory sync." },
+      { ok: false, error: sanitizeShowroomSyncWarning(message) ?? "Could not sync inventory." },
       { status: 502 },
     );
   }

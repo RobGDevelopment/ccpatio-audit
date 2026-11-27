@@ -3,6 +3,7 @@ import { getDb } from "@/server/db/client";
 import { qbo_auth_tokens } from "@/server/db/schema";
 import { canPostToQbo } from "@/server/pipeline/ledger-mode";
 import { QBO_REQUEST_ID_MAX_LENGTH } from "@/server/sre/idempotency";
+import { getSanitizedQboConfig, stripEnvQuotes } from "@/server/integrations/qbo/oauth";
 import {
   QboApiError,
   createDefaultQboFetchDeps,
@@ -21,11 +22,10 @@ export class QboConfigError extends Error {
 
 /**
  * Returns the active QBO environment strictly from QBO_ENVIRONMENT,
- * completely decoupled from NODE_ENV.
+ * completely decoupled from NODE_ENV. Strips whitespace/quotes/CRLF.
  */
 export function getQboEnvironment(): QboEnvironment {
-  const envVal = process.env.QBO_ENVIRONMENT?.trim().toLowerCase();
-  return envVal === "production" ? "production" : "sandbox";
+  return getSanitizedQboConfig(process.env).environment;
 }
 
 /**
@@ -33,8 +33,9 @@ export function getQboEnvironment(): QboEnvironment {
  * Never checks NODE_ENV.
  */
 export function getQboBaseUrl(): string {
-  if (process.env.QBO_API_URL?.trim()) {
-    return process.env.QBO_API_URL.trim().replace(/\/$/, "");
+  const apiUrl = stripEnvQuotes(process.env.QBO_API_URL);
+  if (apiUrl) {
+    return apiUrl.replace(/\/$/, "");
   }
   return getQboEnvironment() === "production"
     ? "https://quickbooks.api.intuit.com"

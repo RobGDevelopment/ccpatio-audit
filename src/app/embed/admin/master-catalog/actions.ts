@@ -4597,11 +4597,15 @@ export async function getExecutiveStackHealthAction(): Promise<
       ],
     };
 
+    const { probeLiveQboToken } = await import(
+      "@/server/integrations/qbo/live-token-probe"
+    );
+    const qboProbe = await probeLiveQboToken();
     const qboLayer: StackLayerPill = {
       id: "qbo",
       label: "QuickBooks",
-      status: lampFromState(snapshot.qbo.state),
-      detail: `${snapshot.qbo.detail} · QBO_LEDGER_MODE=${qboLedgerMode} (read-only)`,
+      status: qboProbe.status,
+      detail: `${qboProbe.detail} · QBO_LEDGER_MODE=${qboLedgerMode} (read-only)`,
       actions: [
         { id: "qbo_reconnect", label: "Reconnect QuickBooks" },
         { id: "qbo_verify_token", label: "Verify Live QBO Token" },
@@ -4625,8 +4629,9 @@ export async function getExecutiveStackHealthAction(): Promise<
             id: "woocommerce",
             label: "WooCommerce",
             status: wooProbe.critical ? "Action Required" : "Degraded",
-            detail: wooProbe.reason,
-            errorSnippet: wooProbe.snippet ?? null,
+            // Plain English on the card — raw JSON/HTML stays in errorSnippet for <details>.
+            detail: wooProbe.reason.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+            errorSnippet: wooProbe.rawBody ?? wooProbe.snippet ?? null,
             actions: [
               { id: "woo_retest", label: "Re-Test Connection" },
               ...(wooProbe.diagnosticReport
@@ -4679,6 +4684,7 @@ export async function getExecutiveStackHealthAction(): Promise<
       );
     const missingDimsSkuCount = Number(dimsRow?.n ?? 0);
 
+    // Credentials healthy + only catalog dims missing → Amber (Readiness Warning), not Red.
     const fedexLayer: StackLayerPill = {
       id: "fedex",
       label: "FedEx LTL",
@@ -4689,9 +4695,9 @@ export async function getExecutiveStackHealthAction(): Promise<
         : "Action Required",
       detail: fedexConfigured
         ? missingDimsSkuCount > 0
-          ? `${missingDimsSkuCount} SKUs Missing Freight Dims`
+          ? `Readiness Warning · ${missingDimsSkuCount} SKU(s) missing freight dims`
           : "Freight dims complete"
-        : "FedEx Freight credentials incomplete",
+        : "FedEx Freight credentials incomplete — Action Required",
       actions:
         fedexConfigured && missingDimsSkuCount > 0
           ? [
@@ -4715,7 +4721,7 @@ export async function getExecutiveStackHealthAction(): Promise<
       status: dlqLamp,
       detail:
         dlq.open === 0
-          ? "DLQ empty"
+          ? "Healthy · 0 open DLQ"
           : `${dlq.open} open DLQ failure(s)${dlq.unalerted ? ` · ${dlq.unalerted} unalerted` : ""}`,
       actions:
         dlq.open > 0
@@ -4751,25 +4757,37 @@ export async function getExecutiveStackHealthAction(): Promise<
   }
 }
 
+export type KatanaSyncActionOk = {
+  ok: true;
+  message: string;
+  syncedItemsCount: number;
+  lastSyncedAt: string;
+  durationMs: number;
+  rowCount?: number;
+  clearedKeys?: string[];
+};
+
 /**
- * Inbound read-only Katana → Hub inventory pull.
+ * Inbound read-only Katana → Hub inventory pull (direct awaited).
  * NEVER gated by DOWNSTREAM_MUTATIONS (that flag only blocks outbound writes).
  */
 export async function runKatanaSyncNowAction(): Promise<
-  { ok: true; message: string; eventIds?: string[]; rowCount?: number } | { ok: false; error: string }
+  KatanaSyncActionOk | { ok: false; error: string }
 > {
   const session = await getPimSession();
   if (!session) return { ok: false, error: "Unauthorized embed session." };
   try {
-    const { refreshShowroomSnapshotFromKatana } = await import("@/server/stock/showroom-snapshot");
+    const { syncKatanaInventoryNow } = await import("@/server/stock/showroom-snapshot");
     const { runWithKatanaPriorityLane } = await import("@/lib/katana");
-    const snap = await runWithKatanaPriorityLane(() =>
-      refreshShowroomSnapshotFromKatana({ force: true, priority: true, checkpoint: true }),
-    );
+    const result = await runWithKatanaPriorityLane(() => syncKatanaInventoryNow());
+    if (!result.ok) return result;
     return {
       ok: true,
-      message: `Inbound Katana inventory pull complete (${snap.rowCount} rows). Outbound writes still blocked by DOWNSTREAM_MUTATIONS=false.`,
-      rowCount: snap.rowCount,
+      message: `Synced ${result.syncedItemsCount} items from Katana · just now`,
+      syncedItemsCount: result.syncedItemsCount,
+      lastSyncedAt: result.lastSyncedAt,
+      durationMs: result.durationMs,
+      rowCount: result.syncedItemsCount,
     };
   } catch (error: unknown) {
     return {
@@ -4779,16 +4797,28 @@ export async function runKatanaSyncNowAction(): Promise<
   }
 }
 
-/** Reset wedged shared bucket/lock, then enqueue priority Hub inventory sync (read-only GET). */
+/** Reset wedged shared bucket/lock, then direct awaited inbound Hub inventory sync (GET). */
 export async function resetKatanaBucketAndSyncAction(): Promise<
-  { ok: true; message: string; clearedKeys?: string[] } | { ok: false; error: string }
+  KatanaSyncActionOk | { ok: false; error: string }
 > {
   const session = await getPimSession();
   if (!session) return { ok: false, error: "Unauthorized embed session." };
   const { resetBucketAndSyncKatanaNow } = await import("@/server/stock/showroom-snapshot");
   const { runWithKatanaPriorityLane } = await import("@/lib/katana");
   // Inbound GET pull — must not be blocked by DOWNSTREAM_MUTATIONS=false.
-  return runWithKatanaPriorityLane(() => resetBucketAndSyncKatanaNow());
+  const result = await runWithKatanaPriorityLane(() =>
+    resetBucketAndSyncKatanaNow({ resetBucket: true }),
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    message: `Bucket reset · synced ${result.syncedItemsCount} items from Katana · just now`,
+    syncedItemsCount: result.syncedItemsCount,
+    lastSyncedAt: result.lastSyncedAt,
+    durationMs: result.durationMs,
+    rowCount: result.syncedItemsCount,
+    clearedKeys: result.clearedKeys,
+  };
 }
 
 /** Live QBO CompanyInfo / token validity probe (never flips QBO_LEDGER_MODE). */
@@ -4871,7 +4901,8 @@ export async function listOpenDlqEventsAction(): Promise<
   if (!session) return { ok: false, error: "Unauthorized embed session." };
   try {
     const { dlq_events } = await import("@/server/db/schema");
-    const { desc, eq } = await import("drizzle-orm");
+    const { desc } = await import("drizzle-orm");
+    const { openDlqStatusPredicate } = await import("@/server/sre/dlq-open");
     const rows = await getDb()
       .select({
         id: dlq_events.id,
@@ -4882,7 +4913,7 @@ export async function listOpenDlqEventsAction(): Promise<
         createdAt: dlq_events.created_at,
       })
       .from(dlq_events)
-      .where(eq(dlq_events.status, "open"))
+      .where(openDlqStatusPredicate())
       .orderBy(desc(dlq_events.created_at))
       .limit(50);
     return {
@@ -4934,11 +4965,11 @@ export async function archiveOpenDlqEventsAction(): Promise<
   if (!session) return { ok: false, error: "Unauthorized embed session." };
   try {
     const { dlq_events } = await import("@/server/db/schema");
-    const { eq } = await import("drizzle-orm");
+    const { openDlqStatusPredicate } = await import("@/server/sre/dlq-open");
     const updated = await getDb()
       .update(dlq_events)
       .set({ status: "resolved", updated_at: new Date() })
-      .where(eq(dlq_events.status, "open"))
+      .where(openDlqStatusPredicate())
       .returning({ id: dlq_events.id });
     return { ok: true, resolved: updated.length };
   } catch (error: unknown) {

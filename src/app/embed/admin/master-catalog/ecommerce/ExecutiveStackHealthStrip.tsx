@@ -14,6 +14,7 @@ import {
   type StackLayerPill,
   type StackLampStatus,
 } from "@/server/ecommerce/executive-stack-health";
+import { QBO_OAUTH_RESULT_MESSAGE_TYPE } from "@/server/integrations/qbo/oauth";
 
 const LAMP_CLASS: Record<StackLampStatus, string> = {
   Healthy: "bg-emerald-500/20 text-emerald-200 ring-emerald-500/40",
@@ -50,6 +51,7 @@ export default function ExecutiveStackHealthStrip({
   );
   const [loading, setLoading] = useState(!initialLayers?.length);
   const [busy, setBusy] = useState<string | null>(null);
+  const [busyLabel, setBusyLabel] = useState<string | null>(null);
   const [openLayer, setOpenLayer] = useState<StackLayerPill["id"] | null>(null);
 
   const refresh = useCallback(async () => {
@@ -74,6 +76,30 @@ export default function ExecutiveStackHealthStrip({
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      const data = event.data as { type?: string; ok?: boolean } | null;
+      if (!data || data.type !== QBO_OAUTH_RESULT_MESSAGE_TYPE) return;
+      onToast(
+        data.ok
+          ? "QuickBooks Online Connected — refreshing stack…"
+          : "QuickBooks reconnect failed — check credentials",
+      );
+      void refresh();
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [onToast, refresh]);
+
+  useEffect(() => {
+    if (!openLayer) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpenLayer(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [openLayer]);
+
   function toggleDrawer(id: StackLayerPill["id"]) {
     const next = openLayer === id ? null : id;
     setOpenLayer(next);
@@ -85,14 +111,25 @@ export default function ExecutiveStackHealthStrip({
   /* ── Internal action handlers (existing wired actions) ── */
   async function runAction(layerId: StackLayerPill["id"], actionId: string) {
     setBusy(`${layerId}-${actionId}`);
+    const syncingKatana =
+      actionId === "katana_sync_now" || actionId === "katana_reset_bucket_sync";
+    if (syncingKatana) setBusyLabel("Syncing live Katana inventory…");
     try {
       if (actionId === "katana_sync_now") {
         const res = await runKatanaSyncNowAction();
-        onToast(res.ok ? res.message : res.error);
+        onToast(
+          res.ok
+            ? `Synced ${res.syncedItemsCount} Katana items · just now`
+            : res.error,
+        );
         if (res.ok) await refresh();
       } else if (actionId === "katana_reset_bucket_sync") {
         const res = await resetKatanaBucketAndSyncAction();
-        onToast(res.ok ? res.message : res.error);
+        onToast(
+          res.ok
+            ? `Bucket reset · synced ${res.syncedItemsCount} Katana items · just now`
+            : res.error,
+        );
         if (res.ok) await refresh();
       } else if (actionId === "qbo_reconnect") {
         window.open("/api/auth/qbo/connect", "_blank", "noopener,noreferrer");
@@ -114,9 +151,18 @@ export default function ExecutiveStackHealthStrip({
         }
       } else if (onDrawerAction) {
         await onDrawerAction(layerId, actionId);
+        // DLQ resolve/archive + QBO verify + re-probe must refresh the pill strip in place.
+        if (
+          actionId.startsWith("dlq_") ||
+          actionId === "layer_reprobe" ||
+          actionId === "qbo_verify_token"
+        ) {
+          await refresh();
+        }
       }
     } finally {
       setBusy(null);
+      setBusyLabel(null);
     }
   }
 
@@ -159,8 +205,8 @@ export default function ExecutiveStackHealthStrip({
           data-testid="stack-diagnostic-drawer"
           className="mt-2 rounded-xl border border-white/10 bg-[#0d1117] px-4 py-3"
         >
-          <div className="flex items-start justify-between">
-            <div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <h3 className="text-sm font-bold text-white">
                 {selectedLayer.label}
                 <span
@@ -173,22 +219,44 @@ export default function ExecutiveStackHealthStrip({
                 </span>
               </h3>
               <p className="mt-1 text-xs text-slate-400">{selectedLayer.detail}</p>
+              {busyLabel && openLayer === selectedLayer.id ? (
+                <p
+                  className="mt-2 flex items-center gap-2 text-xs text-amber-200"
+                  data-testid="katana-sync-spinner"
+                >
+                  <span
+                    className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-amber-300/30 border-t-amber-300"
+                    aria-hidden="true"
+                  />
+                  {busyLabel}
+                </p>
+              ) : null}
             </div>
             <button
               type="button"
+              data-testid="stack-drawer-close"
               onClick={() => setOpenLayer(null)}
-              className="rounded p-1 text-slate-500 transition hover:bg-white/10 hover:text-white"
+              className="rounded p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
               aria-label="Close drawer"
             >
-              <X size={14} />
+              <X size={16} strokeWidth={2.25} />
             </button>
           </div>
 
-          {selectedLayer.errorSnippet && (
+          {selectedLayer.errorSnippet && selectedLayer.id === "woocommerce" ? (
+            <details className="mt-2 rounded-md border border-white/10 bg-black/30 px-3 py-2">
+              <summary className="cursor-pointer text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Raw diagnostic (JSON / HTML)
+              </summary>
+              <pre className="mt-2 max-h-32 overflow-auto font-mono text-[10px] leading-relaxed text-rose-300 whitespace-pre-wrap break-all">
+                {selectedLayer.errorSnippet}
+              </pre>
+            </details>
+          ) : selectedLayer.errorSnippet ? (
             <pre className="mt-2 max-h-24 overflow-auto rounded-md bg-black/40 px-3 py-2 font-mono text-[10px] leading-relaxed text-rose-300">
               {selectedLayer.errorSnippet}
             </pre>
-          )}
+          ) : null}
 
           {selectedLayer.actions?.length ? (
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -201,7 +269,9 @@ export default function ExecutiveStackHealthStrip({
                   onClick={() => void runAction(selectedLayer.id, a.id)}
                   className="rounded-md bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase text-slate-200 transition hover:bg-white/20 disabled:opacity-50"
                 >
-                  {busy === `${selectedLayer.id}-${a.id}` ? "…" : a.label}
+                  {busy === `${selectedLayer.id}-${a.id}`
+                    ? syncingLabel(a.id, busyLabel)
+                    : a.label}
                 </button>
               ))}
             </div>
@@ -215,4 +285,14 @@ export default function ExecutiveStackHealthStrip({
       )}
     </div>
   );
+}
+
+function syncingLabel(actionId: string, busyLabel: string | null): string {
+  if (
+    (actionId === "katana_sync_now" || actionId === "katana_reset_bucket_sync") &&
+    busyLabel
+  ) {
+    return busyLabel;
+  }
+  return "…";
 }

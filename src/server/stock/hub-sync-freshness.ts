@@ -31,11 +31,12 @@ export function hubSyncAgeMs(
   return Math.max(0, nowMs - ms);
 }
 
-/** Operator-facing age fragment: "12m ago" / "3h ago". */
+/** Operator-facing age fragment: "just now" / "12m ago" / "3h ago". */
 export function formatHubSyncAge(ageMs: number): string {
   if (!Number.isFinite(ageMs) || ageMs === Number.POSITIVE_INFINITY) return "never";
+  if (ageMs < 60_000) return "just now";
   const mins = Math.floor(ageMs / 60_000);
-  if (mins < 60) return `${Math.max(1, mins)}m ago`;
+  if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
   if (hours < 48) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
@@ -53,12 +54,14 @@ export function resolveHubSyncBadge(
       tone: "green",
       ageMs,
       label: "Hub synced",
-      statusLabel: `Fresh · ${ageLabel}`,
+      statusLabel:
+        ageLabel === "just now" ? "Healthy · Synced just now" : `Fresh · ${ageLabel}`,
       showRefreshButton: false,
       shouldQueueBackgroundSync: false,
     };
   }
-  if (ageMs <= HUB_SYNC_STALE_MS) {
+  // 30m–2h inclusive lower bound, exclusive upper → Amber; > 2h → Red
+  if (ageMs < HUB_SYNC_STALE_MS) {
     return {
       tone: "amber",
       ageMs,
@@ -72,7 +75,7 @@ export function resolveHubSyncBadge(
     tone: "red",
     ageMs,
     label: "Hub synced",
-    statusLabel: `Stale — ${ageLabel}`,
+    statusLabel: "Snapshot Stale — Refresh",
     showRefreshButton: true,
     shouldQueueBackgroundSync: true,
   };

@@ -831,7 +831,11 @@ export default function EcommerceCertificationPortal({
         const id = actionId.replace("dlq_resolve:", "");
         const res = await resolveDlqEventAction(id);
         onToast(res.ok ? "DLQ event resolved" : res.error);
-        if (res.ok) setDlqRows((prev) => prev.filter((r) => r.id !== id));
+        if (res.ok) {
+          const refresh = await listOpenDlqEventsAction();
+          if (refresh.ok) setDlqRows(refresh.rows);
+          else setDlqRows((prev) => prev.filter((r) => r.id !== id));
+        }
       } else if (actionId === "layer_reprobe") {
         onToast("Re-probing…");
       }

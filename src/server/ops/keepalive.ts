@@ -92,8 +92,10 @@ export async function ensureQboTokenFresh(now: number = Date.now()): Promise<Kee
           .where(eq(qbo_auth_tokens.id, row!.id));
         if (!current?.refresh_token || !needsRefresh(current, Date.now())) return;
 
-        const clientId = process.env.QBO_CLIENT_ID ?? "";
-        const clientSecret = process.env.QBO_CLIENT_SECRET ?? "";
+        const { getSanitizedQboConfig } = await import("@/server/integrations/qbo/oauth");
+        const cfg = getSanitizedQboConfig(process.env);
+        const clientId = cfg.clientId;
+        const clientSecret = cfg.clientSecret;
         if (!clientId || !clientSecret) {
           throw new Error("QBO_CLIENT_ID / QBO_CLIENT_SECRET are not configured.");
         }

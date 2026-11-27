@@ -23,6 +23,7 @@ import { getDb, getMutexDb, type MiddlewareDb } from "@/server/db/client";
 import { qbo_auth_tokens } from "@/server/db/schema";
 import { sendOhCrapAlert, type OhCrapAlertInput } from "@/server/alerts/oh-crap";
 import { logError, logStructured } from "@/lib/log/structured";
+import { getSanitizedQboConfig } from "@/server/integrations/qbo/oauth";
 
 export type QboLockEnvironment = "sandbox" | "production";
 
@@ -458,9 +459,9 @@ export function createDefaultQboFetchDeps(
     fetch: (input, init) => fetch(input, init),
     now: () => Date.now(),
     alert: sendOhCrapAlert,
-    credentials: () => ({
-      clientId: process.env.QBO_CLIENT_ID ?? "",
-      clientSecret: process.env.QBO_CLIENT_SECRET ?? "",
-    }),
+    credentials: () => {
+      const cfg = getSanitizedQboConfig(process.env);
+      return { clientId: cfg.clientId, clientSecret: cfg.clientSecret };
+    },
   };
 }

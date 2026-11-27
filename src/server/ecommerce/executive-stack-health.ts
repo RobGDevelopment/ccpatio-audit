@@ -102,46 +102,56 @@ const HTML_DOC_RE = /<!doctype\s+html|<html[\s>]/i;
 
 /**
  * Detect WordPress HTML / critical PHP error responses that previously
- * presented as a fake-green Woo connection.
+ * presented as a fake-green Woo connection. Prefer plain-English summaries;
+ * keep raw JSON/HTML in `rawBody` for a collapsed `<details>` dump.
  */
 export function classifyWooProbeBody(input: {
   httpStatus: number;
   contentType?: string | null;
   bodyText: string;
+  host?: string | null;
 }): {
   ok: boolean;
   status: StackLampStatus;
   label: string;
   snippet: string | null;
+  rawBody: string | null;
 } {
   const raw = input.bodyText ?? "";
   const ct = (input.contentType ?? "").toLowerCase();
+  const host = (input.host ?? "").trim() || "WooCommerce host";
   const looksHtml = ct.includes("text/html") || HTML_DOC_RE.test(raw.slice(0, 500));
-  const critical = WP_CRITICAL_RE.test(raw);
-  const snippet = stripHtmlSnippet(raw);
+  const parsedJsonMessage = extractWooJsonMessage(raw);
+  const critical =
+    WP_CRITICAL_RE.test(raw) || WP_CRITICAL_RE.test(parsedJsonMessage ?? "");
+  const snippet = stripHtmlSnippet(parsedJsonMessage || raw);
+  const rawBody = raw.trim() ? raw.slice(0, 4000) : null;
 
   if (input.httpStatus >= 500 || critical) {
     return {
       ok: false,
       status: "Action Required",
-      label: "WP Critical Error",
+      label: `WordPress PHP Critical Error (HTTP ${input.httpStatus || 500}) on ${host} — PrimeView plugin/theme fatal error`,
       snippet,
+      rawBody,
     };
   }
   if (looksHtml && !ct.includes("application/json")) {
     return {
       ok: false,
       status: "Action Required",
-      label: "WP Critical Error",
+      label: `WordPress PHP Critical Error (HTTP ${input.httpStatus || 500}) on ${host} — PrimeView plugin/theme fatal error`,
       snippet: snippet || "WordPress returned HTML instead of JSON.",
+      rawBody,
     };
   }
   if (input.httpStatus < 200 || input.httpStatus >= 300) {
     return {
       ok: false,
       status: "Action Required",
-      label: `Woo HTTP ${input.httpStatus}`,
+      label: `WooCommerce HTTP ${input.httpStatus} on ${host}`,
       snippet,
+      rawBody,
     };
   }
   try {
@@ -151,12 +161,28 @@ export function classifyWooProbeBody(input: {
       return {
         ok: false,
         status: "Action Required",
-        label: "WP Critical Error",
+        label: `WordPress PHP Critical Error (HTTP ${input.httpStatus || 500}) on ${host} — PrimeView plugin/theme fatal error`,
         snippet: snippet || "Non-JSON WooCommerce response.",
+        rawBody,
       };
     }
   }
-  return { ok: true, status: "Healthy", label: "Connected", snippet: null };
+  return { ok: true, status: "Healthy", label: "Connected", snippet: null, rawBody: null };
+}
+
+/** Pull `message` from Woo/WP JSON error envelopes when present. */
+export function extractWooJsonMessage(bodyText: string): string | null {
+  const trimmed = bodyText.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return null;
+  try {
+    const parsed = JSON.parse(trimmed) as { message?: unknown; code?: unknown };
+    if (typeof parsed.message === "string" && parsed.message.trim()) {
+      return parsed.message;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 /** Strip tags / collapse whitespace for operator-facing diagnostic copy. */

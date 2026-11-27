@@ -297,7 +297,7 @@ export function SalesStockView({
                   onClick={() => void queueBackgroundRefresh()}
                   className={`${softControl} rounded-full px-3 py-1 text-[11px] font-semibold text-slate-800`}
                 >
-                  {refreshing ? "Queuing…" : "Refresh"}
+                  {refreshing ? "Syncing…" : "Refresh"}
                 </button>
               ) : null}
               {pending ? (

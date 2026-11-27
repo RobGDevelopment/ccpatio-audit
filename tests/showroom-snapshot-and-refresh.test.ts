@@ -19,12 +19,12 @@ describe("showroom snapshot + embed refresh auth", () => {
       "utf8",
     );
     expect(route).toContain("readShowroomSnapshotFromHub");
-    expect(route).toContain("enqueueBackgroundShowroomSync");
+    expect(route).toContain("awaitShowroomSyncUnderLock");
     expect(route).toContain("authorizeEmbedRequest");
     expect(route).toContain("lastSyncedAt");
     expect(route).not.toMatch(/getKatanaInventorySnapshot/);
-    // POST must not block on live Katana refresh.
-    expect(route).not.toMatch(/await refreshShowroomSnapshotFromKatana/);
+    // POST awaits inbound pull under the short stampede lock (no fire-and-forget black hole).
+    expect(route).toMatch(/await awaitShowroomSyncUnderLock/);
   });
 
   it("embed showroom SSR loads sales projection (not live Katana / not ops dump)", () => {

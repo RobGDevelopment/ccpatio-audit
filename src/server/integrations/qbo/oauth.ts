@@ -145,13 +145,110 @@ export function fingerprintUpstreamBody(body: string): string {
   return createHash("sha256").update(body).digest("hex").slice(0, 16);
 }
 
-/** Trim BOM/whitespace and strip a single wrapping quote pair from env values. */
+/** Trim BOM/whitespace/`\r`/`\n` and strip a single wrapping quote pair from env values. */
 export function stripEnvQuotes(value: string | undefined): string {
   return (value ?? "")
     .replace(/^\uFEFF/, "")
+    .replace(/[\r\n]+/g, "")
     .trim()
     .replace(/^["']|["']$/g, "")
     .trim();
+}
+
+export type SanitizedQboConfig = {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  environment: "sandbox" | "production";
+  /** True when any raw env value differed after strip (whitespace / quotes / CR/LF). */
+  trimmedWhitespaceOrQuotes: boolean;
+  clientIdPrefix: string;
+  clientIdLength: number;
+  clientSecretLength: number;
+};
+
+function rawEnvDiffered(raw: string | undefined, sanitized: string): boolean {
+  if (raw == null) return false;
+  return raw !== sanitized;
+}
+
+/**
+ * Shared QBO env sanitizer — strips Windows/`vercel env add` whitespace, CR/LF,
+ * and accidental surrounding quotes. Prefer `QBO_REDIRECT_URI`, fall back to
+ * `QBO_OAUTH_REDIRECT_URI`. When `origin` is provided and no redirect env is set
+ * (or it does not match the request origin host), uses
+ * `${origin}/api/auth/qbo/callback`.
+ */
+export function getSanitizedQboConfig(
+  env: Record<string, string | undefined> = process.env,
+  origin?: string | null,
+): SanitizedQboConfig {
+  const rawClientId = env.QBO_CLIENT_ID;
+  const rawClientSecret = env.QBO_CLIENT_SECRET;
+  const rawRedirect =
+    env.QBO_REDIRECT_URI ?? env.QBO_OAUTH_REDIRECT_URI ?? undefined;
+  const rawEnvironment = env.QBO_ENVIRONMENT;
+
+  const clientId = stripEnvQuotes(rawClientId);
+  const clientSecret = stripEnvQuotes(rawClientSecret);
+  const configuredRedirect = stripEnvQuotes(rawRedirect);
+  const environmentRaw = stripEnvQuotes(rawEnvironment).toLowerCase();
+  const environment: "sandbox" | "production" =
+    environmentRaw === "production" ? "production" : "sandbox";
+
+  let redirectUri = configuredRedirect;
+  if (origin) {
+    const canonical = `${origin.replace(/\/$/, "")}/api/auth/qbo/callback`;
+    if (!configuredRedirect) {
+      redirectUri = canonical;
+    } else {
+      try {
+        const configuredHost = new URL(configuredRedirect).origin;
+        const requestOrigin = new URL(origin).origin;
+        if (configuredHost !== requestOrigin) {
+          redirectUri = canonical;
+        }
+      } catch {
+        redirectUri = canonical;
+      }
+    }
+  }
+
+  const trimmedWhitespaceOrQuotes =
+    rawEnvDiffered(rawClientId, clientId) ||
+    rawEnvDiffered(rawClientSecret, clientSecret) ||
+    rawEnvDiffered(rawRedirect, configuredRedirect) ||
+    rawEnvDiffered(rawEnvironment, stripEnvQuotes(rawEnvironment));
+
+  return {
+    clientId,
+    clientSecret,
+    redirectUri,
+    environment,
+    trimmedWhitespaceOrQuotes,
+    clientIdPrefix: clientId.slice(0, 6),
+    clientIdLength: clientId.length,
+    clientSecretLength: clientSecret.length,
+  };
+}
+
+/** Safe operator diagnostics — never includes secrets. */
+export function qboSafeCredentialDiagnostics(config: SanitizedQboConfig): {
+  environment: string;
+  redirectUri: string;
+  clientIdPrefix: string;
+  clientIdLength: number;
+  clientSecretLength: number;
+  trimmedWhitespaceOrQuotes: boolean;
+} {
+  return {
+    environment: config.environment,
+    redirectUri: config.redirectUri,
+    clientIdPrefix: config.clientIdPrefix,
+    clientIdLength: config.clientIdLength,
+    clientSecretLength: config.clientSecretLength,
+    trimmedWhitespaceOrQuotes: config.trimmedWhitespaceOrQuotes,
+  };
 }
 
 /** Safe metadata for diagnosing credential/redirect misconfig without secrets. */
@@ -170,4 +267,22 @@ export function qboCredentialLogMeta(input: {
     redirectUri: input.redirectUri,
     redirectUriLength: input.redirectUri.length,
   };
+}
+
+export const QBO_OAUTH_RESULT_MESSAGE_TYPE = "ccpatio:qbo-oauth-result";
+
+/** Detect browser OAuth redirects that must receive HTML (never raw JSON). */
+export function prefersQboHtmlCallback(req: Request): boolean {
+  const accept = (req.headers.get("accept") ?? "").toLowerCase();
+  if (accept.includes("text/html")) return true;
+  // Standard OAuth redirect often omits Accept or sends */*
+  if (!accept || accept.includes("*/*")) {
+    const secFetch = (req.headers.get("sec-fetch-mode") ?? "").toLowerCase();
+    const secDest = (req.headers.get("sec-fetch-dest") ?? "").toLowerCase();
+    if (secFetch === "navigate" || secDest === "document") return true;
+    // Popup navigations from window.open typically look like browser navigations
+    const upgrade = (req.headers.get("upgrade-insecure-requests") ?? "").trim();
+    if (upgrade === "1") return true;
+  }
+  return false;
 }

@@ -446,6 +446,8 @@ export async function testWooConnection(): Promise<
       reason: string;
       critical?: boolean;
       snippet?: string;
+      /** Raw JSON/HTML for collapsed `<details>` — never dump on the main card. */
+      rawBody?: string;
       httpStatus?: number;
       diagnosticReport?: string;
     }
@@ -460,7 +462,14 @@ export async function testWooConnection(): Promise<
 
   async function probe(pathname: string): Promise<
     | { ok: true }
-    | { ok: false; reason: string; critical: boolean; snippet: string; httpStatus: number }
+    | {
+        ok: false;
+        reason: string;
+        critical: boolean;
+        snippet: string;
+        rawBody?: string;
+        httpStatus: number;
+      }
   > {
     const url = `${baseUrl}/wp-json/wc/v3${pathname}`;
     const response = await fetch(url, {
@@ -475,13 +484,15 @@ export async function testWooConnection(): Promise<
       httpStatus: response.status,
       contentType: response.headers.get("content-type"),
       bodyText,
+      host,
     });
     if (!classified.ok) {
       return {
         ok: false,
         reason: classified.label,
-        critical: classified.label === "WP Critical Error",
+        critical: /WordPress PHP Critical Error/i.test(classified.label),
         snippet: classified.snippet ?? classified.label,
+        rawBody: classified.rawBody ?? undefined,
         httpStatus: response.status,
       };
     }
@@ -500,6 +511,7 @@ export async function testWooConnection(): Promise<
         reason: fail.reason,
         critical: fail.critical,
         snippet: fail.snippet,
+        rawBody: fail.rawBody,
         httpStatus: fail.httpStatus,
         diagnosticReport: buildWooDiagnosticReport({
           host,
