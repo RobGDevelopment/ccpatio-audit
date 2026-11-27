@@ -1,50 +1,44 @@
 {
-  "phase_id": "intake-split-studio-realtime-crop",
+  "phase_id": "primeview-handoff-portal-ssot-parity",
   "base_ref": "HEAD",
-  "blast_radius": 15,
+  "blast_radius": 10,
   "counts": {
-    "files": 15,
-    "tracked": 10,
-    "untracked": 5,
-    "insertions": 2046,
-    "deletions": 870
+    "files": 10,
+    "tracked": 6,
+    "untracked": 4,
+    "insertions": 1149,
+    "deletions": 1153
   },
   "files": [
     {
       "status": "??",
-      "path": "src/app/api/ecommerce/intake-crop/route.ts",
+      "path": "src/app/partner/primeview-handoff/actions.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/ecommerce/apply-intake-crop.ts",
+      "path": "src/server/ecommerce/primeview-handoff-ssot.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/ecommerce/swatch-postprocess.ts",
+      "path": "tests/e2e/primeview-handoff-ssot-parity.spec.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/e2e/intake-split-studio-realtime-crop.spec.ts",
-      "insertions": 0,
-      "deletions": 0
-    },
-    {
-      "status": "??",
-      "path": "tests/intake-split-studio-realtime-crop.test.ts",
+      "path": "tests/primeview-handoff-ssot-parity.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 24,
-      "deletions": 25
+      "insertions": 7,
+      "deletions": 9
     },
     {
       "status": "M",
@@ -55,59 +49,34 @@
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 49,
-      "deletions": 162
+      "insertions": 29,
+      "deletions": 47
     },
     {
       "status": "M",
-      "path": "scripts/ops/lib/swatch-cv-pipeline.ts",
-      "insertions": 94,
-      "deletions": 1
+      "path": "src/app/api/partner/primeview-handoff/download/route.ts",
+      "insertions": 106,
+      "deletions": 51
     },
     {
       "status": "M",
-      "path": "scripts/ops/seed-intake-photoshoot.ts",
-      "insertions": 367,
-      "deletions": 68
+      "path": "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx",
+      "insertions": 983,
+      "deletions": 939
     },
     {
       "status": "M",
-      "path": "src/app/embed/admin/master-catalog/actions.ts",
-      "insertions": 8,
-      "deletions": 94
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/IntakeCropOverlay.tsx",
-      "insertions": 116,
-      "deletions": 48
-    },
-    {
-      "status": "M",
-      "path": "src/app/embed/admin/master-catalog/ecommerce/IntakeMediaStudio.tsx",
-      "insertions": 1350,
-      "deletions": 467
-    },
-    {
-      "status": "M",
-      "path": "src/lib/intake-crop-math.ts",
-      "insertions": 20,
-      "deletions": 0
-    },
-    {
-      "status": "M",
-      "path": "src/server/ecommerce/finish-intake.ts",
-      "insertions": 16,
-      "deletions": 3
+      "path": "src/app/partner/primeview-handoff/page.tsx",
+      "insertions": 22,
+      "deletions": 105
     }
   ],
   "untracked": [
-    "src/app/api/ecommerce/intake-crop/route.ts",
-    "src/server/ecommerce/apply-intake-crop.ts",
-    "src/server/ecommerce/swatch-postprocess.ts",
-    "tests/e2e/intake-split-studio-realtime-crop.spec.ts",
-    "tests/intake-split-studio-realtime-crop.test.ts"
+    "src/app/partner/primeview-handoff/actions.ts",
+    "src/server/ecommerce/primeview-handoff-ssot.ts",
+    "tests/e2e/primeview-handoff-ssot-parity.spec.ts",
+    "tests/primeview-handoff-ssot-parity.test.ts"
   ],
-  "file_list_sha256": "82b5223b570904148cc259909cdedac797d5c68fcc17ba03c0942d73ba2403d4",
+  "file_list_sha256": "6d34751d5f46dbd23a27872ad3b9658b62ba38b010ef28c14729a03ea1579fa4",
   "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
 }
