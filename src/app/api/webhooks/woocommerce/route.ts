@@ -56,6 +56,11 @@ import {
   resolvePendingReviewForOrder,
 } from "@/server/woocommerce/quarantine-store";
 import { hubResolveDeps, resolveWooOrder } from "@/server/woocommerce/sku-resolver";
+import {
+  assertPennyExactOrderBalance,
+  buildQboTaxPassthroughPayload,
+  extractTaxJarTelemetry,
+} from "@/server/woocommerce/taxjar-passthrough";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -339,6 +344,21 @@ export async function POST(req: Request) {
     return response;
   }
 
+  // TaxJar + shipping telemetry: extract exact Woo taxes for QBO pass-through (never recalculate).
+  const taxjarTelemetry = extractTaxJarTelemetry(order);
+  const taxBalance = assertPennyExactOrderBalance(taxjarTelemetry);
+  const qboTaxPassthrough = buildQboTaxPassthroughPayload(taxjarTelemetry);
+  logRoute("log", "woo-taxjar-telemetry", {
+    orderId,
+    cart_tax: taxjarTelemetry.cart_tax,
+    shipping_tax: taxjarTelemetry.shipping_tax,
+    shipping_total: taxjarTelemetry.shipping_total,
+    total_tax: taxjarTelemetry.total_tax,
+    balanceOk: taxBalance.ok,
+    quoteId: taxjarTelemetry.shipping_lines[0]?.quote_id ?? null,
+    rateSource: taxjarTelemetry.shipping_lines[0]?.rate_source ?? null,
+  });
+
   // ALWAYS send, even when the audit row was a duplicate: Inngest dedupes by event id, so a
   // re-send is free, whereas short-circuiting would lose the order whenever the first delivery
   // inserted the row and `inngest.send` then failed.
@@ -346,7 +366,12 @@ export async function POST(req: Request) {
     await inngest.send({
       id: wooEventId(order),
       name: WOO_ORDER_EVENT,
-      data: { ...order, [WOO_DELIVERY_KEY_FIELD]: deliveryKey },
+      data: {
+        ...order,
+        [WOO_DELIVERY_KEY_FIELD]: deliveryKey,
+        _ccpatio_taxjar: taxjarTelemetry,
+        _ccpatio_qbo_tax_passthrough: qboTaxPassthrough,
+      },
     });
   } catch (error) {
     const message = `inngest.send failed: ${errorText(error)}`;

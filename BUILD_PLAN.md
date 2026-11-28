@@ -1,66 +1,83 @@
-# BUILD_PLAN — `primeview-handoff-portal-ssot-parity`
+# BUILD_PLAN — `woo-shipping-bridge-and-taxjar`
 
 **Base:** `HEAD`  
 **Mode:** edit (Track 2 locked)  
 **Blast cap override:** true  
-**Expected blast radius:** 10 (QCA excludes `.cursor/aar.json`; `tolerance: 0`)  
-**Target test:** `npx vitest run tests/primeview-handoff-ssot-parity.test.ts`
+**Expected blast radius:** 16 (QCA excludes `.cursor/aar.json`; `tolerance: 0`)  
+**Target test:** `npx vitest run tests/woo-shipping-bridge-and-taxjar.test.ts`
 
 ## Intent
 
-Bring `/partner/primeview-handoff` and `/api/partner/primeview-handoff/download` into **live Certified SSOT parity** with the GHL Executive Control Center (Tabs 2–4): dark-slate/gold partner portal, 32 finishes, 107 Title-Case Aluminum SKUs, staging probe + `CCP-DIAG-WOO-*` diagnostics, and Certified-only exports — while preserving the existing `?token=` URL and a strict read-only partner boundary (no intake drafts, Katana/QBO/GHL pills, or mutation controls).
+Ship Hub-native FedEx LTL / palletized checkout quotes (`POST /api/shipping/quote`), a self-contained WordPress `WC_Shipping_Method` bridge ZIP for PrimeView, TaxJar penny-exact tax/shipping pass-through into the Woo → Hub → QBO ledger path (no QBO recalculation, no TaxJar↔QBO direct link), and partner/GHL Tab-4 consoles that download the plugin + simulate live checkout quotes — while preserving Certified 32-finish / 107-SKU SSOT parity and all production mutation locks.
 
 ## Allowed paths (phase.lock)
 
-`.cursor/phase.lock`, `.cursor/session-stamp.json`, `.cursor/aar.json`, `BUILD_PLAN.md`, `src/app/partner/primeview-handoff/`, `src/app/api/partner/primeview-handoff/`, `src/app/embed/admin/master-catalog/`, `src/components/`, `src/lib/`, `src/server/`, `tests/`, `e2e/`
+`.cursor/phase.lock`, `.cursor/session-stamp.json`, `.cursor/aar.json`, `BUILD_PLAN.md`, `src/app/api/`, `src/app/partner/primeview-handoff/`, `src/app/embed/admin/master-catalog/`, `src/components/`, `src/lib/`, `src/server/`, `tests/`, `e2e/`
 
 ## Live production guardrails
 
 | Guard | Rule |
 |-------|------|
-| Partner URL | Keep `/partner/primeview-handoff?token=` auth behavior identical |
-| Read-only boundary | No intake drafts, stock/cost, QBO/GHL/Inngest pills, edit/save/delete/upload |
-| Mia data | Never overwrite `finish_intake` or customized `display_name` |
-| Env flags | Do not touch `.env*`; leave `DOWNSTREAM_MUTATIONS=false` / `*_LEDGER_MODE=log` |
-| Schema | Additive only; no drops/wipes |
-| Tests | Isolated fixtures / `QA-TEST-*` only |
+| Mia data | Never reset/wipe/overwrite `finish_intake` photoshoot rows or customized `display_name` |
+| Outbound locks | Leave `DOWNSTREAM_MUTATIONS=false` and all `*_LEDGER_MODE=log` untouched |
+| Packages | Zero external installs; ZIP via Node `zlib` + CRC32 PKZIP only |
+| Schema | Additive / non-destructive only; isolated fixtures / `QA-TEST-*` cleanup |
+| Env | Do not modify `package.json` or `.env*` |
+| TaxJar | Woo checkout taxes only; Hub passes exact TaxJar amounts to QBO — never recalculate |
 
 ## Workstreams
 
-### 1. Force Zero-Cache Live SSOT Data Parity
+### 1. `POST /api/shipping/quote` — LTL palletizer, FedEx live/fallback, showroom pickup
 
 **Files (expected):**  
-`src/app/partner/primeview-handoff/page.tsx`, `src/app/api/partner/primeview-handoff/download/route.ts`, `src/server/ecommerce/primeview-handoff-ssot.ts`
+`src/app/api/shipping/quote/route.ts`, `src/server/shipping/woo-checkout-quote.ts`
 
-- Export `dynamic = "force-dynamic"` and `revalidate = 0` on partner page + download route.
-- Download responses: `Cache-Control: no-store, must-revalidate`.
-- Replace legacy static arrays / unfiltered `listFinishAssets` / bogus heater `-LS/-RS` with Certified SSOT loaders shared with GHL Tabs 2–4 (`filterActiveEcommerceFinishes`, `getPhase1PortalRows` / handoff bundle, roster helpers).
+- Auth: `X-CCPatio-Shipping-Secret` (constant-time vs `WOO_SHIPPING_QUOTE_SECRET` \|\| `WOOCOMMERCE_WEBHOOK_SECRET`) **or** GHL embed / PrimeView partner token → else `401`.
+- Resolve cart SKUs (FIN-*, -LS/-RS, RTL-*, `sku_aliases`) against Hub dims; category fallback dims when missing (`usedFallbackDims: true`).
+- Consolidate into `90" × 40" × 45"` pallets (+ 45 lb tare); parcel/lightweight accessories consolidate without spawning full pallets.
+- FedEx LTL from Phoenix `85043` (configurable) with Residential + Liftgate, `AbortSignal.timeout(4500)`; deterministic zone/pallet fallback when unconfigured/error/timeout.
+- Rates: taxable FedEx LTL curbside + `$0` Scottsdale & Solana Beach showroom pickup.
 
-### 2. Rebuild Partner Portal UI (3 Tabs · Dark-Slate/Gold)
-
-**Files (expected):**  
-`src/app/partner/primeview-handoff/PartnerHandoffClient.tsx`, `src/app/partner/primeview-handoff/actions.ts`, reuse `FullResImageLightbox.tsx` (no `onReplace`)
-
-1. Header + live `ccpatiodev2.primeview.com` staging banner (Re-Test + Copy `CCP-DIAG-WOO-*`) + clickable KPI strip.
-2. Tab 1 — Certified Finishes & Add-Ons (32): family pills, square swatches, APF badges, texture scale, 2048 lightbox (Fit / 1:1 / 3×3 / Prev-Next), Storefront Add-Ons matrix.
-3. Tab 2 — Certified Aluminum Products (107): filters, Title-Case titles, accurate Simple vs facing badges, freight/media badges, read-only product drawer.
-4. Tab 3 — Woo payloads & Certified downloads (JSON/CSV finishes, products, add-ons/APF). Remove legacy “Full 38 Finishes” / upload mutation UI.
-
-### 3. Verification + QCA
+### 2. WordPress bridge plugin ZIP generator
 
 **Files (expected):**  
-`tests/primeview-handoff-ssot-parity.test.ts`, `tests/e2e/primeview-handoff-ssot-parity.spec.ts`, `.cursor/phase.lock` blast sync
+`src/server/shipping/woo-shipping-plugin-zip.ts`, `src/app/api/partner/primeview-handoff/shipping-plugin/route.ts`
 
-1. Vitest + Playwright prove force-dynamic, 32/107/102 parity, lightbox modes, no internal leaks, staging banner + diagnostic, Certified-only downloads with `Cache-Control: no-store`.
-2. `npx vitest run tests/primeview-handoff-ssot-parity.test.ts` → PASS.
+- Pure Node `deflateRawSync` + CRC32 PKZIP → `ccpatio-hub-shipping.zip` (`Cache-Control: no-store`).
+- PHP 7.4–8.3 safe `WC_CCPatio_Hub_Shipping_Method` posting to Hub quote API with session/transient cache, TaxJar-friendly `taxes` flags, emergency fallback rate, `_ccpatio_*` meta.
+
+### 3. TaxJar pass-through in Woo webhook + QBO ledger mappers
+
+**Files (expected):**  
+`src/server/woocommerce/taxjar-passthrough.ts`, `src/server/woocommerce/ingress.schema.ts` (additive), webhook/ledger call sites as needed
+
+- Extract/persist `total_tax`, `cart_tax`, `shipping_total`, `shipping_tax`, `tax_lines[]`, exemption meta, `shipping_lines[]` (+ `_ccpatio_*` quote meta).
+- QBO Invoice/SalesReceipt builder uses exact TaxJar totals (`GlobalTaxCalculation: NotApplicable` + explicit tax lines); assert `items - discounts + shipping + tax === total`.
+- `buildTaxExemptionSyncPayload(customer)` for Woo meta + TaxJar `/v2/customers`.
+
+### 4. Partner handoff SSOT parity + Tab 4 Shipping & TaxJar console
+
+**Files (expected):**  
+`src/app/partner/primeview-handoff/*`, `src/components/` shared console, `EcommerceCertificationPortal.tsx` Tab 4
+
+- Keep `force-dynamic` / `revalidate = 0`; live 32-finish (`6/6` powder) + 107 Title-Case SSOT; no admin mutation leaks.
+- Dark **Shipping Bridge & TaxJar Checkout Integration** panel on partner handoff + GHL Tab 4: 1-click ZIP download, setup steps, live Quote Simulator.
+
+### 5. Verification
+
+**Files (expected):**  
+`tests/woo-shipping-bridge-and-taxjar.test.ts`, `tests/e2e/woo-shipping-bridge-and-taxjar.spec.ts` (or under `e2e/`), `.cursor/phase.lock` blast sync
+
+1. Vitest + Playwright prove auth, pallet math, ZIP PK signature, TaxJar penny reconciliation, SSOT + simulator UI.
+2. `npx vitest run tests/woo-shipping-bridge-and-taxjar.test.ts` → PASS.
 3. `npm run qa:lifecycle` → `exit_code: 0`.
 4. Sync `expected_blast_radius` (`tolerance: 0`, excluding `.cursor/aar.json`).
 5. `emit.mjs` + `qca.mjs` → **CERTIFIED** (`audit_exit: 0`); paste verbatim QCA JSON.
 
 ## Acceptance criteria
 
-- Partner refresh shows Mia’s latest Certified SSOT (zero Next.js cache).
-- UI matches GHL dark-slate/gold parity for finishes/products/sync surfaces (read-only).
-- Staging probe + diagnostic work live on the call.
-- Downloads are Certified 32 / 107 only (no legacy 38).
+- Checkout never blocks: live FedEx or deterministic fallback + showroom pickup always returned.
+- Bridge ZIP installs as a valid WC shipping method talking to Hub with shared secret.
+- Woo → Hub → QBO preserves exact TaxJar cart + shipping tax (no recalculation).
+- Partner + GHL Tab 4 expose ZIP download + working quote simulator on Certified SSOT.
 - Target Vitest + `qa:lifecycle` green; QCA `CERTIFIED`.

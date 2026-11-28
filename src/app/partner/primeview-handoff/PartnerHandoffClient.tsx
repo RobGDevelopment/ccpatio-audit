@@ -37,6 +37,7 @@ import {
   partnerDryRunPayload,
   partnerRetestWooStaging,
 } from "./actions";
+import ShippingTaxjarConsole from "@/components/shipping/ShippingTaxjarConsole";
 
 type PartnerTab = "finishes" | "products" | "sync";
 type FinishSubFilter =
@@ -909,6 +910,21 @@ export default function PartnerHandoffClient(props: Props) {
                 </p>
               )}
             </section>
+
+            <ShippingTaxjarConsole
+              partnerToken={props.token}
+              testIdPrefix="partner-shipping-taxjar"
+              pluginHref={`/api/partner/primeview-handoff/shipping-plugin?token=${encodeURIComponent(props.token)}`}
+              skus={(props.products.length
+                ? props.products
+                : []
+              )
+                .slice(0, 107)
+                .map((p) => ({
+                  sku: p.wooSku || p.globalSku,
+                  label: p.storefrontTitle || p.productName,
+                }))}
+            />
 
             <section className="rounded-2xl border border-white/10 bg-[#111827] p-5">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">

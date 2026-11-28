@@ -1,44 +1,68 @@
 {
-  "phase_id": "primeview-handoff-portal-ssot-parity",
+  "phase_id": "woo-shipping-bridge-and-taxjar",
   "base_ref": "HEAD",
-  "blast_radius": 10,
+  "blast_radius": 16,
   "counts": {
-    "files": 10,
-    "tracked": 6,
-    "untracked": 4,
-    "insertions": 1149,
-    "deletions": 1153
+    "files": 16,
+    "tracked": 8,
+    "untracked": 8,
+    "insertions": 139,
+    "deletions": 40
   },
   "files": [
     {
       "status": "??",
-      "path": "src/app/partner/primeview-handoff/actions.ts",
+      "path": "src/app/api/partner/primeview-handoff/shipping-plugin/route.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "src/server/ecommerce/primeview-handoff-ssot.ts",
+      "path": "src/app/api/shipping/quote/route.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/e2e/primeview-handoff-ssot-parity.spec.ts",
+      "path": "src/components/shipping/ShippingTaxjarConsole.tsx",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "??",
-      "path": "tests/primeview-handoff-ssot-parity.test.ts",
+      "path": "src/server/shipping/woo-checkout-quote.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/shipping/woo-shipping-plugin-zip.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "src/server/woocommerce/taxjar-passthrough.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/e2e/woo-shipping-bridge-and-taxjar.spec.ts",
+      "insertions": 0,
+      "deletions": 0
+    },
+    {
+      "status": "??",
+      "path": "tests/woo-shipping-bridge-and-taxjar.test.ts",
       "insertions": 0,
       "deletions": 0
     },
     {
       "status": "M",
       "path": ".cursor/phase.lock",
-      "insertions": 7,
-      "deletions": 9
+      "insertions": 5,
+      "deletions": 5
     },
     {
       "status": "M",
@@ -49,34 +73,50 @@
     {
       "status": "M",
       "path": "BUILD_PLAN.md",
-      "insertions": 29,
-      "deletions": 47
+      "insertions": 47,
+      "deletions": 30
     },
     {
       "status": "M",
-      "path": "src/app/api/partner/primeview-handoff/download/route.ts",
-      "insertions": 106,
-      "deletions": 51
+      "path": "src/app/api/webhooks/woocommerce/route.ts",
+      "insertions": 26,
+      "deletions": 1
+    },
+    {
+      "status": "M",
+      "path": "src/app/embed/admin/master-catalog/ecommerce/EcommerceCertificationPortal.tsx",
+      "insertions": 16,
+      "deletions": 0
     },
     {
       "status": "M",
       "path": "src/app/partner/primeview-handoff/PartnerHandoffClient.tsx",
-      "insertions": 983,
-      "deletions": 939
+      "insertions": 16,
+      "deletions": 0
     },
     {
       "status": "M",
-      "path": "src/app/partner/primeview-handoff/page.tsx",
-      "insertions": 22,
-      "deletions": 105
+      "path": "src/server/woocommerce/ingress.schema.ts",
+      "insertions": 4,
+      "deletions": 0
+    },
+    {
+      "status": "M",
+      "path": "src/server/woocommerce/ledger-leg.ts",
+      "insertions": 23,
+      "deletions": 2
     }
   ],
   "untracked": [
-    "src/app/partner/primeview-handoff/actions.ts",
-    "src/server/ecommerce/primeview-handoff-ssot.ts",
-    "tests/e2e/primeview-handoff-ssot-parity.spec.ts",
-    "tests/primeview-handoff-ssot-parity.test.ts"
+    "src/app/api/partner/primeview-handoff/shipping-plugin/route.ts",
+    "src/app/api/shipping/quote/route.ts",
+    "src/components/shipping/ShippingTaxjarConsole.tsx",
+    "src/server/shipping/woo-checkout-quote.ts",
+    "src/server/shipping/woo-shipping-plugin-zip.ts",
+    "src/server/woocommerce/taxjar-passthrough.ts",
+    "tests/e2e/woo-shipping-bridge-and-taxjar.spec.ts",
+    "tests/woo-shipping-bridge-and-taxjar.test.ts"
   ],
-  "file_list_sha256": "6d34751d5f46dbd23a27872ad3b9658b62ba38b010ef28c14729a03ea1579fa4",
-  "notes": "High-Res Swatch & native .GLB 3D Asset Studio: finish registry, dual-auth presign/commit, GHL+Partner UI, Woo meta/CSV 173-col, zero .glb in images[]."
+  "file_list_sha256": "13c8404d8abc8d00afd22af12240623b55d34071cb3e57b8b9f786fcc397e377",
+  "notes": "woo-shipping-bridge-and-taxjar: Hub POST /api/shipping/quote (90x40x45 LTL + FedEx/fallback + showroom pickup), pure-zlib ccpatio-hub-shipping.zip bridge, TaxJar penny-exact QBO pass-through, partner/GHL Tab4 Shipping & TaxJar console + quote simulator. QCA CERTIFIED."
 }

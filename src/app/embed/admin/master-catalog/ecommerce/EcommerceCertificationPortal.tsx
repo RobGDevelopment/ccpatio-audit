@@ -78,6 +78,7 @@ import {
   type DlqOpenRow,
 } from "../actions";
 import type { FinishIntakeView } from "@/server/ecommerce/finish-intake";
+import ShippingTaxjarConsole from "@/components/shipping/ShippingTaxjarConsole";
 import { DropButton, uploadEmbedAsset } from "./SwatchesFinishesDrawer";
 import IntakeMediaStudio from "./IntakeMediaStudio";
 import { Model3dCell, type Phase1Listing } from "./Phase1PortalViews";
@@ -2001,6 +2002,21 @@ export default function EcommerceCertificationPortal({
 
         {tab === "sync" ? (
           <div className="mt-6 space-y-6" data-testid="portal-panel-sync">
+            <ShippingTaxjarConsole
+              testIdPrefix="portal-shipping-taxjar"
+              partnerToken={null}
+              embedToken={embedToken}
+              pluginHref={
+                embedToken
+                  ? `/api/partner/primeview-handoff/shipping-plugin?embedToken=${encodeURIComponent(embedToken)}`
+                  : "/api/partner/primeview-handoff/shipping-plugin"
+              }
+              skus={listings.slice(0, 107).map((l) => ({
+                sku: l.wooSku || l.globalSku,
+                label: stripFinBracketsFromTitle(l.productName) || l.productName,
+              }))}
+            />
+
             <section className="rounded-2xl border border-white/10 bg-[#111827] p-5">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
                 1-click artifacts

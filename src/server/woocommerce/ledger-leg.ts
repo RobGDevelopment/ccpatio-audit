@@ -16,6 +16,11 @@
 import { getLedgerMode, type LedgerPipelineMode } from "@/server/pipeline/ledger-mode";
 import { sagaStore, type SagaStore } from "@/server/sre/saga-store";
 import { WOO_SAGA_TYPE } from "@/server/woocommerce/ingress";
+import {
+  buildQboTaxPassthroughPayload,
+  extractTaxJarTelemetry,
+  type TaxJarOrderTelemetry,
+} from "@/server/woocommerce/taxjar-passthrough";
 
 export const WOO_LEDGER_DRY_RUN_STEP = "ledger_dry_run";
 export const WOO_LEDGER_AWAITING_STEP = "awaiting_ledger_step_8";
@@ -25,18 +30,25 @@ export type WooLedgerLegResult = {
   dryRun: boolean;
   /** The saga `current_step` that was written. */
   marker: typeof WOO_LEDGER_DRY_RUN_STEP | typeof WOO_LEDGER_AWAITING_STEP;
+  /** Staged QBO tax pass-through (log mode proves TaxJar totals; never recalculated). */
+  qboTaxPassthrough?: ReturnType<typeof buildQboTaxPassthroughPayload>;
 };
 
 export async function runWooLedgerLeg(input: {
-  order: { id: number | string };
+  order: { id: number | string } & Partial<Parameters<typeof extractTaxJarTelemetry>[0]>;
   orderNo: string;
   mode?: LedgerPipelineMode;
   store?: Pick<SagaStore, "setStatus">;
+  taxjarTelemetry?: TaxJarOrderTelemetry;
 }): Promise<WooLedgerLegResult> {
   // Woo lane reads WOO_LEDGER_MODE only (fail-closed to log; no LEDGER_PIPELINE_MODE fallback).
   const mode = input.mode ?? getLedgerMode("woo");
   const store = input.store ?? sagaStore;
   const orderId = String(input.order.id);
+
+  const telemetry =
+    input.taxjarTelemetry ?? extractTaxJarTelemetry(input.order);
+  const qboTaxPassthrough = buildQboTaxPassthroughPayload(telemetry);
 
   // Fail closed: anything that is not exactly "live" is a dry run.
   if (mode !== "live") {
@@ -48,12 +60,21 @@ export async function runWooLedgerLeg(input: {
         dryRun: true,
         orderId,
         orderNo: input.orderNo,
+        taxjar: {
+          cart_tax: telemetry.cart_tax,
+          shipping_tax: telemetry.shipping_tax,
+          total_tax: telemetry.total_tax,
+          shipping_total: telemetry.shipping_total,
+          balanceOk: qboTaxPassthrough.CcPatioTaxTelemetry.balance.ok,
+        },
+        qboGlobalTaxCalculation: qboTaxPassthrough.GlobalTaxCalculation,
+        qboTotalTax: qboTaxPassthrough.TxnTaxDetail.TotalTax,
       }),
     );
     await store.setStatus(WOO_SAGA_TYPE, orderId, "IN_PROGRESS", {
       currentStep: WOO_LEDGER_DRY_RUN_STEP,
     });
-    return { mode, dryRun: true, marker: WOO_LEDGER_DRY_RUN_STEP };
+    return { mode, dryRun: true, marker: WOO_LEDGER_DRY_RUN_STEP, qboTaxPassthrough };
   }
 
   console.error(

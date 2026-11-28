@@ -84,6 +84,10 @@ export const wooOrderWebhookSchema = z.looseObject({
   date_paid: z.string().nullable().optional(),
   discount_total: moneyString.optional(),
   shipping_total: moneyString.optional(),
+  /** TaxJar / Woo cart (line-item) tax — distinct from shipping_tax. */
+  cart_tax: moneyString.optional(),
+  /** TaxJar shipping tax component. */
+  shipping_tax: moneyString.optional(),
   total: moneyString.optional(),
   total_tax: moneyString.optional(),
   customer_id: numericId.optional(),
